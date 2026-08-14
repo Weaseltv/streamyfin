@@ -205,7 +205,8 @@ export type NativePlayerStrings = Partial<
     | "sleepTimerOff"
     | "searchSubtitles"
     | "searchFailed"
-    | "noSubtitlesFound",
+    | "noSubtitlesFound"
+    | "nowPlaying",
     string
   >
 >;

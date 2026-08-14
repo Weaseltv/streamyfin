@@ -103,6 +103,7 @@ export const buildNativePlayerStrings = (
   searchSubtitles: t("player.search_subtitles"),
   searchFailed: t("player.search_failed"),
   noSubtitlesFound: t("player.no_subtitles_found"),
+  nowPlaying: t("player.now_playing", "Now Playing"),
   unlock: t("player.unlock"),
   stillWatching: t("player.still_watching"),
   continueWatching: t("player.continue_watching"),

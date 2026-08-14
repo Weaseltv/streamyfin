@@ -33,8 +33,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     }
 
     private fun isTvDevice(): Boolean {
-        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-        return uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+        return DeviceKind.isTelevision(context)
     }
 
     /**
