@@ -7,18 +7,13 @@
     "icon": "./assets/images/weaselfin-icon-1024.png",
     "scheme": "weaselfin",
     "userInterfaceStyle": "dark",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "requireFullScreen": true,
       "infoPlist": {
         "NSCameraUsageDescription": "The app needs access to your camera to scan barcodes.",
         "NSMicrophoneUsageDescription": "The app needs access to your microphone.",
-        "UIBackgroundModes": [
-          "audio",
-          "fetch"
-        ],
+        "UIBackgroundModes": ["audio", "fetch"],
         "NSLocalNetworkUsageDescription": "The app needs access to your local network to connect to your Jellyfin server.",
         "NSLocationWhenInUseUsageDescription": "WeaselFin uses your location to detect your home WiFi network for automatic local server switching.",
         "NSAppTransportSecurity": {
@@ -54,9 +49,7 @@
         "android.permission.WRITE_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "blockedPermissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
-      ],
+      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
@@ -87,18 +80,10 @@
           "ios": {
             "deploymentTarget": "16.4",
             "useFrameworks": "static",
-            "forceStaticLinking": [
-              "ExpoUI",
-              "GlassEffectView",
-              "GlassPoster"
-            ]
+            "forceStaticLinking": ["ExpoUI", "GlassEffectView", "GlassPoster"]
           },
           "android": {
-            "buildArchs": [
-              "arm64-v8a",
-              "x86_64",
-              "armeabi-v7a"
-            ],
+            "buildArchs": ["arm64-v8a", "x86_64", "armeabi-v7a"],
             "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
@@ -150,36 +135,16 @@
         }
       ],
       "expo-web-browser",
-      [
-        "./plugins/with-runtime-framework-headers.ts"
-      ],
-      [
-        "./plugins/withChangeNativeAndroidTextToWhite.ts"
-      ],
-      [
-        "./plugins/withAndroidAlertColors.ts"
-      ],
-      [
-        "./plugins/withAndroidManifest.ts"
-      ],
-      [
-        "./plugins/withTrustLocalCerts.ts"
-      ],
-      [
-        "./plugins/withGradleProperties.ts"
-      ],
-      [
-        "./plugins/withTVOSAppIcon.ts"
-      ],
-      [
-        "./plugins/withTVOSTopShelf.ts"
-      ],
-      [
-        "./plugins/withDownloadLiveActivity.ts"
-      ],
-      [
-        "./plugins/withTVXcodeEnv.ts"
-      ],
+      ["./plugins/with-runtime-framework-headers.ts"],
+      ["./plugins/withChangeNativeAndroidTextToWhite.ts"],
+      ["./plugins/withAndroidAlertColors.ts"],
+      ["./plugins/withAndroidManifest.ts"],
+      ["./plugins/withTrustLocalCerts.ts"],
+      ["./plugins/withGradleProperties.ts"],
+      ["./plugins/withTVOSAppIcon.ts"],
+      ["./plugins/withTVOSTopShelf.ts"],
+      ["./plugins/withDownloadLiveActivity.ts"],
+      ["./plugins/withTVXcodeEnv.ts"],
       [
         "./plugins/withGitPod.ts",
         {
@@ -194,13 +159,17 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "f86e16f3-c729-4e85-9acc-34a37f67ef07"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/e79219d1-797f-4fbe-9fa1-cfd360690a68"
-    }
+      "url": "https://u.expo.dev/f86e16f3-c729-4e85-9acc-34a37f67ef07"
+    },
+    "owner": "wtzgoods-team"
   }
 }
