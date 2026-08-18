@@ -4,7 +4,7 @@
   import os
 
   private let liveActivityLog = Logger(
-    subsystem: "com.fredrikburmester.streamyfin",
+    subsystem: "tv.theweasel.weaselfin",
     category: "LiveActivity"
   )
 
@@ -60,7 +60,7 @@
     }
 
     private let queue = DispatchQueue(
-      label: "com.fredrikburmester.streamyfin.downloadliveactivity"
+      label: "tv.theweasel.weaselfin.downloadliveactivity"
     )
     private var tracker: Tracker?
     private var isEnabled = true

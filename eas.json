@@ -110,8 +110,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "MWD5K362T8",
-        "ascAppId": "6593660679"
+        "appleTeamId": "RU3U747943"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
@@ -121,8 +120,7 @@
     },
     "production_tv": {
       "ios": {
-        "appleTeamId": "MWD5K362T8",
-        "ascAppId": "6593660679"
+        "appleTeamId": "RU3U747943"
       }
     }
   }

@@ -22,7 +22,7 @@ interface AppExtensionConfig {
 }
 
 function getBundleIdentifier(config: ExpoConfig): string {
-  return config.ios?.bundleIdentifier || "com.fredrikburmester.streamyfin";
+  return config.ios?.bundleIdentifier || "tv.theweasel.weaselfin";
 }
 
 function getAppGroupIdentifier(config: ExpoConfig): string {
