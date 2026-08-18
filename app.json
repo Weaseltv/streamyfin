@@ -4,7 +4,7 @@
     "slug": "weaselfin",
     "version": "0.55.0",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/weaselfin-icon-1024.png",
     "scheme": "weaselfin",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": [
@@ -39,13 +39,13 @@
         "com.apple.developer.networking.wifi-info": true
       },
       "bundleIdentifier": "tv.theweasel.weaselfin",
-      "icon": "./assets/images/icon-ios-liquid-glass.icon"
+      "icon": "./assets/images/weaselfin-icon-1024.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon-android-plain.png",
-        "monochromeImage": "./assets/images/icon-android-themed.png",
-        "backgroundColor": "#2E2E2E"
+        "foregroundImage": "./assets/images/weaselfin-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/weaselfin-adaptive-monochrome.png",
+        "backgroundColor": "#070A10"
       },
       "package": "tv.theweasel.weaselfin",
       "permissions": [
@@ -137,16 +137,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#010101",
-          "image": "./assets/images/icon-ios-plain.png",
+          "backgroundColor": "#070A10",
+          "image": "./assets/images/weaselfin-launch-logo.png",
           "imageWidth": 100
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification.png",
-          "color": "#9333EA"
+          "icon": "./assets/images/weaselfin-notification.png",
+          "color": "#00C0FF"
         }
       ],
       "expo-web-browser",
