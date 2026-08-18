@@ -25,6 +25,7 @@ import { QuickConnectCodeModal } from "@/components/login/QuickConnectCodeModal"
 import { PreviousServersList } from "@/components/PreviousServersList";
 import { CustomHeaderSheet } from "@/components/settings/CustomHeaderSheet";
 import { Colors } from "@/constants/Colors";
+import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import {
   apiAtom,
@@ -67,7 +68,9 @@ export const Login: React.FC = () => {
 
   const [loadingServerCheck, setLoadingServerCheck] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [serverURL, setServerURL] = useState<string>(_apiUrl || "");
+  const [serverURL, setServerURL] = useState<string>(
+    _apiUrl || DEFAULT_SERVER_URL,
+  );
   const [serverName, setServerName] = useState<string>("");
   const [credentials, setCredentials] = useState<{
     username: string;

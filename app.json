@@ -1,21 +1,26 @@
 {
   "expo": {
-    "name": "Streamyfin",
-    "slug": "streamyfin",
+    "name": "WeaselFin",
+    "slug": "weaselfin",
     "version": "0.55.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "streamyfin",
+    "scheme": "weaselfin",
     "userInterfaceStyle": "dark",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "requireFullScreen": true,
       "infoPlist": {
         "NSCameraUsageDescription": "The app needs access to your camera to scan barcodes.",
         "NSMicrophoneUsageDescription": "The app needs access to your microphone.",
-        "UIBackgroundModes": ["audio", "fetch"],
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
         "NSLocalNetworkUsageDescription": "The app needs access to your local network to connect to your Jellyfin server.",
-        "NSLocationWhenInUseUsageDescription": "Streamyfin uses your location to detect your home WiFi network for automatic local server switching.",
+        "NSLocationWhenInUseUsageDescription": "WeaselFin uses your location to detect your home WiFi network for automatic local server switching.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
@@ -33,9 +38,8 @@
       "entitlements": {
         "com.apple.developer.networking.wifi-info": true
       },
-      "bundleIdentifier": "com.fredrikburmester.streamyfin",
-      "icon": "./assets/images/icon-ios-liquid-glass.icon",
-      "appleTeamId": "MWD5K362T8"
+      "bundleIdentifier": "tv.theweasel.weaselfin",
+      "icon": "./assets/images/icon-ios-liquid-glass.icon"
     },
     "android": {
       "adaptiveIcon": {
@@ -43,14 +47,16 @@
         "monochromeImage": "./assets/images/icon-android-themed.png",
         "backgroundColor": "#2E2E2E"
       },
-      "package": "com.fredrikburmester.streamyfin",
+      "package": "tv.theweasel.weaselfin",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.WRITE_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
+      ],
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
@@ -81,10 +87,18 @@
           "ios": {
             "deploymentTarget": "16.4",
             "useFrameworks": "static",
-            "forceStaticLinking": ["ExpoUI", "GlassEffectView", "GlassPoster"]
+            "forceStaticLinking": [
+              "ExpoUI",
+              "GlassEffectView",
+              "GlassPoster"
+            ]
           },
           "android": {
-            "buildArchs": ["arm64-v8a", "x86_64", "armeabi-v7a"],
+            "buildArchs": [
+              "arm64-v8a",
+              "x86_64",
+              "armeabi-v7a"
+            ],
             "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
@@ -136,16 +150,36 @@
         }
       ],
       "expo-web-browser",
-      ["./plugins/with-runtime-framework-headers.ts"],
-      ["./plugins/withChangeNativeAndroidTextToWhite.ts"],
-      ["./plugins/withAndroidAlertColors.ts"],
-      ["./plugins/withAndroidManifest.ts"],
-      ["./plugins/withTrustLocalCerts.ts"],
-      ["./plugins/withGradleProperties.ts"],
-      ["./plugins/withTVOSAppIcon.ts"],
-      ["./plugins/withTVOSTopShelf.ts"],
-      ["./plugins/withDownloadLiveActivity.ts"],
-      ["./plugins/withTVXcodeEnv.ts"],
+      [
+        "./plugins/with-runtime-framework-headers.ts"
+      ],
+      [
+        "./plugins/withChangeNativeAndroidTextToWhite.ts"
+      ],
+      [
+        "./plugins/withAndroidAlertColors.ts"
+      ],
+      [
+        "./plugins/withAndroidManifest.ts"
+      ],
+      [
+        "./plugins/withTrustLocalCerts.ts"
+      ],
+      [
+        "./plugins/withGradleProperties.ts"
+      ],
+      [
+        "./plugins/withTVOSAppIcon.ts"
+      ],
+      [
+        "./plugins/withTVOSTopShelf.ts"
+      ],
+      [
+        "./plugins/withDownloadLiveActivity.ts"
+      ],
+      [
+        "./plugins/withTVXcodeEnv.ts"
+      ],
       [
         "./plugins/withGitPod.ts",
         {
@@ -160,12 +194,8 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "e79219d1-797f-4fbe-9fa1-cfd360690a68"
       }
     },
-    "owner": "streamyfin",
     "runtimeVersion": {
       "policy": "appVersion"
     },

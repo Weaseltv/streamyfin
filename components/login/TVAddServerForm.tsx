@@ -1,5 +1,6 @@
 import { t } from "i18next";
 import React, { useCallback, useState } from "react";
+import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
 import { Platform, ScrollView, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
@@ -26,7 +27,7 @@ export const TVAddServerForm: React.FC<TVAddServerFormProps> = ({
   disabled = false,
 }) => {
   const typography = useScaledTVTypography();
-  const [serverURL, setServerURL] = useState("");
+  const [serverURL, setServerURL] = useState(DEFAULT_SERVER_URL);
   // An editor with nothing usable in it passes `undefined` so it keeps whatever
   // is already saved for the server instead of clearing it (see
   // checkJellyfinServer).
