@@ -42,6 +42,9 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_WRITE_DEBUG": "1"
+      },
+      "ios": {
+        "credentialsSource": "local"
       }
     },
     "preview_tv": {
@@ -60,7 +63,8 @@
         "config": "android-production.yml"
       },
       "ios": {
-        "config": "ios-production.yml"
+        "config": "ios-production.yml",
+        "credentialsSource": "local"
       }
     },
     "production-apk": {
