@@ -2,7 +2,7 @@
   "expo": {
     "name": "WeaselFin",
     "slug": "weaselfin",
-    "version": "0.55.0",
+    "version": "1.0",
     "orientation": "default",
     "icon": "./assets/images/weaselfin-icon-1024.png",
     "scheme": "weaselfin",
