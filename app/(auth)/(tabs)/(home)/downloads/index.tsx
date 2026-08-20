@@ -18,6 +18,8 @@ import ActiveDownloads from "@/components/downloads/ActiveDownloads";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
 import { MovieCard } from "@/components/downloads/MovieCard";
 import { SeriesCard } from "@/components/downloads/SeriesCard";
+import { CountBadge } from "@/components/prismatic/CountBadge";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -194,9 +196,7 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.movies")}
                 </Text>
-                <View className='bg-purple-600 rounded-full h-6 w-6 flex items-center justify-center'>
-                  <Text className='text-xs font-bold'>{movies?.length}</Text>
-                </View>
+                <CountBadge count={movies?.length} variant='movies' />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>
@@ -213,11 +213,7 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.series")}
                 </Text>
-                <View className='bg-purple-600 rounded-full h-6 w-6 flex items-center justify-center'>
-                  <Text className='text-xs font-bold'>
-                    {groupedBySeries?.length}
-                  </Text>
-                </View>
+                <CountBadge count={groupedBySeries?.length} variant='series' />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>
@@ -243,11 +239,7 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.other_media")}
                 </Text>
-                <View className='bg-purple-600 rounded-full h-6 w-6 flex items-center justify-center'>
-                  <Text className='text-xs font-bold'>
-                    {otherMedia?.length}
-                  </Text>
-                </View>
+                <CountBadge count={otherMedia?.length} variant='movies' />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>
@@ -274,7 +266,7 @@ export default function DownloadsPage() {
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
         backdropComponent={(props: BottomSheetBackdropProps) => (
           <BottomSheetBackdrop
@@ -287,7 +279,7 @@ export default function DownloadsPage() {
         <BottomSheetView>
           <View className='p-4 space-y-4 mb-4'>
             <Button
-              color='purple'
+              color='primary'
               onPress={confirmBulkDelete(
                 t("home.downloads.delete_all_movies_button"),
                 deleteMovies,
@@ -296,7 +288,7 @@ export default function DownloadsPage() {
               {t("home.downloads.delete_all_movies_button")}
             </Button>
             <Button
-              color='purple'
+              color='primary'
               onPress={confirmBulkDelete(
                 t("home.downloads.delete_all_series_button"),
                 deleteShows,
@@ -306,7 +298,7 @@ export default function DownloadsPage() {
             </Button>
             {otherMedia.length > 0 && (
               <Button
-                color='purple'
+                color='primary'
                 onPress={confirmBulkDelete(
                   t("home.downloads.delete_all_other_media_button"),
                   deleteOtherMedia,

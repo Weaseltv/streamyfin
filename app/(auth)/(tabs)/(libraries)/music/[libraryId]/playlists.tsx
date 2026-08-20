@@ -20,6 +20,7 @@ import {
   type PlaylistSortOrder,
   PlaylistSortSheet,
 } from "@/components/music/PlaylistSortSheet";
+import { Colors } from "@/constants/Colors";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 const ITEMS_PER_PAGE = 40;
@@ -154,7 +155,7 @@ export default function PlaylistsScreen() {
         <Text className='text-neutral-500 mb-4'>{t("music.no_playlists")}</Text>
         <TouchableOpacity
           onPress={() => setCreateModalOpen(true)}
-          className='flex-row items-center bg-purple-600 px-6 py-3 rounded-full'
+          className='flex-row items-center bg-prism-cyan px-6 py-3 rounded-full'
         >
           <Ionicons name='add' size={20} color='white' />
           <Text className='text-white font-semibold ml-2'>
@@ -182,7 +183,7 @@ export default function PlaylistsScreen() {
           <RefreshControl
             refreshing={false}
             onRefresh={refetch}
-            tintColor='#9334E9'
+            tintColor={Colors.primary}
           />
         }
         onEndReached={handleEndReached}
@@ -192,8 +193,8 @@ export default function PlaylistsScreen() {
             onPress={() => setSortSheetOpen(true)}
             className='flex-row items-center mb-2 py-1'
           >
-            <Ionicons name='swap-vertical' size={18} color='#9334E9' />
-            <Text className='text-purple-500 text-sm ml-1.5'>
+            <Ionicons name='swap-vertical' size={18} color={Colors.primary} />
+            <Text className='text-tint-violet text-sm ml-1.5'>
               {t(
                 `music.sort.${sortBy === "SortName" ? "alphabetical" : "date_created"}`,
               )}
@@ -201,7 +202,7 @@ export default function PlaylistsScreen() {
             <Ionicons
               name={sortOrder === "Ascending" ? "arrow-up" : "arrow-down"}
               size={14}
-              color='#9334E9'
+              color={Colors.primary}
               style={{ marginLeft: 4 }}
             />
           </TouchableOpacity>

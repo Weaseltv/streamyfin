@@ -7,6 +7,7 @@ import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useStreamystatsEnabled } from "@/hooks/useWatchlists";
 
@@ -60,9 +61,9 @@ export default function WatchlistsLayout() {
           title: t("watchlists.create_title"),
           presentation: "modal",
           headerShown: !Platform.isTV,
-          headerStyle: { backgroundColor: "#171717" },
+          headerStyle: { backgroundColor: Colors.surface },
           headerTintColor: "white",
-          contentStyle: { backgroundColor: "#171717" },
+          contentStyle: { backgroundColor: Colors.surface },
         }}
       />
       <Stack.Screen
@@ -71,9 +72,9 @@ export default function WatchlistsLayout() {
           title: t("watchlists.edit_title"),
           presentation: "modal",
           headerShown: !Platform.isTV,
-          headerStyle: { backgroundColor: "#171717" },
+          headerStyle: { backgroundColor: Colors.surface },
           headerTintColor: "white",
-          contentStyle: { backgroundColor: "#171717" },
+          contentStyle: { backgroundColor: Colors.surface },
         }}
       />
       {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (

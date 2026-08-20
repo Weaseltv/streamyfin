@@ -9,6 +9,7 @@ import type {
   TabNavigationState,
 } from "expo-router/react-navigation";
 import { useTranslation } from "react-i18next";
+import { Colors } from "@/constants/Colors";
 
 const { Navigator } = createMaterialTopTabNavigator();
 
@@ -55,7 +56,7 @@ const Layout = () => {
           animationEnabled: true,
           lazy: true,
           swipeEnabled: true,
-          tabBarIndicatorStyle: { backgroundColor: "#9334E9" },
+          tabBarIndicatorStyle: { backgroundColor: Colors.primary },
           tabBarScrollEnabled: true,
         }}
       >
