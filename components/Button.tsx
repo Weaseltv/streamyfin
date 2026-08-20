@@ -19,16 +19,16 @@ import { scaleSize } from "@/utils/scaleSize";
 import { Loader } from "./Loader";
 
 const getColorClasses = (
-  color: "purple" | "red" | "black" | "transparent" | "white",
+  color: "primary" | "red" | "black" | "transparent" | "white",
   variant: "solid" | "border",
   focused: boolean,
 ): string => {
   if (variant === "border") {
     switch (color) {
-      case "purple":
+      case "primary":
         return focused
-          ? "bg-transparent border-2 border-purple-400"
-          : "bg-transparent border-2 border-purple-600";
+          ? "bg-transparent border-2 border-tint-cyan"
+          : "bg-transparent border-2 border-prism-cyan";
       case "red":
         return focused
           ? "bg-transparent border-2 border-red-400"
@@ -50,10 +50,10 @@ const getColorClasses = (
     }
   } else {
     switch (color) {
-      case "purple":
+      case "primary":
         return focused
-          ? "bg-purple-500 border-2 border-white"
-          : "bg-purple-600 border border-purple-700";
+          ? "bg-tint-cyan border-2 border-white"
+          : "bg-prism-cyan border border-prism-blue";
       case "red":
         return "bg-red-600";
       case "black":
@@ -78,7 +78,7 @@ export interface ButtonProps
   disabled?: boolean;
   children?: string | ReactNode;
   loading?: boolean;
-  color?: "purple" | "red" | "black" | "transparent" | "white";
+  color?: "primary" | "red" | "black" | "transparent" | "white";
   variant?: "solid" | "border";
   iconRight?: ReactNode;
   iconLeft?: ReactNode;
@@ -91,7 +91,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   textClassName = "",
   disabled = false,
   loading = false,
-  color = "purple",
+  color = "primary",
   variant = "solid",
   iconRight,
   iconLeft,
@@ -115,7 +115,9 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   const lightHapticFeedback = useHaptic("light");
 
   const textColorClass =
-    color === "white" && variant === "solid" ? "text-black" : "text-white";
+    variant === "solid" && (color === "white" || color === "primary")
+      ? "text-brand-bg"
+      : "text-white";
 
   return Platform.isTV ? (
     <Pressable

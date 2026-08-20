@@ -4,6 +4,10 @@ import {
   withAndroidColorsNight,
 } from "expo/config-plugins";
 
+// WeaselFin prismatic cyan. Duplicated rather than imported because config
+// plugins run in the Node build context, outside the app's module graph.
+const ALERT_ACCENT = "#00C0FF";
+
 interface ColorResourceItem {
   $: { name: string };
   _: string;
@@ -31,7 +35,7 @@ const withAndroidAlertColors: ConfigPlugin = (config) => {
   config = withAndroidColors(config, (config) => {
     const colors = config.modResults;
     const colorsList = (colors.resources.color ?? []) as ColorResourceItem[];
-    setColor(colorsList, "colorPrimary", "#000000");
+    setColor(colorsList, "colorPrimary", ALERT_ACCENT);
     colors.resources.color = colorsList;
     return config;
   });
@@ -39,7 +43,7 @@ const withAndroidAlertColors: ConfigPlugin = (config) => {
   config = withAndroidColorsNight(config, (config) => {
     const colors = config.modResults;
     const colorsList = (colors.resources.color ?? []) as ColorResourceItem[];
-    setColor(colorsList, "colorPrimary", "#FFFFFF");
+    setColor(colorsList, "colorPrimary", ALERT_ACCENT);
     colors.resources.color = colorsList;
     return config;
   });
