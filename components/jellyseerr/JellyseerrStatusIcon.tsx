@@ -31,7 +31,7 @@ const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
         break;
       case MediaStatus.AVAILABLE:
         setBadgeStyle(
-          "bg-purple-500 border-green-400 ring-green-400 text-green-100",
+          "bg-tint-cyan border-green-400 ring-green-400 text-green-100",
         );
         setBadgeIcon("check");
         break;
@@ -64,7 +64,7 @@ const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
     badgeIcon && (
       <TouchableOpacity onPress={onPress} disabled={onPress === undefined}>
         <View
-          className={`${badgeStyle ?? "bg-purple-600"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
+          className={`${badgeStyle ?? "bg-prism-cyan"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
           {...props}
         >
           <MaterialCommunityIcons name={badgeIcon} size={18} color='white' />

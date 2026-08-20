@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { Button } from "./Button";
 import { Text } from "./common/Text";
@@ -99,7 +100,7 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
       handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       backdropComponent={renderBackdrop}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
@@ -167,7 +168,7 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
             </Button>
             <Button
               onPress={handleSubmit}
-              color='purple'
+              color='primary'
               className='flex-1'
               disabled={isLoading || !password}
             >

@@ -12,6 +12,7 @@ import { Linking, Platform, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { storage } from "@/utils/mmkv";
 
@@ -61,7 +62,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
       ref={bottomSheetRef}
       enableDynamicSizing
       backdropComponent={renderBackdrop}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       handleIndicatorStyle={{ backgroundColor: "#737373" }}
     >
       <BottomSheetScrollView
@@ -173,7 +174,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
                       );
                     }}
                   >
-                    <Text className='text-xs text-purple-600 underline'>
+                    <Text className='text-xs text-tint-violet underline'>
                       {t("home.intro.read_more")}
                     </Text>
                   </TouchableOpacity>
@@ -187,7 +188,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
               {t("home.intro.done_button")}
             </Button>
             <TouchableOpacity onPress={handleGoToSettings} className='mt-4'>
-              <Text className='text-purple-600 text-center'>
+              <Text className='text-tint-violet text-center'>
                 {t("home.intro.go_to_settings_button")}
               </Text>
             </TouchableOpacity>

@@ -546,7 +546,7 @@ const HomeMobile = () => {
         <View className='mt-4'>
           {!Platform.isTV && (
             <Button
-              color='purple'
+              color='primary'
               onPress={() => router.push("/(auth)/downloads")}
               justify='center'
               iconRight={

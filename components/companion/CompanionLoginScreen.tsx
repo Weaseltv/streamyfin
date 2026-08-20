@@ -192,7 +192,7 @@ export const CompanionLoginScreen: React.FC = () => {
           {Platform.OS === "ios" && (
             <TouchableOpacity
               onPress={() => Linking.openSettings()}
-              className='mt-4 rounded-lg bg-purple-600 px-6 py-3'
+              className='mt-4 rounded-lg bg-prism-cyan px-6 py-3'
             >
               <Text className='text-base font-semibold text-white'>
                 {t("companion_login.open_settings")}
@@ -227,7 +227,7 @@ export const CompanionLoginScreen: React.FC = () => {
 
           <Button
             onPress={handleDone}
-            color='purple'
+            color='primary'
             textClassName='flex-1 text-center'
           >
             {t("companion_login.done")}
@@ -252,7 +252,7 @@ export const CompanionLoginScreen: React.FC = () => {
           <View className='mt-4 flex-row gap-3'>
             <Button
               onPress={handleScanAgain}
-              color='purple'
+              color='primary'
               textClassName='flex-1 text-center'
             >
               {t("companion_login.scan_again")}
@@ -341,7 +341,7 @@ export const CompanionLoginScreen: React.FC = () => {
             <Button
               onPress={handleSendCredentials}
               disabled={!password.trim()}
-              color='purple'
+              color='primary'
               textClassName='flex-1 text-center'
             >
               {t("companion_login.authorize_button")}
@@ -487,7 +487,7 @@ export const CompanionLoginScreen: React.FC = () => {
                 !pairingCode.trim()
               }
               className='w-40'
-              color='purple'
+              color='primary'
               textClassName='flex-1 text-center'
             >
               {t("companion_login.authorize_button")}
@@ -505,7 +505,7 @@ export const CompanionLoginScreen: React.FC = () => {
       <View className='flex-1 bg-black items-center justify-center p-8'>
         <Button
           onPress={handleEnterCodeManually}
-          color='purple'
+          color='primary'
           textClassName='flex-1 text-center'
         >
           {t("companion_login.enter_code_manually")}

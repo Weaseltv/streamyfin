@@ -12,6 +12,7 @@ import { View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
 import { PlatformDropdown } from "@/components/PlatformDropdown";
+import { Colors } from "@/constants/Colors";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import type {
   QualityProfile,
@@ -293,7 +294,7 @@ const RequestModal = forwardRef<
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
         backdropComponent={(sheetProps: BottomSheetBackdropProps) => (
           <BottomSheetBackdrop
@@ -426,7 +427,7 @@ const RequestModal = forwardRef<
                 </>
               )}
             </View>
-            <Button className='mt-auto' onPress={request} color='purple'>
+            <Button className='mt-auto' onPress={request} color='primary'>
               {t("jellyseerr.request_button")}
             </Button>
           </View>

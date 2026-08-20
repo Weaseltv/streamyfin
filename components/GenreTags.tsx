@@ -9,6 +9,7 @@ import {
   View,
   type ViewProps,
 } from "react-native";
+import { Prism } from "@/constants/Colors";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import { GlassSurface } from "./common/GlassSurface";
 import { Text } from "./common/Text";
@@ -23,22 +24,31 @@ export const Tag: React.FC<
     text: string;
     textClass?: ViewProps["className"];
     textStyle?: StyleProp<TextStyle>;
+    /** Neon hairline colour. Tags rotates these so a row reads as a set. */
+    borderTint?: string;
   } & ViewProps
-> = ({ text, textClass, textStyle, ...props }) => {
+> = ({ text, textClass, textStyle, borderTint, ...props }) => {
   // Hook must be called at the top level, before any conditional returns
   const typography = useScaledTVTypography();
 
   if (Platform.OS === "ios" && !Platform.isTV) {
     return (
       <View>
-        <GlassSurface style={styles.glass}>
+        <GlassSurface
+          style={[
+            styles.glass,
+            borderTint ? { borderWidth: 1, borderColor: borderTint } : null,
+          ]}
+        >
           <View
             style={{
               paddingHorizontal: 8,
               paddingVertical: 4,
             }}
           >
-            <Text>{text}</Text>
+            <Text style={borderTint ? { color: borderTint } : undefined}>
+              {text}
+            </Text>
           </View>
         </GlassSurface>
       </View>
@@ -72,8 +82,19 @@ export const Tag: React.FC<
   }
 
   return (
-    <View className='bg-neutral-800 rounded-full px-2 py-1' {...props}>
-      <Text className={textClass} style={textStyle}>
+    <View
+      className='rounded-full px-2 py-1'
+      style={{
+        backgroundColor: borderTint ? "transparent" : "#262626",
+        borderWidth: borderTint ? 1 : 0,
+        borderColor: borderTint ?? "transparent",
+      }}
+      {...props}
+    >
+      <Text
+        className={textClass}
+        style={[textStyle, borderTint ? { color: borderTint } : null]}
+      >
         {text}
       </Text>
     </View>
@@ -103,7 +124,15 @@ export const Tags: React.FC<
     >
       {tags.map((tag, idx) => (
         <View key={idx}>
-          <Tag key={idx} textClass={textClass} text={tag} {...tagProps} />
+          <Tag
+            key={idx}
+            textClass={textClass}
+            text={tag}
+            borderTint={
+              Prism.genreChipBorders[idx % Prism.genreChipBorders.length]
+            }
+            {...tagProps}
+          />
         </View>
       ))}
     </View>

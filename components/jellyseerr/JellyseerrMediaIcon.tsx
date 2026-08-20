@@ -10,7 +10,7 @@ const JellyseerrMediaIcon: React.FC<
     () =>
       mediaType === MediaType.MOVIE
         ? "bg-blue-600/90 border-blue-400/40"
-        : "bg-purple-600/90 border-purple-400/40",
+        : "bg-prism-cyan/90 border-tint-violet/40",
     [mediaType],
   );
   return (

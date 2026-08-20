@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 
 // @expo/ui's SwiftUI native module (ExpoUI) does not exist in tvOS builds.
@@ -74,7 +75,7 @@ interface PlatformDropdownProps {
 
 const ToggleSwitch: React.FC<{ value: boolean }> = ({ value }) => (
   <View
-    className={`w-12 h-7 rounded-full ${value ? "bg-purple-600" : "bg-neutral-600"} flex-row items-center`}
+    className={`w-12 h-7 rounded-full ${value ? "bg-prism-cyan" : "bg-neutral-600"} flex-row items-center`}
   >
     <View
       className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${value ? "translate-x-6" : "translate-x-1"}`}
@@ -103,7 +104,7 @@ const OptionItem: React.FC<{ option: Option; isLast?: boolean }> = ({
         {isToggle ? (
           <ToggleSwitch value={option.value} />
         ) : isAction ? null : (option as RadioOption).selected ? (
-          <Ionicons name='checkmark-circle' size={24} color='#9333ea' />
+          <Ionicons name='checkmark-circle' size={24} color={Colors.primary} />
         ) : (
           <Ionicons name='ellipse-outline' size={24} color='#6b7280' />
         )}

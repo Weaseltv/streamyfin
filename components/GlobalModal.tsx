@@ -5,6 +5,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { useCallback, useEffect } from "react";
 import { useWindowDimensions } from "react-native";
+import { Colors } from "@/constants/Colors";
 import { SHEET_MAX_HEIGHT_RATIO } from "@/constants/Values";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 
@@ -54,7 +55,7 @@ export const GlobalModal = () => {
     enableDynamicSizing: true,
     enablePanDownToClose: true,
     backgroundStyle: {
-      backgroundColor: "#171717",
+      backgroundColor: Colors.surface,
     },
     handleIndicatorStyle: {
       backgroundColor: "white",

@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { verifyAccountPIN } from "@/utils/secureCredentials";
 import { Button } from "./Button";
@@ -165,7 +166,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
       handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       backdropComponent={renderBackdrop}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
@@ -215,7 +216,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
 
           {/* Forgot PIN */}
           <TouchableOpacity onPress={handleForgotPIN} className='mb-4'>
-            <Text className='text-purple-400 text-center'>
+            <Text className='text-prism-cyan text-center'>
               {t("pin.forgot_pin")}
             </Text>
           </TouchableOpacity>

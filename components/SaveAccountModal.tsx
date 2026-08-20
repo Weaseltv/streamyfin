@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors } from "@/constants/Colors";
 import type { AccountSecurityType } from "@/utils/secureCredentials";
 import { Button } from "./Button";
 import { Text } from "./common/Text";
@@ -147,7 +148,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
       handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       backdropComponent={renderBackdrop}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
@@ -223,7 +224,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
                     <View
                       className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
                         selectedType === option.type
-                          ? "border-purple-500 bg-purple-500"
+                          ? "border-prism-violet bg-tint-cyan"
                           : "border-neutral-500"
                       }`}
                     >
@@ -244,7 +245,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
             </Button>
             <Button
               onPress={handleSave}
-              color='purple'
+              color='primary'
               className='flex-1'
               disabled={!canSave()}
             >

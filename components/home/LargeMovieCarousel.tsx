@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSegments } from "expo-router";
 import { useAtom } from "jotai";
 import React, { useCallback, useMemo } from "react";
@@ -16,6 +17,8 @@ import Carousel, {
   Pagination,
 } from "react-native-reanimated-carousel";
 import { Image } from "@/components/common/ServerImage";
+import { GradientShell } from "@/components/prismatic/GradientShell";
+import { Gradients, Prism } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -108,19 +111,37 @@ export const LargeMovieCarousel: React.FC<Props> = ({ ...props }) => {
         renderItem={({ item, index }) => <RenderItem key={index} item={item} />}
         scrollAnimationDuration={1000}
       />
-      <Pagination.Basic
+      <Pagination.Custom
         progress={progress}
         data={popularItems}
         dotStyle={{
-          backgroundColor: "rgba(255,255,255,0.2)",
-          borderRadius: 50,
+          width: 5,
+          height: 5,
+          borderRadius: 3,
+          opacity: 0.35,
         }}
         activeDotStyle={{
-          backgroundColor: "rgba(255,255,255,0.8)",
-          borderRadius: 50,
+          width: 14,
+          height: 5,
+          borderRadius: 3,
+          opacity: 1,
         }}
         containerStyle={{ gap: 5, marginTop: 12 }}
         onPress={onPressPagination}
+        renderItem={() => (
+          <LinearGradient
+            colors={
+              Gradients.pageDotActive as unknown as [
+                string,
+                string,
+                ...string[],
+              ]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: "100%", height: "100%", borderRadius: 3 }}
+          />
+        )}
       />
     </View>
   );
@@ -178,30 +199,37 @@ const RenderItem: React.FC<{ item: BaseItemDto }> = ({ item }) => {
   return (
     <GestureDetector gesture={tap}>
       <Animated.View style={{ opacity }}>
-        <View className='relative flex justify-center overflow-hidden border border-neutral-800'>
-          <Image
-            source={{
-              uri,
-            }}
-            style={{
-              width: "100%",
-              height: 500,
-              overflow: "hidden",
-            }}
-          />
-          <View className='absolute bottom-0 left-0 w-full flex items-center'>
+        <GradientShell
+          radius={16}
+          innerFill='transparent'
+          glowColor={Prism.heroGlow}
+          glowRadius={Prism.heroGlowRadius}
+        >
+          <View className='relative flex justify-center overflow-hidden'>
             <Image
               source={{
-                uri: logoUri,
+                uri,
               }}
               style={{
                 width: "100%",
-                height: "100%",
+                height: 500,
+                overflow: "hidden",
               }}
-              contentFit='contain'
             />
+            <View className='absolute bottom-0 left-0 w-full flex items-center'>
+              <Image
+                source={{
+                  uri: logoUri,
+                }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+                contentFit='contain'
+              />
+            </View>
           </View>
-        </View>
+        </GradientShell>
       </Animated.View>
     </GestureDetector>
   );

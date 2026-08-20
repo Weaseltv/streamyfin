@@ -125,7 +125,7 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
       handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       backdropComponent={renderBackdrop}
     >
       <BottomSheetView
@@ -207,7 +207,7 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
               setOpen(false);
               onAddAccount();
             }}
-            color='purple'
+            color='primary'
           >
             <View className='flex-row items-center justify-center'>
               <Ionicons name='add' size={20} color='white' />
