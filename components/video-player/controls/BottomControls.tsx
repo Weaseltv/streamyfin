@@ -11,6 +11,7 @@ import { type SharedValue } from "react-native-reanimated";
 import { ChapterList } from "@/components/chapters/ChapterList";
 import { ChapterTicks } from "@/components/chapters/ChapterTicks";
 import { Text } from "@/components/common/Text";
+import { SeekTrack } from "@/components/prismatic/SeekTrack";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
 import {
   chapterMarkers,
@@ -207,6 +208,13 @@ export const BottomControls: FC<BottomControlsProps> = ({
                 heartbeatColor: "#999",
               }}
               renderThumb={() => null}
+              renderContainer={({ style, seekStyle, cacheXStyle }) => (
+                <SeekTrack
+                  style={style}
+                  seekStyle={seekStyle}
+                  cacheXStyle={cacheXStyle}
+                />
+              )}
               cache={cacheProgress}
               onSlidingStart={handleSliderStart}
               onSlidingComplete={handleSliderComplete}

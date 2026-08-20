@@ -213,7 +213,7 @@ export const JellyseerrSettings = () => {
               <Button
                 loading={loginToJellyseerrMutation.isPending}
                 disabled={loginToJellyseerrMutation.isPending}
-                color='purple'
+                color='primary'
                 className='h-12 mt-2'
                 onPress={() => loginToJellyseerrMutation.mutate()}
               >

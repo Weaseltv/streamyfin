@@ -13,6 +13,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, View, type ViewProps } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
+import { Colors } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { Button } from "../Button";
@@ -114,7 +115,7 @@ export const QuickConnect: React.FC<Props> = ({ ...props }) => {
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
         backdropComponent={renderBackdrop}
         keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
@@ -156,7 +157,7 @@ export const QuickConnect: React.FC<Props> = ({ ...props }) => {
             <Button
               className='mt-auto'
               onPress={authorizeQuickConnect}
-              color='purple'
+              color='primary'
             >
               {t("home.settings.quick_connect.authorize")}
             </Button>

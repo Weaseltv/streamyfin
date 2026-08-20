@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import {
@@ -240,7 +241,7 @@ export const TrackOptionsSheet: React.FC<Props> = ({
         backgroundColor: "white",
       }}
       backgroundStyle={{
-        backgroundColor: "#171717",
+        backgroundColor: Colors.surface,
       }}
     >
       <BottomSheetView

@@ -171,7 +171,7 @@ function SourceButton({
       disabled={disabled}
       className={`flex-1 rounded-lg py-2 px-1 items-center justify-center ${
         selected
-          ? "bg-purple-600"
+          ? "bg-prism-cyan"
           : disabled
             ? "bg-neutral-800 opacity-50"
             : "bg-neutral-800"

@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import {
   useAddToWatchlist,
@@ -253,7 +254,7 @@ const WatchlistSheetContent: React.FC<WatchlistSheetContentProps> = ({
         activeOpacity={0.7}
       >
         <Ionicons name='add' size={20} color='#a78bfa' />
-        <Text className='text-purple-400 font-medium'>
+        <Text className='text-prism-cyan font-medium'>
           {t("watchlists.create_new")}
         </Text>
       </TouchableOpacity>
@@ -304,7 +305,7 @@ export const WatchlistSheet = forwardRef<WatchlistSheetRef, object>(
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
       >
         <BottomSheetView style={{ paddingBottom: insets.bottom }}>

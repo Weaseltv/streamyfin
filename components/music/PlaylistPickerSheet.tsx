@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "@/components/common/Input";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import { useAddToPlaylist } from "@/hooks/usePlaylistMutations";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
@@ -153,7 +154,7 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
         backgroundColor: "white",
       }}
       backgroundStyle={{
-        backgroundColor: "#171717",
+        backgroundColor: Colors.surface,
       }}
     >
       <BottomSheetScrollView
@@ -182,19 +183,19 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
         {/* Create New Playlist Button */}
         <TouchableOpacity
           onPress={handleCreateNew}
-          className='flex-row items-center bg-purple-900/30 rounded-xl px-4 py-3.5 mb-4'
+          className='flex-row items-center bg-brand-raised/30 rounded-xl px-4 py-3.5 mb-4'
         >
-          <View className='w-12 h-12 rounded-lg bg-purple-600 items-center justify-center mr-3'>
+          <View className='w-12 h-12 rounded-lg bg-prism-cyan items-center justify-center mr-3'>
             <Ionicons name='add' size={28} color='white' />
           </View>
-          <Text className='text-purple-400 font-semibold text-base'>
+          <Text className='text-prism-cyan font-semibold text-base'>
             {t("music.playlists.create_new")}
           </Text>
         </TouchableOpacity>
 
         {isLoading ? (
           <View className='py-8 items-center'>
-            <ActivityIndicator color='#9334E9' />
+            <ActivityIndicator color={Colors.primary} />
           </View>
         ) : filteredPlaylists.length === 0 ? (
           <View className='py-8 items-center'>
@@ -239,7 +240,7 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
                     </Text>
                   </View>
                   {addToPlaylist.isPending && (
-                    <ActivityIndicator size='small' color='#9334E9' />
+                    <ActivityIndicator size='small' color={Colors.primary} />
                   )}
                 </TouchableOpacity>
                 {index < filteredPlaylists.length - 1 && (

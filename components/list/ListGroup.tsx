@@ -6,7 +6,8 @@ import {
   type ReactElement,
 } from "react";
 import { StyleSheet, View, type ViewProps, type ViewStyle } from "react-native";
-import { Text } from "../common/Text";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { Colors, Prism } from "@/constants/Colors";
 
 interface Props extends ViewProps {
   title?: string | null | undefined;
@@ -23,18 +24,23 @@ export const ListGroup: React.FC<PropsWithChildren<Props>> = ({
 
   return (
     <View {...props}>
-      {title ? (
-        <Text className='ml-4 mb-1 uppercase text-[#8E8D91] text-xs'>
-          {title}
-        </Text>
-      ) : null}
+      {title ? <SectionHeader title={title} className='ml-4' /> : null}
       <View
-        style={[]}
-        className='flex flex-col rounded-xl overflow-hidden pl-0 bg-neutral-900'
+        style={{ borderWidth: 1, borderColor: Colors.border }}
+        className='flex flex-col rounded-xl overflow-hidden pl-0 bg-brand-surface'
       >
         {Children.map(childrenArray, (child, index) => {
-          if (isValidElement<{ style?: ViewStyle }>(child)) {
+          if (isValidElement<{ style?: ViewStyle; icon?: unknown }>(child)) {
+            // Rows that carry an icon descend the rainbow by position, so a
+            // settings list is hued top to bottom without each screen
+            // spelling the colours out.
+            const tint = child.props.icon
+              ? Prism.settingsIconChipOrder[
+                  index % Prism.settingsIconChipOrder.length
+                ]
+              : undefined;
             return cloneElement(child as any, {
+              ...(tint ? { iconTint: tint } : {}),
               style: StyleSheet.compose(
                 child.props.style,
                 index < childrenArray.length - 1
@@ -54,6 +60,6 @@ export const ListGroup: React.FC<PropsWithChildren<Props>> = ({
 const styles = StyleSheet.create({
   borderBottom: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#3D3C40",
+    borderBottomColor: Colors.separator,
   },
 });

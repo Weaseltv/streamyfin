@@ -23,6 +23,7 @@ import { Text } from "@/components/common/Text";
 import JellyfinServerDiscovery from "@/components/JellyfinServerDiscovery";
 import { QuickConnectCodeModal } from "@/components/login/QuickConnectCodeModal";
 import { PreviousServersList } from "@/components/PreviousServersList";
+import { GradientShell } from "@/components/prismatic/GradientShell";
 import { CustomHeaderSheet } from "@/components/settings/CustomHeaderSheet";
 import { Colors } from "@/constants/Colors";
 import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
@@ -178,7 +179,7 @@ export const Login: React.FC = () => {
             style={{ flexDirection: "row", gap: 4 }}
           >
             <HeaderIcon name='back' tintColor={Colors.primary} size={18} />
-            <Text className='text-purple-600'>{t("login.change_server")}</Text>
+            <Text className='text-tint-violet'>{t("login.change_server")}</Text>
           </HeaderButton>
         ) : null,
     });
@@ -303,7 +304,7 @@ export const Login: React.FC = () => {
                   {serverName ? (
                     <>
                       {`${t("login.login_to_title")} `}
-                      <Text className='text-purple-600'>{serverName}</Text>
+                      <Text className='text-tint-violet'>{serverName}</Text>
                     </>
                   ) : (
                     t("login.login_title")
@@ -402,15 +403,18 @@ export const Login: React.FC = () => {
             <View className='flex flex-col gap-y-2 px-4 w-full -mt-36'>
               <Image
                 style={{
-                  width: 100,
-                  height: 100,
-                  marginLeft: -23,
-                  marginBottom: -20,
+                  width: "100%",
+                  height: 96,
+                  alignSelf: "center",
+                  marginBottom: 4,
                 }}
-                source={require("@/assets/images/icon-ios-plain.png")}
+                contentFit='contain'
+                source={require("@/assets/images/weaselfin-login-logo.png")}
               />
-              <Text className='text-3xl font-bold'>Streamyfin</Text>
-              <Text className='text-neutral-500'>
+              <Text
+                style={{ color: Colors.textSecondary }}
+                className='text-center'
+              >
                 {t("server.enter_url_to_jellyfin_server")}
               </Text>
               <Input
@@ -424,16 +428,19 @@ export const Login: React.FC = () => {
                 textContentType='URL'
                 maxLength={500}
               />
-              <Button
-                loading={loadingServerCheck}
-                disabled={loadingServerCheck}
-                onPress={async () => {
-                  await handleConnect(serverURL, connectHeaders);
-                }}
-                className='w-full grow'
-              >
-                {t("server.connect_button")}
-              </Button>
+              <GradientShell radius={14} style={{ width: "100%" }}>
+                <Button
+                  loading={loadingServerCheck}
+                  disabled={loadingServerCheck}
+                  onPress={async () => {
+                    await handleConnect(serverURL, connectHeaders);
+                  }}
+                  color='transparent'
+                  className='w-full grow'
+                >
+                  {t("server.connect_button")}
+                </Button>
+              </GradientShell>
 
               {/* Servers behind an access gateway need their headers before
                   the very first request, so they are configured here. */}
@@ -442,7 +449,7 @@ export const Login: React.FC = () => {
                 className='flex flex-row items-center justify-between py-3'
                 activeOpacity={0.7}
               >
-                <Text className='text-purple-600'>
+                <Text className='text-tint-violet'>
                   {t("custom_headers.advanced_title")}
                 </Text>
                 <View className='flex flex-row items-center'>

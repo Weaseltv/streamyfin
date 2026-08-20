@@ -17,6 +17,7 @@ import { ActivityIndicator, Keyboard } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import { useCreatePlaylist } from "@/hooks/usePlaylistMutations";
 
 interface Props {
@@ -97,7 +98,7 @@ export const CreatePlaylistModal: React.FC<Props> = ({
         backgroundColor: "white",
       }}
       backgroundStyle={{
-        backgroundColor: "#171717",
+        backgroundColor: Colors.surface,
       }}
       keyboardBehavior='interactive'
       keyboardBlurBehavior='restore'
@@ -139,7 +140,7 @@ export const CreatePlaylistModal: React.FC<Props> = ({
         <Button
           onPress={handleCreate}
           disabled={!isValid || createPlaylist.isPending}
-          className={`py-4 rounded-xl ${isValid ? "bg-purple-600" : "bg-neutral-700"}`}
+          className={`py-4 rounded-xl ${isValid ? "bg-prism-cyan" : "bg-neutral-700"}`}
         >
           {createPlaylist.isPending ? (
             <ActivityIndicator color='white' />

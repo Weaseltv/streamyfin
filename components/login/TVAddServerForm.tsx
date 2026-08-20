@@ -1,10 +1,10 @@
 import { t } from "i18next";
 import React, { useCallback, useState } from "react";
-import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
 import { Platform, ScrollView, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
 import { TVCustomHeaderEditor } from "@/components/tv/settings";
+import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import { useTVBackPress } from "@/hooks/useTVBackPress";
 import { type CustomHeader, usableCustomHeaders } from "@/utils/customHeaders";

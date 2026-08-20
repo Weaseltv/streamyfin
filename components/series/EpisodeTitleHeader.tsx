@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { Text } from "@/components/common/Text";
+import { GradientText } from "@/components/prismatic/GradientText";
 import useRouter from "@/hooks/useAppRouter";
 
 interface Props extends ViewProps {
@@ -12,9 +13,9 @@ export const EpisodeTitleHeader: React.FC<Props> = ({ item, ...props }) => {
 
   return (
     <View {...props}>
-      <Text className='font-bold text-2xl' selectable>
-        {item?.Name}
-      </Text>
+      <GradientText style={{ fontWeight: "bold", fontSize: 24 }}>
+        {item?.Name ?? ""}
+      </GradientText>
       <View className='flex flex-row items-center mb-1'>
         <TouchableOpacity
           onPress={() => {

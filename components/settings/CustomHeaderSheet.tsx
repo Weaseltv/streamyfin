@@ -7,6 +7,7 @@ import { Keyboard, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import {
   type CustomHeader,
   HEADER_PRESETS,
@@ -127,7 +128,7 @@ export function CustomHeaderSheet({
                   {preset.description}
                 </Text>
               </View>
-              <Ionicons name='add-circle' size={22} color='#9333EA' />
+              <Ionicons name='add-circle' size={22} color={Colors.primary} />
             </TouchableOpacity>
           ))}
         </>
