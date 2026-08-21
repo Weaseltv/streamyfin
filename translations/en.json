@@ -659,8 +659,8 @@
     "videos": "Videos",
     "boxsets": "Box sets",
     "playlists": "Playlists",
-    "noDataTitle": "No favorites yet",
-    "noData": "Items you mark as favorites show up here."
+    "noDataTitle": "Nothing on your watchlist yet",
+    "noData": "Items you add to your watchlist show up here."
   },
   "custom_links": {
     "no_links": "No links"
@@ -918,7 +918,7 @@
     "search": "Search",
     "library": "Library",
     "custom_links": "Custom links",
-    "favorites": "Favorites",
+    "favorites": "Watchlist",
     "settings": "Settings"
   },
   "music": {
@@ -962,8 +962,8 @@
       "delete_cache": "Remove from cache",
       "go_to_artist": "Go to artist",
       "go_to_album": "Go to album",
-      "add_to_favorites": "Add to favorites",
-      "remove_from_favorites": "Remove from favorites",
+      "add_to_favorites": "Add to watchlist",
+      "remove_from_favorites": "Remove from watchlist",
       "remove_from_playlist": "Remove from playlist"
     },
     "playlists": {
