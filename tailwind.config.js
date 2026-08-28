@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 
-// WeaselFin "Prismatic Ink". Keep these in step with constants/Colors.ts -
+// WeaselPlex "Prismatic Ink". Keep these in step with constants/Colors.ts -
 // that file is the source of truth for anything styled from JS rather than
 // from a className.
 module.exports = {

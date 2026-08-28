@@ -9,4 +9,4 @@
  * `StreamyfinPluginSettings` names elsewhere in the app. Those address the
  * Streamyfin Jellyfin plugin and are wire format, not branding.
  */
-export const JELLYFIN_CLIENT_NAME = "WeaselFin";
+export const JELLYFIN_CLIENT_NAME = "WeaselPlex";
