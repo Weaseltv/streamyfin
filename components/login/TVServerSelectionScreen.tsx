@@ -87,7 +87,7 @@ export const TVServerSelectionScreen: React.FC<
             marginBottom: scaleSize(8),
           }}
         >
-          WeaselFin
+          WeaselPlex
         </Text>
         <Text
           style={{

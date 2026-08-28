@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "WeaselFin",
+    "name": "WeaselPlex",
     "slug": "weaselfin",
     "version": "1.0",
     "orientation": "default",
-    "icon": "./assets/images/weaselfin-icon-1024.png",
+    "icon": "./assets/images/weaselplex-icon-1024.png",
     "scheme": "weaselfin",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": ["**/*"],
@@ -15,7 +15,7 @@
         "NSMicrophoneUsageDescription": "The app needs access to your microphone.",
         "UIBackgroundModes": ["audio", "fetch"],
         "NSLocalNetworkUsageDescription": "The app needs access to your local network to connect to your Jellyfin server.",
-        "NSLocationWhenInUseUsageDescription": "WeaselFin uses your location to detect your home WiFi network for automatic local server switching.",
+        "NSLocationWhenInUseUsageDescription": "WeaselPlex uses your location to detect your home WiFi network for automatic local server switching.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
@@ -34,12 +34,12 @@
         "com.apple.developer.networking.wifi-info": true
       },
       "bundleIdentifier": "tv.theweasel.weaselfin",
-      "icon": "./assets/images/weaselfin-icon-1024.png"
+      "icon": "./assets/images/weaselplex-icon-1024.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/weaselfin-adaptive-foreground.png",
-        "monochromeImage": "./assets/images/weaselfin-adaptive-monochrome.png",
+        "foregroundImage": "./assets/images/weaselplex-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/weaselplex-adaptive-monochrome.png",
         "backgroundColor": "#070A10"
       },
       "package": "tv.theweasel.weaselfin",
@@ -123,14 +123,14 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#070A10",
-          "image": "./assets/images/weaselfin-launch-logo.png",
+          "image": "./assets/images/weaselplex-launch-logo.png",
           "imageWidth": 100
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/weaselfin-notification.png",
+          "icon": "./assets/images/weaselplex-notification.png",
           "color": "#00C0FF"
         }
       ],

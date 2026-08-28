@@ -59,7 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-camera",
       {
         cameraPermission:
-          "Allow WeaselFin to access the camera to scan QR codes for TV login.",
+          "Allow WeaselPlex to access the camera to scan QR codes for TV login.",
       },
     ]);
   }

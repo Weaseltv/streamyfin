@@ -4,7 +4,7 @@ import {
   withAndroidColorsNight,
 } from "expo/config-plugins";
 
-// WeaselFin prismatic cyan. Duplicated rather than imported because config
+// WeaselPlex prismatic cyan. Duplicated rather than imported because config
 // plugins run in the Node build context, outside the app's module graph.
 const ALERT_ACCENT = "#00C0FF";
 

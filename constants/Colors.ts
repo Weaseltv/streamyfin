@@ -1,5 +1,5 @@
 /**
- * WeaselFin "Prismatic Ink" palette.
+ * WeaselPlex "Prismatic Ink" palette.
  *
  * Base surfaces are near-black with a blue bias; every accent is drawn from the
  * WeaselTV prismatic rainbow. The eight prismatic stops always appear in the

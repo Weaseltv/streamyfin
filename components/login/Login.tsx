@@ -409,7 +409,7 @@ export const Login: React.FC = () => {
                   marginBottom: 4,
                 }}
                 contentFit='contain'
-                source={require("@/assets/images/weaselfin-login-logo.png")}
+                source={require("@/assets/images/weaselplex-login-logo.png")}
               />
               <Text
                 style={{ color: Colors.textSecondary }}
