@@ -21,6 +21,7 @@ import {
   useTVHomeBackHandler,
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
+import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 
@@ -140,6 +141,10 @@ export default function TabLayout() {
 
   // Must be called before any conditional return (rules of hooks)
   useTVHomeBackHandler();
+  // WeaselPlex: silently connect the pinned Seerr server with the Jellyfin
+  // session, so requesting works after one Quick Connect sign-in. Here, above
+  // the TV/phone split, so every form factor provisions the same way.
+  useWeaselSeerrAutoConnect();
 
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;
