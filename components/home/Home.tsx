@@ -49,6 +49,7 @@ import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 // Conditionally load TV version
 const HomeTV = Platform.isTV ? require("./Home.tv").Home : null;
@@ -190,7 +191,7 @@ const HomeMobile = () => {
         userId: user.Id,
       });
 
-      return response.data.Items || null;
+      return sortWeaselLibraries(response.data.Items) || null;
     },
     enabled: !!api && !!user?.Id,
     staleTime: 60 * 1000,

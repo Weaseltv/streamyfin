@@ -12,6 +12,7 @@ import { ListItem } from "@/components/list/ListItem";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 export default function AppearanceHideLibrariesPage() {
   const { settings, updateSettings, pluginSettings } = useSettings();
@@ -28,7 +29,7 @@ export default function AppearanceHideLibrariesPage() {
         userId: user?.Id,
       });
 
-      return response.data.Items || null;
+      return sortWeaselLibraries(response.data.Items) || null;
     },
   });
 

@@ -47,6 +47,7 @@ import { useSettings } from "@/utils/atoms/settings";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { scaleSize } from "@/utils/scaleSize";
 import { updateTVDiscovery } from "@/utils/tvDiscovery/sync";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 const HORIZONTAL_PADDING = scaleSize(60);
 const TOP_PADDING = scaleSize(100);
@@ -213,7 +214,7 @@ export const Home = () => {
         userId: user.Id,
       });
 
-      return response.data.Items || null;
+      return sortWeaselLibraries(response.data.Items) || null;
     },
     enabled: !!api && !!user?.Id,
     staleTime: 60 * 1000,

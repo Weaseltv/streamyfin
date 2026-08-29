@@ -14,6 +14,7 @@ import { Loader } from "@/components/Loader";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 export const Libraries: React.FC = () => {
   const [api] = useAtom(apiAtom);
@@ -30,7 +31,7 @@ export const Libraries: React.FC = () => {
         userId: user?.Id,
       });
 
-      return response.data.Items || null;
+      return sortWeaselLibraries(response.data.Items) || null;
     },
     staleTime: 60,
   });
