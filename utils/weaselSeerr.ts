@@ -42,9 +42,7 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
  * function — so the app cannot be induced to approve an attacker's Quick
  * Connect request.
  */
-export const provisionPinnedSeerr = async (
-  api: Api,
-): Promise<JellyseerrUser> =>
+export const provisionPinnedSeerr = async (api: Api): Promise<JellyseerrUser> =>
   withTimeout(
     (async () => {
       const seerr = new JellyseerrApi(
