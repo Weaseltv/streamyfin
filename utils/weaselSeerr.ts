@@ -66,9 +66,7 @@ export const provisionPinnedSeerr = async (api: Api): Promise<JellyseerrUser> =>
         },
       );
       if (authorize.status !== 200 || authorize.data !== true) {
-        throw new Error(
-          "Could not approve the request service automatically.",
-        );
+        throw new Error("Could not approve the request service automatically.");
       }
 
       return await seerr.quickConnectAuthenticate(secret);
