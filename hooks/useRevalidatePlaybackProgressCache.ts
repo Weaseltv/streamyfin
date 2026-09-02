@@ -40,9 +40,7 @@ export function useInvalidatePlaybackProgressCache() {
 
     // We Invalidate all the queries to the latest server versions
     await Promise.all(
-      queriesToInvalidate.map((queryKey) =>
-        invalidate({ queryKey }),
-      ),
+      queriesToInvalidate.map((queryKey) => invalidate({ queryKey })),
     );
 
     const downloadedFiles = getDownloadedItems();
@@ -73,9 +71,7 @@ export function useInvalidatePlaybackProgressCache() {
 
       console.log("shouldInvalidate", shouldInvalidate);
       if (shouldInvalidate) {
-        queriesToInvalidate.map((queryKey) =>
-          invalidate({ queryKey }),
-        );
+        queriesToInvalidate.map((queryKey) => invalidate({ queryKey }));
       }
     }
   };
