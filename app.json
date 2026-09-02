@@ -42,7 +42,7 @@
         "monochromeImage": "./assets/images/weaselplex-adaptive-monochrome.png",
         "backgroundColor": "#070A10"
       },
-      "package": "tv.theweasel.weaselfin",
+      "package": "tv.theweasel.weaselplex.phone",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
