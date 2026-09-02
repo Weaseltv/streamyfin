@@ -215,7 +215,11 @@ const HomeMobile = () => {
     setLoading(true);
     setLoadedSections(new Set());
     await refreshStreamyfinPluginSettings();
-    await invalidateCache();
+    // force: pulling to refresh is the user asserting they want fresh data.
+    // The gated path skips invalidation whenever onlineManager reports offline
+    // and resolves silently, so the spinner completes and nothing refetches.
+    // Automatic callers keep the gated path so offline sessions keep a cache.
+    await invalidateCache(true);
     setLoading(false);
   };
 
