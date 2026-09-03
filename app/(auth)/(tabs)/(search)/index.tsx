@@ -286,6 +286,16 @@ export default function SearchPage() {
 
   const searchBarRef = useRef<HeaderSearchBarRef>(null);
   const navigation = useNavigation();
+
+  // WeaselPlex: the Requests tab is where a customer goes when the library
+  // search found nothing, so switching to it opens the keyboard straight away
+  // and keeps whatever they already typed. Library keeps stock behaviour.
+  const selectSearchType = useCallback((type: SearchType) => {
+    setSearchType(type);
+    if (type === "Discover") {
+      searchBarRef.current?.focus();
+    }
+  }, []);
   useLayoutEffect(() => {
     navigation.setOptions({
       headerSearchBarOptions: {
@@ -641,7 +651,7 @@ export default function SearchPage() {
           <View className='pl-4 pr-4 flex flex-row'>
             <SearchTabButtons
               searchType={searchType}
-              setSearchType={setSearchType}
+              setSearchType={selectSearchType}
               t={t}
             />
             {searchType === "Discover" &&
@@ -921,6 +931,7 @@ export default function SearchPage() {
             searchQuery={debouncedSearch}
             sortType={jellyseerrOrderBy}
             order={jellyseerrSortOrder}
+            showDiscover={false}
           />
         )}
 

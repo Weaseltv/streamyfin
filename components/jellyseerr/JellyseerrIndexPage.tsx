@@ -27,6 +27,13 @@ interface Props extends ViewProps {
   searchQuery: string;
   sortType?: JellyseerrSearchSort;
   order?: "asc" | "desc";
+  /**
+   * Render the Jellyseerr discover sliders (recent requests, trending, popular)
+   * when nothing has been typed. WeaselPlex phone turns this off: the Requests
+   * tab is a search box, not a browse page, so the empty state is a hint and no
+   * discover requests are made at all.
+   */
+  showDiscover?: boolean;
 }
 
 export enum JellyseerrSearchSort {
@@ -39,6 +46,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
   searchQuery,
   sortType,
   order,
+  showDiscover = true,
 }) => {
   const { jellyseerrApi } = useJellyseerr();
   const opacity = useSharedValue(1);
@@ -51,7 +59,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
   } = useReactNavigationQuery({
     queryKey: ["search", "jellyseerr", "discoverSettings", searchQuery],
     queryFn: async () => jellyseerrApi?.discoverSettings(),
-    enabled: !!jellyseerrApi && searchQuery.length === 0,
+    enabled: !!jellyseerrApi && showDiscover && searchQuery.length === 0,
   });
 
   const {
@@ -145,9 +153,15 @@ export const JellyserrIndexPage: React.FC<Props> = ({
   );
 
   if (!searchQuery.length)
-    return (
+    return showDiscover ? (
       <View className='flex flex-col'>
         <Discover sliders={jellyseerrDiscoverSettings} />
+      </View>
+    ) : (
+      <View className='mt-6 px-8'>
+        <Text className='text-center text-neutral-400'>
+          {t("search.requests_hint")}
+        </Text>
       </View>
     );
 
