@@ -1,4 +1,4 @@
-﻿# AGENTS.md — WeaselPlex mobile (`streamyfin` / weaselfin)
+# AGENTS.md — WeaselPlex mobile (`streamyfin` / weaselfin)
 
 > Standing process for agents in this WeaselTV fork.
 
@@ -13,3 +13,16 @@ Source of truth: https://app.notion.com/p/3daabaa146c081939b55f7b4ba9f6af8
 Before finishing any job: update the matching **Product** row (and Ops log if big). Never create a new Product for a session. If Notion tools are unavailable, report the exact updates the owner should make — do not silently skip.
 
 Also see `CLAUDE.md` for Claude Code project guidance.
+
+## iOS ship workflow (default)
+
+Unless the owner explicitly asks for a **Release** build, use:
+
+**Branch -> commit -> PR -> check TestFlight from the PR branch -> owner on-device OK -> merge -> tag -> release publish from main/ship branch only if a tagged release is needed.**
+
+- Default target branch for WeaselTV work: `weaselfin` (not upstream `develop`).
+- **Check TestFlight** from the PR branch is required before merge for iOS changes the owner will verify on iPhone.
+- Do not merge before owner OK unless they waive device check.
+- An official **Release** TestFlight comes from a tag after merge, and only when the owner asks for a Release or a tagged release is needed.
+- Android changes in this repo follow: merge -> tag -> publish APK from the tag (no pre-merge device gate).
+
