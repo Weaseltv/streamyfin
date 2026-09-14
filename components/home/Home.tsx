@@ -213,7 +213,14 @@ const HomeMobile = () => {
 
   const refetch = async () => {
     setLoading(true);
-    setLoadedSections(new Set());
+    // Do NOT reset loadedSections here. The priority gate only exists to
+    // stagger the initial mount; every section is already on screen by the
+    // time the user can pull. Clearing it flipped every priority-2 section
+    // ("Recently added in …", suggestions) to enabled={false}, and
+    // invalidateQueries only refetches *active* queries, so those rows were
+    // marked stale but never refetched. They could not recover either:
+    // InfiniteScrollingCollectionList fires onLoaded once per mount, so the
+    // gate never reopened until the app was force-quit and remounted.
     await refreshStreamyfinPluginSettings();
     // force: pulling to refresh is the user asserting they want fresh data.
     // The gated path skips invalidation whenever onlineManager reports offline
