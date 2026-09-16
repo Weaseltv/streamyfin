@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View, type ViewProps } from "react-native";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import MoviePoster from "@/components/posters/MoviePoster";
 import { useInView } from "@/hooks/useInView";
@@ -62,9 +63,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
 
   return (
     <View ref={ref} onLayout={onLayout} {...props}>
-      <Text className='px-4 text-lg font-bold mb-2 text-neutral-100'>
-        {title}
-      </Text>
+      <SectionHeader title={title} className='px-4' />
       {!shouldShowSkeleton && data?.length === 0 && (
         <View className='px-4'>
           <Text className='text-neutral-500'>{t("home.no_items")}</Text>

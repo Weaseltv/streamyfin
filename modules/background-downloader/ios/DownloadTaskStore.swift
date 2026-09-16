@@ -56,8 +56,8 @@ struct QueuedDownloadInfo: Codable {
 /// Not internally synchronized: `BackgroundDownloaderModule` confines every call to its state
 /// queue, which is the single place allowed to touch download state.
 final class DownloadTaskStore {
-  private static let storageKey = "com.fredrikburmester.streamyfin.backgrounddownloader.tasks"
-  private static let queueStorageKey = "com.fredrikburmester.streamyfin.backgrounddownloader.queue"
+  private static let storageKey = "tv.theweasel.weaselfin.backgrounddownloader.tasks"
+  private static let queueStorageKey = "tv.theweasel.weaselfin.backgrounddownloader.queue"
 
   private let defaults: UserDefaults
 

@@ -404,7 +404,7 @@ export const DownloadItems: React.FC<DownloadProps> = ({
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
         onChange={handleSheetChanges}
         backdropComponent={renderBackdrop}
@@ -499,7 +499,7 @@ export const DownloadItems: React.FC<DownloadProps> = ({
               )}
             </View>
 
-            <Button onPress={acceptDownloadOptions} color='purple'>
+            <Button onPress={acceptDownloadOptions} color='primary'>
               {t("item_card.download.download_button")}
             </Button>
           </View>

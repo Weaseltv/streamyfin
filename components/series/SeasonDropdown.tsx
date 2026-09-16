@@ -2,6 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { t } from "i18next";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
+import { Prism } from "@/constants/Colors";
 import { Text } from "../common/Text";
 import { PlatformDropdown } from "../PlatformDropdown";
 
@@ -128,8 +129,14 @@ export const SeasonDropdown: React.FC<Props> = ({
       onOpenChange={setOpen}
       trigger={
         <TouchableOpacity onPress={() => setOpen(true)}>
-          <View className='bg-neutral-900 rounded-2xl border-neutral-900 border px-3 py-2 flex flex-row items-center justify-between'>
-            <Text>
+          <View
+            className='rounded-2xl border px-3 py-2 flex flex-row items-center justify-between'
+            style={{
+              backgroundColor: Prism.seasonChipActiveBg,
+              borderColor: Prism.seasonChipActiveBorder,
+            }}
+          >
+            <Text style={{ color: Prism.seasonChipActiveText }}>
               {t("item_card.season")} {seasonIndex}
             </Text>
           </View>

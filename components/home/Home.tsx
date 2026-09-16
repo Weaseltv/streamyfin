@@ -49,6 +49,7 @@ import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 // Conditionally load TV version
 const HomeTV = Platform.isTV ? require("./Home.tv").Home : null;
@@ -190,7 +191,7 @@ const HomeMobile = () => {
         userId: user.Id,
       });
 
-      return response.data.Items || null;
+      return sortWeaselLibraries(response.data.Items) || null;
     },
     enabled: !!api && !!user?.Id,
     staleTime: 60 * 1000,
@@ -212,9 +213,20 @@ const HomeMobile = () => {
 
   const refetch = async () => {
     setLoading(true);
-    setLoadedSections(new Set());
+    // Do NOT reset loadedSections here. The priority gate only exists to
+    // stagger the initial mount; every section is already on screen by the
+    // time the user can pull. Clearing it flipped every priority-2 section
+    // ("Recently added in …", suggestions) to enabled={false}, and
+    // invalidateQueries only refetches *active* queries, so those rows were
+    // marked stale but never refetched. They could not recover either:
+    // InfiniteScrollingCollectionList fires onLoaded once per mount, so the
+    // gate never reopened until the app was force-quit and remounted.
     await refreshStreamyfinPluginSettings();
-    await invalidateCache();
+    // force: pulling to refresh is the user asserting they want fresh data.
+    // The gated path skips invalidation whenever onlineManager reports offline
+    // and resolves silently, so the spinner completes and nothing refetches.
+    // Automatic callers keep the gated path so offline sessions keep a cache.
+    await invalidateCache(true);
     setLoading(false);
   };
 
@@ -546,7 +558,7 @@ const HomeMobile = () => {
         <View className='mt-4'>
           {!Platform.isTV && (
             <Button
-              color='purple'
+              color='primary'
               onPress={() => router.push("/(auth)/downloads")}
               justify='center'
               iconRight={

@@ -6,6 +6,7 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { AnimatedEqualizer } from "@/components/music/AnimatedEqualizer";
+import { Colors } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
@@ -129,7 +130,7 @@ export const MusicTrackItem: React.FC<Props> = ({
       onLongPress={handleLongPress}
       delayLongPress={300}
       disabled={isUnavailableOffline}
-      className={`flex-row items-center py-1.5 pl-4 pr-3 ${isCurrentTrack ? "bg-purple-900/20" : ""}`}
+      className={`flex-row items-center py-1.5 pl-4 pr-3 ${isCurrentTrack ? "bg-brand-raised/20" : ""}`}
       style={isUnavailableOffline ? { opacity: 0.5 } : undefined}
     >
       {/* Album artwork */}
@@ -181,7 +182,7 @@ export const MusicTrackItem: React.FC<Props> = ({
           {isCurrentTrack && isPlaying && <AnimatedEqualizer />}
           <Text
             numberOfLines={1}
-            className={`flex-1 text-sm ${isCurrentTrack ? "text-purple-400 font-medium" : "text-white"}`}
+            className={`flex-1 text-sm ${isCurrentTrack ? "text-prism-cyan font-medium" : "text-white"}`}
           >
             {track.Name}
           </Text>
@@ -195,7 +196,7 @@ export const MusicTrackItem: React.FC<Props> = ({
       {downloadStatus === "downloading" && (
         <ActivityIndicator
           size={14}
-          color='#9334E9'
+          color={Colors.primary}
           style={{ marginRight: 8 }}
         />
       )}

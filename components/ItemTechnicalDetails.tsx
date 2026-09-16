@@ -13,6 +13,7 @@ import type React from "react";
 import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
+import { Colors } from "@/constants/Colors";
 import { formatBitrate } from "@/utils/bitrate";
 import { Badge } from "./Badge";
 import { Text } from "./common/Text";
@@ -32,7 +33,7 @@ export const ItemTechnicalDetails: React.FC<Props> = ({ source }) => {
         <View className='flex flex-row space-x-2'>
           <VideoStreamInfo source={source} />
         </View>
-        <Text className='text-purple-600'>{t("item_card.more_details")}</Text>
+        <Text className='text-tint-violet'>{t("item_card.more_details")}</Text>
       </TouchableOpacity>
       <BottomSheetModal
         ref={bottomSheetModalRef}
@@ -41,7 +42,7 @@ export const ItemTechnicalDetails: React.FC<Props> = ({ source }) => {
           backgroundColor: "white",
         }}
         backgroundStyle={{
-          backgroundColor: "#171717",
+          backgroundColor: Colors.surface,
         }}
         backdropComponent={(props: BottomSheetBackdropProps) => (
           <BottomSheetBackdrop

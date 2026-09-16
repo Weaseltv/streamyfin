@@ -120,8 +120,8 @@
       "features_title": "Features",
       "features_description": "Streamyfin has a bunch of features and works with other software. You'll find them in the settings menu:",
       "jellyseerr_feature_description": "Connect to your Seerr instance and request movies directly in the app.",
-      "downloads_feature_title": "Downloads",
-      "downloads_feature_description": "Download movies and series to watch offline.",
+      "downloads_feature_title": "Offline viewing",
+      "downloads_feature_description": "Save your own media to this device to watch offline.",
       "chromecast_feature_description": "Cast movies and series to your Chromecast devices.",
       "centralised_settings_plugin_title": "Centralised Settings plugin",
       "centralised_settings_plugin_description": "Configure settings centrally on your Jellyfin server. Every user's client settings sync automatically.",
@@ -582,7 +582,8 @@
     "search": "Search...",
     "x_items": "{{count}} items",
     "library": "Library",
-    "discover": "Discover",
+    "discover": "Requests",
+    "requests_hint": "Type the name of a movie or show to request it.",
     "no_results": "No results",
     "no_results_found_for": "No results found for",
     "movies": "Movies",
@@ -659,8 +660,8 @@
     "videos": "Videos",
     "boxsets": "Box sets",
     "playlists": "Playlists",
-    "noDataTitle": "No favorites yet",
-    "noData": "Items you mark as favorites show up here."
+    "noDataTitle": "Nothing on your watchlist yet",
+    "noData": "Items you add to your watchlist show up here."
   },
   "custom_links": {
     "no_links": "No links"
@@ -918,7 +919,7 @@
     "search": "Search",
     "library": "Library",
     "custom_links": "Custom links",
-    "favorites": "Favorites",
+    "favorites": "Watchlist",
     "settings": "Settings"
   },
   "music": {
@@ -962,8 +963,8 @@
       "delete_cache": "Remove from cache",
       "go_to_artist": "Go to artist",
       "go_to_album": "Go to album",
-      "add_to_favorites": "Add to favorites",
-      "remove_from_favorites": "Remove from favorites",
+      "add_to_favorites": "Add to watchlist",
+      "remove_from_favorites": "Remove from watchlist",
       "remove_from_playlist": "Remove from playlist"
     },
     "playlists": {

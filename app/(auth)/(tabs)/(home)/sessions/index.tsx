@@ -247,7 +247,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
             </View>
             <View className='align-bottom bg-gray-800 h-1'>
               <View
-                className={"bg-purple-600 h-full"}
+                className={"bg-prism-cyan h-full"}
                 style={{
                   width: `${getProgressPercentage()}%`,
                 }}

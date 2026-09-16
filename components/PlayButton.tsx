@@ -2,8 +2,9 @@ import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
-import { useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import CastContext, {
@@ -18,13 +19,13 @@ import CastContext, {
 import Animated, {
   Easing,
   interpolate,
-  interpolateColor,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { Colors, Gradients, Prism } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import type { ThemeColors } from "@/hooks/useImageColorsReturn";
@@ -33,7 +34,6 @@ import { getDownloadedItemById } from "@/providers/Downloads/database";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import { itemThemeColorAtom } from "@/utils/atoms/primaryColor";
 import { useSettings } from "@/utils/atoms/settings";
 import { getParentBackdropImageUrl } from "@/utils/jellyfin/image/getParentBackdropImageUrl";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
@@ -49,6 +49,10 @@ import type { SelectedOptions } from "./ItemContent";
 interface Props extends React.ComponentProps<typeof TouchableOpacity> {
   item: BaseItemDto;
   selectedOptions: SelectedOptions;
+  /**
+   * Artwork-derived colours. Kept for call-site compatibility; the pill is
+   * prismatic now and no longer tints itself from the poster.
+   */
   colors?: ThemeColors;
 }
 
@@ -58,7 +62,6 @@ const MIN_PLAYBACK_WIDTH = 15;
 export const PlayButton: React.FC<Props> = ({
   item,
   selectedOptions,
-  colors,
 }: Props) => {
   const isOffline = useOfflineMode();
   const { showActionSheetWithOptions } = useActionSheet();
@@ -67,21 +70,15 @@ export const PlayButton: React.FC<Props> = ({
   const { t } = useTranslation();
   const { showModal, hideModal } = useGlobalModal();
 
-  const [globalColorAtom] = useAtom(itemThemeColorAtom);
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
-
-  // Use colors prop if provided, otherwise fallback to global atom
-  const effectiveColors = colors || globalColorAtom;
 
   const router = useRouter();
 
   const startWidth = useSharedValue(0);
   const targetWidth = useSharedValue(0);
-  const endColor = useSharedValue(effectiveColors);
-  const startColor = useSharedValue(effectiveColors);
   const widthProgress = useSharedValue(0);
-  const colorChangeProgress = useSharedValue(0);
+  const [pillWidth, setPillWidth] = useState(0);
   const { settings } = useSettings();
   const lightHapticFeedback = useHaptic("light");
   const playMedia = usePlayMedia();
@@ -356,7 +353,7 @@ export const PlayButton: React.FC<Props> = ({
                         { item },
                       );
                     }}
-                    color='purple'
+                    color='primary'
                   >
                     {Platform.OS === "android"
                       ? "Play downloaded file"
@@ -492,48 +489,15 @@ export const PlayButton: React.FC<Props> = ({
     [item],
   );
 
-  useAnimatedReaction(
-    () => effectiveColors,
-    (newColor) => {
-      endColor.value = newColor;
-      colorChangeProgress.value = 0;
-      colorChangeProgress.value = withTiming(1, {
-        duration: ANIMATION_DURATION,
-        easing: Easing.bezier(0.9, 0, 0.31, 0.99),
-      });
-    },
-    [effectiveColors],
-  );
-
   useEffect(() => {
-    const timeout_2 = setTimeout(() => {
-      startColor.value = effectiveColors;
+    const settle = setTimeout(() => {
       startWidth.value = targetWidth.value;
     }, ANIMATION_DURATION);
 
     return () => {
-      clearTimeout(timeout_2);
+      clearTimeout(settle);
     };
-  }, [effectiveColors, item]);
-
-  /**
-   * ANIMATED STYLES
-   */
-  const animatedAverageStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      colorChangeProgress.value,
-      [0, 1],
-      [startColor.value.primary, endColor.value.primary],
-    ),
-  }));
-
-  const animatedPrimaryStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      colorChangeProgress.value,
-      [0, 1],
-      [startColor.value.primary, endColor.value.primary],
-    ),
-  }));
+  }, [item]);
 
   const animatedWidthStyle = useAnimatedStyle(() => ({
     width: `${interpolate(
@@ -543,14 +507,6 @@ export const PlayButton: React.FC<Props> = ({
     )}%`,
   }));
 
-  const animatedTextStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      colorChangeProgress.value,
-      [0, 1],
-      [startColor.value.text, endColor.value.text],
-    ),
-  }));
-
   return (
     <TouchableOpacity
       disabled={!item}
@@ -558,50 +514,79 @@ export const PlayButton: React.FC<Props> = ({
       accessibilityHint={t("accessibility.play_hint")}
       onPress={onPress}
       className={"relative flex-1"}
+      onLayout={(e) => setPillWidth(e.nativeEvent.layout.width)}
     >
-      <View className='absolute w-full h-full top-0 left-0 rounded-full z-10 overflow-hidden'>
-        <Animated.View
-          style={[
-            animatedPrimaryStyle,
-            animatedWidthStyle,
-            {
-              height: "100%",
-            },
-          ]}
-        />
-      </View>
-
-      <Animated.View
-        style={[animatedAverageStyle, { opacity: 0.5 }]}
-        className='absolute w-full h-full top-0 left-0 rounded-full'
-      />
-      <View
-        style={{
-          borderWidth: 1,
-          borderColor: effectiveColors.primary,
-          borderStyle: "solid",
-        }}
-        className='flex flex-row items-center justify-center bg-transparent rounded-full z-20 h-12 w-full '
+      <LinearGradient
+        colors={Gradients.rainbow as unknown as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ borderRadius: 24, padding: Prism.shellThickness }}
       >
-        <View className='flex flex-row items-center space-x-2'>
-          <Animated.Text style={[animatedTextStyle, { fontWeight: "bold" }]}>
-            {runtimeTicksToMinutes(
-              (item?.RunTimeTicks || 0) -
-                (item?.UserData?.PlaybackPositionTicks || 0),
+        <View
+          style={{
+            borderRadius: 24 - Prism.shellThickness,
+            backgroundColor: Prism.shellInnerFill,
+            overflow: "hidden",
+            height: 48 - Prism.shellThickness * 2,
+          }}
+          className='flex flex-row items-center justify-center w-full'
+        >
+          {/* Watched progress: a left-anchored slice of the rainbow. The
+              gradient is drawn at the pill's full width inside a clipping
+              view, so the colours stay put and the fill uncovers them. */}
+          <Animated.View
+            style={[
+              animatedWidthStyle,
+              {
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                overflow: "hidden",
+                opacity: 0.85,
+              },
+            ]}
+          >
+            {pillWidth > 0 && (
+              <LinearGradient
+                colors={
+                  Gradients.rainbow as unknown as [string, string, ...string[]]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ width: pillWidth, height: "100%" }}
+              />
             )}
-            {(item?.UserData?.PlaybackPositionTicks || 0) > 0 && " left"}
-          </Animated.Text>
-          <Animated.Text style={animatedTextStyle}>
-            <Ionicons name='play-circle' size={24} />
-          </Animated.Text>
-          {client && (
-            <Animated.Text style={animatedTextStyle}>
-              <Feather name='cast' size={22} />
-              <CastButton tintColor='transparent' />
-            </Animated.Text>
-          )}
+          </Animated.View>
+
+          <View className='flex flex-row items-center space-x-2'>
+            <Text
+              style={{
+                fontWeight: "bold",
+                color: Colors.text,
+                textShadowColor: "rgba(0,0,0,0.55)",
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+              }}
+            >
+              {runtimeTicksToMinutes(
+                (item?.RunTimeTicks || 0) -
+                  (item?.UserData?.PlaybackPositionTicks || 0),
+              )}
+              {(item?.UserData?.PlaybackPositionTicks || 0) > 0 && " left"}
+            </Text>
+            <Text style={{ color: Colors.text }}>
+              <Ionicons name='play-circle' size={24} />
+            </Text>
+            {client && (
+              <Text style={{ color: Colors.text }}>
+                <Feather name='cast' size={22} />
+                <CastButton tintColor='transparent' />
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 };

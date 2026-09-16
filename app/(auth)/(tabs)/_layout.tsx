@@ -14,13 +14,14 @@ import { Platform, View } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
 import type { TVNavBarTab } from "@/components/tv/TVNavBar";
 import { TVNavBar } from "@/components/tv/TVNavBar";
-import { Colors } from "@/constants/Colors";
+import { Colors, TabColors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import {
   isTabRoute,
   useTVHomeBackHandler,
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
+import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 
@@ -140,6 +141,10 @@ export default function TabLayout() {
 
   // Must be called before any conditional return (rules of hooks)
   useTVHomeBackHandler();
+  // WeaselPlex: silently connect the pinned Seerr server with the Jellyfin
+  // session, so requesting works after one Quick Connect sign-in. Here, above
+  // the TV/phone split, so every form factor provisions the same way.
+  useWeaselSeerrAutoConnect();
 
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;
@@ -151,10 +156,12 @@ export default function TabLayout() {
       <NativeTabs
         sidebarAdaptable={false}
         tabBarStyle={{
-          backgroundColor: "#121212",
+          backgroundColor: Colors.backgroundCanvas,
         }}
+        translucent
         tabBarActiveTintColor={Platform.isTV ? "#FFFFFF" : Colors.primary}
-        activeIndicatorColor={"#392c3b"}
+        tabBarInactiveTintColor={Colors.textSecondary}
+        activeIndicatorColor={"transparent"}
         scrollEdgeAppearance='default'
       >
         <NativeTabs.Screen redirect name='index' />
@@ -167,6 +174,7 @@ export default function TabLayout() {
           name='(home)'
           options={{
             title: t("tabs.home"),
+            tabBarActiveTintColor: TabColors.index,
             tabBarIcon:
               Platform.OS === "android"
                 ? (_e) => require("@/assets/icons/house.fill.png")
@@ -183,6 +191,7 @@ export default function TabLayout() {
           options={{
             role: "search",
             title: t("tabs.search"),
+            tabBarActiveTintColor: TabColors.search,
             tabBarIcon:
               Platform.OS === "android"
                 ? (_e) => require("@/assets/icons/magnifyingglass.png")
@@ -193,6 +202,7 @@ export default function TabLayout() {
           name='(favorites)'
           options={{
             title: t("tabs.favorites"),
+            tabBarActiveTintColor: TabColors.favorites,
             tabBarIcon:
               Platform.OS === "android"
                 ? (_e) => require("@/assets/icons/heart.fill.png")
@@ -203,6 +213,7 @@ export default function TabLayout() {
           name='(watchlists)'
           options={{
             title: t("watchlists.title"),
+            tabBarActiveTintColor: TabColors.watchlists,
             tabBarItemHidden:
               !settings?.streamyStatsServerUrl || settings?.hideWatchlistsTab,
             tabBarIcon:
@@ -215,6 +226,7 @@ export default function TabLayout() {
           name='(libraries)'
           options={{
             title: t("tabs.library"),
+            tabBarActiveTintColor: TabColors.library,
             tabBarIcon:
               Platform.OS === "android"
                 ? (_e) => require("@/assets/icons/rectangle.stack.fill.png")
@@ -225,6 +237,7 @@ export default function TabLayout() {
           name='(custom-links)'
           options={{
             title: t("tabs.custom_links"),
+            tabBarActiveTintColor: TabColors.custom,
             tabBarItemHidden: !settings?.showCustomMenuLinks,
             tabBarIcon:
               Platform.OS === "android"

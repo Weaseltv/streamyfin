@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
+import { Colors } from "@/constants/Colors";
 import { Text } from "../common/Text";
 
 interface Props extends ViewProps {
@@ -12,6 +13,11 @@ interface Props extends ViewProps {
   children?: ReactNode;
   iconAfter?: ReactNode;
   icon?: keyof typeof Ionicons.glyphMap;
+  /**
+   * Hue for the leading icon chip. ListGroup assigns these by row position so
+   * a settings list descends the rainbow; pass one explicitly to override.
+   */
+  iconTint?: string;
   showArrow?: boolean;
   textColor?: "default" | "blue" | "red";
   onPress?: () => void;
@@ -27,6 +33,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
   children,
   showArrow = false,
   icon,
+  iconTint,
   textColor = "default",
   onPress,
   disabled = false,
@@ -48,7 +55,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
       <TouchableOpacity
         disabled={isDisabled}
         onPress={onPress}
-        className={`flex flex-row items-center justify-between bg-neutral-900 ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
+        className={`flex flex-row items-center justify-between bg-brand-surface ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
         {...(viewProps as any)}
       >
         <ListItemContent
@@ -57,6 +64,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
           subtitleColor={disabledByAdmin ? "red" : undefined}
           value={value}
           icon={icon}
+          iconTint={iconTint}
           textColor={textColor}
           showArrow={showArrow}
           iconAfter={iconAfter}
@@ -67,7 +75,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
     );
   return (
     <View
-      className={`flex flex-row items-center justify-between bg-neutral-900 ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
+      className={`flex flex-row items-center justify-between bg-brand-surface ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
       {...viewProps}
     >
       <ListItemContent
@@ -76,6 +84,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
         subtitleColor={disabledByAdmin ? "red" : undefined}
         value={value}
         icon={icon}
+        iconTint={iconTint}
         textColor={textColor}
         showArrow={showArrow}
         iconAfter={iconAfter}
@@ -92,6 +101,7 @@ const ListItemContent = ({
   subtitleColor,
   textColor,
   icon,
+  iconTint,
   value,
   showArrow,
   iconAfter,
@@ -101,8 +111,20 @@ const ListItemContent = ({
     <>
       <View className='flex flex-row items-center w-full'>
         {icon && (
-          <View className='border border-neutral-800 rounded-md h-8 w-8 flex items-center justify-center mr-2'>
-            <Ionicons name='person-circle-outline' size={18} color='white' />
+          <View
+            style={{
+              height: 26,
+              width: 26,
+              borderRadius: 7,
+              borderWidth: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 10,
+              backgroundColor: iconTint ? `${iconTint}22` : "transparent",
+              borderColor: iconTint ? `${iconTint}66` : Colors.border,
+            }}
+          >
+            <Ionicons name={icon} size={15} color={iconTint ?? Colors.text} />
           </View>
         )}
         {/* The label sizes to its content and only shrinks if it alone

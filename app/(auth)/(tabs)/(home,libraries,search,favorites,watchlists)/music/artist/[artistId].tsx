@@ -211,7 +211,7 @@ export default function ArtistDetailScreen() {
           {topTracks && topTracks.length > 0 && (
             <TouchableOpacity
               onPress={handlePlayAllTracks}
-              className='flex flex-row items-center bg-purple-600 px-6 py-3 rounded-full mt-4'
+              className='flex flex-row items-center bg-prism-cyan px-6 py-3 rounded-full mt-4'
             >
               <Ionicons name='play' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>

@@ -16,6 +16,7 @@ import {
   UnplayedCountBadge,
   WatchedIndicator,
 } from "@/components/WatchedIndicator";
+import { Colors } from "@/constants/Colors";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import {
@@ -67,7 +68,7 @@ export interface TVPosterCardProps {
   style?: ViewStyle;
 
   /** Glow color for focus state */
-  glowColor?: "white" | "purple";
+  glowColor?: "white" | "accent";
 
   /** Scale amount for focus animation */
   scaleAmount?: number;
@@ -228,7 +229,7 @@ export const TVPosterCard: React.FC<TVPosterCardProps> = ({
       useNativeDriver: true,
     }).start();
 
-  const shadowColor = glowColor === "white" ? "#ffffff" : "#a855f7";
+  const shadowColor = glowColor === "white" ? "#ffffff" : Colors.primary;
 
   // Text rendering helpers
   const renderSubtitle = () => {

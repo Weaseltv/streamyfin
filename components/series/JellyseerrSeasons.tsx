@@ -94,7 +94,7 @@ const RenderItem = ({ item }: any) => {
             />
             {upcomingAirDate && (
               <View className='absolute justify-center bottom-0 right-0.5 items-center'>
-                <View className='rounded-full bg-purple-600/30 p-1'>
+                <View className='rounded-full bg-prism-cyan/30 p-1'>
                   <Text
                     className='text-center text-xs'
                     style={textShadowStyle.shadow}

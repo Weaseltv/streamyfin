@@ -23,10 +23,15 @@
     static let shared = DownloadContinuedProcessingKeeper()
 
     /// Must be declared in BGTaskSchedulerPermittedIdentifiers (see withDownloadLiveActivity.ts).
-    private static let taskIdentifier = "com.fredrikburmester.streamyfin.downloads"
+    /// Derived from the bundle id, NOT hardcoded: withDownloadLiveActivity.ts builds the
+    /// permitted identifier as `${bundleIdentifier}.downloads`, so a literal here silently
+    /// diverges from the plist the moment the bundle id changes -- and BGTaskScheduler
+    /// throws when asked to register an identifier that is not permitted.
+    private static let taskIdentifier =
+      "\(Bundle.main.bundleIdentifier ?? "tv.theweasel.weaselfin").downloads"
 
     private let queue = DispatchQueue(
-      label: "com.fredrikburmester.streamyfin.downloadkeeper"
+      label: "tv.theweasel.weaselfin.downloadkeeper"
     )
     private var task: BGContinuedProcessingTask?
     private var isRegistered = false

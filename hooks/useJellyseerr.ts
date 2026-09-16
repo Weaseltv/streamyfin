@@ -205,6 +205,66 @@ export class JellyseerrApi {
       });
   }
 
+  /**
+   * WeaselPlex: hit /status and capture its cookies, exactly as test() does,
+   * but with no toasts — this runs silently during auto-provisioning, and a
+   * request server being down must never surface an error a customer has to
+   * dismiss. The stored cookies feed the XSRF interceptor and the configured
+   * gate in useJellyseerr, the same two things test() feeds for a manual login.
+   */
+  async primeSession(): Promise<void> {
+    const { status, headers } = await this.axios.get(
+      Endpoints.API_V1 + Endpoints.STATUS,
+    );
+    if (!inRange(status, 200, 299)) {
+      throw new Error(`Request server returned ${status}`);
+    }
+    storage.setAny(
+      JELLYSEERR_COOKIES,
+      headers["set-cookie"]?.flatMap((c) => c.split("; ")) ?? [],
+    );
+  }
+
+  /**
+   * WeaselPlex: Seerr's Quick Connect login endpoints. These exist in stock
+   * Seerr (server/routes/auth.ts) but are absent from its published OpenAPI
+   * spec, so they are called directly — deliberately on the SAME axios
+   * instance as everything else, so the session Seerr issues on success lands
+   * exactly as a password login's would. Mirrors the Android app's
+   * SeerrApiClient (Wholphin c04399f5).
+   */
+  async quickConnectInitiate(): Promise<{ code: string; secret: string }> {
+    const response = await this.axios.post(
+      `${Endpoints.API_V1 + Endpoints.AUTH_JELLYFIN}/quickconnect/initiate`,
+    );
+    const code: string | undefined = response?.data?.code;
+    const secret: string | undefined = response?.data?.secret;
+    if (!code || !secret) {
+      throw new Error(
+        "Media server returned an incomplete Quick Connect response.",
+      );
+    }
+    return { code, secret };
+  }
+
+  /**
+   * Exchanges an approved secret for a real per-user Seerr session, then
+   * stores the signed-in user the same way login() does. Request history and
+   * quotas behave exactly as with a password login.
+   */
+  async quickConnectAuthenticate(secret: string): Promise<JellyseerrUser> {
+    await this.axios.post(
+      `${Endpoints.API_V1 + Endpoints.AUTH_JELLYFIN}/quickconnect/authenticate`,
+      { secret },
+    );
+    const { data: user } = await this.axios.get<JellyseerrUser>(
+      `${Endpoints.API_V1}/auth/me`,
+    );
+    if (!user?.id) throw new Error("Quick Connect sign-in was rejected.");
+    storage.setAny(JELLYSEERR_USER, user);
+    return user;
+  }
+
   async discoverSettings(): Promise<DiscoverSlider[]> {
     return this.axios
       ?.get<DiscoverSlider[]>(
@@ -448,7 +508,11 @@ export class JellyseerrApi {
   }
 }
 
-const jellyseerrUserAtom = atom(storage.get<JellyseerrUser>(JELLYSEERR_USER));
+// Exported for WeaselPlex's silent Seerr provisioning (useWeaselSeerrAutoConnect),
+// which must publish the auto-connected user to every consumer of this hook.
+export const jellyseerrUserAtom = atom(
+  storage.get<JellyseerrUser>(JELLYSEERR_USER),
+);
 
 export const useJellyseerr = () => {
   const { settings, updateSettings } = useSettings();

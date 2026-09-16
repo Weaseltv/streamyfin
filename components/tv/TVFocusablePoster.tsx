@@ -6,13 +6,14 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { Colors } from "@/constants/Colors";
 
 export interface TVFocusablePosterProps {
   children: React.ReactNode;
   onPress: () => void;
   onLongPress?: () => void;
   hasTVPreferredFocus?: boolean;
-  glowColor?: "white" | "purple";
+  glowColor?: "white" | "accent";
   scaleAmount?: number;
   style?: ViewStyle;
   onFocus?: () => void;
@@ -49,7 +50,7 @@ export const TVFocusablePoster: React.FC<TVFocusablePosterProps> = ({
       useNativeDriver: true,
     }).start();
 
-  const shadowColor = glowColor === "white" ? "#ffffff" : "#a855f7";
+  const shadowColor = glowColor === "white" ? "#ffffff" : Colors.primary;
 
   return (
     <Pressable

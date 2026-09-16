@@ -3,6 +3,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import React from "react";
 import { Platform, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import { scaleSize } from "@/utils/scaleSize";
 
 const isAggregateType = (item: BaseItemDto) =>
@@ -27,7 +28,7 @@ const mobileBadgeBase: ViewStyle = {
   right: 4,
   height: 20,
   borderRadius: 10,
-  backgroundColor: "#9333ea",
+  backgroundColor: Colors.primary,
   alignItems: "center",
   justifyContent: "center",
 };
@@ -97,15 +98,15 @@ export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
     return <UnplayedCountBadge item={item} />;
   }
 
-  // Mobile: purple corner ribbon for unwatched Movie/Episode (existing behavior)
+  // Mobile: accent corner ribbon for unwatched Movie/Episode (existing behavior)
   return (
     <>
       {/* Strict === false: items without UserData (unknown state) get no ribbon */}
       {isMovieOrEpisode && item.UserData?.Played === false && (
-        <View className='bg-purple-600 w-8 h-8 absolute -top-4 -right-4 rotate-45' />
+        <View className='bg-prism-cyan w-8 h-8 absolute -top-4 -right-4 rotate-45' />
       )}
 
-      {/* Fully watched Series/BoxSet → small purple checkmark */}
+      {/* Fully watched Series/BoxSet → small accent checkmark */}
       {isAggregate && isPlayed && (
         <View style={[mobileBadgeBase, { width: 20 }]}>
           <Ionicons name='checkmark' size={13} color='white' />

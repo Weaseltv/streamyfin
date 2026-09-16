@@ -20,6 +20,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
+import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 const HORIZONTAL_PADDING = 80;
 const CARD_HEIGHT = 220;
@@ -249,7 +250,7 @@ export const TVLibraries: React.FC = () => {
       const response = await getUserViewsApi(api!).getUserViews({
         userId: user?.Id,
       });
-      return response.data.Items || [];
+      return sortWeaselLibraries(response.data.Items) || [];
     },
     staleTime: 60 * 1000,
     enabled: !!api && !!user?.Id,

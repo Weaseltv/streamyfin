@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
+import { Colors } from "@/constants/Colors";
 import { Button } from "../Button";
 import { Text } from "../common/Text";
 
@@ -89,7 +90,7 @@ export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
       handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: "#171717" }}
+      backgroundStyle={{ backgroundColor: Colors.surface }}
       backdropComponent={renderBackdrop}
     >
       <BottomSheetView
@@ -127,7 +128,7 @@ export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
           <Text className='mt-3 mb-5 text-neutral-400 text-center px-4'>
             {t("login.quick_connect_instructions")}
           </Text>
-          <Button className='mt-auto' color='purple' onPress={onClose}>
+          <Button className='mt-auto' color='primary' onPress={onClose}>
             {t("login.got_it")}
           </Button>
         </View>

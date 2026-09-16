@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
 import { MusicArtistCard } from "@/components/music/MusicArtistCard";
+import { Colors } from "@/constants/Colors";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 // Web uses Limit=100
@@ -137,7 +138,7 @@ export default function ArtistsScreen() {
           <RefreshControl
             refreshing={false}
             onRefresh={refetch}
-            tintColor='#9334E9'
+            tintColor={Colors.primary}
           />
         }
         onEndReached={handleEndReached}

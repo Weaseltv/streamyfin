@@ -1,4 +1,5 @@
 import { atom, useAtom } from "jotai";
+import { Colors, Prismatic } from "@/constants/Colors";
 
 interface ThemeColors {
   primary: string;
@@ -59,9 +60,15 @@ export const adjustToNearBlack = (_color: string): string => {
   return "#313131"; // A very dark gray, almost black
 };
 
+/**
+ * Accent swatches offered to the user. These are the eight canonical
+ * prismatic stops, in order.
+ */
+export const ACCENT_SWATCHES = Prismatic;
+
 export const itemThemeColorAtom = atom<ThemeColors>({
-  primary: "#FFFFFF",
-  text: "#000000",
+  primary: Colors.primary,
+  text: Colors.background,
 });
 
 export const useItemThemeColor = () => useAtom(itemThemeColorAtom);

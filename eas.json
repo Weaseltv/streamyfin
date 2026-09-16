@@ -42,6 +42,9 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_WRITE_DEBUG": "1"
+      },
+      "ios": {
+        "credentialsSource": "local"
       }
     },
     "preview_tv": {
@@ -60,7 +63,8 @@
         "config": "android-production.yml"
       },
       "ios": {
-        "config": "ios-production.yml"
+        "config": "ios-production.yml",
+        "credentialsSource": "local"
       }
     },
     "production-apk": {
@@ -110,8 +114,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "MWD5K362T8",
-        "ascAppId": "6593660679"
+        "appleTeamId": "RU3U747943"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
@@ -121,8 +124,7 @@
     },
     "production_tv": {
       "ios": {
-        "appleTeamId": "MWD5K362T8",
-        "ascAppId": "6593660679"
+        "appleTeamId": "RU3U747943"
       }
     }
   }

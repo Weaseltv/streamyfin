@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { AppState, Platform } from "react-native";
 import { getDeviceNameSync } from "react-native-device-info";
 import { toast } from "sonner-native";
+import { JELLYFIN_CLIENT_NAME } from "@/constants/Client";
 import useRouter from "@/hooks/useAppRouter";
 import { useInterval } from "@/hooks/useInterval";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
@@ -58,7 +59,7 @@ const initialApi = (() => {
       const id = getOrSetDeviceId();
       const deviceName = getDeviceNameSync();
       const jellyfinInstance = new Jellyfin({
-        clientInfo: { name: "Streamyfin", version: APP_VERSION },
+        clientInfo: { name: JELLYFIN_CLIENT_NAME, version: APP_VERSION },
         deviceInfo: {
           name: deviceName,
           id,
@@ -151,7 +152,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       const id = getOrSetDeviceId();
       const deviceName = getDeviceNameSync();
       return new Jellyfin({
-        clientInfo: { name: "Streamyfin", version: APP_VERSION },
+        clientInfo: { name: JELLYFIN_CLIENT_NAME, version: APP_VERSION },
         deviceInfo: {
           name: deviceName,
           id,
@@ -246,7 +247,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const headers = useMemo(() => {
     if (!deviceId) return {};
     return {
-      authorization: `MediaBrowser Client="Streamyfin", Device=${
+      authorization: `MediaBrowser Client="${JELLYFIN_CLIENT_NAME}", Device=${
         Platform.OS === "android" ? "Android" : "iOS"
       }, DeviceId="${deviceId}", Version="${APP_VERSION}"`,
     };

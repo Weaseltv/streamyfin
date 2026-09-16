@@ -6,6 +6,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import * as BackgroundTask from "expo-background-task";
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Image } from "expo-image";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
@@ -227,6 +228,17 @@ export default function RootLayout() {
 
 // Set up online manager for network-aware query behavior
 onlineManager.setEventListener((setOnline) => {
+  // Seed the state immediately. NetInfo.addEventListener only fires on CHANGE,
+  // so on a session where the network never transitions setOnline is never
+  // called and onlineManager keeps its default. That matters because
+  // invalidateQueriesWhenOnline silently resolves when isOnline() is false:
+  // a pull-to-refresh completes its spinner and refetches nothing, with no
+  // error anywhere. Observed on iOS 2026-09-02 — force-quitting the app fixed
+  // the stale rows (refetchOnMount is ungated) while pull-to-refresh did not.
+  NetInfo.fetch()
+    .then((state) => setOnline(!!state.isConnected))
+    .catch(() => setOnline(true)); // unknown beats falsely-offline
+
   return NetInfo.addEventListener((state) => {
     setOnline(!!state.isConnected);
   });
@@ -329,7 +341,12 @@ function Layout() {
     // only create push token for real devices (pointless for emulators)
     if (Device.isDevice) {
       Notifications?.getExpoPushTokenAsync({
-        projectId: "e79219d1-797f-4fbe-9fa1-cfd360690a68",
+        // Read from config so this can never drift from app.json again. The literal
+        // here was UPSTREAM's project id: push tokens were being minted against
+        // Streamyfin's EAS project, not ours.
+        projectId:
+          Constants.expoConfig?.extra?.eas?.projectId ??
+          "f86e16f3-c729-4e85-9acc-34a37f67ef07",
       })
         .then((token: ExpoPushToken) => {
           if (token) {

@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useUpdateWatchlist } from "@/hooks/useWatchlistMutations";
@@ -116,7 +117,7 @@ export default function EditWatchlistScreen() {
     return (
       <View
         className='flex-1 items-center justify-center'
-        style={{ backgroundColor: "#171717" }}
+        style={{ backgroundColor: Colors.surface }}
       >
         <ActivityIndicator size='large' />
       </View>
@@ -127,7 +128,7 @@ export default function EditWatchlistScreen() {
     return (
       <View
         className='flex-1 items-center justify-center px-8'
-        style={{ backgroundColor: "#171717" }}
+        style={{ backgroundColor: Colors.surface }}
       >
         <Text className='text-lg text-neutral-400'>
           {t("watchlists.not_found")}
@@ -140,7 +141,7 @@ export default function EditWatchlistScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className='flex-1'
-      style={{ backgroundColor: "#171717" }}
+      style={{ backgroundColor: Colors.surface }}
     >
       <ScrollView
         className='flex-1'
@@ -209,7 +210,7 @@ export default function EditWatchlistScreen() {
               <TouchableOpacity
                 key={type.value ?? "all"}
                 onPress={() => setAllowedItemType(type.value)}
-                className={`px-4 py-2 rounded-lg ${allowedItemType === type.value ? "bg-purple-600" : "bg-neutral-800"}`}
+                className={`px-4 py-2 rounded-lg ${allowedItemType === type.value ? "bg-prism-cyan" : "bg-neutral-800"}`}
               >
                 <Text
                   className={
@@ -235,7 +236,7 @@ export default function EditWatchlistScreen() {
               <TouchableOpacity
                 key={sort.value}
                 onPress={() => setDefaultSortOrder(sort.value)}
-                className={`px-4 py-2 rounded-lg ${defaultSortOrder === sort.value ? "bg-purple-600" : "bg-neutral-800"}`}
+                className={`px-4 py-2 rounded-lg ${defaultSortOrder === sort.value ? "bg-prism-cyan" : "bg-neutral-800"}`}
               >
                 <Text
                   className={

@@ -1,19 +1,26 @@
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View, type ViewProps } from "react-native";
+import { Colors } from "@/constants/Colors";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import { GlassSurface } from "./common/GlassSurface";
 import { Text } from "./common/Text";
 
 interface Props extends ViewProps {
   text?: string | number | null;
-  variant?: "gray" | "purple";
+  variant?: "gray" | "primary";
+  /**
+   * Neon hue for a media badge (4K, Dolby Vision, audio format). When set the
+   * badge draws a 1px hairline and matching text in that hue instead of a fill.
+   */
+  tint?: string;
   iconLeft?: React.ReactNode;
 }
 
 export const Badge: React.FC<Props> = ({
   iconLeft,
   text,
-  variant = "purple",
+  variant = "primary",
+  tint,
   ...props
 }) => {
   const typography = useScaledTVTypography();
@@ -21,12 +28,7 @@ export const Badge: React.FC<Props> = ({
   const content = (
     <View style={styles.content}>
       {iconLeft && <View style={styles.iconLeft}>{iconLeft}</View>}
-      <Text
-        className={`
-          text-xs
-          ${variant === "purple" && "text-white"}
-      `}
-      >
+      <Text className='text-xs' style={tint ? { color: tint } : undefined}>
         {text}
       </Text>
     </View>
@@ -35,7 +37,14 @@ export const Badge: React.FC<Props> = ({
   if (Platform.OS === "ios" && !Platform.isTV) {
     return (
       <View {...props} style={[styles.container, props.style]}>
-        <GlassSurface style={{ borderRadius: 100 }}>{content}</GlassSurface>
+        <GlassSurface
+          style={[
+            { borderRadius: 100 },
+            tint ? { borderWidth: 1, borderColor: tint } : null,
+          ]}
+        >
+          {content}
+        </GlassSurface>
       </View>
     );
   }
@@ -93,7 +102,13 @@ export const Badge: React.FC<Props> = ({
           alignSelf: "flex-start",
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: variant === "purple" ? "#9333ea" : "#262626",
+          backgroundColor: tint
+            ? "transparent"
+            : variant === "primary"
+              ? Colors.primary
+              : "#262626",
+          borderWidth: tint ? 1 : 0,
+          borderColor: tint ?? "transparent",
         },
         props.style,
       ]}
@@ -102,7 +117,7 @@ export const Badge: React.FC<Props> = ({
       <Text
         style={{
           fontSize: 12,
-          color: "#fff",
+          color: tint ?? (variant === "primary" ? Colors.background : "#fff"),
         }}
       >
         {text}

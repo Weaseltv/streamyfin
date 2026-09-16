@@ -39,7 +39,7 @@ const ContinueWatchingOverlay: React.FC<ContinueWatchingOverlayProps> = ({
         onPress={() => {
           goToNextItem({ isAutoPlay: false, resetWatchCount: true });
         }}
-        color={"purple"}
+        color={"primary"}
         className='my-4 w-2/3'
       >
         {t("player.continue_watching")}

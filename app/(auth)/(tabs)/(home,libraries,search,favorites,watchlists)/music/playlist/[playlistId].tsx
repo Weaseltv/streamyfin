@@ -236,7 +236,7 @@ export default function PlaylistDetailScreen() {
           <View className='flex flex-row mt-4 items-center'>
             <TouchableOpacity
               onPress={handlePlayAll}
-              className='flex flex-row items-center bg-purple-600 px-6 py-3 rounded-full mr-3'
+              className='flex flex-row items-center bg-prism-cyan px-6 py-3 rounded-full mr-3'
             >
               <Ionicons name='play' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>

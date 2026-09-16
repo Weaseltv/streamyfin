@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDeletePlaylist } from "@/hooks/usePlaylistMutations";
@@ -93,7 +94,7 @@ export const PlaylistOptionsSheet: React.FC<Props> = ({
         backgroundColor: "white",
       }}
       backgroundStyle={{
-        backgroundColor: "#171717",
+        backgroundColor: Colors.surface,
       }}
     >
       <BottomSheetView

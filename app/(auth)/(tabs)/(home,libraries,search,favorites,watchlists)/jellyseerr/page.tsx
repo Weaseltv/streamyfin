@@ -29,6 +29,7 @@ import { PlatformDropdown } from "@/components/PlatformDropdown";
 import { JellyserrRatings } from "@/components/Ratings";
 import JellyseerrSeasons from "@/components/series/JellyseerrSeasons";
 import { ItemActions } from "@/components/series/SeriesActions";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
@@ -324,11 +325,11 @@ const MobilePage: React.FC = () => {
                 <Button
                   loading={true}
                   disabled={true}
-                  color='purple'
+                  color='primary'
                   className='mt-4'
                 />
               ) : canRequest ? (
-                <Button color='purple' onPress={request} className='mt-4'>
+                <Button color='primary' onPress={request} className='mt-4'>
                   {t("jellyseerr.request_button")}
                 </Button>
               ) : (
@@ -357,7 +358,7 @@ const MobilePage: React.FC = () => {
                       </Button>
                     )}
                     <Button
-                      className='flex-1 bg-purple-600/50 border-purple-400 ring-purple-400 text-purple-100'
+                      className='flex-1 bg-prism-cyan/50 border-tint-violet ring-tint-violet text-tint-cyan'
                       onPress={() => {
                         router.push({
                           pathname:
@@ -480,7 +481,7 @@ const MobilePage: React.FC = () => {
             backgroundColor: "white",
           }}
           backgroundStyle={{
-            backgroundColor: "#171717",
+            backgroundColor: Colors.surface,
           }}
           backdropComponent={renderBackdrop}
           stackBehavior='push'
@@ -530,7 +531,7 @@ const MobilePage: React.FC = () => {
                   />
                 </View>
               </View>
-              <Button className='mt-auto' onPress={submitIssue} color='purple'>
+              <Button className='mt-auto' onPress={submitIssue} color='primary'>
                 {t("jellyseerr.submit_button")}
               </Button>
             </View>

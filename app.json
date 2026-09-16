@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Streamyfin",
-    "slug": "streamyfin",
-    "version": "0.55.0",
+    "name": "WeaselPlex",
+    "slug": "weaselfin",
+    "version": "1.0",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
-    "scheme": "streamyfin",
+    "icon": "./assets/images/weaselplex-icon-1024.png",
+    "scheme": "weaselfin",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -15,7 +15,7 @@
         "NSMicrophoneUsageDescription": "The app needs access to your microphone.",
         "UIBackgroundModes": ["audio", "fetch"],
         "NSLocalNetworkUsageDescription": "The app needs access to your local network to connect to your Jellyfin server.",
-        "NSLocationWhenInUseUsageDescription": "Streamyfin uses your location to detect your home WiFi network for automatic local server switching.",
+        "NSLocationWhenInUseUsageDescription": "WeaselPlex uses your location to detect your home WiFi network for automatic local server switching.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
@@ -33,25 +33,23 @@
       "entitlements": {
         "com.apple.developer.networking.wifi-info": true
       },
-      "bundleIdentifier": "com.fredrikburmester.streamyfin",
-      "icon": "./assets/images/icon-ios-liquid-glass.icon",
-      "appleTeamId": "MWD5K362T8"
+      "bundleIdentifier": "tv.theweasel.weaselfin",
+      "icon": "./assets/images/weaselplex-icon-1024.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon-android-plain.png",
-        "monochromeImage": "./assets/images/icon-android-themed.png",
-        "backgroundColor": "#2E2E2E"
+        "foregroundImage": "./assets/images/weaselplex-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/weaselplex-adaptive-monochrome.png",
+        "backgroundColor": "#070A10"
       },
-      "package": "com.fredrikburmester.streamyfin",
+      "package": "tv.theweasel.weaselplex.phone",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.WRITE_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
-      "googleServicesFile": "./google-services.json"
+      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"]
     },
     "plugins": [
       [
@@ -123,16 +121,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#010101",
-          "image": "./assets/images/icon-ios-plain.png",
+          "backgroundColor": "#070A10",
+          "image": "./assets/images/weaselplex-launch-logo.png",
           "imageWidth": 100
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification.png",
-          "color": "#9333EA"
+          "icon": "./assets/images/weaselplex-notification.png",
+          "color": "#00C0FF"
         }
       ],
       "expo-web-browser",
@@ -162,15 +160,15 @@
         "origin": false
       },
       "eas": {
-        "projectId": "e79219d1-797f-4fbe-9fa1-cfd360690a68"
+        "projectId": "f86e16f3-c729-4e85-9acc-34a37f67ef07"
       }
     },
-    "owner": "streamyfin",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/e79219d1-797f-4fbe-9fa1-cfd360690a68"
-    }
+      "url": "https://u.expo.dev/f86e16f3-c729-4e85-9acc-34a37f67ef07"
+    },
+    "owner": "wtzgoods-team"
   }
 }

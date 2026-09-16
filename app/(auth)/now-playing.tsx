@@ -38,6 +38,7 @@ import { Text } from "@/components/common/Text";
 import { CreatePlaylistModal } from "@/components/music/CreatePlaylistModal";
 import { PlaylistPickerSheet } from "@/components/music/PlaylistPickerSheet";
 import { TrackOptionsSheet } from "@/components/music/TrackOptionsSheet";
+import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMusicCast } from "@/hooks/useMusicCast";
@@ -226,7 +227,7 @@ export default function NowPlayingScreen() {
     return (
       <BottomSheetModalProvider>
         <View
-          className='flex-1 bg-[#121212] items-center justify-center'
+          className='flex-1 bg-brand-bg items-center justify-center'
           style={{
             paddingTop: Platform.OS === "android" ? insets.top : 0,
             paddingBottom: Platform.OS === "android" ? insets.bottom : 0,
@@ -243,7 +244,7 @@ export default function NowPlayingScreen() {
   return (
     <BottomSheetModalProvider>
       <View
-        className='flex-1 bg-[#121212]'
+        className='flex-1 bg-brand-bg'
         style={{
           paddingTop: Platform.OS === "android" ? insets.top : 0,
           paddingBottom: Platform.OS === "android" ? insets.bottom : 0,
@@ -592,7 +593,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           <Ionicons
             name='shuffle'
             size={24}
-            color={shuffleEnabled ? "#9334E9" : "#666"}
+            color={shuffleEnabled ? Colors.primary : "#666"}
           />
         </TouchableOpacity>
 
@@ -611,12 +612,12 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           className='mx-4 bg-white rounded-full p-4'
         >
           {isLoading ? (
-            <ActivityIndicator size={36} color='#121212' />
+            <ActivityIndicator size={36} color={Colors.background} />
           ) : (
             <Ionicons
               name={isPlaying ? "pause" : "play"}
               size={36}
-              color='#121212'
+              color={Colors.background}
               style={isPlaying ? {} : { marginLeft: 4 }}
             />
           )}
@@ -635,10 +636,10 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           <Ionicons
             name={getRepeatIcon() as any}
             size={24}
-            color={repeatMode !== "off" ? "#9334E9" : "#666"}
+            color={repeatMode !== "off" ? Colors.primary : "#666"}
           />
           {repeatMode === "one" && (
-            <View className='absolute right-0 top-1 bg-purple-600 rounded-full w-4 h-4 items-center justify-center'>
+            <View className='absolute right-0 top-1 bg-prism-cyan rounded-full w-4 h-4 items-center justify-center'>
               <Text className='text-white text-[10px] font-bold'>1</Text>
             </View>
           )}
@@ -686,7 +687,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
               <ExpoAvRoutePickerView
                 style={{ width: 24, height: 24 }}
                 tintColor='#666666'
-                activeTintColor='#9334E9'
+                activeTintColor={Colors.primary}
               />
             </View>
           )}
@@ -695,7 +696,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
             style={{
               width: 24,
               height: 24,
-              tintColor: isCastConnected ? "#9334E9" : "#666",
+              tintColor: isCastConnected ? Colors.primary : "#666",
               transform: [{ translateY: 1 }],
             }}
           />
@@ -746,10 +747,10 @@ const QueueView: React.FC<QueueViewProps> = ({
             style={{
               opacity: isPast && !isActive ? 0.5 : 1,
               backgroundColor: isActive
-                ? "#2a2a2a"
+                ? Colors.surfaceRaised
                 : isCurrentTrack
-                  ? "rgba(147, 52, 233, 0.3)"
-                  : "#121212",
+                  ? "rgba(0, 192, 255, 0.18)"
+                  : Colors.background,
             }}
           >
             {/* Drag handle */}
@@ -762,7 +763,7 @@ const QueueView: React.FC<QueueViewProps> = ({
               <Ionicons
                 name='reorder-three'
                 size={20}
-                color={isActive ? "#9334E9" : "#666"}
+                color={isActive ? Colors.primary : "#666"}
               />
             </TouchableOpacity>
 
@@ -786,7 +787,7 @@ const QueueView: React.FC<QueueViewProps> = ({
             <View className='flex-1 mr-2'>
               <Text
                 numberOfLines={1}
-                className={`text-base ${isCurrentTrack ? "text-purple-400 font-semibold" : "text-white"}`}
+                className={`text-base ${isCurrentTrack ? "text-prism-cyan font-semibold" : "text-white"}`}
               >
                 {item.Name}
               </Text>
@@ -797,7 +798,7 @@ const QueueView: React.FC<QueueViewProps> = ({
 
             {/* Now playing indicator */}
             {isCurrentTrack && (
-              <Ionicons name='musical-note' size={16} color='#9334E9' />
+              <Ionicons name='musical-note' size={16} color={Colors.primary} />
             )}
 
             {/* Remove button (not for current track) */}

@@ -6,6 +6,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
+import { CountBadge } from "@/components/prismatic/CountBadge";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -65,8 +66,8 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
             }}
             contentFit='cover'
           />
-          <View className='bg-purple-600 rounded-full h-6 w-6 flex items-center justify-center absolute bottom-1 right-1'>
-            <Text className='text-xs font-bold'>{items.length}</Text>
+          <View className='absolute bottom-1 right-1'>
+            <CountBadge count={items.length} variant='series' />
           </View>
         </View>
       ) : (

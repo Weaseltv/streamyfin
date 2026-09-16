@@ -216,7 +216,7 @@ export default function AlbumDetailScreen() {
           <Text className='text-white text-xl font-bold mt-4 text-center'>
             {album.Name}
           </Text>
-          <Text className='text-purple-400 text-base mt-1'>
+          <Text className='text-prism-cyan text-base mt-1'>
             {album.AlbumArtist || album.Artists?.join(", ")}
           </Text>
           <Text className='text-neutral-500 text-sm mt-1'>
@@ -228,7 +228,7 @@ export default function AlbumDetailScreen() {
           <View className='flex flex-row mt-4 items-center'>
             <TouchableOpacity
               onPress={handlePlayAll}
-              className='flex flex-row items-center bg-purple-600 px-6 py-3 rounded-full mr-3'
+              className='flex flex-row items-center bg-prism-cyan px-6 py-3 rounded-full mr-3'
             >
               <Ionicons name='play' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>
