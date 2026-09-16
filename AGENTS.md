@@ -4,7 +4,7 @@
 
 ## Product
 
-This repo is the **WeaselPlex Android Phone + iOS** Product (Streamyfin fork, default branch `develop` / working branch `weaselfin` as configured). Website/portal work belongs in `weaseltv-platform`. Do not invent new Products.
+This repo is the **WeaselPlex Android Phone + iOS** Product (Streamyfin fork). It is **not** WeaselTV IPTV (`weaseltv-apps`). Ship / default WeaselPlex branch for both phone and iOS is **`weaselfin`** (do not treat upstream `develop` as the ship branch). Website/portal work belongs in `weaseltv-platform`. Do not invent new Products.
 
 ## Notion Command Center (required before finish)
 
@@ -20,7 +20,7 @@ Unless the owner explicitly asks for a **Release** build, use:
 
 **Branch -> commit -> PR -> check TestFlight from the PR branch -> owner on-device OK -> merge -> tag -> release publish from main/ship branch only if a tagged release is needed.**
 
-- Default target branch for WeaselTV work: `weaselfin` (not upstream `develop`).
+- Default target / ship branch for **WeaselPlex** work in this repo: `weaselfin` (not upstream `develop`).
 - **Check TestFlight** from the PR branch is required before merge for iOS changes the owner will verify on iPhone.
 - Do not merge before owner OK unless they waive device check.
 - An official **Release** TestFlight comes from a tag after merge, and only when the owner asks for a Release or a tagged release is needed.
