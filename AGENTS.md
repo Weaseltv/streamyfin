@@ -24,7 +24,7 @@ Unless the owner explicitly asks for a **Release** build, use:
 - **Check TestFlight** from the PR branch is required before merge for iOS changes the owner will verify on iPhone.
 - Do not merge before owner OK unless they waive device check.
 - An official **Release** TestFlight comes from a tag after merge, and only when the owner asks for a Release or a tagged release is needed.
-- Android phone changes follow: merge -> tag -> build signed APK on T3 VPS or ThinkCentre (WeaselFin keystore) -> publish **weaselplex-phone / stable only** via weaseltv-platform direct-distribution (no Beta agent path; no pre-merge device gate). Source `~/android-agent-env.sh` for manifest signing (`WEASELTV_SIGNING_*`); see `~/agent-docs/android-phone-publish.md`.
+- Android phone changes follow: merge -> tag -> build signed APK on T3 VPS or ThinkCentre (WeaselFin keystore) -> publish **weaselplex-phone / stable only** via weaseltv-platform direct-distribution (no Beta agent path; no pre-merge device gate). Source `~/android-agent-env.sh` for manifest signing (`WEASELTV_SIGNING_*`); see `~/agent-docs/android-phone-publish.md`. Forever command (owner-asked only): `source ~/android-agent-env.sh && CONFIRM=PUBLISH_ANDROID_PHONE_STABLE ~/agent-docs/bin/publish-android-phone-stable.sh weaselplex /path/to/signed.apk` (see `~/agent-docs/android-phone-publish.md`).
 
 ## M4 disk hygiene
 
