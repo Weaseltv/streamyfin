@@ -26,3 +26,7 @@ Unless the owner explicitly asks for a **Release** build, use:
 - An official **Release** TestFlight comes from a tag after merge, and only when the owner asks for a Release or a tagged release is needed.
 - Android changes in this repo follow: merge -> tag -> publish APK from the tag (no pre-merge device gate).
 
+## M4 disk hygiene
+
+WeaselPlex iOS TestFlight/validation on HostMyApple must keep >= 20 GB free. Before and after M4 work, run the weaseltv-apps pruners against `~/CodexRuns/weaselplex-ios` (see weaseltv-apps `AGENTS.md` "M4 disk hygiene"). Do not leave multi-GB `derived-data-release` roots behind.
+
