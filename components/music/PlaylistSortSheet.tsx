@@ -1,16 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  NeonSheetHead,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { glowRule, Sizes } from "@/constants/neon";
 
 export type PlaylistSortOption = "SortName" | "DateCreated";
 
@@ -27,15 +27,14 @@ interface Props {
   ) => void;
 }
 
-const SORT_OPTIONS: { key: PlaylistSortOption; label: string; icon: string }[] =
-  [
-    { key: "SortName", label: "music.sort.alphabetical", icon: "text-outline" },
-    {
-      key: "DateCreated",
-      label: "music.sort.date_created",
-      icon: "time-outline",
-    },
-  ];
+const SORT_OPTIONS: {
+  key: PlaylistSortOption;
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}[] = [
+  { key: "SortName", label: "music.sort.alphabetical", icon: "type" },
+  { key: "DateCreated", label: "music.sort.date_created", icon: "clock" },
+];
 
 export const PlaylistSortSheet: React.FC<Props> = ({
   open,
@@ -64,17 +63,6 @@ export const PlaylistSortSheet: React.FC<Props> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleSortSelect = useCallback(
     (option: PlaylistSortOption) => {
       // If selecting same option, toggle order; otherwise use sensible default
@@ -100,64 +88,88 @@ export const PlaylistSortSheet: React.FC<Props> = ({
       index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
     >
       <BottomSheetView
         style={{
           flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: insets.bottom,
         }}
       >
-        <Text className='text-white text-lg font-semibold mb-4'>
-          {t("music.sort.title")}
-        </Text>
-        <View className='flex-col overflow-hidden bg-neutral-800'>
-          {SORT_OPTIONS.map((option, index) => {
+        <NeonSheetHead
+          eyebrow={t("music.tabs.playlists")}
+          title={t("music.sort.title")}
+          onClose={() => setOpen(false)}
+        />
+        <View>
+          {SORT_OPTIONS.map((option) => {
             const isSelected = sortBy === option.key;
             return (
-              <React.Fragment key={option.key}>
-                {index > 0 && <View style={styles.separator} />}
-                <TouchableOpacity
-                  onPress={() => handleSortSelect(option.key)}
-                  className='flex-row items-center px-4 py-3.5'
-                >
-                  <Ionicons
-                    name={option.icon as any}
-                    size={22}
-                    color={isSelected ? Colors.primary : "#fff"}
+              <TouchableOpacity
+                key={option.key}
+                onPress={() => handleSortSelect(option.key)}
+                accessibilityRole='button'
+                accessibilityState={{ selected: isSelected }}
+                style={{
+                  minHeight: 52,
+                  paddingLeft: Sizes.rowLead,
+                  paddingRight: Sizes.gutter,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderBottomWidth: 1,
+                  borderBottomColor: NeonBoard.line,
+                }}
+              >
+                {isSelected && (
+                  <View
+                    style={[
+                      {
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: Sizes.tally,
+                        backgroundColor: NeonBoard.volt,
+                      },
+                      glowRule(NeonBoard.volt),
+                    ]}
                   />
-                  <Text
-                    className={`ml-4 text-base flex-1 ${isSelected ? "text-volt font-medium" : "text-white"}`}
-                  >
-                    {t(option.label)}
-                  </Text>
-                  {isSelected && (
-                    <View className='flex-row items-center'>
-                      <Ionicons
-                        name={
-                          sortOrder === "Ascending" ? "arrow-up" : "arrow-down"
-                        }
-                        size={18}
-                        color={Colors.primary}
-                      />
-                      <Ionicons
-                        name='checkmark'
-                        size={22}
-                        color={Colors.primary}
-                        style={{ marginLeft: 8 }}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </React.Fragment>
+                )}
+                <Feather
+                  name={option.icon}
+                  size={18}
+                  color={isSelected ? NeonBoard.volt : NeonBoard.mid}
+                />
+                <Text
+                  variant='rowTitle'
+                  style={{
+                    marginLeft: 14,
+                    flex: 1,
+                    color: isSelected ? NeonBoard.volt : NeonBoard.text,
+                  }}
+                >
+                  {t(option.label)}
+                </Text>
+                {isSelected && (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Feather
+                      name={
+                        sortOrder === "Ascending" ? "arrow-up" : "arrow-down"
+                      }
+                      size={16}
+                      color={NeonBoard.volt}
+                    />
+                    <Feather
+                      name='check'
+                      size={18}
+                      color={NeonBoard.volt}
+                      style={{ marginLeft: 10 }}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -165,10 +177,3 @@ export const PlaylistSortSheet: React.FC<Props> = ({
     </BottomSheetModal>
   );
 };
-
-const styles = StyleSheet.create({
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#404040",
-  },
-});

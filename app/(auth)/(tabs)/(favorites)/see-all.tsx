@@ -12,11 +12,14 @@ import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
 import { ItemPoster } from "@/components/posters/ItemPoster";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 type FavoriteTypes =
@@ -161,11 +164,13 @@ export default function FavoritesSeeAllScreen() {
       />
       {!itemType ? (
         <View className='flex-1 items-center justify-center px-6'>
-          <Text className='text-neutral-500'>{t("favorites.noData")}</Text>
+          <Text variant='body' muted>
+            {t("favorites.noData")}
+          </Text>
         </View>
       ) : isLoading ? (
-        <View className='justify-center items-center h-full'>
-          <Loader />
+        <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+          <LoadingLine active />
         </View>
       ) : (
         <FlashList
@@ -177,9 +182,10 @@ export default function FavoritesSeeAllScreen() {
           onEndReachedThreshold={0.8}
           contentInsetAdjustmentBehavior='automatic'
           contentContainerStyle={{
+            paddingTop: 8,
             paddingBottom: 24,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
+            paddingLeft: insets.left + Sizes.gutter,
+            paddingRight: insets.right + Sizes.gutter,
           }}
           ItemSeparatorComponent={() => (
             <View
@@ -191,7 +197,7 @@ export default function FavoritesSeeAllScreen() {
           )}
           ListEmptyComponent={
             <View className='flex flex-col items-center justify-center h-full py-12'>
-              <Text className='font-bold text-xl text-neutral-500'>
+              <Text variant='body' muted>
                 {t("home.no_items")}
               </Text>
             </View>

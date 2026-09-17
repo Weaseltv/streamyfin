@@ -1,11 +1,13 @@
-import { Ionicons } from "@expo/vector-icons";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NeonSheet, NeonSheetRow } from "@/components/common/NeonSheet";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 
 // @expo/ui's SwiftUI native module (ExpoUI) does not exist in tvOS builds.
@@ -64,6 +66,8 @@ interface PlatformDropdownProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onOptionSelect?: (value?: any) => void;
+  /** Section accent for the Android sheet (tally, rule, checks). */
+  accent?: string;
   expoUIConfig?: {
     hostStyle?: any;
   };
@@ -73,19 +77,44 @@ interface PlatformDropdownProps {
   };
 }
 
-const ToggleSwitch: React.FC<{ value: boolean }> = ({ value }) => (
+/**
+ * The picker trigger for settings rows: the current value in the accent on a
+ * `card2` box with a 1pt `line2` border, radius 0, and a `mid` caret.
+ */
+export const DropdownTrigger: React.FC<{
+  value?: string | null;
+  accent?: string;
+  disabled?: boolean;
+  compact?: boolean;
+}> = ({ value, accent = NeonBoard.volt, disabled = false, compact = true }) => (
   <View
-    className={`w-12 h-7 rounded-full ${value ? "bg-volt" : "bg-neutral-600"} flex-row items-center`}
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      height: compact ? Sizes.buttonCompact : Sizes.outline,
+      paddingLeft: 10,
+      paddingRight: 8,
+      backgroundColor: NeonBoard.card2,
+      borderWidth: 1,
+      borderColor: NeonBoard.line2,
+      opacity: disabled ? 0.5 : 1,
+    }}
   >
-    <View
-      className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${value ? "translate-x-6" : "translate-x-1"}`}
-    />
+    <Text
+      variant='chip'
+      numberOfLines={1}
+      style={{ color: accent, fontSize: 13, maxWidth: 200 }}
+    >
+      {value}
+    </Text>
+    <Feather name='chevron-down' size={16} color={NeonBoard.mid} />
   </View>
 );
 
-const OptionItem: React.FC<{ option: Option; isLast?: boolean }> = ({
+const OptionItem: React.FC<{ option: Option; accent: string }> = ({
   option,
-  isLast,
+  accent,
 }) => {
   const isToggle = option.type === "toggle";
   const isAction = option.type === "action";
@@ -94,65 +123,48 @@ const OptionItem: React.FC<{ option: Option; isLast?: boolean }> = ({
     : (option as RadioOption | ActionOption).onPress;
 
   return (
-    <>
-      <TouchableOpacity
-        onPress={handlePress}
-        disabled={option.disabled}
-        className={`px-4 py-3 flex flex-row items-center justify-between ${option.disabled ? "opacity-50" : ""}`}
-      >
-        <Text className='flex-1 text-white'>{option.label}</Text>
-        {isToggle ? (
-          <ToggleSwitch value={option.value} />
-        ) : isAction ? null : (option as RadioOption).selected ? (
-          <Ionicons name='checkmark-circle' size={24} color={Colors.primary} />
-        ) : (
-          <Ionicons name='ellipse-outline' size={24} color='#6b7280' />
-        )}
-      </TouchableOpacity>
-      {!isLast && (
-        <View
-          style={{
-            height: StyleSheet.hairlineWidth,
-          }}
-          className='bg-neutral-700 mx-4'
-        />
-      )}
-    </>
+    <NeonSheetRow
+      label={option.label}
+      onPress={handlePress}
+      disabled={option.disabled}
+      accent={accent}
+      selected={!isToggle && !isAction && (option as RadioOption).selected}
+      right={
+        isToggle ? (
+          <SettingSwitch
+            value={option.value}
+            onValueChange={handlePress}
+            disabled={option.disabled}
+            trackColor={{ false: NeonBoard.line2, true: accent }}
+          />
+        ) : undefined
+      }
+    />
   );
 };
 
-const OptionGroupComponent: React.FC<{ group: OptionGroup }> = ({ group }) => (
-  <View className='mb-6'>
+const OptionGroupComponent: React.FC<{
+  group: OptionGroup;
+  accent: string;
+}> = ({ group, accent }) => (
+  <View>
     {group.title && (
-      <Text className='text-lg font-semibold mb-3 text-neutral-300'>
-        {group.title}
-      </Text>
+      <SectionHeader title={group.title} accent={accent} className='px-4' />
     )}
-    <View
-      style={{
-        borderRadius: 12,
-        overflow: "hidden",
-      }}
-      className='bg-neutral-800 overflow-hidden'
-    >
-      {group.options.map((option, index) => (
-        <OptionItem
-          key={index}
-          option={option}
-          isLast={index === group.options.length - 1}
-        />
-      ))}
-    </View>
+    {group.options.map((option, index) => (
+      <OptionItem key={index} option={option} accent={accent} />
+    ))}
   </View>
 );
 
 const BottomSheetContent: React.FC<{
   title?: string;
   groups: OptionGroup[];
+  accent: string;
   onOptionSelect?: (value?: any) => void;
   onClose?: () => void;
-}> = ({ title, groups, onOptionSelect, onClose }) => {
-  const insets = useSafeAreaInsets();
+}> = ({ title, groups, accent, onOptionSelect, onClose }) => {
+  const { t } = useTranslation();
 
   // Wrap the groups to call onOptionSelect when an option is pressed
   const wrappedGroups = groups.map((group) => ({
@@ -191,18 +203,16 @@ const BottomSheetContent: React.FC<{
   }));
 
   return (
-    <BottomSheetScrollView
-      className='px-4 pb-8 pt-2'
-      style={{
-        paddingLeft: Math.max(16, insets.left),
-        paddingRight: Math.max(16, insets.right),
-      }}
+    <NeonSheet
+      scroll
+      title={title ?? t("common.open_menu")}
+      accent={accent}
+      onClose={onClose}
     >
-      {title && <Text className='font-bold text-2xl mb-6'>{title}</Text>}
       {wrappedGroups.map((group, index) => (
-        <OptionGroupComponent key={index} group={group} />
+        <OptionGroupComponent key={index} group={group} accent={accent} />
       ))}
-    </BottomSheetScrollView>
+    </NeonSheet>
   );
 };
 
@@ -213,6 +223,7 @@ const PlatformDropdownComponent = ({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   onOptionSelect,
+  accent = NeonBoard.volt,
   expoUIConfig,
   bottomSheetConfig,
 }: PlatformDropdownProps) => {
@@ -226,6 +237,7 @@ const PlatformDropdownComponent = ({
         <BottomSheetContent
           title={title}
           groups={groups}
+          accent={accent}
           onOptionSelect={onOptionSelect}
           onClose={() => {
             hideModal();
@@ -381,6 +393,7 @@ const PlatformDropdownComponent = ({
       <BottomSheetContent
         title={title}
         groups={groups}
+        accent={accent}
         onOptionSelect={onOptionSelect}
         onClose={hideModal}
       />,
@@ -394,7 +407,7 @@ const PlatformDropdownComponent = ({
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
-      {trigger || <Text className='text-white'>{t("common.open_menu")}</Text>}
+      {trigger || <DropdownTrigger value={t("common.open_menu")} />}
     </TouchableOpacity>
   );
 };
@@ -408,6 +421,7 @@ export const PlatformDropdown = React.memo(
       prevProps.title === nextProps.title &&
       prevProps.open === nextProps.open &&
       prevProps.groups === nextProps.groups && // Reference equality (works because we memoize groups in caller)
+      prevProps.accent === nextProps.accent &&
       prevProps.trigger === nextProps.trigger // Reference equality
     );
   },

@@ -1,13 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Keyboard, View } from "react-native";
 import { Button } from "@/components/Button";
-import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  NeonSheetRow,
+} from "@/components/common/NeonSheet";
+import { NeonBoard } from "@/constants/Colors";
 import {
   type CustomHeader,
   HEADER_PRESETS,
@@ -45,7 +47,6 @@ export function CustomHeaderSheet({
   onClose,
 }: CustomHeaderSheetProps): React.ReactElement {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
 
   const [headers, setHeaders] = useState<CustomHeader[]>(initialHeaders);
   const [showPresets, setShowPresets] = useState(false);
@@ -93,66 +94,49 @@ export function CustomHeaderSheet({
     setShowPresets(false);
   };
 
-  return (
-    <BottomSheetScrollView
-      contentContainerStyle={{
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: insets.bottom + 16 + keyboardHeight,
-        gap: 12,
-      }}
-    >
-      {showPresets ? (
-        <>
-          <View className='flex-row items-center gap-x-2'>
-            <TouchableOpacity
-              onPress={() => setShowPresets(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name='chevron-back' size={22} color='white' />
-            </TouchableOpacity>
-            <Text className='text-lg font-bold'>
-              {t("custom_headers.presets_title")}
-            </Text>
-          </View>
-
-          {HEADER_PRESETS.map((preset) => (
-            <TouchableOpacity
-              key={preset.id}
-              onPress={() => applyPreset(preset)}
-              className='bg-neutral-900 border border-neutral-700 p-4 flex-row items-center justify-between'
-            >
-              <View className='flex-1 pr-3'>
-                <Text className='font-semibold'>{preset.label}</Text>
-                <Text className='text-xs text-neutral-400 mt-0.5'>
-                  {preset.description}
-                </Text>
-              </View>
-              <Ionicons name='add-circle' size={22} color={Colors.primary} />
-            </TouchableOpacity>
-          ))}
-        </>
-      ) : (
-        <>
-          <Text className='text-lg font-bold'>{t("custom_headers.title")}</Text>
-          <Text className='text-xs text-neutral-400 -mt-2'>
-            {t("custom_headers.description")}
-          </Text>
-
-          <CustomHeaderList
-            headers={headers}
-            onChange={update}
-            onCommit={update}
-            onAddPreset={() => setShowPresets(true)}
+  if (showPresets) {
+    return (
+      <NeonSheet
+        scroll
+        extraBottom={keyboardHeight}
+        eyebrow={t("custom_headers.title")}
+        title={t("custom_headers.presets_title")}
+        onBack={() => setShowPresets(false)}
+        onClose={onClose}
+      >
+        {HEADER_PRESETS.map((preset) => (
+          <NeonSheetRow
+            key={preset.id}
+            label={preset.label}
+            subtitle={preset.description}
+            onPress={() => applyPreset(preset)}
+            right={<Feather name='plus' size={20} color={NeonBoard.volt} />}
           />
+        ))}
+      </NeonSheet>
+    );
+  }
 
-          <Text className='text-xs text-neutral-500'>
-            {t("custom_headers.security_note")}
-          </Text>
+  return (
+    <NeonSheet
+      scroll
+      extraBottom={keyboardHeight}
+      title={t("custom_headers.title")}
+      onClose={onClose}
+      primary={<Button onPress={onClose}>{t("custom_headers.done")}</Button>}
+    >
+      <NeonSheetNote>{t("custom_headers.description")}</NeonSheetNote>
 
-          <Button onPress={onClose}>{t("custom_headers.done")}</Button>
-        </>
-      )}
-    </BottomSheetScrollView>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
+        <CustomHeaderList
+          headers={headers}
+          onChange={update}
+          onCommit={update}
+          onAddPreset={() => setShowPresets(true)}
+        />
+      </View>
+
+      <NeonSheetNote>{t("custom_headers.security_note")}</NeonSheetNote>
+    </NeonSheet>
   );
 }

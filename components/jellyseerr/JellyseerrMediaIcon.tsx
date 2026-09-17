@@ -1,31 +1,28 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo } from "react";
-import { View, type ViewProps } from "react-native";
+import { useTranslation } from "react-i18next";
+import type { StyleProp, ViewStyle } from "react-native";
+import { Badge } from "@/components/Badge";
+import { NeonBoard } from "@/constants/Colors";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 
-const JellyseerrMediaIcon: React.FC<
-  { mediaType: "tv" | "movie" } & ViewProps
-> = ({ mediaType, className, ...props }) => {
-  const style = useMemo(
-    () =>
-      mediaType === MediaType.MOVIE
-        ? "bg-blue-600/90 border-blue-400/40"
-        : "bg-volt/90 border-volt/40",
-    [mediaType],
-  );
+/** Accent for a Seerr media type: movies orange, series yellow. */
+export const jellyseerrTypeAccent = (mediaType?: "tv" | "movie" | MediaType) =>
+  mediaType === MediaType.MOVIE ? NeonBoard.orange : NeonBoard.yellow;
+
+/** The MOVIE / SERIES type badge in the type colour. */
+const JellyseerrMediaIcon: React.FC<{
+  mediaType?: "tv" | "movie" | MediaType;
+  style?: StyleProp<ViewStyle>;
+}> = ({ mediaType, style }) => {
+  const { t } = useTranslation();
+  if (!mediaType) return null;
+  const isMovie = mediaType === MediaType.MOVIE;
   return (
-    mediaType && (
-      <View
-        className={`${className} border ${style} rounded-full p-1`}
-        {...props}
-      >
-        {mediaType === MediaType.MOVIE ? (
-          <MaterialCommunityIcons name='movie-open' size={16} color='white' />
-        ) : (
-          <Feather size={16} name='tv' color='white' />
-        )}
-      </View>
-    )
+    <Badge
+      text={isMovie ? t("search.movies") : t("search.series")}
+      tint={jellyseerrTypeAccent(mediaType)}
+      glow
+      style={style}
+    />
   );
 };
 

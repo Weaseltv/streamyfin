@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
-import { Text } from "@/components/common/Text";
+import { Button } from "@/components/Button";
 import { PluginSettings } from "@/components/settings/PluginSettings";
+import { Sizes } from "@/constants/neon";
 import { useSettings } from "@/utils/atoms/settings";
 
 export default function PluginsPage() {
@@ -30,24 +31,22 @@ export default function PluginsPage() {
       contentContainerStyle={{
         paddingLeft: insets.left,
         paddingRight: insets.right,
+        paddingBottom: insets.bottom + 16,
       }}
     >
       <View
-        className='px-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+        }}
       >
         <PluginSettings />
 
         {/* Pulls the centralised Streamyfin plugin settings for every plugin,
             so it lives on the plugins index rather than inside Streamystats. */}
-        <TouchableOpacity
-          onPress={handleRefreshFromServer}
-          className='py-3 bg-neutral-800'
-        >
-          <Text className='text-center text-blue-500'>
-            {t("home.settings.plugins.streamystats.refresh_from_server")}
-          </Text>
-        </TouchableOpacity>
+        <Button variant='border' onPress={handleRefreshFromServer}>
+          {t("home.settings.plugins.streamystats.refresh_from_server")}
+        </Button>
       </View>
     </ScrollView>
   );

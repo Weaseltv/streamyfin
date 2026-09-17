@@ -1,25 +1,24 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Alert,
   Animated,
   Keyboard,
   Platform,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { verifyAccountPIN } from "@/utils/secureCredentials";
 import { Button } from "./Button";
+import { useConfirmDialog } from "./common/ConfirmDialog";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  neonSheetModalProps,
+} from "./common/NeonSheet";
 import { Text } from "./common/Text";
 import { PinInput } from "./inputs/PinInput";
 
@@ -43,7 +42,6 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
   username,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [pinCode, setPinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +49,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
   const shakeAnimation = useRef(new Animated.Value(0)).current;
   const errorHaptic = useHaptic("error");
   const successHaptic = useHaptic("success");
+  const { confirm, dialog } = useConfirmDialog();
 
   const isAndroid = Platform.OS === "android";
   const snapPoints = useMemo(
@@ -77,17 +76,6 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
       }
     },
     [onClose],
-  );
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
   );
 
   const shake = () => {
@@ -147,17 +135,16 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
   };
 
   const handleForgotPIN = () => {
-    Alert.alert(t("pin.forgot_pin"), t("pin.forgot_pin_desc"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("common.continue"),
-        style: "destructive",
-        onPress: () => {
-          onClose();
-          onForgotPIN?.();
-        },
+    confirm({
+      title: t("pin.forgot_pin"),
+      message: t("pin.forgot_pin_desc"),
+      confirmLabel: t("common.continue"),
+      destructive: true,
+      onConfirm: () => {
+        onClose();
+        onForgotPIN?.();
       },
-    ]);
+    });
   };
 
   return (
@@ -165,66 +152,80 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
       ref={bottomSheetModalRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      backdropComponent={renderBackdrop}
+      {...neonSheetModalProps}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
       android_keyboardInputMode='adjustResize'
       topInset={isAndroid ? 0 : undefined}
     >
-      <BottomSheetView
-        style={{
-          flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-          paddingBottom: Math.max(16, insets.bottom),
-        }}
-      >
-        <View className='flex-1'>
-          {/* Header */}
-          <View className='mb-6'>
-            <Text className='font-bold text-2xl text-neutral-100'>
-              {t("pin.enter_pin")}
-            </Text>
-            <Text className='text-neutral-400 mt-1'>
-              {t("pin.enter_pin_for", { username })}
-            </Text>
-          </View>
-
-          {/* PIN Input */}
-          <Animated.View
-            style={{ transform: [{ translateX: shakeAnimation }] }}
-            className='p-4 border border-neutral-800 bg-neutral-900 mb-4'
-          >
-            <PinInput
-              value={pinCode}
-              onChangeText={handlePinChange}
-              length={4}
-              style={{ paddingHorizontal: 16 }}
-              autoFocus
-            />
-            {error && (
-              <Text className='text-red-500 text-center mt-3'>{error}</Text>
-            )}
-            {isVerifying && (
-              <Text className='text-neutral-400 text-center mt-3'>
-                {t("common.verifying") || "Verifying..."}
-              </Text>
-            )}
-          </Animated.View>
-
-          {/* Forgot PIN */}
-          <TouchableOpacity onPress={handleForgotPIN} className='mb-4'>
-            <Text className='text-volt text-center'>{t("pin.forgot_pin")}</Text>
-          </TouchableOpacity>
-
-          {/* Cancel Button */}
-          <Button onPress={onClose} color='black'>
+      <NeonSheet
+        fill
+        eyebrow={username}
+        title={t("pin.enter_pin")}
+        onClose={onClose}
+        primary={
+          <Button onPress={onClose} variant='border' color='white'>
             {t("common.cancel")}
           </Button>
-        </View>
-      </BottomSheetView>
+        }
+      >
+        <NeonSheetNote center>
+          {t("pin.enter_pin_for", { username })}
+        </NeonSheetNote>
+
+        <Animated.View
+          style={{
+            transform: [{ translateX: shakeAnimation }],
+            paddingHorizontal: 16,
+            paddingTop: 12,
+          }}
+        >
+          <PinInput
+            value={pinCode}
+            onChangeText={handlePinChange}
+            length={4}
+            autoFocus
+          />
+          {error && (
+            <Text
+              variant='caption'
+              style={{
+                color: NeonBoard.red,
+                textAlign: "center",
+                marginTop: 12,
+              }}
+            >
+              {error}
+            </Text>
+          )}
+          {isVerifying && (
+            <Text
+              variant='caption'
+              muted
+              style={{ textAlign: "center", marginTop: 12 }}
+            >
+              {t("common.verifying") || "Verifying..."}
+            </Text>
+          )}
+        </Animated.View>
+
+        <TouchableOpacity
+          onPress={handleForgotPIN}
+          accessibilityRole='button'
+          style={{ paddingVertical: 16 }}
+        >
+          <View>
+            <Text
+              variant='button'
+              accent={NeonBoard.volt}
+              style={{ textAlign: "center" }}
+            >
+              {t("pin.forgot_pin")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        {dialog}
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

@@ -1,14 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, View, type ViewProps } from "react-native";
+import { Platform, type ViewProps } from "react-native";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
 import { PLAYBACK_SPEEDS } from "@/components/PlaybackSpeedSelector";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import { useSettings } from "@/utils/atoms/settings";
-import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -143,18 +144,13 @@ export const GestureControls: React.FC<Props> = ({ ...props }) => {
               <PlatformDropdown
                 groups={holdToSpeedRateOptions}
                 trigger={
-                  <View className='flex flex-row items-center justify-between pl-3 py-1.5'>
-                    <Text className='mr-1 text-[#8E8D91]'>
-                      {PLAYBACK_SPEEDS.find(
+                  <DropdownTrigger
+                    value={
+                      PLAYBACK_SPEEDS.find(
                         (s) => s.value === settings.holdToSpeedRate,
-                      )?.label ?? "2x"}
-                    </Text>
-                    <Ionicons
-                      name='chevron-expand-sharp'
-                      size={18}
-                      color='#5A5960'
-                    />
-                  </View>
+                      )?.label ?? "2x"
+                    }
+                  />
                 }
                 title={t("home.settings.gesture_controls.hold_to_speed_rate")}
               />

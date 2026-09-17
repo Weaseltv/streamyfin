@@ -3,6 +3,7 @@ import { Platform, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Favorites } from "@/components/home/Favorites";
 import { Favorites as TVFavorites } from "@/components/home/Favorites.tv";
+import { NeonBoard } from "@/constants/Colors";
 import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
 
 export default function FavoritesPage() {
@@ -24,8 +25,15 @@ export default function FavoritesPage() {
     <ScrollView
       nestedScrollEnabled
       contentInsetAdjustmentBehavior='automatic'
+      style={{ backgroundColor: NeonBoard.stage }}
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={refetch} />
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={refetch}
+          tintColor={NeonBoard.volt}
+          colors={[NeonBoard.volt]}
+          progressBackgroundColor={NeonBoard.card}
+        />
       }
       contentContainerStyle={{
         paddingLeft: insets.left,
@@ -33,7 +41,7 @@ export default function FavoritesPage() {
         paddingBottom: 16,
       }}
     >
-      <View style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}>
+      <View>
         <Favorites />
       </View>
     </ScrollView>

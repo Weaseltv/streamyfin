@@ -11,6 +11,7 @@ import * as Device from "expo-device";
 import { Image } from "expo-image";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { Platform } from "react-native";
+import { ConfirmDeleteHost } from "@/components/common/ConfirmDeleteHost";
 import { GlobalModal } from "@/components/GlobalModal";
 import { PendingAccountSaveModal } from "@/components/PendingAccountSaveModal";
 import { enableTVMenuKeyInterception } from "@/hooks/useTVBackHandler";
@@ -571,6 +572,7 @@ function Layout() {
                                       closeButton
                                     />
                                     {!Platform.isTV && <GlobalModal />}
+                                    {!Platform.isTV && <ConfirmDeleteHost />}
                                     {!Platform.isTV && (
                                       <PendingAccountSaveModal />
                                     )}

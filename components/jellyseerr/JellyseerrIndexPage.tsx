@@ -1,14 +1,14 @@
+import { useSegments } from "expo-router";
 import { orderBy, uniqBy } from "lodash";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
-import {
-  useAnimatedReaction,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { Image } from "@/components/common/ServerImage";
 import Discover from "@/components/jellyseerr/discover/Discover";
+import { NeonBoard } from "@/constants/Colors";
+import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 import type {
@@ -21,12 +21,13 @@ import { Text } from "../common/Text";
 import JellyseerrPoster from "../posters/JellyseerrPoster";
 import { LoadingSkeleton } from "../search/LoadingSkeleton";
 import { SearchItemWrapper } from "../search/SearchItemWrapper";
-import PersonPoster from "./PersonPoster";
 
 interface Props extends ViewProps {
   searchQuery: string;
   sortType?: JellyseerrSearchSort;
   order?: "asc" | "desc";
+  /** Only show one media type's results (the Movies · Series chips). */
+  mediaTypeFilter?: MediaType.MOVIE | MediaType.TV;
   /**
    * Render the Jellyseerr discover sliders (recent requests, trending, popular)
    * when nothing has been typed. WeaselPlex phone turns this off: the Requests
@@ -42,14 +43,81 @@ export enum JellyseerrSearchSort {
   POPULARITY = 2,
 }
 
+const AVATAR = 56;
+
+const initials = (name?: string | null) =>
+  (name ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+
+/** A Seerr person: the round 56 avatar, name underneath. */
+const JellyseerrPersonAvatar: React.FC<{ person: PersonResult }> = ({
+  person,
+}) => {
+  const { jellyseerrApi } = useJellyseerr();
+  const router = useRouter();
+  const segments = useSegments();
+  const from = (segments as string[])[2] || "(home)";
+  const url = jellyseerrApi?.imageProxy(
+    person.profilePath,
+    "w600_and_h900_bestv2",
+  );
+
+  return (
+    <TouchableOpacity
+      onPress={() =>
+        router.push(`/(auth)/(tabs)/${from}/jellyseerr/person/${person.id}`)
+      }
+      style={{ width: 84, alignItems: "center" }}
+    >
+      <View
+        style={{
+          width: AVATAR,
+          height: AVATAR,
+          borderRadius: AVATAR / 2,
+          overflow: "hidden",
+          backgroundColor: NeonBoard.card2,
+          borderWidth: 1,
+          borderColor: NeonBoard.line2,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {person.profilePath && url ? (
+          <Image
+            id={person.id.toString()}
+            source={{ uri: url }}
+            style={{ width: AVATAR, height: AVATAR }}
+            contentFit='cover'
+          />
+        ) : (
+          <Text variant='tally' muted>
+            {initials(person.name)}
+          </Text>
+        )}
+      </View>
+      <Text
+        variant='cardTitle'
+        numberOfLines={1}
+        style={{ marginTop: 6, fontSize: 12, textAlign: "center" }}
+      >
+        {person.name}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
 export const JellyserrIndexPage: React.FC<Props> = ({
   searchQuery,
   sortType,
   order,
+  mediaTypeFilter,
   showDiscover = true,
 }) => {
   const { jellyseerrApi } = useJellyseerr();
-  const opacity = useSharedValue(1);
   const { t } = useTranslation();
 
   const {
@@ -87,16 +155,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
     enabled: !!jellyseerrApi && searchQuery.length > 0,
   });
 
-  useAnimatedReaction(
-    () => f1 || f2 || l1 || l2,
-    (isLoading) => {
-      if (isLoading) {
-        opacity.value = withTiming(1, { duration: 200 });
-      } else {
-        opacity.value = withTiming(0, { duration: 200 });
-      }
-    },
-  );
+  const loading = f1 || f2 || l1 || l2;
 
   const sortingType = useMemo(() => {
     if (!sortType) return;
@@ -152,14 +211,24 @@ export const JellyserrIndexPage: React.FC<Props> = ({
     [jellyseerrResults, sortingType, order],
   );
 
+  const showMovies = mediaTypeFilter !== MediaType.TV;
+  const showTv = mediaTypeFilter !== MediaType.MOVIE;
+  const showPeople = mediaTypeFilter === undefined;
+
+  const noResults =
+    !(showMovies && jellyseerrMovieResults?.length) &&
+    !(showTv && jellyseerrTvResults?.length) &&
+    !(showPeople && jellyseerrPersonResults?.length);
+
   if (!searchQuery.length)
     return showDiscover ? (
-      <View className='flex flex-col'>
+      <View style={{ paddingTop: 4 }}>
+        <LoadingLine active={loading} />
         <Discover sliders={jellyseerrDiscoverSettings} />
       </View>
     ) : (
-      <View className='mt-6 px-8'>
-        <Text className='text-center text-neutral-400'>
+      <View style={{ paddingHorizontal: 32, paddingTop: 24 }}>
+        <Text variant='body' muted style={{ textAlign: "center" }}>
           {t("search.requests_hint")}
         </Text>
       </View>
@@ -167,53 +236,51 @@ export const JellyserrIndexPage: React.FC<Props> = ({
 
   return (
     <View>
-      <LoadingSkeleton isLoading={f1 || f2 || l1 || l2} />
+      <LoadingLine active={loading} />
+      <View style={{ marginTop: 4 }}>
+        <LoadingSkeleton isLoading={loading} />
+      </View>
 
-      {!jellyseerrMovieResults?.length &&
-        !jellyseerrTvResults?.length &&
-        !jellyseerrPersonResults?.length &&
-        !f1 &&
-        !f2 &&
-        !l1 &&
-        !l2 && (
-          <View>
-            <Text className='text-center text-lg font-bold mt-4'>
-              {t("search.no_results_found_for")}
-            </Text>
-            <Text className='text-xs text-volt text-center'>
-              "{searchQuery}"
-            </Text>
-          </View>
+      {noResults && !loading && (
+        <View style={{ alignItems: "center", paddingTop: 24 }}>
+          <Text variant='section'>{t("search.no_results_found_for")}</Text>
+          <Text variant='meta' accent={NeonBoard.volt} style={{ marginTop: 4 }}>
+            "{searchQuery}"
+          </Text>
+        </View>
+      )}
+
+      <View style={{ opacity: loading ? 0 : 1 }}>
+        {showMovies && (
+          <SearchItemWrapper
+            header={t("search.request_movies")}
+            accent={NeonBoard.volt}
+            items={jellyseerrMovieResults}
+            renderItem={(item: MovieResult) => (
+              <JellyseerrPoster item={item} key={item.id} />
+            )}
+          />
         )}
-
-      <View className={f1 || f2 || l1 || l2 ? "opacity-0" : "opacity-100"}>
-        <SearchItemWrapper
-          header={t("search.request_movies")}
-          items={jellyseerrMovieResults}
-          renderItem={(item: MovieResult) => (
-            <JellyseerrPoster item={item} key={item.id} />
-          )}
-        />
-        <SearchItemWrapper
-          header={t("search.request_series")}
-          items={jellyseerrTvResults}
-          renderItem={(item: TvResult) => (
-            <JellyseerrPoster item={item} key={item.id} />
-          )}
-        />
-        <SearchItemWrapper
-          header={t("search.actors")}
-          items={jellyseerrPersonResults}
-          renderItem={(item: PersonResult) => (
-            <PersonPoster
-              className='mr-2'
-              key={item.id}
-              id={item.id.toString()}
-              name={item.name}
-              posterPath={item.profilePath}
-            />
-          )}
-        />
+        {showTv && (
+          <SearchItemWrapper
+            header={t("search.request_series")}
+            accent={NeonBoard.volt}
+            items={jellyseerrTvResults}
+            renderItem={(item: TvResult) => (
+              <JellyseerrPoster item={item} key={item.id} />
+            )}
+          />
+        )}
+        {showPeople && (
+          <SearchItemWrapper
+            header={t("search.actors")}
+            accent={NeonBoard.volt}
+            items={jellyseerrPersonResults}
+            renderItem={(item: PersonResult) => (
+              <JellyseerrPersonAvatar key={item.id} person={item} />
+            )}
+          />
+        )}
       </View>
     </View>
   );

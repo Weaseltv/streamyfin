@@ -1,18 +1,17 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet";
-import { Image } from "expo-image";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Platform, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  NeonSheetRow,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { storage } from "@/utils/mmkv";
 
@@ -24,7 +23,6 @@ export interface IntroSheetRef {
 export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   useImperativeHandle(ref, () => ({
@@ -36,17 +34,6 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
       bottomSheetRef.current?.dismiss();
     },
   }));
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
 
   const handleDismiss = useCallback(() => {
     bottomSheetRef.current?.dismiss();
@@ -61,142 +48,82 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
     <BottomSheetModal
       ref={bottomSheetRef}
       enableDynamicSizing
-      backdropComponent={renderBackdrop}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      handleIndicatorStyle={{ backgroundColor: "#737373" }}
+      {...neonSheetModalProps}
     >
-      <BottomSheetScrollView
-        style={{
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-        }}
-      >
-        <View className={Platform.isTV ? "py-5 space-y-4" : "py-4 space-y-6"}>
+      <NeonSheet
+        scroll
+        eyebrow={t("home.intro.features_title")}
+        title={t("home.intro.welcome_to_streamyfin")}
+        onClose={handleDismiss}
+        primary={
           <View>
-            <Text className='text-3xl font-bold text-center mb-2'>
-              {t("home.intro.welcome_to_streamyfin")}
-            </Text>
-            <Text className='text-center'>
-              {t("home.intro.a_free_and_open_source_client_for_jellyfin")}
-            </Text>
-          </View>
-
-          <View>
-            <Text className='text-lg font-bold'>
-              {t("home.intro.features_title")}
-            </Text>
-            <Text className='text-xs'>
-              {t("home.intro.features_description")}
-            </Text>
-            <View className='flex flex-row items-center mt-4'>
-              <Image
-                source={require("@/assets/icons/seerr-logo.svg")}
-                style={{
-                  width: 50,
-                  height: 50,
-                }}
-              />
-              <View className='shrink ml-2'>
-                <Text className='font-bold mb-1'>Seerr</Text>
-                <Text className='shrink text-xs'>
-                  {t("home.intro.jellyseerr_feature_description")}
-                </Text>
-              </View>
-            </View>
-            {!Platform.isTV && (
-              <>
-                <View className='flex flex-row items-center mt-4'>
-                  <View
-                    style={{
-                      width: 50,
-                      height: 50,
-                    }}
-                    className='flex items-center justify-center'
-                  >
-                    <Ionicons
-                      name='cloud-download-outline'
-                      size={32}
-                      color='white'
-                    />
-                  </View>
-                  <View className='shrink ml-2'>
-                    <Text className='font-bold mb-1'>
-                      {t("home.intro.downloads_feature_title")}
-                    </Text>
-                    <Text className='shrink text-xs'>
-                      {t("home.intro.downloads_feature_description")}
-                    </Text>
-                  </View>
-                </View>
-                <View className='flex flex-row items-center mt-4'>
-                  <View
-                    style={{
-                      width: 50,
-                      height: 50,
-                    }}
-                    className='flex items-center justify-center'
-                  >
-                    <Feather name='cast' size={28} color={"white"} />
-                  </View>
-                  <View className='shrink ml-2'>
-                    <Text className='font-bold mb-1'>Chromecast</Text>
-                    <Text className='shrink text-xs'>
-                      {t("home.intro.chromecast_feature_description")}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-            <View className='flex flex-row items-center mt-4'>
-              <View
-                style={{
-                  width: 50,
-                  height: 50,
-                }}
-                className='flex items-center justify-center'
-              >
-                <Feather name='settings' size={28} color={"white"} />
-              </View>
-              <View className='shrink ml-2'>
-                <Text className='font-bold mb-1'>
-                  {t("home.intro.centralised_settings_plugin_title")}
-                </Text>
-                <View className='flex-row flex-wrap items-baseline'>
-                  <Text className='shrink text-xs'>
-                    {t(
-                      "home.intro.centralised_settings_plugin_description",
-                    )}{" "}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      Linking.openURL(
-                        "https://github.com/streamyfin/jellyfin-plugin-streamyfin",
-                      );
-                    }}
-                  >
-                    <Text className='text-xs text-volt underline'>
-                      {t("home.intro.read_more")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <View>
-            <Button onPress={handleDismiss} className='mt-4'>
+            <Button onPress={handleDismiss}>
               {t("home.intro.done_button")}
             </Button>
-            <TouchableOpacity onPress={handleGoToSettings} className='mt-4'>
-              <Text className='text-volt text-center'>
+            <TouchableOpacity
+              onPress={handleGoToSettings}
+              accessibilityRole='button'
+              style={{ paddingVertical: 16 }}
+            >
+              <Text
+                variant='button'
+                accent={NeonBoard.volt}
+                style={{ textAlign: "center" }}
+              >
                 {t("home.intro.go_to_settings_button")}
               </Text>
             </TouchableOpacity>
           </View>
+        }
+      >
+        <NeonSheetNote>
+          {t("home.intro.a_free_and_open_source_client_for_jellyfin")}{" "}
+          {t("home.intro.features_description")}
+        </NeonSheetNote>
 
-          <View style={{ height: insets.bottom }} />
+        <View style={{ marginTop: 8 }}>
+          <NeonSheetRow
+            label='Seerr'
+            subtitle={t("home.intro.jellyseerr_feature_description")}
+            icon='inbox'
+          />
+          {!Platform.isTV && (
+            <>
+              <NeonSheetRow
+                label={t("home.intro.downloads_feature_title")}
+                subtitle={t("home.intro.downloads_feature_description")}
+                icon='download'
+              />
+              <NeonSheetRow
+                label='Chromecast'
+                subtitle={t("home.intro.chromecast_feature_description")}
+                icon='cast'
+              />
+            </>
+          )}
+          <NeonSheetRow
+            label={t("home.intro.centralised_settings_plugin_title")}
+            subtitle={t("home.intro.centralised_settings_plugin_description")}
+            icon='settings'
+            right={
+              <TouchableOpacity
+                onPress={() => {
+                  Linking.openURL(
+                    "https://github.com/streamyfin/jellyfin-plugin-streamyfin",
+                  );
+                }}
+                accessibilityRole='link'
+                hitSlop={8}
+                style={{ paddingLeft: Sizes.gutter }}
+              >
+                <Text variant='chip' accent={NeonBoard.volt}>
+                  {t("home.intro.read_more")}
+                </Text>
+              </TouchableOpacity>
+            }
+          />
         </View>
-      </BottomSheetScrollView>
+      </NeonSheet>
     </BottomSheetModal>
   );
 });

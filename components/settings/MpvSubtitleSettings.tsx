@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View, type ViewProps } from "react-native";
@@ -7,7 +6,7 @@ import { Stepper } from "@/components/inputs/Stepper";
 import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
-import { PlatformDropdown } from "../PlatformDropdown";
+import { DropdownTrigger, PlatformDropdown } from "../PlatformDropdown";
 import { useMedia } from "./MediaContext";
 
 interface Props extends ViewProps {}
@@ -65,7 +64,7 @@ export const MpvSubtitleSettings: React.FC<Props> = ({ ...props }) => {
       <ListGroup
         title={t("home.settings.subtitles.mpv_settings_title")}
         description={
-          <Text className='text-[#8E8D91] text-xs'>
+          <Text variant='meta' muted>
             {t("home.settings.subtitles.mpv_settings_description")}
           </Text>
         }
@@ -90,16 +89,11 @@ export const MpvSubtitleSettings: React.FC<Props> = ({ ...props }) => {
               <PlatformDropdown
                 groups={alignXOptionGroups}
                 trigger={
-                  <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                    <Text className='mr-1 text-[#8E8D91]'>
-                      {alignXLabels[settings?.mpvSubtitleAlignX ?? "center"]}
-                    </Text>
-                    <Ionicons
-                      name='chevron-expand-sharp'
-                      size={18}
-                      color='#5A5960'
-                    />
-                  </View>
+                  <DropdownTrigger
+                    value={
+                      alignXLabels[settings?.mpvSubtitleAlignX ?? "center"]
+                    }
+                  />
                 }
                 title={t("home.settings.subtitles.mpv_subtitle_align_x")}
               />
@@ -109,16 +103,11 @@ export const MpvSubtitleSettings: React.FC<Props> = ({ ...props }) => {
               <PlatformDropdown
                 groups={alignYOptionGroups}
                 trigger={
-                  <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                    <Text className='mr-1 text-[#8E8D91]'>
-                      {alignYLabels[settings?.mpvSubtitleAlignY ?? "bottom"]}
-                    </Text>
-                    <Ionicons
-                      name='chevron-expand-sharp'
-                      size={18}
-                      color='#5A5960'
-                    />
-                  </View>
+                  <DropdownTrigger
+                    value={
+                      alignYLabels[settings?.mpvSubtitleAlignY ?? "bottom"]
+                    }
+                  />
                 }
                 title={t("home.settings.subtitles.mpv_subtitle_align_y")}
               />

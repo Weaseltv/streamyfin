@@ -1,25 +1,18 @@
-import { Platform, View } from "react-native";
-import { FilterButton } from "@/components/filters/FilterButton";
+import { useMemo, useState } from "react";
+import { View } from "react-native";
+import { Chip } from "@/components/common/Chip";
 import { JellyseerrSearchSort } from "@/components/jellyseerr/JellyseerrIndexPage";
+import { PlatformDropdown } from "@/components/PlatformDropdown";
+import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 
-// @expo/ui's SwiftUI native module (ExpoUI) does not exist in tvOS builds.
-// A static top-level import crashes the route tree on tvOS at module load.
-// Load it lazily and only off-TV; TV never renders this component.
-const { Button, Host, Menu } = Platform.isTV
-  ? ({} as typeof import("@expo/ui/swift-ui"))
-  : require("@expo/ui/swift-ui");
-const { buttonStyle, menuOrder } = Platform.isTV
-  ? ({} as typeof import("@expo/ui/swift-ui/modifiers"))
-  : require("@expo/ui/swift-ui/modifiers");
-
-// UIMenu reorders items by proximity to the anchor, so a menu that opens
-// upward shows them reversed. Keep the order they were provided in.
-// Built once, and never on TV where the modifiers module is not loaded.
-const fixedOrder = Platform.isTV ? [] : [menuOrder("fixed")];
+export type DiscoverMediaFilter = MediaType.MOVIE | MediaType.TV | undefined;
 
 interface DiscoverFiltersProps {
-  searchFilterId: string;
-  orderFilterId: string;
+  /** Movies · Series chips; `undefined` shows both sections. */
+  mediaFilter: DiscoverMediaFilter;
+  setMediaFilter: (value: DiscoverMediaFilter) => void;
+  /** Sort chip (a caret picker over the native menu). Hidden when false. */
+  showSort?: boolean;
   jellyseerrOrderBy: JellyseerrSearchSort;
   setJellyseerrOrderBy: (value: JellyseerrSearchSort) => void;
   jellyseerrSortOrder: "asc" | "desc";
@@ -33,109 +26,87 @@ const sortOptions = Object.keys(JellyseerrSearchSort).filter((v) =>
 
 const orderOptions = ["asc", "desc"] as const;
 
+/**
+ * Requests filters as chips: Movies · Series toggle the section shown, and a
+ * caret chip opens the sort menu (`PlatformDropdown` keeps its native menu).
+ */
 export const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
-  searchFilterId,
-  orderFilterId,
+  mediaFilter,
+  setMediaFilter,
+  showSort = false,
   jellyseerrOrderBy,
   setJellyseerrOrderBy,
   jellyseerrSortOrder,
   setJellyseerrSortOrder,
   t,
 }) => {
-  if (Platform.OS === "ios" && !Platform.isTV) {
-    return (
-      <Host
-        style={{
-          justifyContent: "center",
-          alignItems: "center",
-          overflow: "visible",
-          height: 40,
-          width: 50,
-          marginLeft: "auto",
-        }}
-      >
-        <Menu
-          modifiers={fixedOrder}
-          label={
-            <Button
-              modifiers={[buttonStyle("glass")]}
-              systemImage='line.3.horizontal.decrease.circle'
+  const [sortOpen, setSortOpen] = useState(false);
+
+  const sortGroups = useMemo(
+    () => [
+      {
+        title: t("library.filters.sort_by"),
+        options: sortOptions.map((item) => ({
+          type: "radio" as const,
+          label: t(`home.settings.plugins.jellyseerr.order_by.${item}`),
+          value: item,
+          selected:
+            jellyseerrOrderBy === (item as unknown as JellyseerrSearchSort),
+          onPress: () =>
+            setJellyseerrOrderBy(item as unknown as JellyseerrSearchSort),
+        })),
+      },
+      {
+        title: t("library.filters.sort_order"),
+        options: orderOptions.map((item) => ({
+          type: "radio" as const,
+          label: t(`library.filters.${item}`),
+          value: item,
+          selected: jellyseerrSortOrder === item,
+          onPress: () => setJellyseerrSortOrder(item),
+        })),
+      },
+    ],
+    [
+      jellyseerrOrderBy,
+      jellyseerrSortOrder,
+      setJellyseerrOrderBy,
+      setJellyseerrSortOrder,
+      t,
+    ],
+  );
+
+  const toggle = (value: MediaType.MOVIE | MediaType.TV) =>
+    setMediaFilter(mediaFilter === value ? undefined : value);
+
+  return (
+    <View style={{ flexDirection: "row", gap: 8 }}>
+      <Chip
+        label={t("search.movies")}
+        selected={mediaFilter === MediaType.MOVIE}
+        onPress={() => toggle(MediaType.MOVIE)}
+      />
+      <Chip
+        label={t("search.series")}
+        selected={mediaFilter === MediaType.TV}
+        onPress={() => toggle(MediaType.TV)}
+      />
+      {showSort ? (
+        <PlatformDropdown
+          groups={sortGroups}
+          title={t("library.filters.sort_by")}
+          open={sortOpen}
+          onOpenChange={setSortOpen}
+          trigger={
+            <Chip
+              label={t(
+                `home.settings.plugins.jellyseerr.order_by.${jellyseerrOrderBy}`,
+              )}
+              caret
             />
           }
-        >
-          <Menu
-            modifiers={fixedOrder}
-            label={`${t("library.filters.sort_by")}: ${t(
-              `home.settings.plugins.jellyseerr.order_by.${jellyseerrOrderBy}`,
-            )}`}
-          >
-            {sortOptions.map((item) => {
-              const isSelected =
-                jellyseerrOrderBy === (item as unknown as JellyseerrSearchSort);
-              return (
-                <Button
-                  key={item}
-                  label={t(`home.settings.plugins.jellyseerr.order_by.${item}`)}
-                  systemImage={isSelected ? "checkmark.circle.fill" : "circle"}
-                  onPress={() =>
-                    setJellyseerrOrderBy(
-                      item as unknown as JellyseerrSearchSort,
-                    )
-                  }
-                />
-              );
-            })}
-          </Menu>
-          <Menu
-            modifiers={fixedOrder}
-            label={`${t("library.filters.sort_order")}: ${t(
-              `library.filters.${jellyseerrSortOrder}`,
-            )}`}
-          >
-            {orderOptions.map((item) => {
-              const isSelected = jellyseerrSortOrder === item;
-              return (
-                <Button
-                  key={item}
-                  label={t(`library.filters.${item}`)}
-                  systemImage={isSelected ? "checkmark.circle.fill" : "circle"}
-                  onPress={() => setJellyseerrSortOrder(item)}
-                />
-              );
-            })}
-          </Menu>
-        </Menu>
-      </Host>
-    );
-  }
-
-  // Android UI
-  return (
-    <View className='flex flex-row justify-end items-center space-x-1'>
-      <FilterButton
-        id={searchFilterId}
-        queryKey='jellyseerr_search'
-        queryFn={async () =>
-          Object.keys(JellyseerrSearchSort).filter((v) =>
-            Number.isNaN(Number(v)),
-          )
-        }
-        set={(value) => setJellyseerrOrderBy(value[0])}
-        values={[jellyseerrOrderBy]}
-        title={t("library.filters.sort_by")}
-        renderItemLabel={(item) =>
-          t(`home.settings.plugins.jellyseerr.order_by.${item}`)
-        }
-      />
-      <FilterButton
-        id={orderFilterId}
-        queryKey='jellysearr_search'
-        queryFn={async () => ["asc", "desc"]}
-        set={(value) => setJellyseerrSortOrder(value[0])}
-        values={[jellyseerrSortOrder]}
-        title={t("library.filters.sort_order")}
-        renderItemLabel={(item) => t(`library.filters.${item}`)}
-      />
+        />
+      ) : null}
     </View>
   );
 };

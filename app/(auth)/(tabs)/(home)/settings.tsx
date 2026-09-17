@@ -1,47 +1,34 @@
-import { useNavigation } from "expo-router";
 import { t } from "i18next";
-import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { useAtomValue } from "jotai";
 import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HeaderButton } from "@/components/common/HeaderButton";
-import { Text } from "@/components/common/Text";
+import { PageHead } from "@/components/common/PageHead";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { QuickConnect } from "@/components/settings/QuickConnect";
 import { StorageSettings } from "@/components/settings/StorageSettings";
 import { UserInfo } from "@/components/settings/UserInfo";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
-import { useJellyfin, userAtom } from "@/providers/JellyfinProvider";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { serverHost } from "@/utils/serverHost";
 
 // TV-specific settings component
 const SettingsTV = Platform.isTV ? require("./settings.tv").default : null;
+
+const ACCENT = NeonBoard.volt;
 
 // Mobile settings component
 function SettingsMobile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [_user] = useAtom(userAtom);
-  const { logout } = useJellyfin();
+  const user = useAtomValue(userAtom);
+  const api = useAtomValue(apiAtom);
 
-  const navigation = useNavigation();
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <HeaderButton
-          variant='text'
-          onPress={() => {
-            logout();
-          }}
-        >
-          <Text className='text-red-600'>
-            {t("home.settings.log_out_button")}
-          </Text>
-        </HeaderButton>
-      ),
-    });
-  }, []);
+  const host = serverHost(api?.basePath);
+  const eyebrow = [user?.Name, host].filter(Boolean).join(" · ");
 
   return (
     <ScrollView
@@ -49,82 +36,87 @@ function SettingsMobile() {
       contentContainerStyle={{
         paddingLeft: insets.left,
         paddingRight: insets.right,
+        paddingBottom: Math.max(24, insets.bottom),
       }}
     >
-      <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
-      >
-        <View className='mb-4'>
-          <UserInfo />
-        </View>
+      <PageHead
+        eyebrow={eyebrow}
+        title={t("home.settings.settings_title")}
+        accent={ACCENT}
+      />
 
-        <QuickConnect className='mb-4' />
+      <View style={{ paddingHorizontal: Sizes.gutter }}>
+        <UserInfo accent={ACCENT} />
+
+        <QuickConnect accent={ACCENT} />
 
         {Platform.OS !== "ios" && (
-          <View className='mb-4'>
-            <ListGroup title={t("pairing.pair_with_phone_title")}>
-              <ListItem
-                onPress={() =>
-                  router.push("/(auth)/(tabs)/(home)/companion-login")
-                }
-                title={t("pairing.pair_with_phone")}
-                textColor='blue'
-              />
-            </ListGroup>
-          </View>
-        )}
-
-        <View className='mb-4'>
-          <AppLanguageSelector />
-        </View>
-
-        <View className='mb-4'>
-          <ListGroup title={t("home.settings.categories.title")}>
+          <ListGroup title={t("pairing.pair_with_phone_title")} accent={ACCENT}>
             <ListItem
-              onPress={() => router.push("/settings/playback-controls/page")}
+              onPress={() =>
+                router.push("/(auth)/(tabs)/(home)/companion-login")
+              }
+              icon='phone-portrait-outline'
               showArrow
-              title={t("home.settings.playback_controls.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/audio-subtitles/page")}
-              showArrow
-              title={t("home.settings.audio_subtitles.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/music/page")}
-              showArrow
-              title={t("home.settings.music.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/appearance/page")}
-              showArrow
-              title={t("home.settings.appearance.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/plugins/page")}
-              showArrow
-              title={t("home.settings.plugins.plugins_title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/intro/page")}
-              showArrow
-              title={t("home.settings.intro.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/network/page")}
-              showArrow
-              title={t("home.settings.network.title")}
-            />
-            <ListItem
-              onPress={() => router.push("/settings/logs/page")}
-              showArrow
-              title={t("home.settings.logs.logs_title")}
+              title={t("pairing.pair_with_phone")}
             />
           </ListGroup>
-        </View>
+        )}
 
-        <StorageSettings />
+        <AppLanguageSelector />
+
+        <ListGroup title={t("home.settings.categories.title")} accent={ACCENT}>
+          <ListItem
+            onPress={() => router.push("/settings/playback-controls/page")}
+            icon='play-outline'
+            showArrow
+            title={t("home.settings.playback_controls.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/audio-subtitles/page")}
+            icon='chatbox-ellipses-outline'
+            showArrow
+            title={t("home.settings.audio_subtitles.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/music/page")}
+            icon='musical-notes-outline'
+            showArrow
+            title={t("home.settings.music.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/appearance/page")}
+            icon='text-outline'
+            showArrow
+            title={t("home.settings.appearance.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/plugins/page")}
+            icon='options-outline'
+            showArrow
+            title={t("home.settings.plugins.plugins_title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/intro/page")}
+            icon='play-skip-forward-outline'
+            showArrow
+            title={t("home.settings.intro.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/network/page")}
+            icon='wifi-outline'
+            showArrow
+            title={t("home.settings.network.title")}
+          />
+          <ListItem
+            onPress={() => router.push("/settings/logs/page")}
+            icon='document-text-outline'
+            showArrow
+            title={t("home.settings.logs.logs_title")}
+          />
+        </ListGroup>
+
+        <StorageSettings accent={ACCENT} />
       </View>
     </ScrollView>
   );

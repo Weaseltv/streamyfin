@@ -6,7 +6,11 @@ import { SUBTITLES_OFF } from "@/utils/subtitles/subtitleIndex";
 import { buildSubtitleMenu } from "@/utils/subtitles/trackMenu";
 import { tc } from "@/utils/textTools";
 import { Text } from "./common/Text";
-import { type OptionGroup, PlatformDropdown } from "./PlatformDropdown";
+import {
+  DropdownTrigger,
+  type OptionGroup,
+  PlatformDropdown,
+} from "./PlatformDropdown";
 
 interface Props extends React.ComponentProps<typeof View> {
   source?: MediaSourceInfo;
@@ -64,16 +68,13 @@ export const SubtitleTrackSelector: React.FC<Props> = ({
 
   const trigger = (
     <View className='flex flex-col' {...props}>
-      <Text numberOfLines={1} className='opacity-50 mb-1 text-xs'>
+      <Text variant='meta' muted numberOfLines={1} style={{ marginBottom: 4 }}>
         {t("item_card.subtitles.label")}
       </Text>
-      <TouchableOpacity
-        className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'
-        onPress={() => setOpen(true)}
-      >
-        <Text>
-          {selectedRow ? tc(selectedRow.label, 7) : t("item_card.none")}
-        </Text>
+      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.7}>
+        <DropdownTrigger
+          value={selectedRow ? tc(selectedRow.label, 7) : t("item_card.none")}
+        />
       </TouchableOpacity>
     </View>
   );

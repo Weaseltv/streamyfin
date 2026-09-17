@@ -1,16 +1,18 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import type { TextProps } from "react-native";
-import { Text } from "@/components/common/Text";
+import { Text, type TextProps } from "@/components/common/Text";
 import { useDownload } from "@/providers/DownloadProvider";
 
 interface DownloadSizeProps extends TextProps {
   items: BaseItemDto[];
 }
 
+/** The on-disk size of a set of downloads; 12 `mid` meta unless a variant is passed. */
 export const DownloadSize: React.FC<DownloadSizeProps> = ({
   items,
+  variant = "meta",
+  muted = true,
   ...props
 }) => {
   const { getDownloadedItemSize, downloadedItems } = useDownload();
@@ -39,7 +41,7 @@ export const DownloadSize: React.FC<DownloadSizeProps> = ({
   }, [size]);
 
   return (
-    <Text className='text-xs text-neutral-500' {...props}>
+    <Text variant={variant} muted={muted} {...props}>
       {sizeText}
     </Text>
   );

@@ -1,6 +1,9 @@
-import { TouchableOpacity } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { TouchableOpacity, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import DisabledSetting from "@/components/settings/DisabledSetting";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 
 interface StepperProps {
   value: number;
@@ -10,8 +13,16 @@ interface StepperProps {
   max: number;
   onUpdate: (value: number) => void;
   appendValue?: string;
+  /** Accent for the value. Defaults to volt. */
+  accent?: string;
 }
 
+const BOX = Sizes.buttonCompact;
+
+/**
+ * Square `card2` boxes with a 1pt `line2` border: minus, the value in the
+ * accent (Condensed 700), plus. Radius 0.
+ */
 export const Stepper: React.FC<StepperProps> = ({
   value,
   disabled,
@@ -20,7 +31,16 @@ export const Stepper: React.FC<StepperProps> = ({
   max,
   onUpdate,
   appendValue,
+  accent = NeonBoard.volt,
 }) => {
+  const box = {
+    height: BOX,
+    backgroundColor: NeonBoard.card2,
+    borderWidth: 1,
+    borderColor: NeonBoard.line2,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  };
   return (
     <DisabledSetting
       disabled={disabled === true}
@@ -29,21 +49,30 @@ export const Stepper: React.FC<StepperProps> = ({
     >
       <TouchableOpacity
         onPress={() => onUpdate(Math.max(min, value - step))}
-        className='w-8 h-8 bg-neutral-800 rounded-l-lg flex items-center justify-center'
+        accessibilityRole='button'
+        hitSlop={4}
+        style={[box, { width: BOX }]}
       >
-        <Text>-</Text>
+        <Feather name='minus' size={16} color={NeonBoard.text} />
       </TouchableOpacity>
-      <Text
-        className={`w-auto h-8 bg-neutral-800 py-2 px-1 flex items-center justify-center${appendValue ? "first-letter:px-2" : ""}`}
+      <View
+        style={[
+          box,
+          { minWidth: 48, paddingHorizontal: 8, marginHorizontal: -1 },
+        ]}
       >
-        {value}
-        {appendValue}
-      </Text>
+        <Text variant='tally' accent={accent} allowFontScaling={false}>
+          {value}
+          {appendValue}
+        </Text>
+      </View>
       <TouchableOpacity
-        className='w-8 h-8 bg-neutral-800 rounded-r-lg flex items-center justify-center'
         onPress={() => onUpdate(Math.min(max, value + step))}
+        accessibilityRole='button'
+        hitSlop={4}
+        style={[box, { width: BOX }]}
       >
-        <Text>+</Text>
+        <Feather name='plus' size={16} color={NeonBoard.text} />
       </TouchableOpacity>
     </DisabledSetting>
   );

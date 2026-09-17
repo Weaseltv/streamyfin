@@ -4,23 +4,23 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { getItemsApi, getSystemApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View, type ViewProps } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
-import { Text } from "@/components/common/Text";
-import MoviePoster from "@/components/posters/MoviePoster";
+import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
+import { RailSkeleton } from "@/components/home/RailSkeleton";
+import { Sizes } from "@/constants/neon";
+import useRouter from "@/hooks/useAppRouter";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { createStreamystatsApi } from "@/utils/streamystats/api";
 import type { StreamystatsWatchlist } from "@/utils/streamystats/types";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
-import SeriesPoster from "../posters/SeriesPoster";
 
-const ITEM_WIDTH = 120; // w-28 (112px) + mr-2 (8px)
+const ITEM_WIDTH = railCardWidth("vertical") + RAIL_GAP;
 
 interface WatchlistSectionProps extends ViewProps {
   watchlist: StreamystatsWatchlist;
@@ -105,21 +105,7 @@ const WatchlistSection: React.FC<WatchlistSectionProps> = ({
         onPressAction={handleSeeAll}
       />
       {isLoading ? (
-        <View className='flex flex-row gap-2 px-4'>
-          {[1, 2, 3].map((i) => (
-            <View className='w-28' key={i}>
-              <View className='bg-neutral-900 aspect-[2/3] w-full mb-1' />
-              <View className='overflow-hidden mb-1 self-start'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900'
-                  numberOfLines={1}
-                >
-                  Loading...
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        <RailSkeleton orientation='vertical' />
       ) : (
         <ScrollView
           horizontal
@@ -127,15 +113,20 @@ const WatchlistSection: React.FC<WatchlistSectionProps> = ({
           snapToOffsets={snapOffsets}
           decelerationRate='fast'
         >
-          <View className='px-4 flex flex-row'>
+          <View
+            style={{
+              paddingHorizontal: Sizes.gutter,
+              flexDirection: "row",
+              gap: RAIL_GAP,
+            }}
+          >
             {items?.map((item) => (
               <TouchableItemRouter
                 item={item}
                 key={item.Id}
-                className='mr-2 w-28'
+                style={{ width: railCardWidth("vertical") }}
               >
-                {item.Type === "Movie" && <MoviePoster item={item} />}
-                {item.Type === "Series" && <SeriesPoster item={item} />}
+                <ItemCard item={item} orientation='vertical' />
                 <ItemCardText item={item} />
               </TouchableItemRouter>
             ))}
@@ -156,6 +147,7 @@ export const StreamystatsPromotedWatchlists: React.FC<
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
   const { settings } = useSettings();
+  const { t } = useTranslation();
 
   const streamyStatsEnabled = useMemo(() => {
     return Boolean(settings?.streamyStatsServerUrl);
@@ -224,22 +216,8 @@ export const StreamystatsPromotedWatchlists: React.FC<
   if (isLoading) {
     return (
       <View {...props}>
-        <View className='h-4 w-32 bg-neutral-900 ml-4 mb-2' />
-        <View className='flex flex-row gap-2 px-4'>
-          {[1, 2, 3].map((i) => (
-            <View className='w-28' key={i}>
-              <View className='bg-neutral-900 aspect-[2/3] w-full mb-1' />
-              <View className='overflow-hidden mb-1 self-start'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900'
-                  numberOfLines={1}
-                >
-                  Loading...
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        <SectionHeader title={t("watchlists.title")} />
+        <RailSkeleton orientation='vertical' />
       </View>
     );
   }

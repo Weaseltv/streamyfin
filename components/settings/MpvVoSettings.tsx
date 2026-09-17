@@ -1,11 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, View } from "react-native";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import { Platform } from "react-native";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
 import { type MpvVoDriver, useSettings } from "@/utils/atoms/settings";
-import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -50,14 +51,7 @@ export const MpvVoSettings: React.FC = () => {
       <ListItem title={t("home.settings.vo_driver.vo_mode")}>
         <PlatformDropdown
           groups={voDriverOptions}
-          trigger={
-            <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-              <Text className='mr-1 text-[#8E8D91]'>
-                {currentVoDriverLabel}
-              </Text>
-              <Ionicons name='chevron-expand-sharp' size={18} color='#5A5960' />
-            </View>
-          }
+          trigger={<DropdownTrigger value={currentVoDriverLabel} />}
           title={t("home.settings.vo_driver.vo_mode")}
         />
       </ListItem>

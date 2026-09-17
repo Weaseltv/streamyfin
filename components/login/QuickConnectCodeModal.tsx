@@ -1,19 +1,19 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { requireOptionalNativeModule } from "expo-modules-core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip } from "@/constants/neon";
 import { Button } from "../Button";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  neonSheetModalProps,
+} from "../common/NeonSheet";
 import { Text } from "../common/Text";
 
 interface Props {
@@ -30,7 +30,6 @@ interface Props {
  */
 export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["50%"], []);
   const isPresentedRef = useRef(false);
@@ -61,17 +60,6 @@ export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
     [onClose],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const copyCode = useCallback(async () => {
     const value = code ?? lastCodeRef.current;
     if (!value) return;
@@ -89,50 +77,61 @@ export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
       ref={bottomSheetModalRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      backdropComponent={renderBackdrop}
+      {...neonSheetModalProps}
     >
-      <BottomSheetView
-        style={{
-          flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-          paddingBottom: Math.max(16, insets.bottom),
-        }}
+      <NeonSheet
+        fill
+        eyebrow={t("login.quick_connect")}
+        title={t("login.your_code")}
+        onClose={onClose}
+        primary={
+          <Button color='primary' onPress={onClose}>
+            {t("login.got_it")}
+          </Button>
+        }
       >
-        <View className='flex-1'>
-          <Text className='font-bold text-2xl text-neutral-100'>
-            {t("login.quick_connect")}
-          </Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+          {/* The code is the hero: a card2 box with a volt border and glow. */}
           <TouchableOpacity
-            className='mt-6 p-6 border border-neutral-800 bg-neutral-900 flex flex-row items-center justify-center'
             onPress={copyCode}
+            activeOpacity={0.8}
+            accessibilityRole='button'
+            accessibilityLabel={t("login.tap_code_to_copy")}
+            style={[
+              {
+                backgroundColor: NeonBoard.card2,
+                borderWidth: 1,
+                borderColor: NeonBoard.volt,
+                borderRadius: 0,
+                paddingVertical: 22,
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              },
+              glowChip(NeonBoard.volt),
+            ]}
           >
             <Text
-              className='text-center font-bold text-5xl text-neutral-100'
-              style={{ letterSpacing: 10 }}
+              variant='display'
+              allowFontScaling={false}
+              style={{ letterSpacing: 8, textAlign: "center" }}
             >
               {code ?? lastCodeRef.current}
             </Text>
-            <Ionicons
-              name='copy-outline'
-              size={22}
-              color='white'
-              style={{ opacity: 0.4, marginLeft: 16 }}
+            <Feather
+              name='copy'
+              size={20}
+              color={NeonBoard.mid}
+              style={{ marginLeft: 12 }}
             />
           </TouchableOpacity>
-          <Text className='mt-2 text-neutral-500 text-center text-xs'>
-            {t("login.tap_code_to_copy")}
-          </Text>
-          <Text className='mt-3 mb-5 text-neutral-400 text-center px-4'>
-            {t("login.quick_connect_instructions")}
-          </Text>
-          <Button className='mt-auto' color='primary' onPress={onClose}>
-            {t("login.got_it")}
-          </Button>
         </View>
-      </BottomSheetView>
+        <NeonSheetNote center>{t("login.tap_code_to_copy")}</NeonSheetNote>
+        <NeonSheetNote center style={{ paddingTop: 4 }}>
+          {t("login.quick_connect_instructions")}
+        </NeonSheetNote>
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

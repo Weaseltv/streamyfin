@@ -15,11 +15,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useConfirmDialog } from "@/components/common/ConfirmDialog";
+import { EmptyState } from "@/components/common/EmptyState";
 import {
   HeaderButton,
   HeaderButtonGroup,
 } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { PageHead } from "@/components/common/PageHead";
 import { Text } from "@/components/common/Text";
 import {
   getItemNavigation,
@@ -28,6 +32,8 @@ import {
 import { ItemCardText } from "@/components/ItemCardText";
 import { ItemPoster } from "@/components/posters/ItemPoster";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
@@ -90,6 +96,7 @@ export default function WatchlistDetailScreen() {
   const deleteWatchlist = useDeleteWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
   const [refreshing, setRefreshing] = useState(false);
+  const { confirm, dialog } = useConfirmDialog();
 
   const isOwner = useMemo(
     () => watchlist?.userId === user?.Id,
@@ -111,7 +118,7 @@ export default function WatchlistDetailScreen() {
                 <HeaderIcon name='edit' />
               </HeaderButton>
               <HeaderButton onPress={handleDelete}>
-                <HeaderIcon name='delete' tintColor='#ef4444' />
+                <HeaderIcon name='delete' tintColor={NeonBoard.red} />
               </HeaderButton>
             </HeaderButtonGroup>
           )
@@ -126,49 +133,75 @@ export default function WatchlistDetailScreen() {
   }, [refetchWatchlist, refetchItems]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      t("watchlists.delete_confirm_title"),
-      t("watchlists.delete_confirm_message", { name: watchlist?.name }),
-      [
-        { text: t("watchlists.cancel_button"), style: "cancel" },
-        {
-          text: t("watchlists.delete_button"),
-          style: "destructive",
-          onPress: async () => {
-            if (watchlistIdNum) {
-              await deleteWatchlist.mutateAsync(watchlistIdNum);
-              router.back();
-            }
+    const onConfirm = async () => {
+      if (watchlistIdNum) {
+        await deleteWatchlist.mutateAsync(watchlistIdNum);
+        router.back();
+      }
+    };
+    if (Platform.isTV) {
+      Alert.alert(
+        t("watchlists.delete_confirm_title"),
+        t("watchlists.delete_confirm_message", { name: watchlist?.name }),
+        [
+          { text: t("watchlists.cancel_button"), style: "cancel" },
+          {
+            text: t("watchlists.delete_button"),
+            style: "destructive",
+            onPress: onConfirm,
           },
-        },
-      ],
-    );
-  }, [deleteWatchlist, watchlistIdNum, watchlist?.name, router, t]);
+        ],
+      );
+      return;
+    }
+    confirm({
+      title: t("watchlists.delete_confirm_title"),
+      message: t("watchlists.delete_confirm_message", {
+        name: watchlist?.name,
+      }),
+      confirmLabel: t("watchlists.delete_button"),
+      cancelLabel: t("watchlists.cancel_button"),
+      destructive: true,
+      onConfirm,
+    });
+  }, [deleteWatchlist, watchlistIdNum, watchlist?.name, router, t, confirm]);
 
   const handleRemoveItem = useCallback(
     (item: BaseItemDto) => {
       if (!watchlistIdNum || !item.Id) return;
 
-      Alert.alert(
-        t("watchlists.remove_item_title"),
-        t("watchlists.remove_item_message", { name: item.Name }),
-        [
-          { text: t("watchlists.cancel_button"), style: "cancel" },
-          {
-            text: t("watchlists.remove_button"),
-            style: "destructive",
-            onPress: async () => {
-              await removeFromWatchlist.mutateAsync({
-                watchlistId: watchlistIdNum,
-                itemId: item.Id!,
-                watchlistName: watchlist?.name,
-              });
+      const onConfirm = async () => {
+        await removeFromWatchlist.mutateAsync({
+          watchlistId: watchlistIdNum,
+          itemId: item.Id!,
+          watchlistName: watchlist?.name,
+        });
+      };
+      if (Platform.isTV) {
+        Alert.alert(
+          t("watchlists.remove_item_title"),
+          t("watchlists.remove_item_message", { name: item.Name }),
+          [
+            { text: t("watchlists.cancel_button"), style: "cancel" },
+            {
+              text: t("watchlists.remove_button"),
+              style: "destructive",
+              onPress: onConfirm,
             },
-          },
-        ],
-      );
+          ],
+        );
+        return;
+      }
+      confirm({
+        title: t("watchlists.remove_item_title"),
+        message: t("watchlists.remove_item_message", { name: item.Name }),
+        confirmLabel: t("watchlists.remove_button"),
+        cancelLabel: t("watchlists.cancel_button"),
+        destructive: true,
+        onConfirm,
+      });
     },
-    [removeFromWatchlist, watchlistIdNum, watchlist?.name, t],
+    [removeFromWatchlist, watchlistIdNum, watchlist?.name, t, confirm],
   );
 
   const renderTVItem = useCallback(
@@ -225,45 +258,33 @@ export default function WatchlistDetailScreen() {
     [isOwner, handleRemoveItem, orientation, nrOfCols],
   );
 
+  // Page head: eyebrow "n items · Public · By another user", the name, and
+  // the description under the rule.
   const ListHeader = useMemo(
     () =>
       watchlist ? (
-        <View className='px-4 pt-4 pb-6 mb-4 border-b border-neutral-800'>
+        <View style={{ marginBottom: 12 }}>
+          <PageHead
+            eyebrow={[
+              t("watchlists.items_count", { count: items?.length ?? 0 }),
+              watchlist.isPublic
+                ? t("watchlists.public")
+                : t("watchlists.private"),
+              !isOwner ? t("watchlists.by_owner") : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            title={watchlist.name}
+          />
           {watchlist.description && (
-            <Text className='text-neutral-400 mb-2'>
+            <Text
+              variant='body'
+              muted
+              style={{ paddingHorizontal: Sizes.gutter, paddingTop: 10 }}
+            >
               {watchlist.description}
             </Text>
           )}
-          <View className='flex-row items-center gap-4'>
-            <View className='flex-row items-center gap-1'>
-              <Ionicons name='film-outline' size={14} color='#9ca3af' />
-              <Text className='text-neutral-400 text-sm'>
-                {items?.length ?? 0}{" "}
-                {(items?.length ?? 0) === 1
-                  ? t("watchlists.item")
-                  : t("watchlists.items")}
-              </Text>
-            </View>
-            <View className='flex-row items-center gap-1'>
-              <Ionicons
-                name={
-                  watchlist.isPublic ? "globe-outline" : "lock-closed-outline"
-                }
-                size={14}
-                color='#9ca3af'
-              />
-              <Text className='text-neutral-400 text-sm'>
-                {watchlist.isPublic
-                  ? t("watchlists.public")
-                  : t("watchlists.private")}
-              </Text>
-            </View>
-            {!isOwner && (
-              <Text className='text-neutral-500 text-sm'>
-                {t("watchlists.by_owner")}
-              </Text>
-            )}
-          </View>
         </View>
       ) : null,
     [watchlist, items?.length, isOwner, t],
@@ -271,17 +292,11 @@ export default function WatchlistDetailScreen() {
 
   const EmptyComponent = useMemo(
     () => (
-      <View className='flex-1 items-center justify-center px-8 py-16'>
-        <Ionicons name='film-outline' size={48} color='#4b5563' />
-        <Text className='text-neutral-400 text-center mt-4'>
-          {t("watchlists.empty_watchlist")}
-        </Text>
-        {isOwner && (
-          <Text className='text-neutral-500 text-center mt-2 text-sm'>
-            {t("watchlists.empty_watchlist_hint")}
-          </Text>
-        )}
-      </View>
+      <EmptyState
+        icon='list'
+        title={t("watchlists.empty_watchlist")}
+        detail={isOwner ? t("watchlists.empty_watchlist_hint") : null}
+      />
     ),
     [isOwner, t],
   );
@@ -289,9 +304,16 @@ export default function WatchlistDetailScreen() {
   const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
 
   if (watchlistLoading || itemsLoading) {
+    if (Platform.isTV) {
+      return (
+        <View className='flex-1 items-center justify-center'>
+          <ActivityIndicator size='large' />
+        </View>
+      );
+    }
     return (
-      <View className='flex-1 items-center justify-center'>
-        <ActivityIndicator size='large' />
+      <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+        <LoadingLine active />
       </View>
     );
   }
@@ -299,7 +321,7 @@ export default function WatchlistDetailScreen() {
   if (!watchlist) {
     return (
       <View className='flex-1 items-center justify-center px-8'>
-        <Text className='text-lg text-neutral-400'>
+        <Text variant='body' muted>
           {t("watchlists.not_found")}
         </Text>
       </View>
@@ -421,32 +443,41 @@ export default function WatchlistDetailScreen() {
 
   // Mobile layout with FlashList
   return (
-    <FlashList
-      key={orientation}
-      data={items ?? []}
-      numColumns={nrOfCols}
-      contentInsetAdjustmentBehavior='automatic'
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={EmptyComponent}
-      extraData={[orientation, nrOfCols]}
-      keyExtractor={keyExtractor}
-      contentContainerStyle={{
-        paddingBottom: 24,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-      }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-      renderItem={renderItem}
-      ItemSeparatorComponent={() => (
-        <View
-          style={{
-            width: 10,
-            height: 10,
-          }}
-        />
-      )}
-    />
+    <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+      <FlashList
+        key={orientation}
+        data={items ?? []}
+        numColumns={nrOfCols}
+        contentInsetAdjustmentBehavior='automatic'
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={EmptyComponent}
+        extraData={[orientation, nrOfCols]}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={{
+          paddingBottom: 24,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={NeonBoard.volt}
+            colors={[NeonBoard.volt]}
+            progressBackgroundColor={NeonBoard.card}
+          />
+        }
+        renderItem={renderItem}
+        ItemSeparatorComponent={() => (
+          <View
+            style={{
+              width: 10,
+              height: 10,
+            }}
+          />
+        )}
+      />
+      {dialog}
+    </View>
   );
 }

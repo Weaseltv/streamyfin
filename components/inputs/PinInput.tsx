@@ -3,11 +3,13 @@ import React, { useCallback, useImperativeHandle, useRef } from "react";
 import {
   type StyleProp,
   StyleSheet,
-  Text,
   type TextInputProps,
   View,
   type ViewStyle,
 } from "react-native";
+import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip } from "@/constants/neon";
 
 interface PinInputProps
   extends Omit<TextInputProps, "value" | "onChangeText" | "style"> {
@@ -22,6 +24,11 @@ export interface PinInputRef {
   focus: () => void;
 }
 
+/**
+ * Neon Board PIN cells: 46×60 `card2` boxes with a 1pt `line2` border,
+ * radius 0. Filled and active cells take a volt border with a chip glow;
+ * digits are Condensed 800 30. The real input stays hidden underneath.
+ */
 const PinInputComponent = React.forwardRef<PinInputRef, PinInputProps>(
   (props, ref) => {
     const {
@@ -63,19 +70,24 @@ const PinInputComponent = React.forwardRef<PinInputRef, PinInputProps>(
         <View style={styles.cells} onTouchStart={handlePress}>
           {Array(length)
             .fill(0)
-            .map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.cell,
-                  i === activeIndex && styles.activeCell,
-                  i === activeIndex - 1 && styles.filledCell,
-                ]}
-              >
-                <Text style={styles.digit}>{value[i]}</Text>
-                {i === activeIndex && <View style={styles.cursor} />}
-              </View>
-            ))}
+            .map((_, i) => {
+              const lit = i < activeIndex || i === activeIndex;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.cell,
+                    lit && styles.litCell,
+                    lit && glowChip(NeonBoard.volt),
+                  ]}
+                >
+                  <Text variant='display' allowFontScaling={false}>
+                    {value[i]}
+                  </Text>
+                  {i === activeIndex && <View style={styles.cursor} />}
+                </View>
+              );
+            })}
         </View>
       </View>
     );
@@ -98,34 +110,27 @@ const styles = StyleSheet.create({
   },
   cells: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "100%",
+    gap: 12,
   },
   cell: {
-    width: 40,
-    height: 48,
+    width: 46,
+    height: 60,
     borderWidth: 1,
-    borderColor: "#374151",
-    borderRadius: 8,
+    borderColor: NeonBoard.line2,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1F2937",
+    backgroundColor: NeonBoard.card2,
   },
-  activeCell: {
-    borderColor: "#6366F1",
-  },
-  filledCell: {
-    borderColor: "#4B5563",
-  },
-  digit: {
-    fontSize: 24,
-    color: "white",
-    fontWeight: "500",
+  litCell: {
+    borderColor: NeonBoard.volt,
   },
   cursor: {
     position: "absolute",
     width: 2,
-    height: 24,
-    backgroundColor: "#6366F1",
+    height: 26,
+    backgroundColor: NeonBoard.volt,
   },
 });

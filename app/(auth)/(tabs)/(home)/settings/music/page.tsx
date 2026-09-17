@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +8,11 @@ import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Text } from "@/components/common/Text";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
+import { Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import {
@@ -121,13 +124,16 @@ export default function MusicSettingsPage() {
       }}
     >
       <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+          paddingBottom: 16,
+        }}
       >
         <ListGroup
           title={t("home.settings.music.playback_title")}
           description={
-            <Text className='text-[#8E8D91] text-xs'>
+            <Text variant='meta' muted>
               {t("home.settings.music.playback_description")}
             </Text>
           }
@@ -150,7 +156,7 @@ export default function MusicSettingsPage() {
           <ListGroup
             title={t("home.settings.music.caching_title")}
             description={
-              <Text className='text-[#8E8D91] text-xs'>
+              <Text variant='meta' muted>
                 {t("home.settings.music.caching_description")}
               </Text>
             }
@@ -176,18 +182,7 @@ export default function MusicSettingsPage() {
             >
               <PlatformDropdown
                 groups={lookaheadCountOptions}
-                trigger={
-                  <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                    <Text className='mr-1 text-[#8E8D91]'>
-                      {currentLookaheadLabel}
-                    </Text>
-                    <Ionicons
-                      name='chevron-expand-sharp'
-                      size={18}
-                      color='#5A5960'
-                    />
-                  </View>
-                }
+                trigger={<DropdownTrigger value={currentLookaheadLabel} />}
                 title={t("home.settings.music.lookahead_count")}
               />
             </ListItem>
@@ -197,18 +192,7 @@ export default function MusicSettingsPage() {
             >
               <PlatformDropdown
                 groups={cacheSizeOptions}
-                trigger={
-                  <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                    <Text className='mr-1 text-[#8E8D91]'>
-                      {currentCacheSizeLabel}
-                    </Text>
-                    <Ionicons
-                      name='chevron-expand-sharp'
-                      size={18}
-                      color='#5A5960'
-                    />
-                  </View>
-                }
+                trigger={<DropdownTrigger value={currentCacheSizeLabel} />}
                 title={t("home.settings.music.max_cache_size")}
               />
             </ListItem>
@@ -220,7 +204,7 @@ export default function MusicSettingsPage() {
             <ListGroup
               title={t("home.settings.storage.music_cache_title")}
               description={
-                <Text className='text-[#8E8D91] text-xs'>
+                <Text variant='meta' muted>
                   {t("home.settings.storage.music_cache_description")}
                 </Text>
               }

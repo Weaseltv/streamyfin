@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { toast } from "sonner-native";
+import { NeonBoard } from "@/constants/Colors";
 import { useIntegrationHeaders } from "@/hooks/useIntegrationHeaders";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
 import { userAtom } from "@/providers/JellyfinProvider";
@@ -12,6 +13,7 @@ import { jellyseerrProbe } from "@/utils/serverUrl/probes/jellyseerr";
 import { resolveServerUrl } from "@/utils/serverUrl/resolve";
 import { Button } from "../Button";
 import { Input } from "../common/Input";
+import { SectionHeader } from "../common/SectionHeader";
 import { ServerUrlField } from "../common/ServerUrlField";
 import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
@@ -143,8 +145,8 @@ export const JellyseerrSettings = () => {
               />
             </ListGroup>
 
-            <View className='p-4'>
-              <Button color='red' onPress={clearData}>
+            <View className='py-4'>
+              <Button color='red' variant='border' onPress={clearData}>
                 {t(
                   "home.settings.plugins.jellyseerr.reset_jellyseerr_config_button",
                 )}
@@ -152,7 +154,8 @@ export const JellyseerrSettings = () => {
             </View>
           </>
         ) : (
-          <View className='flex flex-col overflow-hidden p-4 bg-neutral-900'>
+          <View className='flex flex-col'>
+            <SectionHeader title='Jellyseerr' />
             <View style={{ opacity: urlLocked ? 0.5 : 1 }}>
               <View className='mb-2'>
                 <ServerUrlField
@@ -177,7 +180,11 @@ export const JellyseerrSettings = () => {
                   resolveOptions={resolveOptions}
                 />
                 {urlLocked && (
-                  <Text className='text-xs text-red-600 mb-2'>
+                  <Text
+                    variant='caption'
+                    className='mb-2'
+                    style={{ color: NeonBoard.red }}
+                  >
                     {t("home.settings.disabled_by_admin")}
                   </Text>
                 )}
@@ -189,12 +196,11 @@ export const JellyseerrSettings = () => {
               title={t("custom_headers.title")}
               description={t("custom_headers.integration_description")}
             />
-            <View>
-              <Text className='font-bold mb-2'>
+            <View className='mt-4'>
+              <Text variant='meta' muted className='mb-2'>
                 {t("home.settings.plugins.jellyseerr.password")}
               </Text>
               <Input
-                className='border border-neutral-800'
                 autoFocus={true}
                 focusable={true}
                 placeholder={t(
@@ -214,7 +220,7 @@ export const JellyseerrSettings = () => {
                 loading={loginToJellyseerrMutation.isPending}
                 disabled={loginToJellyseerrMutation.isPending}
                 color='primary'
-                className='h-12 mt-2'
+                className='mt-3'
                 onPress={() => loginToJellyseerrMutation.mutate()}
               >
                 {t("home.settings.plugins.jellyseerr.login_button")}

@@ -1,35 +1,43 @@
 import { FlashList } from "@shopify/flash-list";
-import { useAtom } from "jotai";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import { Text } from "../common/Text";
+import { View } from "react-native";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { RAIL_GAP } from "@/components/home/ItemCard";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 
 type SearchItemWrapperProps<T> = {
   items?: T[];
   renderItem: (item: any) => React.ReactElement | null;
   header?: string;
+  /** Rule colour: the type colour of the section (movies orange, series yellow, people volt). */
+  accent?: string;
   onEndReached?: (() => void) | null | undefined;
 };
 
+/**
+ * One search result section: a section head on a type-coloured rule with the
+ * count, and a horizontal rail of cards on a 12 gutter with a 10 gap.
+ */
 export const SearchItemWrapper = <T,>({
   items,
   renderItem,
   header,
+  accent = NeonBoard.volt,
   onEndReached,
 }: PropsWithChildren<SearchItemWrapperProps<T>>) => {
-  const [_api] = useAtom(apiAtom);
-  const [_user] = useAtom(userAtom);
-
   if (!items || items.length === 0) return null;
 
   return (
-    <>
-      <Text className='font-bold text-lg px-4 mb-2'>{header}</Text>
+    <View style={{ marginBottom: 8 }}>
+      {header ? (
+        <SectionHeader title={header} accent={accent} count={items.length} />
+      ) : null}
       <FlashList
         horizontal
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: Sizes.gutter,
           paddingBottom: 8,
         }}
         showsHorizontalScrollIndicator={false}
@@ -37,8 +45,12 @@ export const SearchItemWrapper = <T,>({
         data={items}
         onEndReachedThreshold={1}
         onEndReached={onEndReached}
-        renderItem={({ item }) => (item ? renderItem(item) : null)}
+        renderItem={({ item }) =>
+          item ? (
+            <View style={{ marginRight: RAIL_GAP }}>{renderItem(item)}</View>
+          ) : null
+        }
       />
-    </>
+    </View>
   );
 };

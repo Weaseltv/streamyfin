@@ -1,25 +1,30 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { Image } from "expo-image";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
 import { storage } from "@/utils/mmkv";
-import { ProgressBar } from "../common/ProgressBar";
+import { runtimeTicksToMinutes } from "@/utils/time";
+import { Text } from "../common/Text";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
-import { ItemCardText } from "../ItemCardText";
+
+const POSTER = { w: 40, h: 58 };
+const ROW = 60;
 
 interface MovieCardProps {
   item: BaseItemDto;
 }
 
 /**
- * MovieCard component displays a movie with action sheet options.
- * @param {MovieCardProps} props - The component props.
- * @returns {React.ReactElement} The rendered MovieCard component.
+ * A downloaded movie (or other single item) as a 60 hairline row: 40×58
+ * poster, title, "2026 · 2h 0m · 1.4 GB" meta, the green `download` glyph
+ * and a chevron. Long press asks to delete it.
  */
 export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
   const { deleteFile } = useDownload();
@@ -45,36 +50,70 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
   );
 
   return (
-    <TouchableItemRouter onLongPress={showActionSheet} item={item}>
-      {base64Image ? (
-        <View className='relative w-28 aspect-[10/15] overflow-hidden mr-2 border border-neutral-900'>
+    <TouchableItemRouter
+      onLongPress={showActionSheet}
+      item={item}
+      style={{
+        minHeight: ROW,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+      }}
+    >
+      <View
+        style={{
+          width: POSTER.w,
+          height: POSTER.h,
+          backgroundColor: NeonBoard.card2,
+          borderWidth: 1,
+          borderColor: NeonBoard.line,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {base64Image ? (
           <Image
-            source={{
-              uri: `data:image/jpeg;base64,${base64Image}`,
-            }}
-            style={{
-              width: "100%",
-              height: "100%",
-            }}
+            source={{ uri: `data:image/jpeg;base64,${base64Image}` }}
+            style={{ width: "100%", height: "100%" }}
             contentFit='cover'
           />
-          <ProgressBar item={item} />
-        </View>
-      ) : (
-        <View className='relative w-28 aspect-[10/15] bg-neutral-900 mr-2 flex items-center justify-center'>
-          <Ionicons
-            name='image-outline'
-            size={24}
-            color='gray'
-            className='self-center mt-16'
-          />
-          <ProgressBar item={item} />
-        </View>
-      )}
-      <View className='w-28'>
-        <ItemCardText item={item} />
+        ) : (
+          <Feather name='film' size={16} color={NeonBoard.low} />
+        )}
       </View>
-      <DownloadSize items={[item]} />
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+        <Text variant='rowTitle' numberOfLines={1} style={{ fontSize: 16 }}>
+          {item.Name}
+        </Text>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginTop: 3 }}
+        >
+          <Text variant='meta' muted numberOfLines={1}>
+            {[
+              item.ProductionYear,
+              item.RunTimeTicks
+                ? runtimeTicksToMinutes(item.RunTimeTicks)
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            {" · "}
+          </Text>
+          <DownloadSize items={[item]} />
+        </View>
+      </View>
+      <Feather name='download' size={18} color={NeonBoard.green} />
+      <Feather
+        name='chevron-right'
+        size={18}
+        color={NeonBoard.low}
+        style={{ marginLeft: 12 }}
+      />
     </TouchableItemRouter>
   );
 };

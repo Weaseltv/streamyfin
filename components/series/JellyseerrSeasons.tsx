@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import {
   type QueryObserverResult,
@@ -9,15 +9,18 @@ import { t } from "i18next";
 import { orderBy } from "lodash";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Alert, TouchableOpacity, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Badge } from "@/components/Badge";
 import { HorizontalScroll } from "@/components/common/HorizontalScroll";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
-import { Tags } from "@/components/GenreTags";
 import { dateOpts } from "@/components/jellyseerr/DetailFacts";
-import { textShadowStyle } from "@/components/jellyseerr/discover/GenericSlideCard";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
-import { SquareButton } from "@/components/SquareButton";
+import { SeasonRow } from "@/components/jellyseerr/RequestModal";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import {
   MediaStatus,
@@ -28,7 +31,8 @@ import type Season from "@/utils/jellyseerr/server/entity/Season";
 import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
 import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
-import { Loader } from "../Loader";
+
+const ACCENT = NeonBoard.volt;
 
 const JellyseerrSeasonEpisodes: React.FC<{
   details: TvDetails;
@@ -47,6 +51,10 @@ const JellyseerrSeasonEpisodes: React.FC<{
       horizontal
       loading={isLoading}
       showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingHorizontal: Sizes.gutter,
+        paddingVertical: 10,
+      }}
       data={seasonWithEpisodes?.episodes}
       keyExtractor={(item) => item.id.toString()}
       renderItem={(item, index) => (
@@ -56,6 +64,7 @@ const JellyseerrSeasonEpisodes: React.FC<{
   );
 };
 
+/** A 150×84 episode thumb with the S:E line, the title and a short overview. */
 const RenderItem = ({ item }: any) => {
   const {
     jellyseerrApi,
@@ -74,57 +83,64 @@ const RenderItem = ({ item }: any) => {
     }
   }, [item, locale, region]);
 
+  const box = Sizes.thumbSmall;
+
   return (
-    <View className='flex flex-col w-44 mt-2'>
-      <View className='relative aspect-video overflow-hidden border border-neutral-800'>
+    <View style={{ width: box.w }}>
+      <View
+        style={{
+          width: box.w,
+          height: box.h,
+          borderWidth: 1,
+          borderColor: NeonBoard.line,
+          backgroundColor: NeonBoard.card2,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {!imageError ? (
-          <>
-            <Image
-              key={item.id}
-              id={item.id}
-              source={{
-                uri: jellyseerrApi?.imageProxy(item.stillPath),
-              }}
-              cachePolicy={"memory-disk"}
-              contentFit='cover'
-              className='w-full h-full'
-              onError={(_e) => {
-                setImageError(true);
-              }}
-            />
-            {upcomingAirDate && (
-              <View className='absolute justify-center bottom-0 right-0.5 items-center'>
-                <View className='rounded-full bg-volt/30 p-1'>
-                  <Text
-                    className='text-center text-xs'
-                    style={textShadowStyle.shadow}
-                  >
-                    {upcomingAirDate}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </>
+          <Image
+            key={item.id}
+            id={item.id}
+            source={{
+              uri: jellyseerrApi?.imageProxy(item.stillPath),
+            }}
+            cachePolicy={"memory-disk"}
+            contentFit='cover'
+            style={{ width: "100%", height: "100%" }}
+            onError={(_e) => {
+              setImageError(true);
+            }}
+          />
         ) : (
-          <View className='flex flex-col w-full h-full items-center justify-center border border-neutral-800 bg-neutral-900'>
-            <Ionicons
-              name='image-outline'
-              size={24}
-              color='white'
-              style={{ opacity: 0.4 }}
-            />
-          </View>
+          <Feather name='image' size={22} color={NeonBoard.low} />
+        )}
+        {upcomingAirDate && (
+          <Badge
+            text={upcomingAirDate}
+            tint={NeonBoard.warn}
+            style={{ position: "absolute", bottom: 6, right: 6 }}
+          />
         )}
       </View>
-      <View className='shrink mt-1'>
-        <Text numberOfLines={2}>{item.name}</Text>
-        <Text numberOfLines={1} className='text-xs text-neutral-500'>
+      <View style={{ marginTop: 6 }}>
+        <Text variant='cardTitle' numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text variant='meta' muted numberOfLines={1}>
           {`S${item.seasonNumber}:E${item.episodeNumber}`}
         </Text>
+        {item.overview ? (
+          <Text
+            variant='caption'
+            numberOfLines={3}
+            style={{ color: NeonBoard.low, marginTop: 2 }}
+          >
+            {item.overview}
+          </Text>
+        ) : null}
       </View>
-      <Text numberOfLines={3} className='text-xs text-neutral-500 shrink'>
-        {item.overview}
-      </Text>
     </View>
   );
 };
@@ -244,20 +260,25 @@ const JellyseerrSeasons: React.FC<{
 
   if (!details) return null;
 
+  const header = (
+    <SectionHeader
+      title={t("item_card.seasons")}
+      accent={ACCENT}
+      count={isLoading ? undefined : seasons.length}
+      actionLabel={
+        !isLoading && !allSeasonsAvailable
+          ? t("jellyseerr.request_all")
+          : undefined
+      }
+      onPressAction={promptRequestAll}
+    />
+  );
+
   if (isLoading)
     return (
       <View>
-        <View className='flex flex-row justify-between items-end px-4'>
-          <Text className='text-lg font-bold mb-2'>
-            {t("item_card.seasons")}
-          </Text>
-          {!allSeasonsAvailable && (
-            <SquareButton className='mb-2 pa-2' onPress={promptRequestAll}>
-              <Ionicons name='bag-add' color='white' size={26} />
-            </SquareButton>
-          )}
-        </View>
-        <Loader />
+        {header}
+        <LoadingLine accent={ACCENT} />
       </View>
     );
 
@@ -268,70 +289,54 @@ const JellyseerrSeasons: React.FC<{
         "seasonNumber",
         "desc",
       )}
-      ListHeaderComponent={() => (
-        <View className='flex flex-row justify-between items-end px-4'>
-          <Text className='text-lg font-bold mb-2'>
-            {t("item_card.seasons")}
-          </Text>
-          {!allSeasonsAvailable && (
-            <SquareButton className='mb-2 pa-2' onPress={promptRequestAll}>
-              <Ionicons name='bag-add' color='white' size={26} />
-            </SquareButton>
-          )}
-        </View>
-      )}
-      ItemSeparatorComponent={() => <View className='h-2' />}
-      renderItem={({ item: season }) => (
-        <>
-          <TouchableOpacity
-            onPress={() =>
-              setSeasonStates((prevState) => ({
-                ...prevState,
-                [season.seasonNumber]: !prevState?.[season.seasonNumber],
-              }))
-            }
-            className='px-4'
-          >
-            <View
-              className='flex flex-row justify-between items-center bg-gray-100/10 z-20 h-12 w-full px-4'
-              key={season.id}
-            >
-              <Tags
-                textClass=''
-                tags={[
-                  t("jellyseerr.season_number", {
-                    season_number: season.seasonNumber,
-                  }),
-                  t("jellyseerr.number_episodes", {
-                    episode_number: season.episodeCount,
-                  }),
-                ]}
-              />
-              {[0].map(() => {
-                const canRequest = season.status === MediaStatus.UNKNOWN;
-                return (
-                  <JellyseerrStatusIcon
-                    key={0}
-                    onPress={() =>
-                      requestSeason(canRequest, season.seasonNumber)
-                    }
-                    className={canRequest ? "bg-gray-700/40" : undefined}
-                    mediaStatus={season.status}
-                    showRequestIcon={canRequest}
-                  />
-                );
-              })}
-            </View>
-          </TouchableOpacity>
-          {seasonStates?.[season.seasonNumber] && (
-            <JellyseerrSeasonEpisodes
-              key={season.seasonNumber}
-              details={details}
-              seasonNumber={season.seasonNumber}
+      ListHeaderComponent={() => header}
+      renderItem={({ item: season }) => {
+        const canRequest = season.status === MediaStatus.UNKNOWN;
+        const expanded = !!seasonStates?.[season.seasonNumber];
+        return (
+          <>
+            <SeasonRow
+              season={{
+                seasonNumber: season.seasonNumber,
+                episodeCount: season.episodeCount,
+                status: season.status,
+              }}
+              leading={
+                <Feather
+                  name={expanded ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={NeonBoard.low}
+                  style={{ marginRight: 12 }}
+                />
+              }
+              onToggle={() =>
+                setSeasonStates((prevState) => ({
+                  ...prevState,
+                  [season.seasonNumber]: !prevState?.[season.seasonNumber],
+                }))
+              }
+              right={
+                <JellyseerrStatusIcon
+                  onPress={
+                    canRequest
+                      ? () => requestSeason(canRequest, season.seasonNumber)
+                      : undefined
+                  }
+                  mediaStatus={season.status}
+                  showRequestIcon={canRequest}
+                />
+              }
             />
-          )}
-        </>
-      )}
+            {expanded && (
+              <JellyseerrSeasonEpisodes
+                key={season.seasonNumber}
+                details={details}
+                seasonNumber={season.seasonNumber}
+              />
+            )}
+          </>
+        );
+      }}
     />
   );
 };

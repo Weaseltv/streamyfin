@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
@@ -14,15 +14,13 @@ import React, {
   useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Badge } from "@/components/Badge";
+import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { glowRule, Scrims, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import {
   useAddToWatchlist,
@@ -47,6 +45,7 @@ interface WatchlistRowProps {
   isLoading: boolean;
 }
 
+/** A hairline row: name + type badge, "n items · description" meta, the state glyph right. */
 const WatchlistRow: React.FC<WatchlistRowProps> = ({
   watchlist,
   isInWatchlist,
@@ -54,46 +53,67 @@ const WatchlistRow: React.FC<WatchlistRowProps> = ({
   onToggle,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   const disabled = !isCompatible && !isInWatchlist;
+  const meta = [
+    t("watchlists.items_count", { count: watchlist.itemCount ?? 0 }),
+    watchlist.description,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <TouchableOpacity
       onPress={onToggle}
       disabled={disabled || isLoading}
-      className={`bg-neutral-800 px-4 py-3 flex-row items-center justify-between ${disabled ? "opacity-40" : ""}`}
       activeOpacity={0.7}
+      style={{
+        minHeight: Sizes.row,
+        paddingVertical: 8,
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        flexDirection: "row",
+        alignItems: "center",
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+        opacity: disabled ? 0.4 : 1,
+      }}
     >
-      <View className='flex-1 mr-4'>
-        <View className='flex-row items-center gap-2'>
-          <Text className='text-base font-medium flex-shrink' numberOfLines={1}>
+      {isInWatchlist ? (
+        <View
+          style={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: Sizes.tally,
+              backgroundColor: NeonBoard.volt,
+            },
+            glowRule(NeonBoard.volt),
+          ]}
+        />
+      ) : null}
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text variant='rowTitle' numberOfLines={1} style={{ flexShrink: 1 }}>
             {watchlist.name}
           </Text>
           {watchlist.allowedItemType && (
-            <View className='bg-neutral-700 px-1.5 py-0.5'>
-              <Text className='text-xs text-neutral-400'>
-                {watchlist.allowedItemType}
-              </Text>
-            </View>
+            <Badge text={watchlist.allowedItemType} />
           )}
         </View>
-        {watchlist.description && (
-          <Text className='text-sm text-neutral-400 mt-0.5' numberOfLines={1}>
-            {watchlist.description}
-          </Text>
-        )}
-        <Text className='text-xs text-neutral-500 mt-1'>
-          {watchlist.itemCount ?? 0} items
+        <Text variant='meta' muted numberOfLines={1} style={{ marginTop: 2 }}>
+          {meta}
         </Text>
       </View>
-      <View className='w-8 h-8 items-center justify-center'>
-        {isLoading ? (
-          <ActivityIndicator size='small' color='#a78bfa' />
-        ) : isInWatchlist ? (
-          <Ionicons name='checkmark-circle' size={26} color='#a78bfa' />
+      <View style={{ width: 24, alignItems: "center" }}>
+        {isInWatchlist ? (
+          <Feather name='check' size={20} color={NeonBoard.volt} />
         ) : isCompatible ? (
-          <Ionicons name='add-circle-outline' size={26} color='#9ca3af' />
+          <Feather name='plus' size={20} color={NeonBoard.mid} />
         ) : (
-          <Ionicons name='ban-outline' size={22} color='#525252' />
+          <Feather name='slash' size={18} color={NeonBoard.low} />
         )}
       </View>
     </TouchableOpacity>
@@ -183,78 +203,134 @@ const WatchlistSheetContent: React.FC<WatchlistSheetContentProps> = ({
     [item.Type],
   );
 
-  if (isLoading) {
-    return (
-      <View className='py-12 items-center justify-center'>
-        <ActivityIndicator size='large' color='#a78bfa' />
-        <Text className='text-neutral-400 mt-4'>{t("watchlists.loading")}</Text>
-      </View>
-    );
-  }
-
   return (
     <View
-      className='flex-1'
       style={{
-        paddingLeft: Math.max(16, insets.left),
-        paddingRight: Math.max(16, insets.right),
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
       }}
     >
-      {/* Header */}
-      <View className='mb-4'>
-        <Text className='font-bold text-2xl'>
-          {t("watchlists.select_watchlist")}
-        </Text>
-        <Text className='text-neutral-400 mt-1' numberOfLines={1}>
-          {item.Name}
-        </Text>
+      {/* Head: tally, eyebrow + title, close, 2pt rule */}
+      <View
+        style={{
+          paddingLeft: Sizes.rowLead,
+          paddingRight: Sizes.gutter,
+          paddingTop: 14,
+          paddingBottom: 10,
+        }}
+      >
+        <View
+          style={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 14,
+              bottom: 10,
+              width: Sizes.tally,
+              backgroundColor: NeonBoard.volt,
+            },
+            glowRule(NeonBoard.volt),
+          ]}
+        />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+          }}
+        >
+          <View style={{ flexShrink: 1 }}>
+            <Text variant='eyebrow' accent={NeonBoard.volt} numberOfLines={1}>
+              {item.Name}
+            </Text>
+            <Text
+              variant='pageTitle'
+              numberOfLines={1}
+              style={{ marginTop: 2 }}
+            >
+              {t("watchlists.select_watchlist")}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={onClose}
+            accessibilityRole='button'
+            accessibilityLabel={t("common.close")}
+            hitSlop={8}
+            style={{ paddingLeft: 12 }}
+          >
+            <Feather name='x' size={22} color={NeonBoard.mid} />
+          </TouchableOpacity>
+        </View>
       </View>
+      <View
+        style={[
+          { height: 2, backgroundColor: NeonBoard.volt },
+          glowRule(NeonBoard.volt),
+        ]}
+      />
 
-      {/* Watchlist List */}
-      {sortedWatchlists.length === 0 ? (
-        <View className='py-8 items-center'>
-          <Ionicons name='list-outline' size={48} color='#4b5563' />
-          <Text className='text-neutral-400 text-center mt-4'>
+      {isLoading ? (
+        <View style={{ paddingVertical: 24 }}>
+          <LoadingLine active />
+          <Text
+            variant='meta'
+            muted
+            style={{ textAlign: "center", marginTop: 16 }}
+          >
+            {t("watchlists.loading")}
+          </Text>
+        </View>
+      ) : sortedWatchlists.length === 0 ? (
+        <View style={{ paddingVertical: 28, alignItems: "center" }}>
+          <Feather name='list' size={28} color={NeonBoard.volt} />
+          <Text
+            variant='rowTitle'
+            style={{ textAlign: "center", marginTop: 12 }}
+          >
             {t("watchlists.empty_title")}
           </Text>
-          <Text className='text-neutral-500 text-center text-sm mt-1'>
+          <Text
+            variant='meta'
+            muted
+            style={{ textAlign: "center", marginTop: 4 }}
+          >
             {t("watchlists.empty_description")}
           </Text>
         </View>
       ) : (
-        <View className='overflow-hidden mb-4'>
-          {sortedWatchlists.map((watchlist, index) => (
-            <React.Fragment key={watchlist.id}>
-              <WatchlistRow
-                watchlist={watchlist}
-                isInWatchlist={
-                  watchlistsContainingItem?.includes(watchlist.id) ?? false
-                }
-                isCompatible={isItemCompatible(watchlist)}
-                onToggle={() => handleToggle(watchlist)}
-                isLoading={
-                  addToWatchlist.isPending || removeFromWatchlist.isPending
-                }
-              />
-              {index < sortedWatchlists.length - 1 && (
-                <View
-                  style={{ height: StyleSheet.hairlineWidth }}
-                  className='bg-neutral-700'
-                />
-              )}
-            </React.Fragment>
+        <View>
+          {sortedWatchlists.map((watchlist) => (
+            <WatchlistRow
+              key={watchlist.id}
+              watchlist={watchlist}
+              isInWatchlist={
+                watchlistsContainingItem?.includes(watchlist.id) ?? false
+              }
+              isCompatible={isItemCompatible(watchlist)}
+              onToggle={() => handleToggle(watchlist)}
+              isLoading={
+                addToWatchlist.isPending || removeFromWatchlist.isPending
+              }
+            />
           ))}
         </View>
       )}
 
-      {/* Create New Button */}
+      {/* Create new: a volt link row */}
       <TouchableOpacity
         onPress={handleCreateNew}
-        className='flex-row items-center justify-center py-4 bg-neutral-800'
         activeOpacity={0.7}
+        style={{
+          minHeight: Sizes.row,
+          paddingLeft: Sizes.rowLead,
+          paddingRight: Sizes.gutter,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+        }}
       >
-        <Ionicons name='add' size={20} color='#a78bfa' />
-        <Text className='text-volt font-medium'>
+        <Feather name='plus' size={18} color={NeonBoard.volt} />
+        <Text variant='rowTitle' accent={NeonBoard.volt}>
           {t("watchlists.create_new")}
         </Text>
       </TouchableOpacity>
@@ -290,6 +366,8 @@ export const WatchlistSheet = forwardRef<WatchlistSheetRef, object>(
           {...props}
           disappearsOnIndex={-1}
           appearsOnIndex={0}
+          opacity={1}
+          style={[props.style, { backgroundColor: Scrims.modal }]}
         />
       ),
       [],
@@ -301,11 +379,12 @@ export const WatchlistSheet = forwardRef<WatchlistSheetRef, object>(
         enableDynamicSizing
         maxDynamicContentSize={600}
         backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{
-          backgroundColor: "white",
-        }}
+        handleIndicatorStyle={{ backgroundColor: "transparent" }}
         backgroundStyle={{
-          backgroundColor: Colors.surface,
+          backgroundColor: NeonBoard.card,
+          borderRadius: 0,
+          borderTopWidth: 1,
+          borderTopColor: NeonBoard.line2,
         }}
       >
         <BottomSheetView style={{ paddingBottom: insets.bottom }}>

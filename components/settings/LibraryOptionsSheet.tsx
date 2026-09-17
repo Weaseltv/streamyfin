@@ -1,22 +1,17 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { View, type ViewProps } from "react-native";
 import {
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  type ViewProps,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+  NeonSheet,
+  NeonSheetRow,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
+import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 
 interface LibraryOptions {
   display: "row" | "list";
@@ -33,21 +28,25 @@ interface Props extends ViewProps {
   disabled?: boolean;
 }
 
+/** A section label on the panel: Condensed 14 in `mid`, above its rows. */
 const OptionGroup: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
 }) => (
-  <View className='mb-6'>
-    <Text className='text-lg font-semibold mb-3 text-neutral-300'>{title}</Text>
+  <View>
     <View
       style={{
-        borderRadius: 12,
-        overflow: "hidden",
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        paddingTop: 16,
+        paddingBottom: 6,
       }}
-      className='bg-neutral-800 overflow-hidden'
     >
-      {children}
+      <Text variant='tally' muted>
+        {title}
+      </Text>
     </View>
+    {children}
   </View>
 );
 
@@ -56,32 +55,13 @@ const OptionItem: React.FC<{
   selected: boolean;
   onPress: () => void;
   disabled?: boolean;
-  isLast?: boolean;
-}> = ({ label, selected, onPress, disabled: itemDisabled, isLast }) => (
-  <>
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={itemDisabled}
-      className={`px-4 py-3 flex flex-row items-center justify-between ${
-        itemDisabled ? "opacity-50" : ""
-      }`}
-    >
-      <Text className='flex-1 text-white'>{label}</Text>
-      {selected ? (
-        <Ionicons name='checkmark-circle' size={24} color={Colors.primary} />
-      ) : (
-        <Ionicons name='ellipse-outline' size={24} color='#6b7280' />
-      )}
-    </TouchableOpacity>
-    {!isLast && (
-      <View
-        style={{
-          height: StyleSheet.hairlineWidth,
-        }}
-        className='bg-neutral-700 mx-4'
-      />
-    )}
-  </>
+}> = ({ label, selected, onPress, disabled: itemDisabled }) => (
+  <NeonSheetRow
+    label={label}
+    selected={selected}
+    onPress={onPress}
+    disabled={itemDisabled}
+  />
 );
 
 const ToggleItem: React.FC<{
@@ -89,36 +69,19 @@ const ToggleItem: React.FC<{
   value: boolean;
   onToggle: () => void;
   disabled?: boolean;
-  isLast?: boolean;
-}> = ({ label, value, onToggle, disabled: itemDisabled, isLast }) => (
-  <>
-    <TouchableOpacity
-      onPress={onToggle}
-      disabled={itemDisabled}
-      className={`px-4 py-3 flex flex-row items-center justify-between ${
-        itemDisabled ? "opacity-50" : ""
-      }`}
-    >
-      <Text className='flex-1 text-white'>{label}</Text>
-      <View
-        className={`w-12 h-7 rounded-full ${value ? "bg-volt" : "bg-neutral-600"} flex-row items-center`}
-      >
-        <View
-          className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${
-            value ? "translate-x-6" : "translate-x-1"
-          }`}
-        />
-      </View>
-    </TouchableOpacity>
-    {!isLast && (
-      <View
-        style={{
-          height: StyleSheet.hairlineWidth,
-        }}
-        className='bg-neutral-700 mx-4'
+}> = ({ label, value, onToggle, disabled: itemDisabled }) => (
+  <NeonSheetRow
+    label={label}
+    onPress={onToggle}
+    disabled={itemDisabled}
+    right={
+      <SettingSwitch
+        value={value}
+        onValueChange={onToggle}
+        disabled={itemDisabled}
       />
-    )}
-  </>
+    }
+  />
 );
 
 /**
@@ -135,7 +98,6 @@ export const LibraryOptionsSheet: React.FC<Props> = ({
 }) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
 
   const handlePresentModal = useCallback(() => {
     bottomSheetModalRef.current?.present();
@@ -162,17 +124,6 @@ export const LibraryOptionsSheet: React.FC<Props> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   if (disabled) return null;
 
   return (
@@ -180,76 +131,57 @@ export const LibraryOptionsSheet: React.FC<Props> = ({
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
       enablePanDownToClose
       enableDismissOnClose
     >
-      <BottomSheetView>
-        <View
-          className='px-4 pb-8 pt-2'
-          style={{
-            paddingLeft: Math.max(16, insets.left),
-            paddingRight: Math.max(16, insets.right),
-          }}
-        >
-          <Text className='font-bold text-2xl mb-6'>
-            {t("library.options.display")}
-          </Text>
+      <NeonSheet
+        title={t("library.options.display")}
+        accent={NeonBoard.volt}
+        onClose={() => setOpen(false)}
+      >
+        <OptionGroup title={t("library.options.display")}>
+          <OptionItem
+            label={t("library.options.row")}
+            selected={settings.display === "row"}
+            onPress={() => updateSettings({ display: "row" })}
+          />
+          <OptionItem
+            label={t("library.options.list")}
+            selected={settings.display === "list"}
+            onPress={() => updateSettings({ display: "list" })}
+          />
+        </OptionGroup>
 
-          <OptionGroup title={t("library.options.display")}>
-            <OptionItem
-              label={t("library.options.row")}
-              selected={settings.display === "row"}
-              onPress={() => updateSettings({ display: "row" })}
-            />
-            <OptionItem
-              label={t("library.options.list")}
-              selected={settings.display === "list"}
-              onPress={() => updateSettings({ display: "list" })}
-              isLast
-            />
-          </OptionGroup>
+        <OptionGroup title={t("library.options.image_style")}>
+          <OptionItem
+            label={t("library.options.poster")}
+            selected={settings.imageStyle === "poster"}
+            onPress={() => updateSettings({ imageStyle: "poster" })}
+          />
+          <OptionItem
+            label={t("library.options.cover")}
+            selected={settings.imageStyle === "cover"}
+            onPress={() => updateSettings({ imageStyle: "cover" })}
+          />
+        </OptionGroup>
 
-          <OptionGroup title={t("library.options.image_style")}>
-            <OptionItem
-              label={t("library.options.poster")}
-              selected={settings.imageStyle === "poster"}
-              onPress={() => updateSettings({ imageStyle: "poster" })}
-            />
-            <OptionItem
-              label={t("library.options.cover")}
-              selected={settings.imageStyle === "cover"}
-              onPress={() => updateSettings({ imageStyle: "cover" })}
-              isLast
-            />
-          </OptionGroup>
-
-          <OptionGroup title={t("library.options.options_title")}>
-            <ToggleItem
-              label={t("library.options.show_titles")}
-              value={settings.showTitles}
-              onToggle={() =>
-                updateSettings({ showTitles: !settings.showTitles })
-              }
-              disabled={settings.imageStyle === "poster"}
-            />
-            <ToggleItem
-              label={t("library.options.show_stats")}
-              value={settings.showStats}
-              onToggle={() =>
-                updateSettings({ showStats: !settings.showStats })
-              }
-              isLast
-            />
-          </OptionGroup>
-        </View>
-      </BottomSheetView>
+        <OptionGroup title={t("library.options.options_title")}>
+          <ToggleItem
+            label={t("library.options.show_titles")}
+            value={settings.showTitles}
+            onToggle={() =>
+              updateSettings({ showTitles: !settings.showTitles })
+            }
+            disabled={settings.imageStyle === "poster"}
+          />
+          <ToggleItem
+            label={t("library.options.show_stats")}
+            value={settings.showStats}
+            onToggle={() => updateSettings({ showStats: !settings.showStats })}
+          />
+        </OptionGroup>
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

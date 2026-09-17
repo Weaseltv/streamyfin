@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { ListGroup } from "@/components/list/ListGroup";
+import { NeonBoard } from "@/constants/Colors";
 import type { CustomHeader } from "@/utils/customHeaders";
 import { storage } from "@/utils/mmkv";
 import {
@@ -42,12 +43,12 @@ export function CustomHeadersSettings(): React.ReactElement | null {
       <ListGroup
         title={t("custom_headers.title")}
         description={
-          <Text className='text-[#8E8D91] text-xs'>
+          <Text variant='meta' muted>
             {t("custom_headers.description")}
           </Text>
         }
       >
-        <View className='p-3'>
+        <View className='px-3 pt-1 pb-3'>
           <CustomHeaderList
             headers={headers}
             onChange={setHeaders}
@@ -56,8 +57,11 @@ export function CustomHeadersSettings(): React.ReactElement | null {
         </View>
       </ListGroup>
 
-      <View className='px-4 py-2 bg-neutral-900 mt-2'>
-        <Text className='text-neutral-400 text-xs'>
+      <View
+        className='px-3 py-2 mt-2'
+        style={{ borderTopWidth: 1, borderTopColor: NeonBoard.line }}
+      >
+        <Text variant='caption' muted>
           {t("custom_headers.security_note")}
         </Text>
       </View>

@@ -1,18 +1,17 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetTextInput,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Platform, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/Colors";
+import { Platform, View } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { Button } from "./Button";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  neonSheetModalProps,
+} from "./common/NeonSheet";
 import { Text } from "./common/Text";
 
 interface PasswordEntryModalProps {
@@ -29,11 +28,11 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
   username,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
   const errorHaptic = useHaptic("error");
 
   const isAndroid = Platform.OS === "android";
@@ -63,17 +62,6 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
     [onClose],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleSubmit = async () => {
     if (!password) {
       setError(t("password.enter_password"));
@@ -99,69 +87,24 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
       ref={bottomSheetModalRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      backdropComponent={renderBackdrop}
+      {...neonSheetModalProps}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
       android_keyboardInputMode='adjustResize'
       topInset={isAndroid ? 0 : undefined}
     >
-      <BottomSheetView
-        style={{
-          flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-          paddingBottom: Math.max(16, insets.bottom),
-        }}
-      >
-        <View className='flex-1'>
-          {/* Header */}
-          <View className='mb-6'>
-            <Text className='font-bold text-2xl text-neutral-100'>
-              {t("password.enter_password")}
-            </Text>
-            <Text className='text-neutral-400 mt-1'>
-              {t("password.enter_password_for", { username })}
-            </Text>
-          </View>
-
-          {/* Password Input */}
-          <View className='p-4 border border-neutral-800 bg-neutral-900 mb-4'>
-            <Text className='text-neutral-400 text-sm mb-2'>
-              {t("login.password_placeholder")}
-            </Text>
-            <BottomSheetTextInput
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError(null);
-              }}
-              placeholder={t("login.password_placeholder")}
-              placeholderTextColor='#6B7280'
-              secureTextEntry
-              autoFocus
-              autoCapitalize='none'
-              autoCorrect={false}
-              style={{
-                backgroundColor: "#1F2937",
-                borderRadius: 8,
-                padding: 12,
-                color: "white",
-                fontSize: 16,
-              }}
-              onSubmitEditing={handleSubmit}
-              returnKeyType='done'
-            />
-            {error && <Text className='text-red-500 mt-2'>{error}</Text>}
-          </View>
-
-          {/* Buttons */}
-          <View className='flex-row gap-3'>
+      <NeonSheet
+        fill
+        eyebrow={username}
+        title={t("password.enter_password")}
+        onClose={onClose}
+        primary={
+          <View style={{ flexDirection: "row", gap: 12 }}>
             <Button
               onPress={onClose}
-              color='black'
-              className='flex-1'
+              variant='border'
+              color='white'
+              style={{ flex: 1 }}
               disabled={isLoading}
             >
               {t("common.cancel")}
@@ -169,18 +112,58 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
             <Button
               onPress={handleSubmit}
               color='primary'
-              className='flex-1'
+              style={{ flex: 1 }}
               disabled={isLoading || !password}
+              loading={isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator size='small' color='white' />
-              ) : (
-                t("common.login")
-              )}
+              {t("common.login")}
             </Button>
           </View>
+        }
+      >
+        <NeonSheetNote>
+          {t("password.enter_password_for", { username })}
+        </NeonSheetNote>
+
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <BottomSheetTextInput
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setError(null);
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={t("login.password_placeholder")}
+            placeholderTextColor={NeonBoard.low}
+            secureTextEntry
+            autoFocus
+            autoCapitalize='none'
+            autoCorrect={false}
+            style={{
+              backgroundColor: NeonBoard.card2,
+              borderWidth: 1,
+              borderColor: focused ? NeonBoard.volt : NeonBoard.line2,
+              borderRadius: 0,
+              color: NeonBoard.text,
+              paddingHorizontal: 14,
+              minHeight: 48,
+              ...FontFace.bodySemi,
+              fontSize: 15,
+            }}
+            onSubmitEditing={handleSubmit}
+            returnKeyType='done'
+          />
+          {error && (
+            <Text
+              variant='caption'
+              style={{ color: NeonBoard.red, marginTop: 8 }}
+            >
+              {error}
+            </Text>
+          )}
         </View>
-      </BottomSheetView>
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

@@ -1,11 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetTextInput,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -16,12 +10,16 @@ import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { Button } from "@/components/Button";
+import { NeonSheet, neonSheetModalProps } from "@/components/common/NeonSheet";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { GenreTags } from "@/components/GenreTags";
 import Cast from "@/components/jellyseerr/Cast";
 import DetailFacts from "@/components/jellyseerr/DetailFacts";
-import RequestModal from "@/components/jellyseerr/RequestModal";
+import { jellyseerrTypeAccent } from "@/components/jellyseerr/JellyseerrMediaIcon";
+import RequestModal, {
+  type RequestSeason,
+} from "@/components/jellyseerr/RequestModal";
 import { TVJellyseerrPage } from "@/components/jellyseerr/tv";
 import { OverviewText } from "@/components/OverviewText";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
@@ -29,7 +27,8 @@ import { PlatformDropdown } from "@/components/PlatformDropdown";
 import { JellyserrRatings } from "@/components/Ratings";
 import JellyseerrSeasons from "@/components/series/JellyseerrSeasons";
 import { ItemActions } from "@/components/series/SeriesActions";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
@@ -41,9 +40,11 @@ import {
 } from "@/utils/jellyseerr/server/constants/issue";
 import {
   MediaRequestStatus,
+  MediaStatus,
   MediaType,
 } from "@/utils/jellyseerr/server/constants/media";
 import type MediaRequest from "@/utils/jellyseerr/server/entity/MediaRequest";
+import type Season from "@/utils/jellyseerr/server/entity/Season";
 import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
 import {
   hasPermission,
@@ -147,17 +148,6 @@ const MobilePage: React.FC = () => {
     }
   }, [jellyseerrApi, pendingRequest, refetch, t]);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const submitIssue = useCallback(() => {
     if (result.id && issueType && issueMessage && details) {
       jellyseerrApi
@@ -210,6 +200,32 @@ const MobilePage: React.FC = () => {
     mediaType,
   ]);
 
+  const accent = jellyseerrTypeAccent(mediaType);
+
+  // Season rows for the request sheet: TMDB seasons with the Seerr status of
+  // each (available / requested ones are shown but not selectable).
+  const requestSeasons: RequestSeason[] | undefined = useMemo(() => {
+    if (mediaType !== MediaType.TV) return undefined;
+    const tv = details as TvDetails | undefined;
+    if (!tv?.seasons) return undefined;
+    const mediaInfoSeasons = tv.mediaInfo?.seasons ?? [];
+    const requested =
+      tv.mediaInfo?.requests?.flatMap((r: MediaRequest) => r.seasons) ?? [];
+    return tv.seasons
+      .filter((s) => s.seasonNumber !== 0)
+      .map((s) => ({
+        seasonNumber: s.seasonNumber,
+        episodeCount: s.episodeCount,
+        status:
+          mediaInfoSeasons.find(
+            (m: Season) => m.seasonNumber === s.seasonNumber,
+          )?.status ??
+          requested.find((r: Season) => r.seasonNumber === s.seasonNumber)
+            ?.status ??
+          MediaStatus.UNKNOWN,
+      }));
+  }, [details, mediaType]);
+
   const isAnime = useMemo(
     () =>
       (details?.keywords.some((k) => k.id === ANIME_KEYWORD_ID) || false) &&
@@ -245,8 +261,9 @@ const MobilePage: React.FC = () => {
 
   return (
     <View
-      className='flex-1 relative'
       style={{
+        flex: 1,
+        backgroundColor: NeonBoard.stage,
         paddingLeft: insets.left,
         paddingRight: insets.right,
       }}
@@ -276,25 +293,31 @@ const MobilePage: React.FC = () => {
                 style={{
                   width: "100%",
                   height: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: NeonBoard.card2,
+                  borderBottomWidth: 1,
+                  borderBottomColor: NeonBoard.line,
                 }}
-                className='flex flex-col items-center justify-center border border-neutral-800 bg-neutral-900'
               >
-                <Ionicons
-                  name='image-outline'
-                  size={24}
-                  color='white'
-                  style={{ opacity: 0.4 }}
-                />
+                <Feather name='image' size={24} color={NeonBoard.low} />
               </View>
             )}
           </View>
         }
       >
-        <View className='flex flex-col'>
-          <View className='space-y-4'>
-            <View className='px-4'>
-              <View className='flex flex-row justify-between w-full'>
-                <View className='flex flex-col w-56'>
+        <View style={{ backgroundColor: NeonBoard.stage }}>
+          <View style={{ gap: 16 }}>
+            <View style={{ paddingHorizontal: Sizes.gutter }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "flex-end",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
                   <JellyserrRatings
                     result={
                       result as
@@ -304,61 +327,97 @@ const MobilePage: React.FC = () => {
                         | TvDetails
                     }
                   />
-                  <Text selectable className='font-bold text-2xl mb-1'>
+                  <Text variant='eyebrow' accent={accent} numberOfLines={1}>
+                    {`${t("search.discover")} · ${
+                      mediaType === MediaType.MOVIE
+                        ? t("search.movies")
+                        : t("search.series")
+                    }`}
+                  </Text>
+                  <Text
+                    selectable
+                    variant='display'
+                    numberOfLines={3}
+                    style={{ marginTop: 2 }}
+                  >
                     {mediaTitle}
                   </Text>
-                  <Text className='opacity-50'>{releaseYear}</Text>
+                  <Text variant='meta' muted style={{ marginTop: 4 }}>
+                    {releaseYear}
+                  </Text>
                 </View>
-                <Image
-                  className='absolute bottom-1 right-1 w-28 aspect-[10/15] border-2 border-neutral-800/50 drop-shadow-2xl'
-                  cachePolicy={"memory-disk"}
-                  transition={300}
-                  source={{
-                    uri: posterSrc,
+                <View
+                  style={{
+                    width: Sizes.posterSmall.w,
+                    height: Sizes.posterSmall.h,
+                    borderWidth: 1,
+                    borderColor: NeonBoard.line,
+                    backgroundColor: NeonBoard.card2,
+                    overflow: "hidden",
                   }}
-                />
+                >
+                  <Image
+                    style={{ width: "100%", height: "100%" }}
+                    cachePolicy={"memory-disk"}
+                    transition={300}
+                    contentFit='cover'
+                    source={{
+                      uri: posterSrc,
+                    }}
+                  />
+                </View>
               </View>
               <View>
-                <GenreTags genres={details?.genres?.map((g) => g.name) || []} />
+                <GenreTags
+                  accent={accent}
+                  genres={details?.genres?.map((g) => g.name) || []}
+                />
               </View>
               {isLoading || isFetching ? (
                 <Button
                   loading={true}
                   disabled={true}
-                  color='primary'
-                  className='mt-4'
+                  accent={NeonBoard.volt}
+                  style={{ marginTop: 16 }}
                 />
               ) : canRequest ? (
-                <Button color='primary' onPress={request} className='mt-4'>
+                <Button
+                  accent={NeonBoard.volt}
+                  onPress={request}
+                  style={{ marginTop: 16 }}
+                  iconLeft={
+                    <Feather
+                      name='inbox'
+                      size={18}
+                      color={NeonBoard.onAccent}
+                    />
+                  }
+                >
                   {t("jellyseerr.request_button")}
                 </Button>
               ) : (
                 details?.mediaInfo?.jellyfinMediaId && (
-                  <View className='flex flex-row space-x-2 mt-4'>
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
                     {!Platform.isTV && (
                       <Button
-                        className='flex-1 bg-yellow-500/50 border-yellow-400 ring-yellow-400 text-yellow-100'
-                        color='transparent'
+                        variant='border'
+                        color='white'
+                        style={{ flex: 1 }}
                         onPress={() => bottomSheetModalRef?.current?.present()}
                         iconLeft={
-                          <Ionicons
-                            name='warning-outline'
-                            size={20}
-                            color='white'
+                          <Feather
+                            name='alert-triangle'
+                            size={18}
+                            color={NeonBoard.text}
                           />
                         }
-                        style={{
-                          borderWidth: 1,
-                          borderStyle: "solid",
-                        }}
                       >
-                        <Text className='text-sm'>
-                          {t("jellyseerr.report_issue_button")}
-                        </Text>
+                        {t("jellyseerr.report_issue_button")}
                       </Button>
                     )}
                     <Button
-                      className='flex-1 bg-volt/50 border-volt ring-tint-violet text-volt'
+                      accent={accent}
+                      style={{ flex: 1 }}
                       onPress={() => {
                         router.push({
                           pathname:
@@ -372,23 +431,29 @@ const MobilePage: React.FC = () => {
                         });
                       }}
                       iconLeft={
-                        <Ionicons name='play-outline' size={20} color='white' />
+                        <Feather
+                          name='play'
+                          size={18}
+                          color={NeonBoard.onAccent}
+                        />
                       }
-                      style={{
-                        borderWidth: 1,
-                        borderStyle: "solid",
-                      }}
                     >
-                      <Text className='text-sm'>{t("common.play")}</Text>
+                      {t("common.play")}
                     </Button>
                   </View>
                 )
               )}
               {canManageRequests && pendingRequest && (
-                <View className='flex flex-col space-y-2 mt-4'>
-                  <View className='flex flex-row items-center space-x-2'>
-                    <Ionicons name='person-outline' size={16} color='#9CA3AF' />
-                    <Text className='text-sm text-neutral-400'>
+                <View style={{ gap: 8, marginTop: 16 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Feather name='user' size={14} color={NeonBoard.mid} />
+                    <Text variant='meta' muted>
                       {t("jellyseerr.requested_by", {
                         user:
                           pendingRequest.requestedBy?.displayName ||
@@ -398,42 +463,32 @@ const MobilePage: React.FC = () => {
                       })}
                     </Text>
                   </View>
-                  <View className='flex flex-row space-x-2'>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
                     <Button
-                      className='flex-1 bg-green-600/50 border-green-400 ring-green-400 text-green-100'
-                      color='transparent'
+                      variant='border'
+                      accent={NeonBoard.green}
+                      style={{ flex: 1 }}
                       onPress={handleApproveRequest}
                       iconLeft={
-                        <Ionicons
-                          name='checkmark-outline'
-                          size={20}
-                          color='white'
+                        <Feather
+                          name='check'
+                          size={18}
+                          color={NeonBoard.green}
                         />
                       }
-                      style={{
-                        borderWidth: 1,
-                        borderStyle: "solid",
-                      }}
                     >
-                      <Text className='text-sm'>{t("jellyseerr.approve")}</Text>
+                      {t("jellyseerr.approve")}
                     </Button>
                     <Button
-                      className='flex-1 bg-red-600/50 border-red-400 ring-red-400 text-red-100'
-                      color='transparent'
+                      variant='border'
+                      color='red'
+                      style={{ flex: 1 }}
                       onPress={handleDeclineRequest}
                       iconLeft={
-                        <Ionicons
-                          name='close-outline'
-                          size={20}
-                          color='white'
-                        />
+                        <Feather name='x' size={18} color={NeonBoard.red} />
                       }
-                      style={{
-                        borderWidth: 1,
-                        borderStyle: "solid",
-                      }}
                     >
-                      <Text className='text-sm'>{t("jellyseerr.decline")}</Text>
+                      {t("jellyseerr.decline")}
                     </Button>
                   </View>
                 </View>
@@ -451,7 +506,12 @@ const MobilePage: React.FC = () => {
               />
             )}
             <DetailFacts
-              className='p-2 border border-neutral-800 bg-neutral-900'
+              style={{
+                paddingHorizontal: Sizes.gutter,
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: NeonBoard.line,
+              }}
               details={details}
             />
             <Cast details={details} />
@@ -464,6 +524,7 @@ const MobilePage: React.FC = () => {
         title={mediaTitle}
         id={result.id!}
         type={mediaType}
+        seasons={requestSeasons}
         isAnime={isAnime}
         onRequested={() => {
           _setRequestBody(undefined);
@@ -477,65 +538,94 @@ const MobilePage: React.FC = () => {
         <BottomSheetModal
           ref={bottomSheetModalRef}
           enableDynamicSizing
-          handleIndicatorStyle={{
-            backgroundColor: "white",
-          }}
-          backgroundStyle={{
-            backgroundColor: Colors.surface,
-          }}
-          backdropComponent={renderBackdrop}
+          {...neonSheetModalProps}
           stackBehavior='push'
           onDismiss={handleIssueModalDismiss}
         >
-          <BottomSheetView>
-            <View className='flex flex-col space-y-4 px-4 pb-8 pt-2'>
-              <View>
-                <Text className='font-bold text-2xl text-neutral-100'>
-                  {t("jellyseerr.whats_wrong")}
-                </Text>
-              </View>
-              <View className='flex flex-col space-y-2 items-start'>
-                <View className='flex flex-col w-full'>
-                  <Text className='opacity-50 mb-1 text-xs'>
-                    {t("jellyseerr.issue_type")}
-                  </Text>
-                  <PlatformDropdown
-                    groups={issueTypeOptionGroups}
-                    trigger={
-                      <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
-                        <Text numberOfLines={1}>
-                          {issueType
-                            ? IssueTypeName[issueType]
-                            : t("jellyseerr.select_an_issue")}
-                        </Text>
-                      </View>
-                    }
-                    title={t("jellyseerr.types")}
-                    open={issueTypeDropdownOpen}
-                    onOpenChange={setIssueTypeDropdownOpen}
-                  />
-                </View>
-
-                <View className='p-4 border border-neutral-800 bg-neutral-900 w-full'>
-                  <BottomSheetTextInput
-                    multiline
-                    maxLength={254}
-                    style={{ color: "white" }}
-                    clearButtonMode='always'
-                    placeholder={t("jellyseerr.describe_the_issue")}
-                    placeholderTextColor='#9CA3AF'
-                    // Issue with multiline + Textinput inside a portal
-                    // https://github.com/callstack/react-native-paper/issues/1668
-                    defaultValue={issueMessage}
-                    onChangeText={setIssueMessage}
-                  />
-                </View>
-              </View>
-              <Button className='mt-auto' onPress={submitIssue} color='primary'>
+          <NeonSheet
+            eyebrow={t("jellyseerr.report_issue_button")}
+            title={t("jellyseerr.whats_wrong")}
+            accent={NeonBoard.warn}
+            onClose={() => bottomSheetModalRef?.current?.close()}
+            primary={
+              <Button accent={NeonBoard.warn} onPress={submitIssue}>
                 {t("jellyseerr.submit_button")}
               </Button>
+            }
+          >
+            <PlatformDropdown
+              groups={issueTypeOptionGroups}
+              trigger={
+                <View
+                  style={{
+                    minHeight: 52,
+                    paddingLeft: Sizes.rowLead,
+                    paddingRight: Sizes.gutter,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: NeonBoard.card2,
+                    borderBottomWidth: 1,
+                    borderBottomColor: NeonBoard.line,
+                  }}
+                >
+                  <Text variant='rowTitle' style={{ flex: 1 }}>
+                    {t("jellyseerr.issue_type")}
+                  </Text>
+                  <Text
+                    variant='rowTitle'
+                    accent={NeonBoard.warn}
+                    numberOfLines={1}
+                    style={{ maxWidth: "55%", fontSize: 14 }}
+                  >
+                    {issueType
+                      ? IssueTypeName[issueType]
+                      : t("jellyseerr.select_an_issue")}
+                  </Text>
+                  <Feather
+                    name='chevron-down'
+                    size={16}
+                    color={NeonBoard.warn}
+                    style={{ marginLeft: 6 }}
+                  />
+                </View>
+              }
+              title={t("jellyseerr.types")}
+              open={issueTypeDropdownOpen}
+              onOpenChange={setIssueTypeDropdownOpen}
+            />
+            <View
+              style={{
+                marginHorizontal: Sizes.gutter,
+                marginTop: 12,
+                minHeight: 96,
+                padding: 12,
+                backgroundColor: NeonBoard.card2,
+                borderWidth: 1,
+                borderColor: NeonBoard.line2,
+              }}
+            >
+              <BottomSheetTextInput
+                multiline
+                maxLength={254}
+                style={{
+                  color: NeonBoard.text,
+                  ...FontFace.body,
+                  fontSize: 15,
+                  minHeight: 72,
+                  textAlignVertical: "top",
+                }}
+                selectionColor={NeonBoard.warn}
+                cursorColor={NeonBoard.warn}
+                clearButtonMode='always'
+                placeholder={t("jellyseerr.describe_the_issue")}
+                placeholderTextColor={NeonBoard.low}
+                // Issue with multiline + Textinput inside a portal
+                // https://github.com/callstack/react-native-paper/issues/1668
+                defaultValue={issueMessage}
+                onChangeText={setIssueMessage}
+              />
             </View>
-          </BottomSheetView>
+          </NeonSheet>
         </BottomSheetModal>
       )}
     </View>

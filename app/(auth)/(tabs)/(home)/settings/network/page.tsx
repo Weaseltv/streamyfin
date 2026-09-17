@@ -6,6 +6,7 @@ import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
 import { CustomHeadersSettings } from "@/components/settings/CustomHeadersSettings";
 import { LocalNetworkSettings } from "@/components/settings/LocalNetworkSettings";
+import { Sizes } from "@/constants/neon";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { storage } from "@/utils/mmkv";
@@ -28,17 +29,21 @@ export default function NetworkSettingsPage() {
       }}
     >
       <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+        }}
       >
         <ListGroup title={t("home.settings.network.current_server")}>
           <ListItem
             title={t("home.settings.network.remote_url")}
             subtitle={remoteUrl ?? t("home.settings.network.not_configured")}
+            icon='globe-outline'
           />
           <ListItem
             title={t("home.settings.network.active_url")}
             subtitle={api?.basePath ?? t("home.settings.network.not_connected")}
+            icon='link-outline'
           />
         </ListGroup>
 

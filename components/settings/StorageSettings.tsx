@@ -2,19 +2,33 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { toast } from "sonner-native";
+import { useConfirmDialog } from "@/components/common/ConfirmDialog";
+import { NeonProgress } from "@/components/common/NeonProgress";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useDownload } from "@/providers/DownloadProvider";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
-export const StorageSettings = () => {
+interface Props {
+  accent?: string;
+}
+
+/**
+ * STORAGE: a 3pt usage bar in the accent (the app's share) over the rest of
+ * the device's used space in `low`, a `meta` note, and Clear cache as a red
+ * row that confirms through the P14 dialog.
+ */
+export const StorageSettings: React.FC<Props> = ({
+  accent = NeonBoard.volt,
+}) => {
   const { deleteAllFiles, appSizeUsage } = useDownload();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const confirmDelete = useConfirmDelete();
+  const { confirm, dialog } = useConfirmDialog();
   const successHapticFeedback = useHaptic("success");
   const errorHapticFeedback = useHaptic("error");
 
@@ -35,11 +49,13 @@ export const StorageSettings = () => {
   });
 
   const onDeleteClicked = () => {
-    confirmDelete({
+    confirm({
       title: t("home.settings.storage.delete_all_downloaded_files_confirm"),
       message: t(
         "home.settings.storage.delete_all_downloaded_files_confirm_desc",
       ),
+      confirmLabel: t("common.delete"),
+      destructive: true,
       onConfirm: async () => {
         try {
           await deleteAllFiles();
@@ -60,73 +76,56 @@ export const StorageSettings = () => {
     return ((value / total) * 100).toFixed(2);
   };
 
+  const appShare = size && size.total > 0 ? size.appSize / size.total : 0;
+  const deviceShare = size && size.total > 0 ? size.used : 0;
+
   return (
     <View>
-      <View className='flex flex-col gap-y-1'>
-        <View className='flex flex-row items-center justify-between'>
-          <Text>{t("home.settings.storage.storage_title")}</Text>
-          {size && (
-            <Text className='text-neutral-500'>
-              {t("home.settings.storage.size_used", {
+      <SectionHeader
+        title={t("home.settings.storage.storage_title")}
+        accent={accent}
+        count={
+          size
+            ? t("home.settings.storage.size_used", {
                 used: Number(size.total - size.remaining).bytesToReadable(),
                 total: size.total?.bytesToReadable(),
-              })}
-            </Text>
-          )}
-        </View>
-        <View className='h-3 w-full bg-gray-100/10 overflow-hidden flex flex-row'>
-          {size && (
-            <View className='flex flex-row'>
-              <View
-                style={{
-                  width: `${(size.appSize / size.total) * 100}%`,
-                  backgroundColor: Colors.primaryRGB,
-                }}
-              />
-              <View
-                style={{
-                  width: `${((size.total - size.remaining - size.appSize) / size.total) * 100}%`,
-                  backgroundColor: Colors.primaryLightRGB,
-                }}
-              />
-            </View>
-          )}
-        </View>
-        <View className='flex flex-row gap-x-2'>
-          {size && (
-            <View className='flex flex-row gap-x-2'>
-              <View className='flex flex-row items-center'>
-                <View className='w-3 h-3 rounded-full bg-volt mr-1' />
-                <Text className='text-white text-xs'>
-                  {t("home.settings.storage.app_usage", {
-                    usedSpace: calculatePercentage(size.appSize, size.total),
-                  })}
-                </Text>
-              </View>
-              <View className='flex flex-row items-center'>
-                <View className='w-3 h-3 rounded-full bg-volt mr-1' />
-                <Text className='text-white text-xs'>
-                  {t("home.settings.storage.device_usage", {
-                    availableSpace: calculatePercentage(
-                      size.total - size.remaining - size.appSize,
-                      size.total,
-                    ),
-                  })}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
+              })
+            : undefined
+        }
+      />
+      <View style={{ paddingHorizontal: Sizes.rowLead, paddingTop: 2 }}>
+        {/* The app's share in the accent, drawn over the device's used space. */}
+        <NeonProgress
+          progress={appShare}
+          buffered={deviceShare}
+          color={accent}
+        />
+        {size ? (
+          <Text variant='meta' muted style={{ marginTop: 8 }}>
+            {t("home.settings.storage.app_usage", {
+              usedSpace: calculatePercentage(size.appSize, size.total),
+            })}
+            {" · "}
+            {t("home.settings.storage.device_usage", {
+              availableSpace: calculatePercentage(
+                size.total - size.remaining - size.appSize,
+                size.total,
+              ),
+            })}
+          </Text>
+        ) : null}
       </View>
       {!Platform.isTV && (
-        <ListGroup className='mt-4'>
+        <ListGroup accent={accent} style={{ marginTop: 8 }}>
           <ListItem
+            icon='trash-outline'
             textColor='red'
             onPress={onDeleteClicked}
             title={t("home.settings.storage.delete_all_downloaded_files")}
           />
         </ListGroup>
       )}
+      {dialog}
     </View>
   );
 };

@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NEON_TAB_BAR_HEIGHT } from "@/components/common/NeonTabBar";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
@@ -27,7 +28,9 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useMusicPlayer } from "@/providers/MusicPlayerProvider";
 
 const HORIZONTAL_MARGIN = Platform.OS === "android" ? 12 : 20;
-const BOTTOM_TAB_HEIGHT = Platform.OS === "android" ? 56 : 52;
+// The custom tab bar is NEON_TAB_BAR_HEIGHT plus the safe-area bottom inset
+// on both platforms; the bar floats 8 above it.
+const BAR_OFFSET = 8;
 const BAR_HEIGHT = Platform.OS === "android" ? 58 : 50;
 
 // Gesture thresholds
@@ -234,10 +237,7 @@ export const MiniPlayerBar: React.FC = () => {
         style={[
           styles.container,
           {
-            bottom:
-              BOTTOM_TAB_HEIGHT +
-              insets.bottom +
-              (Platform.OS === "android" ? 32 : 4),
+            bottom: NEON_TAB_BAR_HEIGHT + insets.bottom + BAR_OFFSET,
           },
           animatedContainerStyle,
         ]}
@@ -284,9 +284,9 @@ const styles = StyleSheet.create({
   albumArt: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 0,
     overflow: "hidden",
-    backgroundColor: "#333",
+    backgroundColor: NeonBoard.card2,
   },
   albumImage: {
     width: "100%",

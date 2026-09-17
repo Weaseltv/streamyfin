@@ -1,10 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
@@ -17,17 +12,17 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "@/components/common/Input";
+import {
+  NeonSheetHead,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useAddToPlaylist } from "@/hooks/usePlaylistMutations";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
@@ -102,17 +97,6 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleSelectPlaylist = useCallback(
     async (playlist: BaseItemDto) => {
       if (!trackToAdd?.Id || !playlist.Id) return;
@@ -149,76 +133,92 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
       index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
     >
       <BottomSheetScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: insets.bottom + 16,
         }}
       >
-        <Text className='font-bold text-2xl mb-2'>
-          {t("music.track_options.add_to_playlist")}
-        </Text>
-        <Text className='text-neutral-500 mb-4'>{trackToAdd?.Name}</Text>
+        <NeonSheetHead
+          eyebrow={trackToAdd?.Name}
+          title={t("music.track_options.add_to_playlist")}
+          onClose={() => setOpen(false)}
+        />
 
         {showSearch && (
-          <Input
-            placeholder={t("music.playlists.search_playlists")}
-            className='mb-4 border-neutral-800 border'
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType='done'
-          />
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+            <Input
+              placeholder={t("music.playlists.search_playlists")}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType='done'
+            />
+          </View>
         )}
 
         {/* Create New Playlist Button */}
         <TouchableOpacity
           onPress={handleCreateNew}
-          className='flex-row items-center bg-card2/30 px-4 py-3.5 mb-4'
+          accessibilityRole='button'
+          style={{
+            minHeight: 52,
+            paddingLeft: Sizes.rowLead,
+            paddingRight: Sizes.gutter,
+            flexDirection: "row",
+            alignItems: "center",
+            borderBottomWidth: 1,
+            borderBottomColor: NeonBoard.line,
+          }}
         >
-          <View className='w-12 h-12 bg-volt items-center justify-center mr-3'>
-            <Ionicons name='add' size={28} color='white' />
-          </View>
-          <Text className='text-volt font-semibold text-base'>
+          <Feather name='plus' size={18} color={NeonBoard.volt} />
+          <Text
+            variant='rowTitle'
+            style={{ color: NeonBoard.volt, marginLeft: 14 }}
+          >
             {t("music.playlists.create_new")}
           </Text>
         </TouchableOpacity>
 
         {isLoading ? (
-          <View className='py-8 items-center'>
-            <ActivityIndicator color={Colors.primary} />
+          <View style={{ paddingVertical: 32, alignItems: "center" }}>
+            <ActivityIndicator color={NeonBoard.volt} />
           </View>
         ) : filteredPlaylists.length === 0 ? (
-          <View className='py-8 items-center'>
-            <Text className='text-neutral-500'>
+          <View style={{ paddingVertical: 32, alignItems: "center" }}>
+            <Text variant='body' muted>
               {search ? t("search.no_results") : t("music.no_playlists")}
             </Text>
           </View>
         ) : (
-          <View className='overflow-hidden bg-neutral-800'>
-            {filteredPlaylists.map((playlist, index) => (
+          <View>
+            {filteredPlaylists.map((playlist) => (
               <View key={playlist.Id}>
                 <TouchableOpacity
                   onPress={() => handleSelectPlaylist(playlist)}
-                  className='flex-row items-center px-4 py-3'
+                  accessibilityRole='button'
+                  style={{
+                    minHeight: 60,
+                    paddingVertical: 6,
+                    paddingLeft: Sizes.rowLead,
+                    paddingRight: Sizes.gutter,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderBottomWidth: 1,
+                    borderBottomColor: NeonBoard.line,
+                  }}
                   disabled={addToPlaylist.isPending}
                 >
                   <View
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: 6,
+                      borderRadius: 0,
                       overflow: "hidden",
-                      backgroundColor: "#1a1a1a",
+                      backgroundColor: NeonBoard.card2,
                       marginRight: 12,
                     }}
                   >
@@ -231,21 +231,18 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
                       cachePolicy='memory-disk'
                     />
                   </View>
-                  <View className='flex-1'>
-                    <Text numberOfLines={1} className='text-white text-base'>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text variant='rowTitle' numberOfLines={1}>
                       {playlist.Name}
                     </Text>
-                    <Text className='text-neutral-500 text-sm'>
+                    <Text variant='meta' muted style={{ marginTop: 2 }}>
                       {playlist.ChildCount} {t("music.tabs.tracks")}
                     </Text>
                   </View>
                   {addToPlaylist.isPending && (
-                    <ActivityIndicator size='small' color={Colors.primary} />
+                    <ActivityIndicator size='small' color={NeonBoard.volt} />
                   )}
                 </TouchableOpacity>
-                {index < filteredPlaylists.length - 1 && (
-                  <View style={styles.separator} />
-                )}
               </View>
             ))}
           </View>
@@ -254,10 +251,3 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
     </BottomSheetModal>
   );
 };
-
-const styles = StyleSheet.create({
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#404040",
-  },
-});
