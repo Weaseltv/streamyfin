@@ -106,7 +106,7 @@ export default function CreateWatchlistScreen() {
             onChangeText={setName}
             placeholder={t("watchlists.name_placeholder")}
             placeholderTextColor='#6b7280'
-            className='bg-neutral-800 text-white px-4 py-3 rounded-lg text-base'
+            className='bg-neutral-800 text-white px-4 py-3 text-base'
             autoFocus
           />
         </View>
@@ -121,7 +121,7 @@ export default function CreateWatchlistScreen() {
             onChangeText={setDescription}
             placeholder={t("watchlists.description_placeholder")}
             placeholderTextColor='#6b7280'
-            className='bg-neutral-800 text-white px-4 py-3 rounded-lg text-base'
+            className='bg-neutral-800 text-white px-4 py-3 text-base'
             multiline
             numberOfLines={3}
             textAlignVertical='top'
@@ -157,7 +157,7 @@ export default function CreateWatchlistScreen() {
               <TouchableOpacity
                 key={type.value ?? "all"}
                 onPress={() => setAllowedItemType(type.value)}
-                className={`px-4 py-2 rounded-lg ${allowedItemType === type.value ? "bg-prism-cyan" : "bg-neutral-800"}`}
+                className={`px-4 py-2  ${allowedItemType === type.value ? "bg-volt" : "bg-neutral-800"}`}
               >
                 <Text
                   className={
@@ -183,7 +183,7 @@ export default function CreateWatchlistScreen() {
               <TouchableOpacity
                 key={sort.value}
                 onPress={() => setDefaultSortOrder(sort.value)}
-                className={`px-4 py-2 rounded-lg ${defaultSortOrder === sort.value ? "bg-prism-cyan" : "bg-neutral-800"}`}
+                className={`px-4 py-2  ${defaultSortOrder === sort.value ? "bg-volt" : "bg-neutral-800"}`}
               >
                 <Text
                   className={

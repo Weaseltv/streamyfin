@@ -2,7 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import type { FC } from "react";
 import { View, type ViewProps } from "react-native";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
-import { RoundButton } from "@/components/RoundButton";
+import { SquareButton } from "@/components/SquareButton";
 import { Colors } from "@/constants/Colors";
 import { useFavorite } from "@/hooks/useFavorite";
 
@@ -15,12 +15,12 @@ export const AddToFavorites: FC<Props> = ({ item, ...props }) => {
 
   return (
     <View {...props}>
-      <RoundButton size='large' onPress={toggleFavorite}>
+      <SquareButton size='large' onPress={toggleFavorite}>
         <HeaderIcon
           name={isFavorite ? "favorited" : "favorite"}
           tintColor={isFavorite ? Colors.primary : "white"}
         />
-      </RoundButton>
+      </SquareButton>
     </View>
   );
 };

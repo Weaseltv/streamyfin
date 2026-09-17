@@ -298,7 +298,7 @@ export default function StreamystatsPage() {
         {!isUrlLocked && isStreamystatsEnabled && (
           <TouchableOpacity
             onPress={handleClearStreamystats}
-            className='mt-3 mb-4 py-3 rounded-xl bg-neutral-800'
+            className='mt-3 mb-4 py-3 bg-neutral-800'
           >
             <Text className='text-center text-red-500'>
               {t("home.settings.plugins.streamystats.disable_streamystats")}

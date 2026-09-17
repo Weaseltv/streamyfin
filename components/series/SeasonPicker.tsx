@@ -213,9 +213,7 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
                   />
                 </View>
                 <View className='shrink'>
-                  <Text numberOfLines={2} className=''>
-                    {e.Name}
-                  </Text>
+                  <Text numberOfLines={2}>{e.Name}</Text>
                   <Text numberOfLines={1} className='text-xs text-neutral-500'>
                     {`S${e.ParentIndexNumber?.toString()}:E${e.IndexNumber?.toString()}`}
                   </Text>

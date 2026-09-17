@@ -113,7 +113,7 @@ export const FilterSheetContent = <T,>({
       )}
       renderItem={({ item, index }) => {
         const selected = values.some((v) => isEqual(v, item));
-        // The rounded block used to come from a wrapper around the list; the
+        // The  block used to come from a wrapper around the list; the
         // list now carries its own header, so the ends round themselves.
         const isFirst = index === 0;
         const isLast = index === filteredData.length - 1;

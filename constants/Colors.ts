@@ -1,121 +1,186 @@
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+
 /**
- * WeaselPlex "Prismatic Ink" palette.
+ * WeaselTV "Neon Board" palette for WeaselPlex phone.
  *
- * Base surfaces are near-black with a blue bias; every accent is drawn from the
- * WeaselTV prismatic rainbow. The eight prismatic stops always appear in the
- * canonical order below - gradients read red through magenta, never shuffled.
+ * Flat stage, hairline rows, one neon per section. Values are shared with
+ * WeaselTV iOS / Android, theweasel.tv and WeaselPlex Android TV. Keep
+ * `tailwind.config.js` in step - that file is the source of truth for
+ * classNames, this one for anything styled from JS.
  */
+export const NeonBoard = {
+  stage: "#050608",
+  video: "#000000",
+  card: "#0B0D12",
+  card2: "#11141B",
+  inset: "#08090D",
+  line: "#1C2029",
+  line2: "#2A303B",
+  text: "#F2F5F9",
+  mid: "#8B95A5",
+  low: "#6B7686",
+  onAccent: "#050608",
+  volt: "#D4F63F",
+  green: "#39FF14",
+  cyan: "#00F0FF",
+  orange: "#FF7A00",
+  yellow: "#FFD400",
+  red: "#FF3B4E",
+  warn: "#F5B93D",
+} as const;
 
-export const Colors = {
-  primary: "#00C0FF",
-  primaryRGB: "rgb(0 192 255)",
-  primaryLightRGB: "rgb(127 227 255)",
-  text: "#F5F7FC",
-  background: "#070A10",
-  tint: "#00C0FF",
-  icon: "#8FA2BD",
-  tabIconDefault: "#8FA2BD",
-  tabIconSelected: "#00C0FF",
+export type NeonAccent =
+  | typeof NeonBoard.volt
+  | typeof NeonBoard.green
+  | typeof NeonBoard.cyan
+  | typeof NeonBoard.orange
+  | typeof NeonBoard.yellow
+  | typeof NeonBoard.red
+  | typeof NeonBoard.warn;
 
-  backgroundCanvas: "#05070b",
-  surface: "#0D1422",
-  surfaceRaised: "#10182A",
-  border: "#1F2737",
-  separator: "#141D30",
-  textBody: "#B8C4D8",
-  textSecondary: "#8FA2BD",
-  sectionLabel: "#CDD7EA",
-  destructive: "#FF3B30",
+/** Sections of the app that own a page accent. */
+export type NeonSection =
+  | "home"
+  | "search"
+  | "watchlist"
+  | "watchlists"
+  | "library"
+  | "requests"
+  | "downloads"
+  | "settings"
+  | "login"
+  | "music"
+  | "movies"
+  | "tv"
+  | "livetv"
+  | "guide";
+
+/** Home, Search, Watchlist, Library hub, Requests, Downloads, Settings, login, Music = volt. */
+export const sectionAccent = (section: NeonSection): string => {
+  switch (section) {
+    case "movies":
+      return NeonBoard.orange;
+    case "tv":
+      return NeonBoard.yellow;
+    case "livetv":
+      return NeonBoard.green;
+    case "guide":
+      return NeonBoard.cyan;
+    default:
+      return NeonBoard.volt;
+  }
 };
 
-/** Canonical prismatic order. Do not reorder - every rainbow gradient uses this. */
-export const Prismatic = [
-  "#FF3B30",
-  "#FF8A00",
-  "#FFD600",
-  "#16E36F",
-  "#00C0FF",
-  "#3265FF",
-  "#8A2BEF",
-  "#FF2EC8",
-] as const;
+/** Libraries that take cyan by name (Boxing / UFC), regardless of type. */
+const CYAN_LIBRARY_NAME = /\b(boxing|ufc|mma)\b/i;
 
-/** Lighter prismatic variants, legible as text or hairlines on dark surfaces. */
-export const PrismaticTints = {
-  cyan: "#7FE3FF",
-  violet: "#C89BFF",
-  magenta: "#FF9BE4",
-  green: "#8CF5BE",
-  yellow: "#FFE86B",
-} as const;
+/**
+ * Accent for a library by its CollectionType, with the name override.
+ * `movies` orange, `tvshows` yellow, `livetv` green, everything else volt.
+ */
+export const libraryAccent = (
+  collectionType?: string | null,
+  name?: string | null,
+): string => {
+  if (name && CYAN_LIBRARY_NAME.test(name)) return NeonBoard.cyan;
+  switch (collectionType) {
+    case "movies":
+      return NeonBoard.orange;
+    case "tvshows":
+      return NeonBoard.yellow;
+    case "livetv":
+      return NeonBoard.green;
+    default:
+      return NeonBoard.volt;
+  }
+};
 
-/** Per-tab hue identity. Inactive renders the same hue at 60% opacity. */
-export const TabColors = {
-  index: "#00C0FF",
-  search: "#3265FF",
-  favorites: "#FF2EC8",
-  watchlists: "#16E36F",
-  library: "#8A2BEF",
-  custom: "#FF8A00",
-} as const;
+type TypedItem = Pick<BaseItemDto, "Type" | "CollectionType" | "Name"> & {
+  MediaType?: string | null;
+};
 
-export const TAB_INACTIVE_OPACITY = 0.6;
+/**
+ * Accent for an item by type: Movie orange; Series / Season / Episode yellow;
+ * live channels and programmes green; music volt; a library (CollectionFolder)
+ * by its CollectionType with the Boxing / UFC name override.
+ */
+export const typeAccent = (item?: TypedItem | null): string => {
+  if (!item) return NeonBoard.volt;
+  switch (item.Type) {
+    case "Movie":
+      return NeonBoard.orange;
+    case "Series":
+    case "Season":
+    case "Episode":
+      return NeonBoard.yellow;
+    case "TvChannel":
+    case "TvProgram":
+    case "LiveTvProgram":
+    case "LiveTvChannel":
+    case "Program":
+    case "Channel":
+    case "Recording":
+      return NeonBoard.green;
+    case "MusicAlbum":
+    case "MusicArtist":
+    case "Audio":
+    case "Playlist":
+      return NeonBoard.volt;
+    case "CollectionFolder":
+    case "UserView":
+    case "Folder":
+      return libraryAccent(item.CollectionType, item.Name);
+    default:
+      return NeonBoard.volt;
+  }
+};
 
-/** Gradient stop sets. Rainbow is the full canonical eight. */
-export const Gradients = {
-  rainbow: Prismatic,
-  sectionTick: ["#FF3B30", "#FFD600", "#16E36F", "#00C0FF", "#8A2BEF"],
-  titleText: ["#00C0FF", "#3265FF", "#8A2BEF", "#FF2EC8"],
-  titleTextWarm: ["#FFD600", "#16E36F", "#00C0FF"],
-  pageDotActive: ["#00C0FF", "#FF2EC8"],
-  storageBar: ["#00C0FF", "#8A2BEF"],
-  badgeMovies: ["#00C0FF", "#8A2BEF"],
-  badgeSeries: ["#FF8A00", "#FF2EC8"],
-} as const;
+/** Uppercase label for an item's type badge: MOVIE, SHOW, EPISODE, LIVE. */
+export const typeLabel = (item?: TypedItem | null): string | undefined => {
+  switch (item?.Type) {
+    case "Movie":
+      return "MOVIE";
+    case "Series":
+      return "SHOW";
+    case "Season":
+      return "SEASON";
+    case "Episode":
+      return "EPISODE";
+    case "TvChannel":
+    case "TvProgram":
+    case "LiveTvProgram":
+    case "Program":
+      return "LIVE";
+    case "MusicAlbum":
+      return "ALBUM";
+    case "Audio":
+      return "TRACK";
+    default:
+      return undefined;
+  }
+};
 
-/** Component constants that more than one screen needs to agree on. */
-export const Prism = {
-  /** Gradient border thickness and the fill that sits inside it. */
-  shellThickness: 1.5,
-  shellInnerFill: "#0A0C12",
-
-  progressTrack: "rgba(255,255,255,0.14)",
-  progressBuffered: "rgba(255,255,255,0.28)",
-  progressHeightCard: 3.5,
-  progressHeightPlayer: 5,
-  playerGlow: "rgba(0,192,255,0.6)",
-
-  heroGlow: "rgba(138,43,239,0.28)",
-  heroGlowRadius: 26,
-
-  seasonChipActiveBg: "rgba(138,43,239,0.18)",
-  seasonChipActiveBorder: "rgba(138,43,239,0.6)",
-  seasonChipActiveText: "#C89BFF",
-
-  genreChipBorders: [
-    "rgba(0,192,255,0.5)",
-    "rgba(255,46,200,0.5)",
-    "rgba(22,227,111,0.5)",
-  ],
-
-  /** Settings rows descend the rainbow, one hue per row. */
-  settingsIconChipOrder: [
-    "#FF3B30",
-    "#FF8A00",
-    "#FFD600",
-    "#16E36F",
-    "#00C0FF",
-    "#3265FF",
-    "#8A2BEF",
-  ],
-
-  loginGlowTop: "rgba(0,192,255,0.10)",
-  loginGlowBottom: "rgba(138,43,239,0.12)",
-
-  tabBarBackground: "rgba(5,7,11,0.9)",
-  tabActiveGlowRadius: 7,
-  tabActiveGlowOpacity: 0.7,
-
-  /** Optional hue drift on the hero shell and play pill only. */
-  prismaticCycleMs: 8000,
+/**
+ * Legacy alias kept for one release so untouched imports compile. Every key
+ * resolves to a Neon Board token; new code should import `NeonBoard`.
+ */
+export const Colors = {
+  primary: NeonBoard.volt,
+  primaryRGB: "rgb(212 246 63)",
+  primaryLightRGB: "rgb(212 246 63)",
+  text: NeonBoard.text,
+  background: NeonBoard.stage,
+  tint: NeonBoard.volt,
+  icon: NeonBoard.mid,
+  tabIconDefault: NeonBoard.low,
+  tabIconSelected: NeonBoard.volt,
+  backgroundCanvas: NeonBoard.stage,
+  surface: NeonBoard.card,
+  surfaceRaised: NeonBoard.card2,
+  border: NeonBoard.line2,
+  separator: NeonBoard.line,
+  textBody: NeonBoard.text,
+  textSecondary: NeonBoard.mid,
+  sectionLabel: NeonBoard.text,
+  destructive: NeonBoard.red,
 } as const;

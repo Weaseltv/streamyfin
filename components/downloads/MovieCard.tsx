@@ -47,7 +47,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
   return (
     <TouchableItemRouter onLongPress={showActionSheet} item={item}>
       {base64Image ? (
-        <View className='relative w-28 aspect-[10/15] rounded-lg overflow-hidden mr-2 border border-neutral-900'>
+        <View className='relative w-28 aspect-[10/15] overflow-hidden mr-2 border border-neutral-900'>
           <Image
             source={{
               uri: `data:image/jpeg;base64,${base64Image}`,
@@ -61,7 +61,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
           <ProgressBar item={item} />
         </View>
       ) : (
-        <View className='relative w-28 aspect-[10/15] rounded-lg bg-neutral-900 mr-2 flex items-center justify-center'>
+        <View className='relative w-28 aspect-[10/15] bg-neutral-900 mr-2 flex items-center justify-center'>
           <Ionicons
             name='image-outline'
             size={24}

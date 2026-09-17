@@ -131,7 +131,7 @@ export const QuickConnect: React.FC<Props> = ({ ...props }) => {
               </Text>
             </View>
             <View className='flex flex-col space-y-2'>
-              <View className='p-4 border border-neutral-800 rounded-xl bg-neutral-900 w-full space-y-4'>
+              <View className='p-4 border border-neutral-800 bg-neutral-900 w-full space-y-4'>
                 <Text className='text-neutral-400 text-center'>
                   {t(
                     "home.settings.quick_connect.enter_the_quick_connect_code",

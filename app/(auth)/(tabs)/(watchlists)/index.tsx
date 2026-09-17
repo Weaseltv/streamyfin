@@ -31,7 +31,7 @@ const WatchlistCard: React.FC<WatchlistCardProps> = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className='bg-neutral-900 rounded-xl p-4 mx-4 mb-3'
+      className='bg-neutral-900 p-4 mx-4 mb-3'
       activeOpacity={0.7}
     >
       <View className='flex-row items-center justify-between mb-2'>
@@ -40,10 +40,8 @@ const WatchlistCard: React.FC<WatchlistCardProps> = ({
         </Text>
         <View className='flex-row items-center gap-2'>
           {isOwner && (
-            <View className='bg-prism-cyan/20 px-2 py-1 rounded'>
-              <Text className='text-prism-cyan text-xs'>
-                {t("watchlists.you")}
-              </Text>
+            <View className='bg-volt/20 px-2 py-1'>
+              <Text className='text-volt text-xs'>{t("watchlists.you")}</Text>
             </View>
           )}
           <Ionicons
@@ -71,7 +69,7 @@ const WatchlistCard: React.FC<WatchlistCardProps> = ({
           </Text>
         </View>
         {watchlist.allowedItemType && (
-          <View className='bg-neutral-800 px-2 py-0.5 rounded'>
+          <View className='bg-neutral-800 px-2 py-0.5'>
             <Text className='text-neutral-400 text-xs'>
               {watchlist.allowedItemType}
             </Text>

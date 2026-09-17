@@ -183,12 +183,12 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
         {/* Create New Playlist Button */}
         <TouchableOpacity
           onPress={handleCreateNew}
-          className='flex-row items-center bg-brand-raised/30 rounded-xl px-4 py-3.5 mb-4'
+          className='flex-row items-center bg-card2/30 px-4 py-3.5 mb-4'
         >
-          <View className='w-12 h-12 rounded-lg bg-prism-cyan items-center justify-center mr-3'>
+          <View className='w-12 h-12 bg-volt items-center justify-center mr-3'>
             <Ionicons name='add' size={28} color='white' />
           </View>
-          <Text className='text-prism-cyan font-semibold text-base'>
+          <Text className='text-volt font-semibold text-base'>
             {t("music.playlists.create_new")}
           </Text>
         </TouchableOpacity>
@@ -204,7 +204,7 @@ export const PlaylistPickerSheet: React.FC<Props> = ({
             </Text>
           </View>
         ) : (
-          <View className='rounded-xl overflow-hidden bg-neutral-800'>
+          <View className='overflow-hidden bg-neutral-800'>
             {filteredPlaylists.map((playlist, index) => (
               <View key={playlist.Id}>
                 <TouchableOpacity

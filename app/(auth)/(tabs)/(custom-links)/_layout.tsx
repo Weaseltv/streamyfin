@@ -1,7 +1,9 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
-import { stackScreenOptions } from "@/components/stacks/NestedTabPageStack";
+import {
+  neonRootScreenOptions,
+  stackScreenOptions,
+} from "@/components/stacks/NestedTabPageStack";
 
 export default function CustomMenuLayout() {
   const { t } = useTranslation();
@@ -9,14 +11,7 @@ export default function CustomMenuLayout() {
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen
         name='index'
-        options={{
-          headerShown: !Platform.isTV,
-          headerLargeTitle: true,
-          headerTitle: t("tabs.custom_links"),
-          headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
-          headerShadowVisible: false,
-        }}
+        options={{ ...neonRootScreenOptions, title: t("tabs.custom_links") }}
       />
     </Stack>
   );

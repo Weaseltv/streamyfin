@@ -11,7 +11,7 @@ import { type SharedValue } from "react-native-reanimated";
 import { ChapterList } from "@/components/chapters/ChapterList";
 import { ChapterTicks } from "@/components/chapters/ChapterTicks";
 import { Text } from "@/components/common/Text";
-import { SeekTrack } from "@/components/prismatic/SeekTrack";
+import { NeonSeekTrack } from "@/components/video-player/controls/NeonSeekTrack";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
 import {
   chapterMarkers,
@@ -182,7 +182,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
         </View>
       </View>
       <View
-        className={"flex flex-col-reverse rounded-lg items-center my-2"}
+        className={"flex flex-col-reverse  items-center my-2"}
         pointerEvents={showControls ? "box-none" : "none"}
       >
         <View className={"flex flex-col w-full shrink"}>
@@ -209,7 +209,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
               }}
               renderThumb={() => null}
               renderContainer={({ style, seekStyle, cacheXStyle }) => (
-                <SeekTrack
+                <NeonSeekTrack
                   style={style}
                   seekStyle={seekStyle}
                   cacheXStyle={cacheXStyle}
@@ -220,7 +220,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
               onSlidingComplete={handleSliderComplete}
               onValueChange={handleSliderChange}
               containerStyle={{
-                borderRadius: 100,
+                borderRadius: 0,
               }}
               renderBubble={() =>
                 (isSliding || showRemoteBubble) && (

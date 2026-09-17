@@ -30,7 +30,7 @@ export const ZoomToggle: React.FC<ZoomToggleProps> = ({
     <TouchableOpacity
       onPress={handlePress}
       disabled={disabled}
-      className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+      className='aspect-square flex flex-col items-center justify-center p-2'
     >
       <View style={{ opacity: disabled ? 0.5 : 1 }}>
         <Ionicons

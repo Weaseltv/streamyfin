@@ -1,10 +1,14 @@
 import { TouchableOpacity, View } from "react-native";
-import { SectionTick } from "@/components/prismatic/SectionTick";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { glowRule, Sizes } from "@/constants/neon";
 import { Text } from "./Text";
 
 type Props = {
   title: string;
+  /** Rule and count colour. Defaults to volt; item pages pass the type colour. */
+  accent?: string;
+  /** Trailing count in the accent, Condensed 700 14. */
+  count?: number | string | null;
   actionLabel?: string;
   actionDisabled?: boolean;
   onPressAction?: () => void;
@@ -12,50 +16,53 @@ type Props = {
   className?: string;
 };
 
+/**
+ * Section head: Condensed 800 16 uppercase on a 1pt accent rule with a glow,
+ * the count (or an action) in the accent on the right.
+ */
 export const SectionHeader: React.FC<Props> = ({
   title,
+  accent = NeonBoard.volt,
+  count,
   actionLabel,
   actionDisabled = false,
   onPressAction,
-  className = "px-4",
+  className = "px-3",
 }) => {
   const shouldShowAction = Boolean(actionLabel) && Boolean(onPressAction);
 
   return (
-    <View
-      className={`flex flex-row items-center justify-between mb-2 ${className}`}
-    >
-      <View className='flex flex-row items-center'>
-        <SectionTick />
-        <Text
-          style={{
-            color: Colors.sectionLabel,
-            letterSpacing: 1.8,
-            fontSize: 13,
-            fontWeight: "700",
-            marginLeft: 8,
-          }}
-        >
-          {title.toUpperCase()}
+    <View className={`mb-3 ${className}`} style={{ paddingTop: 10 }}>
+      <View className='flex flex-row items-end justify-between pb-1.5'>
+        <Text variant='section' numberOfLines={1} className='shrink pr-3'>
+          {title}
         </Text>
-      </View>
-      {shouldShowAction && (
-        <TouchableOpacity
-          onPress={onPressAction}
-          disabled={actionDisabled}
-          accessibilityRole='button'
-          accessibilityLabel={actionLabel}
-          className='py-1 pl-3'
-        >
-          <Text
-            style={{
-              color: actionDisabled ? "rgba(255,255,255,0.4)" : Colors.primary,
-            }}
+        {shouldShowAction ? (
+          <TouchableOpacity
+            onPress={onPressAction}
+            disabled={actionDisabled}
+            accessibilityRole='button'
+            accessibilityLabel={actionLabel}
+            hitSlop={8}
           >
-            {actionLabel}
+            <Text
+              variant='tally'
+              accent={actionDisabled ? NeonBoard.low : accent}
+            >
+              {actionLabel}
+            </Text>
+          </TouchableOpacity>
+        ) : count !== undefined && count !== null ? (
+          <Text variant='tally' accent={accent}>
+            {count}
           </Text>
-        </TouchableOpacity>
-      )}
+        ) : null}
+      </View>
+      <View
+        style={[{ height: 1, backgroundColor: accent }, glowRule(accent)]}
+      />
     </View>
   );
 };
+
+export const SECTION_GUTTER = Sizes.gutter;

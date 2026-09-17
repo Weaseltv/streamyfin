@@ -6,7 +6,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
-import { CountBadge } from "@/components/prismatic/CountBadge";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -55,7 +55,7 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
       onLongPress={showActionSheet}
     >
       {base64Image ? (
-        <View className='w-28 aspect-[10/15] rounded-lg overflow-hidden mr-2 border border-neutral-900'>
+        <View className='w-28 aspect-[10/15] overflow-hidden mr-2 border border-neutral-900'>
           <Image
             source={{
               uri: `data:image/jpeg;base64,${base64Image}`,
@@ -67,11 +67,13 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
             contentFit='cover'
           />
           <View className='absolute bottom-1 right-1'>
-            <CountBadge count={items.length} variant='series' />
+            <Text variant='tally' accent={NeonBoard.yellow}>
+              {items.length}
+            </Text>
           </View>
         </View>
       ) : (
-        <View className='w-28 aspect-[10/15] rounded-lg bg-neutral-900 mr-2 flex items-center justify-center'>
+        <View className='w-28 aspect-[10/15] bg-neutral-900 mr-2 flex items-center justify-center'>
           <Ionicons
             name='image-outline'
             size={24}
@@ -82,9 +84,7 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
       )}
 
       <View className='w-28 mt-2 flex flex-col'>
-        <Text numberOfLines={2} className=''>
-          {items[0].SeriesName}
-        </Text>
+        <Text numberOfLines={2}>{items[0].SeriesName}</Text>
         <Text className='text-xs opacity-50'>{items[0].ProductionYear}</Text>
         <DownloadSize items={items} />
       </View>

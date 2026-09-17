@@ -108,7 +108,7 @@ export function CustomHeaderSelector({
       </View>
 
       {config.source === "jellyfin" ? (
-        <View className='bg-neutral-900 rounded-xl p-3'>
+        <View className='bg-neutral-900 p-3'>
           <Text className='text-xs text-neutral-500 mb-2'>
             {t("custom_headers.using_jellyfin_headers")}
           </Text>
@@ -140,7 +140,7 @@ export function CustomHeaderSelector({
       ) : null}
 
       {config.source === "none" ? (
-        <View className='bg-neutral-900 rounded-xl p-3'>
+        <View className='bg-neutral-900 p-3'>
           <Text className='text-xs text-neutral-500'>
             {t("custom_headers.integration_none")}
           </Text>
@@ -169,9 +169,9 @@ function SourceButton({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      className={`flex-1 rounded-lg py-2 px-1 items-center justify-center ${
+      className={`flex-1  py-2 px-1 items-center justify-center ${
         selected
-          ? "bg-prism-cyan"
+          ? "bg-volt"
           : disabled
             ? "bg-neutral-800 opacity-50"
             : "bg-neutral-800"

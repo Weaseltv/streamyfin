@@ -1,20 +1,12 @@
-import {
-  createNativeBottomTabNavigator,
-  type NativeBottomTabNavigationEventMap,
-  type NativeBottomTabNavigationOptions,
-} from "@bottom-tabs/react-navigation";
-import { Stack, useSegments, withLayoutContext } from "expo-router";
-import type {
-  ParamListBase,
-  TabNavigationState,
-} from "expo-router/react-navigation";
+import { Stack, Tabs, useSegments } from "expo-router";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
+import { NeonTabBar } from "@/components/common/NeonTabBar";
 import type { TVNavBarTab } from "@/components/tv/TVNavBar";
 import { TVNavBar } from "@/components/tv/TVNavBar";
-import { Colors, TabColors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import {
   isTabRoute,
@@ -32,15 +24,6 @@ const MiniPlayerBar = Platform.isTV
 const MusicPlaybackEngine = Platform.isTV
   ? () => null
   : require("@/components/music/MusicPlaybackEngine").MusicPlaybackEngine;
-
-const { Navigator } = createNativeBottomTabNavigator();
-
-export const NativeTabs = withLayoutContext<
-  NativeBottomTabNavigationOptions,
-  typeof Navigator,
-  TabNavigationState<ParamListBase>,
-  NativeBottomTabNavigationEventMap
->(Navigator);
 
 const IS_ANDROID_TV = Platform.isTV && Platform.OS === "android";
 
@@ -135,6 +118,11 @@ function TVTabLayout() {
   );
 }
 
+/**
+ * Phone tabs: the custom Neon Board bar (Home · Search · Watchlist · Library,
+ * plus Watchlists / Custom links when enabled). Settings is not a tab; it
+ * opens from the gear in the brand row. TV keeps `TVNavBar`.
+ */
 export default function TabLayout() {
   const { settings } = useSettings();
   const { t } = useTranslation();
@@ -150,113 +138,66 @@ export default function TabLayout() {
     return <TVTabLayout />;
   }
 
+  const watchlistsHidden =
+    !settings?.streamyStatsServerUrl || settings?.hideWatchlistsTab;
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
       <SystemBars hidden={false} style='light' />
-      <NativeTabs
-        sidebarAdaptable={false}
-        tabBarStyle={{
-          backgroundColor: Colors.backgroundCanvas,
+      <Tabs
+        tabBar={(props) => <NeonTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          lazy: true,
+          sceneStyle: { backgroundColor: NeonBoard.stage },
         }}
-        translucent
-        tabBarActiveTintColor={Platform.isTV ? "#FFFFFF" : Colors.primary}
-        tabBarInactiveTintColor={Colors.textSecondary}
-        activeIndicatorColor={"transparent"}
-        scrollEdgeAppearance='default'
       >
-        <NativeTabs.Screen redirect name='index' />
-        <NativeTabs.Screen
-          listeners={(_e) => ({
-            tabPress: (_e) => {
+        <Tabs.Screen redirect name='index' />
+        <Tabs.Screen
+          listeners={{
+            tabPress: () => {
               eventBus.emit("scrollToTop");
             },
-          })}
-          name='(home)'
-          options={{
-            title: t("tabs.home"),
-            tabBarActiveTintColor: TabColors.index,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/house.fill.png")
-                : (_e) => ({ sfSymbol: "house.fill" }),
           }}
+          name='(home)'
+          options={{ title: t("tabs.home") }}
         />
-        <NativeTabs.Screen
-          listeners={(_e) => ({
-            tabPress: (_e) => {
+        <Tabs.Screen
+          listeners={{
+            tabPress: () => {
               eventBus.emit("searchTabPressed");
             },
-          })}
+          }}
           name='(search)'
-          options={{
-            role: "search",
-            title: t("tabs.search"),
-            tabBarActiveTintColor: TabColors.search,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/magnifyingglass.png")
-                : (_e) => ({ sfSymbol: "magnifyingglass" }),
-          }}
+          options={{ title: t("tabs.search") }}
         />
-        <NativeTabs.Screen
+        <Tabs.Screen
           name='(favorites)'
-          options={{
-            title: t("tabs.favorites"),
-            tabBarActiveTintColor: TabColors.favorites,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/heart.fill.png")
-                : (_e) => ({ sfSymbol: "heart.fill" }),
-          }}
+          options={{ title: t("tabs.favorites") }}
         />
-        <NativeTabs.Screen
+        <Tabs.Screen
+          name='(libraries)'
+          options={{ title: t("tabs.library") }}
+        />
+        <Tabs.Screen
           name='(watchlists)'
           options={{
             title: t("watchlists.title"),
-            tabBarActiveTintColor: TabColors.watchlists,
-            tabBarItemHidden:
-              !settings?.streamyStatsServerUrl || settings?.hideWatchlistsTab,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/list.star.png")
-                : (_e) => ({ sfSymbol: "list.star" }),
+            href: watchlistsHidden ? null : undefined,
           }}
         />
-        <NativeTabs.Screen
-          name='(libraries)'
-          options={{
-            title: t("tabs.library"),
-            tabBarActiveTintColor: TabColors.library,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/rectangle.stack.fill.png")
-                : (_e) => ({ sfSymbol: "rectangle.stack.fill" }),
-          }}
-        />
-        <NativeTabs.Screen
+        <Tabs.Screen
           name='(custom-links)'
           options={{
             title: t("tabs.custom_links"),
-            tabBarActiveTintColor: TabColors.custom,
-            tabBarItemHidden: !settings?.showCustomMenuLinks,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/link.png")
-                : (_e) => ({ sfSymbol: "link" }),
+            href: settings?.showCustomMenuLinks ? undefined : null,
           }}
         />
-        <NativeTabs.Screen
+        <Tabs.Screen
           name='(settings)'
-          options={{
-            title: t("tabs.settings"),
-            tabBarItemHidden: !Platform.isTV,
-            tabBarIcon:
-              Platform.OS === "android"
-                ? (_e) => require("@/assets/icons/gearshape.fill.png")
-                : (_e) => ({ sfSymbol: "gearshape.fill" }),
-          }}
+          options={{ title: t("tabs.settings"), href: null }}
         />
-      </NativeTabs>
+      </Tabs>
       <MiniPlayerBar />
       <MusicPlaybackEngine />
     </View>

@@ -195,7 +195,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
           {/* PIN Input */}
           <Animated.View
             style={{ transform: [{ translateX: shakeAnimation }] }}
-            className='p-4 border border-neutral-800 rounded-xl bg-neutral-900 mb-4'
+            className='p-4 border border-neutral-800 bg-neutral-900 mb-4'
           >
             <PinInput
               value={pinCode}
@@ -216,9 +216,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
 
           {/* Forgot PIN */}
           <TouchableOpacity onPress={handleForgotPIN} className='mb-4'>
-            <Text className='text-prism-cyan text-center'>
-              {t("pin.forgot_pin")}
-            </Text>
+            <Text className='text-volt text-center'>{t("pin.forgot_pin")}</Text>
           </TouchableOpacity>
 
           {/* Cancel Button */}

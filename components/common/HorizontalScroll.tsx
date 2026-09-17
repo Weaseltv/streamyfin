@@ -59,8 +59,8 @@ export const HorizontalScroll = <T,>(
   if (!data || loading) {
     return (
       <View className='px-4'>
-        <View className='bg-neutral-950 h-24 w-full rounded-md mb-2' />
-        <View className='bg-neutral-950 h-10 w-full rounded-md mb-1' />
+        <View className='bg-neutral-950 h-24 w-full mb-2' />
+        <View className='bg-neutral-950 h-10 w-full mb-1' />
       </View>
     );
   }

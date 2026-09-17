@@ -1,10 +1,9 @@
 import type { ImageContentFit } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import type React from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 
 export const textShadowStyle = StyleSheet.create({
   shadow: {
@@ -25,25 +24,20 @@ const GenericSlideCard: React.FC<
     id: string;
     url?: string;
     title?: string;
+    /** Kept for call-site compatibility; the card is a flat `card` panel now. */
     colors?: readonly [string, string, ...string[]];
     contentFit?: ImageContentFit;
   } & ViewProps
-> = ({
-  id,
-  url,
-  title,
-  colors = [Colors.primary, "transparent"],
-  contentFit = "contain",
-  ...props
-}) => (
+> = ({ id, url, title, colors: _colors, contentFit = "contain", ...props }) => (
   <>
-    <LinearGradient
-      colors={colors}
-      start={{ x: 0.5, y: 1.75 }}
-      end={{ x: 0.5, y: 0 }}
-      className='rounded-xl'
+    <View
+      style={{
+        backgroundColor: NeonBoard.card,
+        borderWidth: 1,
+        borderColor: NeonBoard.line,
+      }}
     >
-      <View className='rounded-xl' {...props}>
+      <View {...props}>
         <Image
           key={id}
           id={id}
@@ -65,7 +59,7 @@ const GenericSlideCard: React.FC<
           </View>
         )}
       </View>
-    </LinearGradient>
+    </View>
   </>
 );
 

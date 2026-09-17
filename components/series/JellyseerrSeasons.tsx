@@ -17,7 +17,7 @@ import { Tags } from "@/components/GenreTags";
 import { dateOpts } from "@/components/jellyseerr/DetailFacts";
 import { textShadowStyle } from "@/components/jellyseerr/discover/GenericSlideCard";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
-import { RoundButton } from "@/components/RoundButton";
+import { SquareButton } from "@/components/SquareButton";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import {
   MediaStatus,
@@ -76,7 +76,7 @@ const RenderItem = ({ item }: any) => {
 
   return (
     <View className='flex flex-col w-44 mt-2'>
-      <View className='relative aspect-video rounded-lg overflow-hidden border border-neutral-800'>
+      <View className='relative aspect-video overflow-hidden border border-neutral-800'>
         {!imageError ? (
           <>
             <Image
@@ -94,7 +94,7 @@ const RenderItem = ({ item }: any) => {
             />
             {upcomingAirDate && (
               <View className='absolute justify-center bottom-0 right-0.5 items-center'>
-                <View className='rounded-full bg-prism-cyan/30 p-1'>
+                <View className='rounded-full bg-volt/30 p-1'>
                   <Text
                     className='text-center text-xs'
                     style={textShadowStyle.shadow}
@@ -117,9 +117,7 @@ const RenderItem = ({ item }: any) => {
         )}
       </View>
       <View className='shrink mt-1'>
-        <Text numberOfLines={2} className=''>
-          {item.name}
-        </Text>
+        <Text numberOfLines={2}>{item.name}</Text>
         <Text numberOfLines={1} className='text-xs text-neutral-500'>
           {`S${item.seasonNumber}:E${item.episodeNumber}`}
         </Text>
@@ -254,9 +252,9 @@ const JellyseerrSeasons: React.FC<{
             {t("item_card.seasons")}
           </Text>
           {!allSeasonsAvailable && (
-            <RoundButton className='mb-2 pa-2' onPress={promptRequestAll}>
+            <SquareButton className='mb-2 pa-2' onPress={promptRequestAll}>
               <Ionicons name='bag-add' color='white' size={26} />
-            </RoundButton>
+            </SquareButton>
           )}
         </View>
         <Loader />
@@ -276,9 +274,9 @@ const JellyseerrSeasons: React.FC<{
             {t("item_card.seasons")}
           </Text>
           {!allSeasonsAvailable && (
-            <RoundButton className='mb-2 pa-2' onPress={promptRequestAll}>
+            <SquareButton className='mb-2 pa-2' onPress={promptRequestAll}>
               <Ionicons name='bag-add' color='white' size={26} />
-            </RoundButton>
+            </SquareButton>
           )}
         </View>
       )}
@@ -295,7 +293,7 @@ const JellyseerrSeasons: React.FC<{
             className='px-4'
           >
             <View
-              className='flex flex-row justify-between items-center bg-gray-100/10 rounded-xl z-20 h-12 w-full px-4'
+              className='flex flex-row justify-between items-center bg-gray-100/10 z-20 h-12 w-full px-4'
               key={season.id}
             >
               <Tags

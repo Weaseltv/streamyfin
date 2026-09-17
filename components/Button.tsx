@@ -10,12 +10,17 @@ import {
   Easing,
   Platform,
   Pressable,
-  Text,
+  Text as RNText,
+  type StyleProp,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { glowButton, Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { scaleSize } from "@/utils/scaleSize";
+import { Text } from "./common/Text";
 import { Loader } from "./Loader";
 
 const getColorClasses = (
@@ -27,8 +32,8 @@ const getColorClasses = (
     switch (color) {
       case "primary":
         return focused
-          ? "bg-transparent border-2 border-tint-cyan"
-          : "bg-transparent border-2 border-prism-cyan";
+          ? "bg-transparent border-2 border-white"
+          : "bg-transparent border-2 border-volt";
       case "red":
         return focused
           ? "bg-transparent border-2 border-red-400"
@@ -52,8 +57,8 @@ const getColorClasses = (
     switch (color) {
       case "primary":
         return focused
-          ? "bg-tint-cyan border-2 border-white"
-          : "bg-prism-cyan border border-prism-blue";
+          ? "bg-white border-2 border-white"
+          : "bg-volt border border-volt";
       case "red":
         return "bg-red-600";
       case "black":
@@ -78,13 +83,29 @@ export interface ButtonProps
   disabled?: boolean;
   children?: string | ReactNode;
   loading?: boolean;
+  /**
+   * Legacy colour roles. `primary` is the page / item accent (override with
+   * `accent`), `red` is destructive, `white` an outline in `text`, `black` /
+   * `transparent` a quiet outline in `line2`.
+   */
   color?: "primary" | "red" | "black" | "transparent" | "white";
+  /** `solid` = filled primary with a glow; `border` = 1pt outline. */
   variant?: "solid" | "border";
+  /** Hex accent for the button: the section or item type colour. */
+  accent?: string;
+  /** 34 high instead of 48 (the hero RESUME, the next-up RESUME). */
+  compact?: boolean;
   iconRight?: ReactNode;
   iconLeft?: ReactNode;
   justify?: "center" | "between";
 }
 
+/**
+ * Neon Board button. Primary: 48 high, filled accent, `onAccent` Condensed
+ * 800 15 upper label, glow `0 0 18` at 0.45. Outline: 44 high, 1pt accent
+ * border, accent label. Pressed = 0.85 opacity, disabled = `line2` border
+ * with a `low` label.
+ */
 export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   onPress,
   className = "",
@@ -93,10 +114,13 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   loading = false,
   color = "primary",
   variant = "solid",
+  accent,
+  compact = false,
   iconRight,
   iconLeft,
   children,
   justify = "center",
+  style,
   ...props
 }) => {
   const [focused, setFocused] = useState(false);
@@ -110,99 +134,133 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
       useNativeDriver: true,
     }).start();
 
-  const colorClasses = getColorClasses(color, variant, focused);
-
   const lightHapticFeedback = useHaptic("light");
 
-  const textColorClass =
-    variant === "solid" && (color === "white" || color === "primary")
-      ? "text-brand-bg"
-      : "text-white";
-
-  return Platform.isTV ? (
-    <Pressable
-      className='w-full'
-      onPress={onPress}
-      onFocus={() => {
-        setFocused(true);
-        animateTo(1.03);
-      }}
-      onBlur={() => {
-        setFocused(false);
-        animateTo(1);
-      }}
-    >
-      <Animated.View
-        style={{
-          transform: [{ scale }],
-          shadowColor: "#ffffff",
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: focused ? 0.5 : 0,
-          shadowRadius: focused ? scaleSize(10) : 0,
-          elevation: focused ? 12 : 0, // Android glow
+  if (Platform.isTV) {
+    const colorClasses = getColorClasses(color, variant, focused);
+    const textColorClass =
+      variant === "solid" && (color === "white" || color === "primary")
+        ? "text-stage"
+        : "text-white";
+    return (
+      <Pressable
+        className='w-full'
+        onPress={onPress}
+        onFocus={() => {
+          setFocused(true);
+          animateTo(1.03);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          animateTo(1);
         }}
       >
-        <View
+        <Animated.View
           style={{
-            borderRadius: scaleSize(16),
-            paddingVertical: scaleSize(14),
-            alignItems: "center",
-            justifyContent: "center",
+            transform: [{ scale }],
+            shadowColor: "#ffffff",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: focused ? 0.5 : 0,
+            shadowRadius: focused ? scaleSize(10) : 0,
+            elevation: focused ? 12 : 0, // Android glow
           }}
-          className={`${colorClasses} ${className}`}
         >
-          <Text
+          <View
             style={{
-              fontSize: scaleSize(20),
-              fontWeight: "bold",
+              borderRadius: scaleSize(16),
+              paddingVertical: scaleSize(14),
+              alignItems: "center",
+              justifyContent: "center",
             }}
-            className={textColorClass}
+            className={`${colorClasses} ${className}`}
           >
-            {children}
-          </Text>
-        </View>
-      </Animated.View>
-    </Pressable>
-  ) : (
+            <RNText
+              style={{
+                fontSize: scaleSize(20),
+                fontWeight: "bold",
+              }}
+              className={textColorClass}
+            >
+              {children}
+            </RNText>
+          </View>
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  const isInactive = disabled || loading;
+  const tone =
+    accent ??
+    (color === "red"
+      ? NeonBoard.red
+      : color === "white"
+        ? NeonBoard.text
+        : color === "black" || color === "transparent"
+          ? NeonBoard.line2
+          : NeonBoard.volt);
+  const isOutline =
+    variant === "border" || color === "black" || color === "transparent";
+  const quiet = color === "black" || color === "transparent";
+
+  const box: ViewStyle = isOutline
+    ? {
+        height: compact ? Sizes.buttonCompact : Sizes.outline,
+        borderWidth: 1,
+        borderColor: isInactive ? NeonBoard.line2 : tone,
+        backgroundColor: "transparent",
+      }
+    : {
+        height: compact ? Sizes.buttonCompact : Sizes.button,
+        backgroundColor: isInactive ? NeonBoard.card2 : tone,
+        ...(isInactive ? null : glowButton(tone)),
+      };
+  const labelColor = isInactive
+    ? NeonBoard.low
+    : isOutline
+      ? quiet
+        ? NeonBoard.text
+        : tone
+      : NeonBoard.onAccent;
+
+  return (
     <TouchableOpacity
-      className={`
-        p-3 rounded-xl items-center justify-center
-        ${(loading || disabled) && "opacity-50"}
-        ${colorClasses}
-        ${className}
-      `}
+      activeOpacity={0.85}
+      className={`items-center justify-center ${className}`}
+      style={[
+        { paddingHorizontal: 16, justifyContent: "center" },
+        box,
+        style as StyleProp<ViewStyle>,
+      ]}
       onPress={() => {
         if (!loading && !disabled && onPress) {
           onPress();
           lightHapticFeedback();
         }
       }}
-      disabled={disabled || loading}
+      disabled={isInactive}
       {...props}
     >
       {loading ? (
-        <View className='p-0.5'>
-          <Loader />
-        </View>
+        <Loader color={labelColor} />
       ) : (
         <View
-          className={`
-            flex flex-row items-center justify-between w-full
-            ${justify === "between" ? "justify-between" : "justify-center"}`}
+          className={`flex flex-row items-center w-full ${
+            justify === "between" ? "justify-between" : "justify-center"
+          }`}
+          style={{ gap: 10 }}
         >
-          {iconLeft ? iconLeft : <View className='w-4' />}
+          {iconLeft ?? null}
           <Text
-            className={`
-          ${textColorClass} font-bold text-base
-          ${disabled ? "text-gray-300" : ""}
-          ${textClassName}
-          ${iconRight ? "mr-2" : ""}
-          ${iconLeft ? "ml-2" : ""}
-        `}
+            variant='button'
+            numberOfLines={1}
+            allowFontScaling={false}
+            className={textClassName}
+            style={{ color: labelColor }}
           >
             {children}
           </Text>
-          {iconRight ? iconRight : <View className='w-4' />}
+          {iconRight ?? null}
         </View>
       )}
     </TouchableOpacity>

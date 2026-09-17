@@ -8,6 +8,8 @@ import Animated, {
   useScrollViewOffset,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NeonBoard } from "@/constants/Colors";
+import { Scrims } from "@/constants/neon";
 
 interface Props extends ViewProps {
   headerImage: ReactElement;
@@ -89,7 +91,7 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
           style={[
             {
               height: headerHeight,
-              backgroundColor: "black",
+              backgroundColor: NeonBoard.stage,
             },
             headerAnimatedStyle,
           ]}
@@ -106,8 +108,9 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
           className='relative flex-1 bg-transparent'
         >
           <LinearGradient
-            // Background Linear Gradient
-            colors={["transparent", "rgba(0,0,0,1)"]}
+            // The backdrop scrim: the one gradient allowed on item pages.
+            colors={Scrims.backdrop}
+            locations={Scrims.backdropLocations}
             style={{
               position: "absolute",
               left: 0,
@@ -124,7 +127,7 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
               right: 0,
               top: 50,
               height: "100%",
-              backgroundColor: "black",
+              backgroundColor: NeonBoard.stage,
             }}
           />
           {children}

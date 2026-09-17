@@ -44,7 +44,7 @@ const OptionGroup: React.FC<{ title: string; children: React.ReactNode }> = ({
         borderRadius: 12,
         overflow: "hidden",
       }}
-      className='bg-neutral-800 rounded-xl overflow-hidden'
+      className='bg-neutral-800 overflow-hidden'
     >
       {children}
     </View>
@@ -101,7 +101,7 @@ const ToggleItem: React.FC<{
     >
       <Text className='flex-1 text-white'>{label}</Text>
       <View
-        className={`w-12 h-7 rounded-full ${value ? "bg-prism-cyan" : "bg-neutral-600"} flex-row items-center`}
+        className={`w-12 h-7 rounded-full ${value ? "bg-volt" : "bg-neutral-600"} flex-row items-center`}
       >
         <View
           className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${

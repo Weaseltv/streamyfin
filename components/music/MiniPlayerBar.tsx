@@ -19,9 +19,9 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { GlassSurface } from "@/components/common/GlassSurface";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useMusicPlayer } from "@/providers/MusicPlayerProvider";
@@ -243,23 +243,7 @@ export const MiniPlayerBar: React.FC = () => {
         ]}
       >
         <Animated.View style={[styles.touchable, animatedBarStyle]}>
-          {Platform.OS === "ios" && !Platform.isTV ? (
-            <GlassSurface style={styles.blurContainer}>
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingRight: 10,
-                  paddingLeft: 20,
-                }}
-              >
-                {content}
-              </View>
-            </GlassSurface>
-          ) : (
-            <View style={styles.androidContainer}>{content}</View>
-          )}
+          <View style={styles.androidContainer}>{content}</View>
         </Animated.View>
       </Animated.View>
     </GestureDetector>
@@ -278,11 +262,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   touchable: {
-    borderRadius: 50,
+    borderRadius: 0,
     overflow: "hidden",
-  },
-  blurContainer: {
-    flex: 1,
   },
   androidContainer: {
     flex: 1,
@@ -290,10 +271,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: "rgba(28, 28, 30, 0.97)",
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: NeonBoard.card,
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: NeonBoard.line2,
   },
   tappableArea: {
     flex: 1,

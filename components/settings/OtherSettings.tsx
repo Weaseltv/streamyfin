@@ -102,7 +102,7 @@ export const OtherSettings: React.FC = () => {
 
   return (
     <DisabledSetting disabled={disabled}>
-      <ListGroup title={t("home.settings.other.other_title")} className=''>
+      <ListGroup title={t("home.settings.other.other_title")}>
         <ListItem
           title={t("home.settings.other.video_orientation")}
           disabled={pluginSettings?.defaultVideoOrientation?.locked}

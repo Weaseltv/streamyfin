@@ -55,7 +55,7 @@ function StatusDisplay({
   const urlTypeColor = isUsingLocalUrl ? "text-green-500" : "text-blue-500";
 
   return (
-    <View className='px-4 py-2 bg-neutral-900 rounded-xl mt-4'>
+    <View className='px-4 py-2 bg-neutral-900 mt-4'>
       <View className='flex-row justify-between items-center py-1'>
         <Text className='text-neutral-400'>
           {t("home.settings.network.current_wifi")}
@@ -215,7 +215,7 @@ export function LocalNetworkSettings(): React.ReactElement | null {
               </Text>
             }
           >
-            <View className=''>
+            <View>
               <ServerUrlField
                 value={localUrlDraft}
                 onChangeText={setLocalUrlDraft}

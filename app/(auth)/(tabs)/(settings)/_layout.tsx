@@ -13,7 +13,7 @@ export default function SettingsLayout() {
           headerShown: !Platform.isTV,
           headerTitle: t("tabs.settings"),
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />

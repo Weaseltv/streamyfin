@@ -310,7 +310,7 @@ const MobilePage: React.FC = () => {
                   <Text className='opacity-50'>{releaseYear}</Text>
                 </View>
                 <Image
-                  className='absolute bottom-1 right-1 rounded-lg w-28 aspect-[10/15] border-2 border-neutral-800/50 drop-shadow-2xl'
+                  className='absolute bottom-1 right-1 w-28 aspect-[10/15] border-2 border-neutral-800/50 drop-shadow-2xl'
                   cachePolicy={"memory-disk"}
                   transition={300}
                   source={{
@@ -358,7 +358,7 @@ const MobilePage: React.FC = () => {
                       </Button>
                     )}
                     <Button
-                      className='flex-1 bg-prism-cyan/50 border-tint-violet ring-tint-violet text-tint-cyan'
+                      className='flex-1 bg-volt/50 border-volt ring-tint-violet text-volt'
                       onPress={() => {
                         router.push({
                           pathname:
@@ -451,7 +451,7 @@ const MobilePage: React.FC = () => {
               />
             )}
             <DetailFacts
-              className='p-2 border border-neutral-800 bg-neutral-900 rounded-xl'
+              className='p-2 border border-neutral-800 bg-neutral-900'
               details={details}
             />
             <Cast details={details} />
@@ -502,7 +502,7 @@ const MobilePage: React.FC = () => {
                   <PlatformDropdown
                     groups={issueTypeOptionGroups}
                     trigger={
-                      <View className='bg-neutral-900 h-10 rounded-xl border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
+                      <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
                         <Text numberOfLines={1}>
                           {issueType
                             ? IssueTypeName[issueType]
@@ -516,7 +516,7 @@ const MobilePage: React.FC = () => {
                   />
                 </View>
 
-                <View className='p-4 border border-neutral-800 rounded-xl bg-neutral-900 w-full'>
+                <View className='p-4 border border-neutral-800 bg-neutral-900 w-full'>
                   <BottomSheetTextInput
                     multiline
                     maxLength={254}

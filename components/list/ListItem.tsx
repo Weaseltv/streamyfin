@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
-import { Colors } from "@/constants/Colors";
+import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { glowRule, Sizes } from "@/constants/neon";
 import { Text } from "../common/Text";
 
 interface Props extends ViewProps {
@@ -13,18 +14,23 @@ interface Props extends ViewProps {
   children?: ReactNode;
   iconAfter?: ReactNode;
   icon?: keyof typeof Ionicons.glyphMap;
-  /**
-   * Hue for the leading icon chip. ListGroup assigns these by row position so
-   * a settings list descends the rainbow; pass one explicitly to override.
-   */
+  /** Colour for the leading glyph: the section accent (ListGroup passes it). */
   iconTint?: string;
   showArrow?: boolean;
+  /** `blue` is the legacy name for the accent; `red` is destructive. */
   textColor?: "default" | "blue" | "red";
+  /** A 3pt tally on the leading edge when the row is current or selected. */
+  tally?: string | null;
   onPress?: () => void;
   disabled?: boolean;
   disabledByAdmin?: boolean;
 }
 
+/**
+ * A 56 hairline row on the stage: optional 20 glyph in the section accent,
+ * title 15/600, value 13 `mid` right, chevron `low`. Rows grow with the
+ * font size; the 1pt bottom rule comes from `ListGroup`.
+ */
 export const ListItem: React.FC<PropsWithChildren<Props>> = ({
   title,
   subtitle,
@@ -35,9 +41,11 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
   icon,
   iconTint,
   textColor = "default",
+  tally,
   onPress,
   disabled = false,
   disabledByAdmin = false,
+  style,
   ...viewProps
 }) => {
   const { t } = useTranslation();
@@ -45,52 +53,50 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
     ? t("home.settings.disabled_by_admin")
     : subtitle;
   const isDisabled = disabled || disabledByAdmin;
-  // Keep the row floor uniform; Android trims padding slightly (its native
-  // controls sit taller). Switch height is capped via SettingSwitch so toggle
-  // rows match non-toggle rows.
-  const rowSizing =
-    Platform.OS === "android" ? "min-h-[42px] py-1.5" : "min-h-[42px] py-2";
+  const rowStyle = [
+    {
+      minHeight: Sizes.row,
+      paddingVertical: 8,
+      paddingLeft: Sizes.rowLead,
+      paddingRight: Sizes.gutter,
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      opacity: isDisabled ? 0.5 : 1,
+    },
+    style,
+  ];
+  const content = (
+    <ListItemContent
+      title={title}
+      subtitle={effectiveSubtitle}
+      subtitleColor={disabledByAdmin ? "red" : undefined}
+      value={value}
+      icon={icon}
+      iconTint={iconTint}
+      textColor={textColor}
+      showArrow={showArrow}
+      iconAfter={iconAfter}
+      tally={tally}
+    >
+      {children}
+    </ListItemContent>
+  );
   if (onPress)
     return (
       <TouchableOpacity
         disabled={isDisabled}
         onPress={onPress}
-        className={`flex flex-row items-center justify-between bg-brand-surface ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
+        activeOpacity={0.7}
+        style={rowStyle}
         {...(viewProps as any)}
       >
-        <ListItemContent
-          title={title}
-          subtitle={effectiveSubtitle}
-          subtitleColor={disabledByAdmin ? "red" : undefined}
-          value={value}
-          icon={icon}
-          iconTint={iconTint}
-          textColor={textColor}
-          showArrow={showArrow}
-          iconAfter={iconAfter}
-        >
-          {children}
-        </ListItemContent>
+        {content}
       </TouchableOpacity>
     );
   return (
-    <View
-      className={`flex flex-row items-center justify-between bg-brand-surface ${rowSizing} pr-4 pl-4 ${isDisabled ? "opacity-50" : ""}`}
-      {...viewProps}
-    >
-      <ListItemContent
-        title={title}
-        subtitle={effectiveSubtitle}
-        subtitleColor={disabledByAdmin ? "red" : undefined}
-        value={value}
-        icon={icon}
-        iconTint={iconTint}
-        textColor={textColor}
-        showArrow={showArrow}
-        iconAfter={iconAfter}
-      >
-        {children}
-      </ListItemContent>
+    <View style={rowStyle} {...viewProps}>
+      {content}
     </View>
   );
 };
@@ -105,51 +111,65 @@ const ListItemContent = ({
   value,
   showArrow,
   iconAfter,
+  tally,
   children,
 }: Props) => {
+  const titleColor =
+    textColor === "red"
+      ? NeonBoard.red
+      : textColor === "blue"
+        ? (iconTint ?? NeonBoard.volt)
+        : NeonBoard.text;
+  const glyphColor =
+    textColor === "red" ? NeonBoard.red : (iconTint ?? NeonBoard.volt);
   return (
     <>
+      {tally ? (
+        <View
+          style={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: Sizes.tally,
+              backgroundColor: tally,
+            },
+            glowRule(tally),
+          ]}
+        />
+      ) : null}
       <View className='flex flex-row items-center w-full'>
         {icon && (
           <View
             style={{
-              height: 26,
-              width: 26,
-              borderRadius: 7,
-              borderWidth: 1,
+              width: 20,
               alignItems: "center",
               justifyContent: "center",
-              marginRight: 10,
-              backgroundColor: iconTint ? `${iconTint}22` : "transparent",
-              borderColor: iconTint ? `${iconTint}66` : Colors.border,
+              marginRight: 14,
             }}
           >
-            <Ionicons name={icon} size={15} color={iconTint ?? Colors.text} />
+            <Ionicons name={icon} size={20} color={glyphColor} />
           </View>
         )}
         {/* The label sizes to its content and only shrinks if it alone
-            overflows; the value column takes whatever is left. That ordering
-            matters — the label used to be `flex-1` with a zero basis, so a long
-            value (the dev build string, say) collapsed it to an ellipsis, while
-            the value itself had no shrink of its own and ran straight past the
-            row to be clipped by the screen edge. */}
+            overflows; the value column takes whatever is left. */}
         <View className='shrink'>
           <Text
-            className={
-              textColor === "blue"
-                ? "text-[#0584FE]"
-                : textColor === "red"
-                  ? "text-red-600"
-                  : "text-white"
-            }
+            variant='rowTitle'
             numberOfLines={1}
+            style={{ color: titleColor }}
           >
             {title}
           </Text>
           {subtitle && (
             <Text
-              className={`text-[12px] mt-0.5 ${subtitleColor === "red" ? "text-red-600" : "text-[#9899A1]"}`}
+              variant='meta'
               numberOfLines={2}
+              style={{
+                marginTop: 2,
+                color: subtitleColor === "red" ? NeonBoard.red : NeonBoard.mid,
+              }}
             >
               {subtitle}
             </Text>
@@ -160,7 +180,11 @@ const ListItemContent = ({
           // that are only useful in full, so wrap rather than truncate. The row
           // has a min height, not a fixed one, so it grows to fit.
           <View className='flex-1 items-end pl-3'>
-            <Text selectable className='text-right text-[#9899A1]'>
+            <Text
+              selectable
+              variant='meta'
+              style={{ fontSize: 13, textAlign: "right" }}
+            >
               {value}
             </Text>
           </View>
@@ -168,7 +192,11 @@ const ListItemContent = ({
         {children && <View className='ml-auto'>{children}</View>}
         {showArrow && (
           <View className={children ? "ml-1" : "ml-auto"}>
-            <Ionicons name='chevron-forward' size={18} color='#5A5960' />
+            <Ionicons
+              name='chevron-forward'
+              size={18}
+              color={textColor === "red" ? NeonBoard.red : NeonBoard.low}
+            />
           </View>
         )}
       </View>

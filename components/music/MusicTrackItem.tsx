@@ -130,7 +130,7 @@ export const MusicTrackItem: React.FC<Props> = ({
       onLongPress={handleLongPress}
       delayLongPress={300}
       disabled={isUnavailableOffline}
-      className={`flex-row items-center py-1.5 pl-4 pr-3 ${isCurrentTrack ? "bg-brand-raised/20" : ""}`}
+      className={`flex-row items-center py-1.5 pl-4 pr-3 ${isCurrentTrack ? "bg-card2/20" : ""}`}
       style={isUnavailableOffline ? { opacity: 0.5 } : undefined}
     >
       {/* Album artwork */}
@@ -182,7 +182,7 @@ export const MusicTrackItem: React.FC<Props> = ({
           {isCurrentTrack && isPlaying && <AnimatedEqualizer />}
           <Text
             numberOfLines={1}
-            className={`flex-1 text-sm ${isCurrentTrack ? "text-prism-cyan font-medium" : "text-white"}`}
+            className={`flex-1 text-sm ${isCurrentTrack ? "text-volt font-medium" : "text-white"}`}
           >
             {track.Name}
           </Text>

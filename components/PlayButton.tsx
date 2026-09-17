@@ -2,7 +2,6 @@ import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,7 +24,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { Colors, Gradients, Prism } from "@/constants/Colors";
+import { NeonBoard, typeAccent } from "@/constants/Colors";
+import { glowButton, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import type { ThemeColors } from "@/hooks/useImageColorsReturn";
@@ -507,86 +507,68 @@ export const PlayButton: React.FC<Props> = ({
     )}%`,
   }));
 
+  const accent = typeAccent(item);
+  const positionTicks = item?.UserData?.PlaybackPositionTicks || 0;
+  const remaining = runtimeTicksToMinutes(
+    (item?.RunTimeTicks || 0) - positionTicks,
+  );
+  const label =
+    positionTicks > 0
+      ? t("item.resume_left", { time: remaining })
+      : t("item.play_runtime", { time: remaining });
+
   return (
     <TouchableOpacity
       disabled={!item}
       accessibilityLabel={t("accessibility.play_button")}
       accessibilityHint={t("accessibility.play_hint")}
       onPress={onPress}
-      className={"relative flex-1"}
+      activeOpacity={0.85}
+      className='relative flex-1'
       onLayout={(e) => setPillWidth(e.nativeEvent.layout.width)}
+      style={[
+        {
+          height: Sizes.button,
+          backgroundColor: accent,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        glowButton(accent),
+      ]}
     >
-      <LinearGradient
-        colors={Gradients.rainbow as unknown as [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ borderRadius: 24, padding: Prism.shellThickness }}
-      >
-        <View
-          style={{
-            borderRadius: 24 - Prism.shellThickness,
-            backgroundColor: Prism.shellInnerFill,
-            overflow: "hidden",
-            height: 48 - Prism.shellThickness * 2,
-          }}
-          className='flex flex-row items-center justify-center w-full'
+      {/* Watched progress: a darker run from the left edge. */}
+      {pillWidth > 0 && (
+        <Animated.View
+          style={[
+            animatedWidthStyle,
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              backgroundColor: "rgba(5,6,8,0.18)",
+            },
+          ]}
+        />
+      )}
+      <View className='flex flex-row items-center' style={{ gap: 10 }}>
+        <Ionicons name='play' size={18} color={NeonBoard.onAccent} />
+        <Text
+          variant='button'
+          allowFontScaling={false}
+          numberOfLines={1}
+          style={{ color: NeonBoard.onAccent }}
         >
-          {/* Watched progress: a left-anchored slice of the rainbow. The
-              gradient is drawn at the pill's full width inside a clipping
-              view, so the colours stay put and the fill uncovers them. */}
-          <Animated.View
-            style={[
-              animatedWidthStyle,
-              {
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                overflow: "hidden",
-                opacity: 0.85,
-              },
-            ]}
-          >
-            {pillWidth > 0 && (
-              <LinearGradient
-                colors={
-                  Gradients.rainbow as unknown as [string, string, ...string[]]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ width: pillWidth, height: "100%" }}
-              />
-            )}
-          </Animated.View>
-
-          <View className='flex flex-row items-center space-x-2'>
-            <Text
-              style={{
-                fontWeight: "bold",
-                color: Colors.text,
-                textShadowColor: "rgba(0,0,0,0.55)",
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 3,
-              }}
-            >
-              {runtimeTicksToMinutes(
-                (item?.RunTimeTicks || 0) -
-                  (item?.UserData?.PlaybackPositionTicks || 0),
-              )}
-              {(item?.UserData?.PlaybackPositionTicks || 0) > 0 && " left"}
-            </Text>
-            <Text style={{ color: Colors.text }}>
-              <Ionicons name='play-circle' size={24} />
-            </Text>
-            {client && (
-              <Text style={{ color: Colors.text }}>
-                <Feather name='cast' size={22} />
-                <CastButton tintColor='transparent' />
-              </Text>
-            )}
+          {label}
+        </Text>
+        {client && (
+          <View>
+            <Feather name='cast' size={18} color={NeonBoard.onAccent} />
+            <CastButton tintColor='transparent' />
           </View>
-        </View>
-      </LinearGradient>
+        )}
+      </View>
     </TouchableOpacity>
   );
 };

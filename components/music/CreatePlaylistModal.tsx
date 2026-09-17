@@ -140,7 +140,7 @@ export const CreatePlaylistModal: React.FC<Props> = ({
         <Button
           onPress={handleCreate}
           disabled={!isValid || createPlaylist.isPending}
-          className={`py-4 rounded-xl ${isValid ? "bg-prism-cyan" : "bg-neutral-700"}`}
+          className={`py-4  ${isValid ? "bg-volt" : "bg-neutral-700"}`}
         >
           {createPlaylist.isPending ? (
             <ActivityIndicator color='white' />

@@ -7,59 +7,50 @@ import {
 } from "react";
 import { StyleSheet, View, type ViewProps, type ViewStyle } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
-import { Colors, Prism } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 
 interface Props extends ViewProps {
   title?: string | null | undefined;
   description?: ReactElement;
+  /** Section accent for the head rule and the row glyphs. Defaults to volt. */
+  accent?: string;
 }
 
+/**
+ * A run of hairline rows on the stage under a section head. No card, no
+ * radius: the rows carry a 1pt `line` bottom rule each.
+ */
 export const ListGroup: React.FC<PropsWithChildren<Props>> = ({
   title,
   children,
   description,
+  accent = NeonBoard.volt,
   ...props
 }) => {
   const childrenArray = Children.toArray(children);
 
   return (
     <View {...props}>
-      {title ? <SectionHeader title={title} className='ml-4' /> : null}
-      <View
-        style={{ borderWidth: 1, borderColor: Colors.border }}
-        className='flex flex-col rounded-xl overflow-hidden pl-0 bg-brand-surface'
-      >
-        {Children.map(childrenArray, (child, index) => {
-          if (isValidElement<{ style?: ViewStyle; icon?: unknown }>(child)) {
-            // Rows that carry an icon descend the rainbow by position, so a
-            // settings list is hued top to bottom without each screen
-            // spelling the colours out.
-            const tint = child.props.icon
-              ? Prism.settingsIconChipOrder[
-                  index % Prism.settingsIconChipOrder.length
-                ]
-              : undefined;
+      {title ? <SectionHeader title={title} accent={accent} /> : null}
+      <View className='flex flex-col'>
+        {Children.map(childrenArray, (child) => {
+          if (isValidElement<{ style?: ViewStyle; iconTint?: string }>(child)) {
             return cloneElement(child as any, {
-              ...(tint ? { iconTint: tint } : {}),
-              style: StyleSheet.compose(
-                child.props.style,
-                index < childrenArray.length - 1
-                  ? styles.borderBottom
-                  : undefined,
-              ),
+              iconTint: child.props.iconTint ?? accent,
+              style: StyleSheet.compose(child.props.style, styles.borderBottom),
             });
           }
           return child;
         })}
       </View>
-      {description && <View className='pl-4 mt-1'>{description}</View>}
+      {description && <View className='px-3 mt-2'>{description}</View>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   borderBottom: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.separator,
+    borderBottomWidth: 1,
+    borderBottomColor: NeonBoard.line,
   },
 });

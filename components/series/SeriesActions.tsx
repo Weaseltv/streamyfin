@@ -44,7 +44,7 @@ export const ItemActions = ({ item, ...props }: Props) => {
   }, [trailerLink, t]);
 
   return (
-    <View className='' {...props}>
+    <View {...props}>
       {trailerLink && (
         <TouchableOpacity onPress={openTrailer}>
           <HeaderIcon name='trailer' />

@@ -208,7 +208,7 @@ const DropdownView = ({
   // Memoize the trigger to prevent re-renders
   const trigger = useMemo(
     () => (
-      <View className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'>
+      <View className='aspect-square flex flex-col items-center justify-center p-2'>
         <Ionicons name='ellipsis-horizontal' size={24} color={"white"} />
       </View>
     ),

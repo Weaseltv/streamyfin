@@ -155,7 +155,7 @@ export default function PlaylistsScreen() {
         <Text className='text-neutral-500 mb-4'>{t("music.no_playlists")}</Text>
         <TouchableOpacity
           onPress={() => setCreateModalOpen(true)}
-          className='flex-row items-center bg-prism-cyan px-6 py-3 rounded-full'
+          className='flex-row items-center bg-volt px-6 py-3 rounded-full'
         >
           <Ionicons name='add' size={20} color='white' />
           <Text className='text-white font-semibold ml-2'>
@@ -194,7 +194,7 @@ export default function PlaylistsScreen() {
             className='flex-row items-center mb-2 py-1'
           >
             <Ionicons name='swap-vertical' size={18} color={Colors.primary} />
-            <Text className='text-tint-violet text-sm ml-1.5'>
+            <Text className='text-volt text-sm ml-1.5'>
               {t(
                 `music.sort.${sortBy === "SortName" ? "alphabetical" : "date_created"}`,
               )}

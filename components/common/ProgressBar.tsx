@@ -1,7 +1,8 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import React, { useMemo } from "react";
 import { Platform, View } from "react-native";
-import { RainbowProgress } from "@/components/prismatic/RainbowProgress";
+import { NeonProgress } from "@/components/common/NeonProgress";
+import { typeAccent } from "@/constants/Colors";
 
 interface ProgressBarProps {
   item: BaseItemDto;
@@ -30,7 +31,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ item }) => {
     return null;
   }
 
-  // TV keeps the plain white bar; only the mobile design is prismatic.
+  // TV keeps the plain white bar; the phone bar takes the item's type colour.
   if (Platform.isTV) {
     return (
       <>
@@ -48,15 +49,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ item }) => {
   }
 
   return (
-    <View
-      style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-      }}
-    >
-      <RainbowProgress progress={progress / 100} />
+    <View style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
+      <NeonProgress progress={progress / 100} color={typeAccent(item)} />
     </View>
   );
 };

@@ -32,7 +32,7 @@ const SeriesPoster: React.FC<MoviePosterProps> = ({ item }) => {
   }, [item]);
 
   return (
-    <View className='w-28 aspect-[10/15] relative rounded-lg overflow-hidden border border-neutral-900 '>
+    <View className='w-28 aspect-[10/15] relative overflow-hidden border border-neutral-900'>
       <Image
         placeholder={{
           blurhash,

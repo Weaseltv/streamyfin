@@ -148,7 +148,7 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
           </View>
 
           {/* Account List */}
-          <View className='bg-neutral-800 rounded-xl overflow-hidden mb-4'>
+          <View className='bg-neutral-800 overflow-hidden mb-4'>
             {server.accounts.map((account, index) => (
               <Swipeable
                 key={account.userId}
