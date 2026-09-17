@@ -34,7 +34,7 @@ import { Scrims } from "@/constants/neon";
  * Render every header icon at this size. Icon fonts share a common em square,
  * so equally-sized glyphs line up across icon sets (Feather, Ionicons, …).
  */
-export const HEADER_ICON_SIZE = 24;
+export const HEADER_ICON_SIZE = 28;
 
 /**
  * End padding inside a `HeaderButtonGroup`, and inside a lone `variant="text"`
@@ -54,7 +54,7 @@ const HEADER_BUTTON_GAP = 16;
 const HEADER_HIT_SLOP = 10;
 
 /** The glass square over a backdrop (item pages). */
-const GLASS_SIZE = 36;
+const GLASS_SIZE = 44;
 
 /**
  * Gap between a `headerLeft` button and the title on Android.

@@ -8,6 +8,7 @@ import {
 import { StyleSheet, View, type ViewProps, type ViewStyle } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { NeonBoard } from "@/constants/Colors";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 interface Props extends ViewProps {
   title?: string | null | undefined;
@@ -24,9 +25,10 @@ export const ListGroup: React.FC<PropsWithChildren<Props>> = ({
   title,
   children,
   description,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   ...props
 }) => {
+  const accent = useAccent(accentProp);
   const childrenArray = Children.toArray(children);
 
   return (
@@ -43,7 +45,7 @@ export const ListGroup: React.FC<PropsWithChildren<Props>> = ({
           return child;
         })}
       </View>
-      {description && <View className='px-3 mt-2'>{description}</View>}
+      {description && <View className='px-4 mt-2'>{description}</View>}
     </View>
   );
 };

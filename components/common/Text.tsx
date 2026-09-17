@@ -3,11 +3,13 @@ import {
   Text as RNText,
   type TextProps as RNTextProps,
   type StyleProp,
+  StyleSheet,
   type TextStyle,
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import {
   FontFace,
+  INLINE_TEXT_SCALE,
   MAX_FONT_SCALE,
   Type,
   type TypeVariant,
@@ -23,6 +25,22 @@ export interface TextProps extends RNTextProps {
   className?: string;
   style?: StyleProp<TextStyle>;
 }
+
+/** Draws a caller's one-off `fontSize` / `lineHeight` at the enlarged scale. */
+const scaleInline = (style: StyleProp<TextStyle>): StyleProp<TextStyle> => {
+  const flat = StyleSheet.flatten(style);
+  if (!flat || (flat.fontSize === undefined && flat.lineHeight === undefined))
+    return style;
+  return {
+    ...flat,
+    ...(flat.fontSize !== undefined && {
+      fontSize: Math.round(flat.fontSize * INLINE_TEXT_SCALE),
+    }),
+    ...(flat.lineHeight !== undefined && {
+      lineHeight: Math.round(flat.lineHeight * INLINE_TEXT_SCALE),
+    }),
+  };
+};
 
 /**
  * The app's text primitive: Barlow for copy, Barlow Condensed ExtraBold
@@ -60,7 +78,7 @@ export function Text({
     <RNText
       allowFontScaling
       maxFontSizeMultiplier={MAX_FONT_SCALE}
-      style={[FontFace.body, { color }, role, style]}
+      style={[FontFace.body, { color }, role, scaleInline(style)]}
       {...otherProps}
     />
   );

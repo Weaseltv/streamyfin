@@ -599,6 +599,8 @@
     "x_items": "{{count}} items",
     "n_results": "{{count}} results",
     "library": "Library",
+    "library_eyebrow": "WeaselPlex · Library search",
+    "discover_eyebrow": "WeaselPlex · Request search",
     "discover": "Requests",
     "requests_hint": "Type the name of a movie or show to request it.",
     "no_results": "No results",
@@ -671,7 +673,9 @@
       "asc": "Ascending",
       "desc": "Descending"
     },
-    "libraries_count": "{{count}} libraries"
+    "libraries_count": "{{count}} libraries",
+    "title": "Libraries",
+    "eyebrow": "WeaselPlex · {{count}} libraries"
   },
   "favorites": {
     "series": "Series",
@@ -682,7 +686,7 @@
     "playlists": "Playlists",
     "noDataTitle": "Nothing on your watchlist yet",
     "noData": "Items you add to your watchlist show up here.",
-    "eyebrow": "Favorites across your libraries",
+    "eyebrow": "WeaselPlex · Your favorites, saved",
     "saved_count": "{{count}} saved",
     "people": "People"
   },

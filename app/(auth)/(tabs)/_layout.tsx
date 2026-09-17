@@ -119,12 +119,11 @@ function TVTabLayout() {
 }
 
 /**
- * Phone tabs: the custom Neon Board bar (Home · Search · Watchlist · Library,
- * plus Watchlists / Custom links when enabled). Settings is not a tab; it
- * opens from the gear in the brand row. TV keeps `TVNavBar`.
+ * Phone tabs: the custom Neon Board bar, always Home · Search · Watchlist ·
+ * Library. Streamystats watchlists and custom links are never phone tabs, and
+ * Settings opens from the gear in the brand row. TV keeps `TVNavBar`.
  */
 export default function TabLayout() {
-  const { settings } = useSettings();
   const { t } = useTranslation();
 
   // Must be called before any conditional return (rules of hooks)
@@ -137,9 +136,6 @@ export default function TabLayout() {
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;
   }
-
-  const watchlistsHidden =
-    !settings?.streamyStatsServerUrl || settings?.hideWatchlistsTab;
 
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
@@ -181,17 +177,11 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name='(watchlists)'
-          options={{
-            title: t("watchlists.title"),
-            href: watchlistsHidden ? null : undefined,
-          }}
+          options={{ title: t("watchlists.title"), href: null }}
         />
         <Tabs.Screen
           name='(custom-links)'
-          options={{
-            title: t("tabs.custom_links"),
-            href: settings?.showCustomMenuLinks ? undefined : null,
-          }}
+          options={{ title: t("tabs.custom_links"), href: null }}
         />
         <Tabs.Screen
           name='(settings)'

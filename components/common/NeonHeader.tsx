@@ -31,7 +31,7 @@ interface Props {
 
 /** The mascot beside the text wordmark: `WEASEL` in `text`, `PLEX` in volt. */
 export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
-  size = 26,
+  size = 32,
   dim,
 }) => (
   <View
@@ -47,8 +47,8 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
       variant='section'
       allowFontScaling={false}
       style={{
-        fontSize: size * 0.7,
-        lineHeight: size * 0.8,
+        fontSize: size * 0.58,
+        lineHeight: size * 0.67,
         letterSpacing: 0.5,
       }}
     >
@@ -58,8 +58,8 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
         allowFontScaling={false}
         accent={NeonBoard.volt}
         style={{
-          fontSize: size * 0.7,
-          lineHeight: size * 0.8,
+          fontSize: size * 0.58,
+          lineHeight: size * 0.67,
           letterSpacing: 0.5,
         }}
       >
@@ -69,7 +69,7 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
   </View>
 );
 
-/** A 36 square icon button with a `mid` glyph, for the brand row. */
+/** A 44 square icon button with a `mid` glyph, for the brand row. */
 export const HeaderIconButton: React.FC<{
   name: HeaderIconName;
   onPress: () => void;
@@ -93,15 +93,15 @@ export const HeaderIconButton: React.FC<{
         justifyContent: "center",
       }}
     >
-      <HeaderIcon name={name} tintColor={tintColor} size={22} />
+      <HeaderIcon name={name} tintColor={tintColor} size={Sizes.headerGlyph} />
     </Pressable>
   );
 };
 
 /**
- * The brand row that heads every tab root: 48 high under the status inset,
+ * The brand row that heads every tab root: 56 high under the status inset,
  * 1pt `line` bottom rule, mascot + wordmark on the left, Downloads / Cast /
- * Settings as 36 square icon buttons on the right.
+ * Settings as 44 square icon buttons on the right.
  */
 export const NeonHeader: React.FC<Props> = ({
   onBack,
@@ -193,5 +193,9 @@ export const NeonHeader: React.FC<Props> = ({
 
 /** Back glyph as a Feather stroke for places without HeaderIcon. */
 export const BackGlyph = () => (
-  <Feather name='chevron-left' size={22} color={NeonBoard.text} />
+  <Feather
+    name='chevron-left'
+    size={Sizes.headerGlyph}
+    color={NeonBoard.text}
+  />
 );

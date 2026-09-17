@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowChip } from "@/constants/neon";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
 
 const TRACK_W = 44;
 const TRACK_H = 26;
@@ -29,6 +30,7 @@ export const SettingSwitch: React.FC<SwitchProps> = ({
   style,
   ...props
 }) => {
+  const pageAccent = usePageAccent();
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export const SettingSwitch: React.FC<SwitchProps> = ({
     inputRange: [0, 1],
     outputRange: [PAD, TRACK_W - KNOB - PAD],
   });
-  const accent = props.trackColor?.true ?? NeonBoard.volt;
+  const accent = props.trackColor?.true ?? pageAccent;
 
   return (
     <Pressable

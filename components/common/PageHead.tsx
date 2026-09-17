@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { type StyleProp, View, type ViewStyle } from "react-native";
-import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "./Text";
 
 interface Props {
@@ -25,28 +25,33 @@ export const PageHead: React.FC<Props> = ({
   title,
   trailing,
   right,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   style,
-}) => (
-  <View style={[{ paddingHorizontal: Sizes.gutter, paddingTop: 8 }, style]}>
-    <View className='flex flex-row items-end justify-between pb-2'>
-      <View className='shrink'>
-        {eyebrow ? (
-          <Text variant='eyebrow' accent={accent} numberOfLines={1}>
-            {eyebrow}
+}) => {
+  const accent = useAccent(accentProp);
+  return (
+    <View style={[{ paddingHorizontal: Sizes.gutter, paddingTop: 12 }, style]}>
+      <View className='flex flex-row items-end justify-between pb-2'>
+        <View className='shrink'>
+          {eyebrow ? (
+            <Text variant='eyebrow' accent={accent} numberOfLines={1}>
+              {eyebrow}
+            </Text>
+          ) : null}
+          <Text variant='pageTitle' numberOfLines={1} style={{ marginTop: 2 }}>
+            {title}
           </Text>
-        ) : null}
-        <Text variant='pageTitle' numberOfLines={1} style={{ marginTop: 2 }}>
-          {title}
-        </Text>
+        </View>
+        {right ??
+          (trailing !== undefined && trailing !== null ? (
+            <Text variant='tally' accent={accent} className='pl-3'>
+              {trailing}
+            </Text>
+          ) : null)}
       </View>
-      {right ??
-        (trailing !== undefined && trailing !== null ? (
-          <Text variant='tally' accent={accent} className='pl-3'>
-            {trailing}
-          </Text>
-        ) : null)}
+      <View
+        style={[{ height: 2, backgroundColor: accent }, glowRule(accent)]}
+      />
     </View>
-    <View style={[{ height: 2, backgroundColor: accent }, glowRule(accent)]} />
-  </View>
-);
+  );
+};

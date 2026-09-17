@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Scrims, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "./Text";
 
 /**
@@ -77,80 +78,85 @@ interface HeadProps {
 export const NeonSheetHead: React.FC<HeadProps> = ({
   eyebrow,
   title,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   onClose,
   right,
   onBack,
-}) => (
-  <View>
-    <View
-      style={{
-        paddingLeft: Sizes.rowLead,
-        paddingRight: Sizes.gutter,
-        paddingTop: 14,
-        paddingBottom: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
+}) => {
+  const accent = useAccent(accentProp);
+  return (
+    <View>
       <View
-        style={[
-          {
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: Sizes.tally,
-            backgroundColor: accent,
-          },
-          glowRule(accent),
-        ]}
-      />
-      {onBack ? (
-        <TouchableOpacity
-          onPress={onBack}
-          hitSlop={8}
-          accessibilityRole='button'
-          style={{ marginRight: 8 }}
-        >
-          <Feather name='chevron-left' size={24} color={NeonBoard.text} />
-        </TouchableOpacity>
-      ) : null}
-      <View style={{ flex: 1, paddingRight: 12 }}>
-        {eyebrow ? (
-          <Text variant='eyebrow' accent={accent} numberOfLines={1}>
-            {eyebrow}
-          </Text>
-        ) : null}
-        <Text
-          variant='pageTitle'
-          numberOfLines={1}
-          style={{ marginTop: eyebrow ? 2 : 0 }}
-        >
-          {title}
-        </Text>
-      </View>
-      {right ??
-        (onClose ? (
+        style={{
+          paddingLeft: Sizes.rowLead,
+          paddingRight: Sizes.gutter,
+          paddingTop: 14,
+          paddingBottom: 10,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View
+          style={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: Sizes.tally,
+              backgroundColor: accent,
+            },
+            glowRule(accent),
+          ]}
+        />
+        {onBack ? (
           <TouchableOpacity
-            onPress={onClose}
+            onPress={onBack}
             hitSlop={8}
             accessibilityRole='button'
-            style={{
-              width: Sizes.iconButton,
-              height: Sizes.iconButton,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            style={{ marginRight: 8 }}
           >
-            <Feather name='x' size={22} color={NeonBoard.text} />
+            <Feather name='chevron-left' size={28} color={NeonBoard.text} />
           </TouchableOpacity>
-        ) : null)}
+        ) : null}
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          {eyebrow ? (
+            <Text variant='eyebrow' accent={accent} numberOfLines={1}>
+              {eyebrow}
+            </Text>
+          ) : null}
+          <Text
+            variant='pageTitle'
+            numberOfLines={1}
+            style={{ marginTop: eyebrow ? 2 : 0 }}
+          >
+            {title}
+          </Text>
+        </View>
+        {right ??
+          (onClose ? (
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityRole='button'
+              style={{
+                width: Sizes.iconButton,
+                height: Sizes.iconButton,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name='x' size={26} color={NeonBoard.text} />
+            </TouchableOpacity>
+          ) : null)}
+      </View>
+      <View
+        style={[{ height: 2, backgroundColor: accent }, glowRule(accent)]}
+      />
     </View>
-    <View style={[{ height: 2, backgroundColor: accent }, glowRule(accent)]} />
-  </View>
-);
+  );
+};
 
 interface SheetProps extends HeadProps {
   children?: ReactNode;
@@ -257,7 +263,7 @@ export const NeonSheetRow: React.FC<RowProps> = ({
   subtitle,
   value,
   selected = false,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   onPress,
   disabled = false,
   icon,
@@ -266,6 +272,7 @@ export const NeonSheetRow: React.FC<RowProps> = ({
   showArrow = false,
   style,
 }) => {
+  const accent = useAccent(accentProp);
   const tone = destructive ? NeonBoard.red : NeonBoard.text;
   const glyph = destructive ? NeonBoard.red : accent;
   return (
@@ -277,8 +284,8 @@ export const NeonSheetRow: React.FC<RowProps> = ({
       accessibilityState={{ selected, disabled }}
       style={[
         {
-          minHeight: 52,
-          paddingVertical: 8,
+          minHeight: 62,
+          paddingVertical: 10,
           paddingLeft: Sizes.rowLead,
           paddingRight: Sizes.gutter,
           flexDirection: "row",

@@ -338,11 +338,12 @@ const Page = () => {
       // TV uses flexWrap, so nrOfCols is just for mobile
       return 1;
     }
-    // 110-wide posters at a 12 gutter and 10 gap: 3 across on a 390 phone.
+    // At least 100-wide posters at a 16 gutter and 10 gap: 3 across on every
+    // phone from 360 to 430 wide.
     return Math.max(
       2,
       Math.floor(
-        (screenWidth - Sizes.gutter * 2 + GRID_GAP) / (110 + GRID_GAP),
+        (screenWidth - Sizes.gutter * 2 + GRID_GAP) / (100 + GRID_GAP),
       ),
     );
   }, [screenWidth, orientation]);

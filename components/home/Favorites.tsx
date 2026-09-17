@@ -9,9 +9,10 @@ import { View } from "react-native";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { PageHead } from "@/components/common/PageHead";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { InfiniteScrollingCollectionList } from "./InfiniteScrollingCollectionList";
 
 type FavoriteTypes =
@@ -48,7 +49,10 @@ const initialEmptyState = (): EmptyByType => ({
  * libraries · n saved" and one rail per type on its type colour (series and
  * episodes yellow, movies orange, people and the rest volt).
  */
+const ACCENT = sectionAccent("watchlist");
+
 export const Favorites = () => {
+  useSetPageAccent(ACCENT);
   const router = useRouter();
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -218,10 +222,11 @@ export const Favorites = () => {
 
   return (
     <View style={{ backgroundColor: NeonBoard.stage }}>
-      <LoadingLine active={countLoading} />
+      <LoadingLine accent={ACCENT} active={countLoading} />
       <PageHead
         eyebrow={t("favorites.eyebrow")}
         title={t("tabs.favorites")}
+        accent={ACCENT}
         trailing={
           savedCount && savedCount > 0
             ? t("favorites.saved_count", { count: savedCount })
@@ -231,6 +236,7 @@ export const Favorites = () => {
       {empty && (
         <EmptyState
           icon='heart'
+          accent={ACCENT}
           title={t("favorites.noDataTitle")}
           detail={t("favorites.noData")}
         />
@@ -269,7 +275,7 @@ export const Favorites = () => {
           queryFn={fetchFavoritePeople}
           queryKey={["home", "favorites", "people"]}
           title={t("favorites.people")}
-          accent={NeonBoard.volt}
+          accent={ACCENT}
           hideIfEmpty
           pageSize={pageSize}
         />
@@ -277,7 +283,7 @@ export const Favorites = () => {
           queryFn={fetchFavoriteVideos}
           queryKey={["home", "favorites", "videos"]}
           title={t("favorites.videos")}
-          accent={NeonBoard.volt}
+          accent={ACCENT}
           hideIfEmpty
           pageSize={pageSize}
           onPressSeeAll={handleSeeAllVideos}
@@ -286,7 +292,7 @@ export const Favorites = () => {
           queryFn={fetchFavoriteBoxsets}
           queryKey={["home", "favorites", "boxsets"]}
           title={t("favorites.boxsets")}
-          accent={NeonBoard.volt}
+          accent={ACCENT}
           hideIfEmpty
           pageSize={pageSize}
           onPressSeeAll={handleSeeAllBoxsets}
@@ -295,7 +301,7 @@ export const Favorites = () => {
           queryFn={fetchFavoritePlaylists}
           queryKey={["home", "favorites", "playlists"]}
           title={t("favorites.playlists")}
-          accent={NeonBoard.volt}
+          accent={ACCENT}
           hideIfEmpty
           pageSize={pageSize}
           onPressSeeAll={handleSeeAllPlaylists}

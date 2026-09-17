@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { apiAtom, useJellyfin, userAtom } from "@/providers/JellyfinProvider";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { serverHost } from "@/utils/serverHost";
 import { getVersionInfo } from "@/utils/version";
 import { useConfirmDialog } from "../common/ConfirmDialog";
@@ -18,10 +19,8 @@ interface Props extends ViewProps {
  * ACCOUNT: Server, User and Version info rows, then Log out as a red row
  * that confirms through the P14 dialog.
  */
-export const UserInfo: React.FC<Props> = ({
-  accent = NeonBoard.volt,
-  ...props
-}) => {
+export const UserInfo: React.FC<Props> = ({ accent: accentProp, ...props }) => {
+  const accent = useAccent(accentProp);
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const { logout } = useJellyfin();

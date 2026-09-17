@@ -11,8 +11,9 @@ import {
   View,
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
-import { FontFace, MAX_FONT_SCALE } from "@/constants/neon";
+import { FontFace, MAX_FONT_SCALE, Sizes } from "@/constants/neon";
 import { useScaledTVTypography } from "@/constants/TVTypography";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
 
 interface InputProps extends TextInputProps {
   extraClassName?: string;
@@ -35,6 +36,8 @@ export function Input(props: InputProps) {
       useNativeDriver: true,
     }).start();
   };
+
+  const pageAccent = usePageAccent();
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -138,8 +141,8 @@ export function Input(props: InputProps) {
     );
   }
 
-  // Phone: a `card2` field with a 1pt `line2` border, volt when focused,
-  // Barlow 15/600, radius 0. Text scaling on, capped by the app.
+  // Phone: a `card2` field with a 1pt `line2` border, the page accent when
+  // focused, Barlow 18/600, radius 0. Text scaling on, capped by the app.
   return (
     <TextInput
       ref={inputRef}
@@ -148,21 +151,21 @@ export function Input(props: InputProps) {
       maxFontSizeMultiplier={MAX_FONT_SCALE}
       style={[
         {
-          minHeight: 48,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
+          minHeight: Sizes.button,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
           backgroundColor: NeonBoard.card2,
           borderWidth: 1,
-          borderColor: isFocused ? NeonBoard.volt : NeonBoard.line2,
+          borderColor: isFocused ? pageAccent : NeonBoard.line2,
           borderRadius: 0,
           color: NeonBoard.text,
           ...FontFace.bodySemi,
-          fontSize: 15,
+          fontSize: 18,
         },
         style,
       ]}
       placeholderTextColor={NeonBoard.low}
-      selectionColor={NeonBoard.volt}
+      selectionColor={pageAccent}
       clearButtonMode='while-editing'
       {...otherProps}
       onFocus={(e) => {

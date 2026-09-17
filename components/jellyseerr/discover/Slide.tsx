@@ -5,7 +5,7 @@ import type { PropsWithChildren } from "react";
 import { View, type ViewProps, type ViewStyle } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { RAIL_GAP } from "@/components/home/ItemCard";
-import { NeonBoard } from "@/constants/Colors";
+import { sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { DiscoverSliderType } from "@/utils/jellyseerr/server/constants/discover";
 import type DiscoverSlider from "@/utils/jellyseerr/server/entity/DiscoverSlider";
@@ -41,7 +41,7 @@ const Slide = <T,>({
         title={t(
           `search.${DiscoverSliderType[slide.type].toString().toLowerCase()}`,
         )}
-        accent={NeonBoard.volt}
+        accent={sectionAccent("requests")}
         count={count}
       />
       <FlashList

@@ -48,7 +48,7 @@ export function CustomHeadersSettings(): React.ReactElement | null {
           </Text>
         }
       >
-        <View className='px-3 pt-1 pb-3'>
+        <View className='px-4 pt-1 pb-3'>
           <CustomHeaderList
             headers={headers}
             onChange={setHeaders}
@@ -58,7 +58,7 @@ export function CustomHeadersSettings(): React.ReactElement | null {
       </ListGroup>
 
       <View
-        className='px-3 py-2 mt-2'
+        className='px-4 py-2 mt-2'
         style={{ borderTopWidth: 1, borderTopColor: NeonBoard.line }}
       >
         <Text variant='caption' muted>

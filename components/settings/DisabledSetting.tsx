@@ -19,7 +19,7 @@ const DisabledSetting: React.FC<
         {disabled && showText && (
           <Text
             variant='caption'
-            className='px-3 mt-1'
+            className='px-4 mt-1'
             style={{ color: NeonBoard.red }}
           >
             {text ?? t("home.settings.disabled_by_admin")}

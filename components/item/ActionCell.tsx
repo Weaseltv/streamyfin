@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 interface Props {
   icon: ReactNode;
@@ -16,7 +17,7 @@ interface Props {
   divider?: boolean;
 }
 
-export const ACTION_STRIP_HEIGHT = 54;
+export const ACTION_STRIP_HEIGHT = 64;
 
 /** One cell of the item page's action strip: 18 glyph over a 9/700 label. */
 export const ActionCell: React.FC<Props> = ({
@@ -24,10 +25,11 @@ export const ActionCell: React.FC<Props> = ({
   label,
   onPress,
   active,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   disabled,
   divider,
 }) => {
+  const accent = useAccent(accentProp);
   const haptic = useHaptic("light");
   return (
     <Pressable
@@ -50,7 +52,7 @@ export const ActionCell: React.FC<Props> = ({
         borderLeftColor: NeonBoard.line,
       })}
     >
-      <View style={{ height: 20, justifyContent: "center" }}>{icon}</View>
+      <View style={{ height: 24, justifyContent: "center" }}>{icon}</View>
       <Text
         variant='overline'
         allowFontScaling={false}

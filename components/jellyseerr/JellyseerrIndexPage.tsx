@@ -7,7 +7,7 @@ import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { Image } from "@/components/common/ServerImage";
 import Discover from "@/components/jellyseerr/discover/Discover";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
@@ -44,6 +44,7 @@ export enum JellyseerrSearchSort {
 }
 
 const AVATAR = 56;
+const ACCENT = sectionAccent("requests");
 
 const initials = (name?: string | null) =>
   (name ?? "")
@@ -244,7 +245,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
       {noResults && !loading && (
         <View style={{ alignItems: "center", paddingTop: 24 }}>
           <Text variant='section'>{t("search.no_results_found_for")}</Text>
-          <Text variant='meta' accent={NeonBoard.volt} style={{ marginTop: 4 }}>
+          <Text variant='meta' accent={ACCENT} style={{ marginTop: 4 }}>
             "{searchQuery}"
           </Text>
         </View>
@@ -254,7 +255,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         {showMovies && (
           <SearchItemWrapper
             header={t("search.request_movies")}
-            accent={NeonBoard.volt}
+            accent={ACCENT}
             items={jellyseerrMovieResults}
             renderItem={(item: MovieResult) => (
               <JellyseerrPoster item={item} key={item.id} />
@@ -264,7 +265,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         {showTv && (
           <SearchItemWrapper
             header={t("search.request_series")}
-            accent={NeonBoard.volt}
+            accent={ACCENT}
             items={jellyseerrTvResults}
             renderItem={(item: TvResult) => (
               <JellyseerrPoster item={item} key={item.id} />
@@ -274,7 +275,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         {showPeople && (
           <SearchItemWrapper
             header={t("search.actors")}
-            accent={NeonBoard.volt}
+            accent={ACCENT}
             items={jellyseerrPersonResults}
             renderItem={(item: PersonResult) => (
               <JellyseerrPersonAvatar key={item.id} person={item} />

@@ -127,7 +127,7 @@ export const CreatePlaylistModal: React.FC<Props> = ({
               paddingHorizontal: 14,
               minHeight: 48,
               ...FontFace.bodySemi,
-              fontSize: 15,
+              fontSize: 18,
               marginBottom: 20,
             }}
           />

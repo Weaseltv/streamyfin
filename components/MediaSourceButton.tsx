@@ -9,9 +9,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity } from "react-native";
 import { Loader } from "@/components/Loader";
-import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import type { ThemeColors } from "@/hooks/useImageColorsReturn";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { rememberSeriesTrackFromRow } from "@/utils/seriesTrackMemory";
 import { SUBTITLES_OFF } from "@/utils/subtitles/subtitleIndex";
@@ -37,9 +37,10 @@ export const MediaSourceButton: React.FC<Props> = ({
   item,
   selectedOptions,
   setSelectedOptions,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   renderTrigger,
 }: Props) => {
+  const accent = useAccent(accentProp);
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [open, setOpen] = useState(false);

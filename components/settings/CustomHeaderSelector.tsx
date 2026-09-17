@@ -80,12 +80,12 @@ export function CustomHeaderSelector({
     <View className='mt-4'>
       {title ? <SectionHeader title={title} /> : null}
       {description ? (
-        <Text variant='meta' muted className='px-3 mb-3'>
+        <Text variant='meta' muted className='px-4 mb-3'>
           {description}
         </Text>
       ) : null}
 
-      <View className='flex-row gap-2 mb-4 px-3'>
+      <View className='flex-row gap-2 mb-4 px-4'>
         <Chip
           selected={config.source === "jellyfin"}
           onPress={() => setSource("jellyfin")}
@@ -134,7 +134,7 @@ export function CustomHeaderSelector({
       </View>
 
       {config.source === "jellyfin" ? (
-        <View className='px-3 py-2 border-b border-line'>
+        <View className='px-4 py-2 border-b border-line'>
           <Text variant='meta' muted className='mb-2'>
             {t("custom_headers.using_jellyfin_headers")}
           </Text>
@@ -154,7 +154,7 @@ export function CustomHeaderSelector({
       ) : null}
 
       {config.source === "custom" ? (
-        <View className='px-3'>
+        <View className='px-4'>
           <CustomHeaderList
             headers={config.customHeaders}
             onChange={setHeaders}
@@ -164,7 +164,7 @@ export function CustomHeaderSelector({
       ) : null}
 
       {config.source === "none" ? (
-        <View className='px-3 py-2 border-b border-line'>
+        <View className='px-4 py-2 border-b border-line'>
           <Text variant='meta' muted>
             {t("custom_headers.integration_none")}
           </Text>

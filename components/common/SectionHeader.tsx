@@ -1,6 +1,7 @@
 import { TouchableOpacity, View } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "./Text";
 
 type Props = {
@@ -22,13 +23,14 @@ type Props = {
  */
 export const SectionHeader: React.FC<Props> = ({
   title,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   count,
   actionLabel,
   actionDisabled = false,
   onPressAction,
-  className = "px-3",
+  className = "px-4",
 }) => {
+  const accent = useAccent(accentProp);
   const shouldShowAction = Boolean(actionLabel) && Boolean(onPressAction);
 
   return (

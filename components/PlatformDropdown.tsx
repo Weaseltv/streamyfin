@@ -9,6 +9,7 @@ import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 // @expo/ui's SwiftUI native module (ExpoUI) does not exist in tvOS builds.
 // A static top-level import evaluates requireNativeModule('ExpoUI') at module
@@ -86,31 +87,34 @@ export const DropdownTrigger: React.FC<{
   accent?: string;
   disabled?: boolean;
   compact?: boolean;
-}> = ({ value, accent = NeonBoard.volt, disabled = false, compact = true }) => (
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      height: compact ? Sizes.buttonCompact : Sizes.outline,
-      paddingLeft: 10,
-      paddingRight: 8,
-      backgroundColor: NeonBoard.card2,
-      borderWidth: 1,
-      borderColor: NeonBoard.line2,
-      opacity: disabled ? 0.5 : 1,
-    }}
-  >
-    <Text
-      variant='chip'
-      numberOfLines={1}
-      style={{ color: accent, fontSize: 13, maxWidth: 200 }}
+}> = ({ value, accent: accentProp, disabled = false, compact = true }) => {
+  const accent = useAccent(accentProp);
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        height: compact ? Sizes.buttonCompact : Sizes.outline,
+        paddingLeft: 12,
+        paddingRight: 10,
+        backgroundColor: NeonBoard.card2,
+        borderWidth: 1,
+        borderColor: NeonBoard.line2,
+        opacity: disabled ? 0.5 : 1,
+      }}
     >
-      {value}
-    </Text>
-    <Feather name='chevron-down' size={16} color={NeonBoard.mid} />
-  </View>
-);
+      <Text
+        variant='chip'
+        numberOfLines={1}
+        style={{ color: accent, fontSize: 13, maxWidth: 200 }}
+      >
+        {value}
+      </Text>
+      <Feather name='chevron-down' size={19} color={NeonBoard.mid} />
+    </View>
+  );
+};
 
 const OptionItem: React.FC<{ option: Option; accent: string }> = ({
   option,
@@ -223,10 +227,11 @@ const PlatformDropdownComponent = ({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   onOptionSelect,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   expoUIConfig,
   bottomSheetConfig,
 }: PlatformDropdownProps) => {
+  const accent = useAccent(accentProp);
   const { t } = useTranslation();
   const { showModal, hideModal, isVisible } = useGlobalModal();
 

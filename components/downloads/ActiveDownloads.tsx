@@ -34,7 +34,7 @@ export default function ActiveDownloads({ ...props }: ActiveDownloadsProps) {
             title={t("home.downloads.active_download")}
             accent={NeonBoard.volt}
             count={active.length}
-            className='px-3'
+            className='px-4'
           />
           {active.map((p: JobStatus) => (
             <DownloadCard key={p.id} process={p} />
@@ -47,7 +47,7 @@ export default function ActiveDownloads({ ...props }: ActiveDownloadsProps) {
             title={t("home.downloads.queue")}
             accent={NeonBoard.volt}
             count={queued.length}
-            className='px-3'
+            className='px-4'
           />
           {queued.map((p: JobStatus) => (
             <DownloadCard key={p.id} process={p} />

@@ -27,6 +27,15 @@ export const NeonBoard = {
   yellow: "#FFD400",
   red: "#FF3B4E",
   warn: "#F5B93D",
+  // Section neons, one per rail item on WeaselPlex Android TV (`Neon.kt`).
+  blue: "#5268FF",
+  mint: "#00FF8A",
+  violet: "#C026FF",
+  magenta: "#FF2EF7",
+  pink: "#FF2D95",
+  azure: "#00A3FF",
+  // Phone only: the Library hub tab (the TV rail lists libraries directly).
+  indigo: "#8A5CFF",
 } as const;
 
 export type NeonAccent =
@@ -36,7 +45,14 @@ export type NeonAccent =
   | typeof NeonBoard.orange
   | typeof NeonBoard.yellow
   | typeof NeonBoard.red
-  | typeof NeonBoard.warn;
+  | typeof NeonBoard.warn
+  | typeof NeonBoard.blue
+  | typeof NeonBoard.mint
+  | typeof NeonBoard.violet
+  | typeof NeonBoard.magenta
+  | typeof NeonBoard.pink
+  | typeof NeonBoard.azure
+  | typeof NeonBoard.indigo;
 
 /** Sections of the app that own a page accent. */
 export type NeonSection =
@@ -55,9 +71,23 @@ export type NeonSection =
   | "livetv"
   | "guide";
 
-/** Home, Search, Watchlist, Library hub, Requests, Downloads, Settings, login, Music = volt. */
+/**
+ * Every section owns its neon, shared with the WeaselPlex Android TV rail:
+ * Home volt, Search cyan, Watchlist (favourites) hyper blue, Requests mint,
+ * Settings violet. The Library hub is indigo; the rest stay volt.
+ */
 export const sectionAccent = (section: NeonSection): string => {
   switch (section) {
+    case "search":
+      return NeonBoard.cyan;
+    case "watchlist":
+      return NeonBoard.blue;
+    case "library":
+      return NeonBoard.indigo;
+    case "requests":
+      return NeonBoard.mint;
+    case "settings":
+      return NeonBoard.violet;
     case "movies":
       return NeonBoard.orange;
     case "tv":
@@ -71,18 +101,27 @@ export const sectionAccent = (section: NeonSection): string => {
   }
 };
 
-/** Libraries that take cyan by name (Boxing / UFC), regardless of type. */
-const CYAN_LIBRARY_NAME = /\b(boxing|ufc|mma)\b/i;
+/**
+ * Libraries that own a neon by name, as on the Android TV rail. The 4K
+ * libraries are not listed: they fall through to their collection type and
+ * so match their regular movie / show counterparts.
+ */
+const LIBRARY_ACCENT_BY_NAME: Record<string, string> = {
+  "stand up comedy": NeonBoard.magenta,
+  boxing: NeonBoard.pink,
+  ufc: NeonBoard.azure,
+};
 
 /**
- * Accent for a library by its CollectionType, with the name override.
+ * Accent for a library: its own neon by name, else by CollectionType -
  * `movies` orange, `tvshows` yellow, `livetv` green, everything else volt.
  */
 export const libraryAccent = (
   collectionType?: string | null,
   name?: string | null,
 ): string => {
-  if (name && CYAN_LIBRARY_NAME.test(name)) return NeonBoard.cyan;
+  const named = name ? LIBRARY_ACCENT_BY_NAME[name.trim().toLowerCase()] : null;
+  if (named) return named;
   switch (collectionType) {
     case "movies":
       return NeonBoard.orange;
@@ -102,7 +141,7 @@ type TypedItem = Pick<BaseItemDto, "Type" | "CollectionType" | "Name"> & {
 /**
  * Accent for an item by type: Movie orange; Series / Season / Episode yellow;
  * live channels and programmes green; music volt; a library (CollectionFolder)
- * by its CollectionType with the Boxing / UFC name override.
+ * by its name or CollectionType.
  */
 export const typeAccent = (item?: TypedItem | null): string => {
   if (!item) return NeonBoard.volt;

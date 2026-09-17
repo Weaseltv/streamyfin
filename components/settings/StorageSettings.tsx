@@ -6,10 +6,10 @@ import { useConfirmDialog } from "@/components/common/ConfirmDialog";
 import { NeonProgress } from "@/components/common/NeonProgress";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
-import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useDownload } from "@/providers/DownloadProvider";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -22,9 +22,8 @@ interface Props {
  * the device's used space in `low`, a `meta` note, and Clear cache as a red
  * row that confirms through the P14 dialog.
  */
-export const StorageSettings: React.FC<Props> = ({
-  accent = NeonBoard.volt,
-}) => {
+export const StorageSettings: React.FC<Props> = ({ accent: accentProp }) => {
+  const accent = useAccent(accentProp);
   const { deleteAllFiles, appSizeUsage } = useDownload();
   const { t } = useTranslation();
   const queryClient = useQueryClient();

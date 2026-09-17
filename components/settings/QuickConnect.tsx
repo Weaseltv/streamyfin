@@ -18,6 +18,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Button } from "../Button";
 import {
   NeonSheet,
@@ -95,9 +96,10 @@ interface Props extends ViewProps {
 }
 
 export const QuickConnect: React.FC<Props> = ({
-  accent = NeonBoard.volt,
+  accent: accentProp,
   ...props
 }) => {
+  const accent = useAccent(accentProp);
   const isTv = Platform.isTV;
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);

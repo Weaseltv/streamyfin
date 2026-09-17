@@ -1,7 +1,7 @@
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, Platform } from "react-native";
+import { Platform } from "react-native";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import useRouter from "@/hooks/useAppRouter";
@@ -26,24 +26,6 @@ export const AppearanceSettings: React.FC = () => {
   return (
     <DisabledSetting disabled={disabled}>
       <ListGroup title={t("home.settings.appearance.title")}>
-        <ListItem
-          title={t("home.settings.other.show_custom_menu_links")}
-          subtitle={t("home.settings.other.show_custom_menu_links_hint")}
-          disabled={pluginSettings?.showCustomMenuLinks?.locked}
-          onPress={() =>
-            Linking.openURL(
-              "https://jellyfin.org/docs/general/clients/web-config/#custom-menu-links",
-            )
-          }
-        >
-          <SettingSwitch
-            value={settings.showCustomMenuLinks}
-            disabled={pluginSettings?.showCustomMenuLinks?.locked}
-            onValueChange={(value) =>
-              updateSettings({ showCustomMenuLinks: value })
-            }
-          />
-        </ListItem>
         <ListItem
           title={t("home.settings.appearance.merge_next_up_continue_watching")}
           subtitle={t(

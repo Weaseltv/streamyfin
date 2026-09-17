@@ -47,6 +47,7 @@ import {
 } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
 import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
@@ -77,6 +78,7 @@ type MediaListSectionType = {
 type Section = InfiniteScrollingCollectionListSection | MediaListSectionType;
 
 const HomeMobile = () => {
+  useSetPageAccent(NeonBoard.volt);
   const router = useRouter();
   const { t } = useTranslation();
   const api = useAtomValue(apiAtom);

@@ -60,7 +60,7 @@ function StatusDisplay({
     <View className='mt-4'>
       <SectionHeader title={t("jellyseerr.status")} />
       <View
-        className='flex-row justify-between items-center py-2 px-3'
+        className='flex-row justify-between items-center py-2 px-4'
         style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
       >
         <Text variant='rowTitle'>
@@ -71,7 +71,7 @@ function StatusDisplay({
         </Text>
       </View>
       <View
-        className='flex-row justify-between items-center py-2 px-3'
+        className='flex-row justify-between items-center py-2 px-4'
         style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
       >
         <Text variant='rowTitle'>{t("home.settings.network.using_url")}</Text>
@@ -81,7 +81,7 @@ function StatusDisplay({
       </View>
 
       {locationBlocked && (
-        <View className='mt-2 px-3'>
+        <View className='mt-2 px-4'>
           <Text variant='caption' style={{ color: NeonBoard.warn }}>
             {t("home.settings.network.location_off_description")}
           </Text>
@@ -226,7 +226,7 @@ export function LocalNetworkSettings(): React.ReactElement | null {
               </Text>
             }
           >
-            <View className='px-3 pb-2'>
+            <View className='px-4 pb-2'>
               <ServerUrlField
                 value={localUrlDraft}
                 onChangeText={setLocalUrlDraft}

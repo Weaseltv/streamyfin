@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { NeonBoard } from "@/constants/Colors";
 import { glowOverline } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 interface Props {
   accent?: string;
@@ -22,9 +23,10 @@ interface Props {
  * and the content area stays on the stage.
  */
 export const LoadingLine: React.FC<Props> = ({
-  accent = NeonBoard.volt,
+  accent: accentProp,
   active = true,
 }) => {
+  const accent = useAccent(accentProp);
   const x = useSharedValue(-1);
   useEffect(() => {
     x.value = -1;
