@@ -60,8 +60,10 @@ const Page: React.FC = () => {
 
   if (isError)
     return (
-      <View className='flex flex-col items-center justify-center h-screen w-screen'>
-        <Text>{t("item_card.could_not_load_item")}</Text>
+      <View className='flex flex-col items-center justify-center h-screen w-screen bg-stage'>
+        <Text variant='body' muted>
+          {t("item_card.could_not_load_item")}
+        </Text>
       </View>
     );
 
@@ -80,30 +82,19 @@ const Page: React.FC = () => {
           <Animated.View
             pointerEvents={"none"}
             style={[animatedStyle]}
-            className='absolute top-0 left-0 flex flex-col items-start h-screen w-screen z-50 bg-black'
+            className='absolute top-0 left-0 flex flex-col items-start h-screen w-screen z-50 bg-stage'
           >
             {Platform.isTV && ItemContentSkeletonTV ? (
               <ItemContentSkeletonTV />
             ) : (
               <View style={{ paddingHorizontal: 16, width: "100%" }}>
-                <View
-                  style={{
-                    height: 450,
-                  }}
-                  className='bg-transparent mb-4 w-full'
-                />
-                <View className='h-6 bg-neutral-900 mb-4 w-14' />
-                <View className='h-10 bg-neutral-900 mb-2 w-1/2' />
-                <View className='h-3 bg-neutral-900 mb-3 w-8' />
-                <View className='flex flex-row space-x-1 mb-8'>
-                  <View className='h-6 bg-neutral-900 mb-3 w-14' />
-                  <View className='h-6 bg-neutral-900 mb-3 w-14' />
-                  <View className='h-6 bg-neutral-900 mb-3 w-14' />
-                </View>
-                <View className='h-3 bg-neutral-900 w-2/3 mb-1' />
-                <View className='h-10 bg-neutral-900 w-full mb-2' />
-                <View className='h-12 bg-neutral-900 w-full mb-2' />
-                <View className='h-24 bg-neutral-900 mb-1 w-full' />
+                <View className='h-56 bg-card mb-4 w-full' />
+                <View className='h-3 bg-card2 mb-3 w-24' />
+                <View className='h-8 bg-card2 mb-2 w-1/2' />
+                <View className='h-3 bg-card2 mb-6 w-2/3' />
+                <View className='h-12 bg-card2 w-full mb-3' />
+                <View className='h-14 bg-card2 w-full mb-3' />
+                <View className='h-24 bg-card2 mb-1 w-full' />
               </View>
             )}
           </Animated.View>

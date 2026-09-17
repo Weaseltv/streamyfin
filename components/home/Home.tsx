@@ -16,24 +16,18 @@ import { useNavigation, useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  View,
-} from "react-native";
+import { Platform, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
-import { HeaderButton } from "@/components/common/HeaderButton";
-import { HeaderIcon } from "@/components/common/HeaderIcon";
+import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
+import { HeroBand } from "@/components/home/HeroBand";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
+import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
 import { StreamystatsPromotedWatchlists } from "@/components/home/StreamystatsPromotedWatchlists";
 import { StreamystatsRecommendations } from "@/components/home/StreamystatsRecommendations";
-import { Loader } from "@/components/Loader";
 import { MediaListSection } from "@/components/medialists/MediaListSection";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
@@ -136,24 +130,29 @@ const HomeMobile = () => {
       navigation.setOptions({
         headerLeft: () => null,
       });
-      return;
     }
-    navigation.setOptions({
-      headerLeft: () => (
-        <HeaderButton
-          placement='left'
-          onPress={() => {
-            router.push("/(auth)/downloads");
-          }}
-        >
-          <HeaderIcon
-            name='downloads'
-            tintColor={hasDownloads ? Colors.primary : "white"}
-          />
-        </HeaderButton>
-      ),
-    });
-  }, [navigation, router, hasDownloads]);
+  }, [navigation]);
+
+  // The hero band: the first few resume items with their streams, so the
+  // quality badge and time left can be drawn. Off when the popular plugin
+  // owns the band.
+  const { data: heroItems } = useQuery({
+    queryKey: ["home", "hero", user?.Id],
+    queryFn: async () => {
+      if (!api || !user?.Id) return [];
+      const response = await getItemsApi(api).getResumeItems({
+        userId: user.Id,
+        enableImageTypes: ["Primary", "Backdrop", "Thumb"],
+        includeItemTypes: ["Movie", "Episode"],
+        fields: ["MediaStreams"],
+        startIndex: 0,
+        limit: 5,
+      });
+      return response.data.Items || [];
+    },
+    enabled: !!api && !!user?.Id && settings?.usePopularPlugin !== true,
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
     cleanCacheDirectory().catch((_e) =>
@@ -550,42 +549,68 @@ const HomeMobile = () => {
       title = t("home.server_unreachable");
       subtitle = t("home.server_unreachable_message");
     }
+    const waiting = isConnected && serverConnected === null;
     return (
-      <View className='flex flex-col items-center justify-center h-full -mt-6 px-8'>
-        <Text className='text-3xl font-bold mb-2'>{title}</Text>
-        <Text className='text-center opacity-70'>{subtitle}</Text>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: NeonBoard.stage,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 32,
+        }}
+      >
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: waiting ? NeonBoard.warn : NeonBoard.red,
+            backgroundColor: NeonBoard.card,
+            marginBottom: 16,
+          }}
+        >
+          <Ionicons
+            name={waiting ? "time-outline" : "cloud-offline-outline"}
+            size={26}
+            color={waiting ? NeonBoard.warn : NeonBoard.red}
+          />
+        </View>
+        <Text variant='pageTitle' style={{ fontSize: 22, textAlign: "center" }}>
+          {title}
+        </Text>
+        <Text
+          variant='body'
+          muted
+          style={{ fontSize: 13, textAlign: "center", marginTop: 6 }}
+        >
+          {subtitle}
+        </Text>
 
-        <View className='mt-4'>
-          {!Platform.isTV && (
+        <View style={{ marginTop: 20, width: "100%", gap: 10 }}>
+          {!waiting && (
             <Button
-              color='primary'
-              onPress={() => router.push("/(auth)/downloads")}
-              justify='center'
-              iconRight={
-                <Ionicons name='arrow-forward' size={20} color='white' />
+              variant='border'
+              onPress={retryCheck}
+              loading={retryLoading}
+              iconLeft={
+                <Ionicons name='refresh' size={16} color={NeonBoard.volt} />
               }
+            >
+              {t("home.retry")}
+            </Button>
+          )}
+          {!Platform.isTV && hasDownloads && (
+            <Button
+              color='white'
+              variant='border'
+              onPress={() => router.push("/(auth)/downloads")}
             >
               {t("home.go_to_downloads")}
             </Button>
           )}
-
-          <Button
-            color='black'
-            onPress={retryCheck}
-            justify='center'
-            className='mt-2'
-            iconRight={
-              retryLoading ? null : (
-                <Ionicons name='refresh' size={20} color='white' />
-              )
-            }
-          >
-            {retryLoading ? (
-              <ActivityIndicator size='small' color='white' />
-            ) : (
-              t("home.retry")
-            )}
-          </Button>
         </View>
       </View>
     );
@@ -593,138 +618,176 @@ const HomeMobile = () => {
 
   if (e1)
     return (
-      <View className='flex flex-col items-center justify-center h-full -mt-6'>
-        <Text className='text-3xl font-bold mb-2'>{t("home.oops")}</Text>
-        <Text className='text-center opacity-70'>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: NeonBoard.stage,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 32,
+        }}
+      >
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: NeonBoard.red,
+            backgroundColor: NeonBoard.card,
+            marginBottom: 16,
+          }}
+        >
+          <Ionicons
+            name='alert-circle-outline'
+            size={26}
+            color={NeonBoard.red}
+          />
+        </View>
+        <Text variant='pageTitle' style={{ fontSize: 22 }}>
+          {t("home.oops")}
+        </Text>
+        <Text
+          variant='body'
+          muted
+          style={{ fontSize: 13, textAlign: "center", marginTop: 6 }}
+        >
           {t("home.error_message")}
         </Text>
-      </View>
-    );
-
-  if (l1)
-    return (
-      <View className='justify-center items-center h-full'>
-        <Loader />
+        <Button
+          variant='border'
+          onPress={refetch}
+          style={{ marginTop: 20, alignSelf: "stretch" }}
+        >
+          {t("home.retry")}
+        </Button>
       </View>
     );
 
   return (
-    <ScrollView
-      ref={scrollRef}
-      nestedScrollEnabled
-      contentInsetAdjustmentBehavior='automatic'
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={refetch}
-          tintColor='white'
-          colors={["white"]}
-        />
-      }
-      contentContainerStyle={{
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-        paddingBottom: 16,
-      }}
-    >
-      <View
-        className='flex flex-col space-y-4'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+    <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+      <LoadingLine active={l1} />
+      <ScrollView
+        ref={scrollRef}
+        nestedScrollEnabled
+        contentInsetAdjustmentBehavior='automatic'
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refetch}
+            tintColor={NeonBoard.volt}
+            colors={[NeonBoard.volt]}
+            progressBackgroundColor={NeonBoard.card}
+          />
+        }
+        contentContainerStyle={{
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingBottom: 16,
+        }}
       >
-        {sections.map((section, index) => {
-          // Render Streamystats sections after Recently Added sections
-          // For default sections: place after Recently Added, before Suggested Movies (if present)
-          // For custom sections: place at the very end
-          const hasSuggestedMovies =
-            !settings?.streamyStatsMovieRecommendations &&
-            !settings?.home?.sections;
-          const streamystatsIndex =
-            sections.length - 1 - (hasSuggestedMovies ? 1 : 0);
-          const hasStreamystatsContent =
-            settings.streamyStatsMovieRecommendations ||
-            settings.streamyStatsSeriesRecommendations ||
-            settings.streamyStatsPromotedWatchlists;
-          const streamystatsSections =
-            index === streamystatsIndex && hasStreamystatsContent ? (
-              <View
-                key='streamystats-sections'
-                className='flex flex-col space-y-4'
-              >
-                {settings.streamyStatsMovieRecommendations && (
-                  <StreamystatsRecommendations
-                    title={t(
-                      "home.settings.plugins.streamystats.recommended_movies",
-                    )}
-                    type='Movie'
-                    enabled={allHighPriorityLoaded}
-                  />
-                )}
-                {settings.streamyStatsSeriesRecommendations && (
-                  <StreamystatsRecommendations
-                    title={t(
-                      "home.settings.plugins.streamystats.recommended_series",
-                    )}
-                    type='Series'
-                    enabled={allHighPriorityLoaded}
-                  />
-                )}
-                {settings.streamyStatsPromotedWatchlists && (
-                  <StreamystatsPromotedWatchlists
-                    enabled={allHighPriorityLoaded}
-                  />
-                )}
-              </View>
-            ) : null;
-          if (section.type === "InfiniteScrollingCollectionList") {
-            const isHighPriority = section.priority === 1;
-            const handleSeeAll = section.parentId
-              ? () => {
-                  router.push({
-                    pathname: "/(auth)/(tabs)/(libraries)/[libraryId]",
-                    params: {
-                      libraryId: section.parentId!,
-                      sortBy: SortByOption.DateCreated,
-                      sortOrder: SortOrderOption.Descending,
-                    },
-                  } as any);
-                }
-              : undefined;
-            return (
-              <View key={index} className='flex flex-col space-y-4'>
-                <InfiniteScrollingCollectionList
-                  title={section.title}
-                  queryKey={section.queryKey}
-                  queryFn={section.queryFn}
-                  orientation={section.orientation}
-                  hideIfEmpty
-                  pageSize={section.pageSize}
-                  enabled={isHighPriority || allHighPriorityLoaded}
-                  onLoaded={
-                    isHighPriority
-                      ? () => markSectionLoaded(section.queryKey)
-                      : undefined
+        {settings?.usePopularPlugin ? (
+          <LargeMovieCarousel />
+        ) : heroItems && heroItems.length > 0 ? (
+          <HeroBand items={heroItems} eyebrow={t("home.continue_watching")} />
+        ) : null}
+        <View className='flex flex-col' style={{ gap: 4 }}>
+          {sections.map((section, index) => {
+            // Render Streamystats sections after Recently Added sections
+            // For default sections: place after Recently Added, before Suggested Movies (if present)
+            // For custom sections: place at the very end
+            const hasSuggestedMovies =
+              !settings?.streamyStatsMovieRecommendations &&
+              !settings?.home?.sections;
+            const streamystatsIndex =
+              sections.length - 1 - (hasSuggestedMovies ? 1 : 0);
+            const hasStreamystatsContent =
+              settings.streamyStatsMovieRecommendations ||
+              settings.streamyStatsSeriesRecommendations ||
+              settings.streamyStatsPromotedWatchlists;
+            const streamystatsSections =
+              index === streamystatsIndex && hasStreamystatsContent ? (
+                <View
+                  key='streamystats-sections'
+                  className='flex flex-col space-y-4'
+                >
+                  {settings.streamyStatsMovieRecommendations && (
+                    <StreamystatsRecommendations
+                      title={t(
+                        "home.settings.plugins.streamystats.recommended_movies",
+                      )}
+                      type='Movie'
+                      enabled={allHighPriorityLoaded}
+                    />
+                  )}
+                  {settings.streamyStatsSeriesRecommendations && (
+                    <StreamystatsRecommendations
+                      title={t(
+                        "home.settings.plugins.streamystats.recommended_series",
+                      )}
+                      type='Series'
+                      enabled={allHighPriorityLoaded}
+                    />
+                  )}
+                  {settings.streamyStatsPromotedWatchlists && (
+                    <StreamystatsPromotedWatchlists
+                      enabled={allHighPriorityLoaded}
+                    />
+                  )}
+                </View>
+              ) : null;
+            if (section.type === "InfiniteScrollingCollectionList") {
+              const isHighPriority = section.priority === 1;
+              const handleSeeAll = section.parentId
+                ? () => {
+                    router.push({
+                      pathname: "/(auth)/(tabs)/(libraries)/[libraryId]",
+                      params: {
+                        libraryId: section.parentId!,
+                        sortBy: SortByOption.DateCreated,
+                        sortOrder: SortOrderOption.Descending,
+                      },
+                    } as any);
                   }
-                  onPressSeeAll={handleSeeAll}
-                />
-                {streamystatsSections}
-              </View>
-            );
-          }
-          if (section.type === "MediaListSection") {
-            return (
-              <View key={index} className='flex flex-col space-y-4'>
-                <MediaListSection
-                  queryKey={section.queryKey}
-                  queryFn={section.queryFn}
-                />
-                {streamystatsSections}
-              </View>
-            );
-          }
-          return null;
-        })}
-      </View>
-    </ScrollView>
+                : undefined;
+              return (
+                <View key={index} className='flex flex-col space-y-4'>
+                  <InfiniteScrollingCollectionList
+                    title={section.title}
+                    queryKey={section.queryKey}
+                    queryFn={section.queryFn}
+                    orientation={section.orientation}
+                    hideIfEmpty
+                    pageSize={section.pageSize}
+                    enabled={isHighPriority || allHighPriorityLoaded}
+                    onLoaded={
+                      isHighPriority
+                        ? () => markSectionLoaded(section.queryKey)
+                        : undefined
+                    }
+                    onPressSeeAll={handleSeeAll}
+                  />
+                  {streamystatsSections}
+                </View>
+              );
+            }
+            if (section.type === "MediaListSection") {
+              return (
+                <View key={index} className='flex flex-col space-y-4'>
+                  <MediaListSection
+                    queryKey={section.queryKey}
+                    queryFn={section.queryFn}
+                  />
+                  {streamystatsSections}
+                </View>
+              );
+            }
+            return null;
+          })}
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 

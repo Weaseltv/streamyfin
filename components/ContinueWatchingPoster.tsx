@@ -5,22 +5,30 @@ import type React from "react";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { Image } from "@/components/common/ServerImage";
+import { PosterFrame } from "@/components/posters/PosterFrame";
+import { NeonBoard, typeLabel } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { apiAtom } from "@/providers/JellyfinProvider";
-import { ProgressBar } from "./common/ProgressBar";
-import { WatchedIndicator } from "./WatchedIndicator";
 
 type ContinueWatchingPosterProps = {
   item: BaseItemDto;
   useEpisodePoster?: boolean;
-  size?: "small" | "normal";
+  /** `normal` 176×99 rails; `small` 150×84 search / watchlist; `tiny` 96×54 next-up. */
+  size?: "small" | "normal" | "tiny";
   showPlayButton?: boolean;
+  /** Override the badge ("NEXT UP" on the next-up rail). */
+  badge?: string | null;
+  badgeColor?: string;
 };
 
+/** 16:9 thumb with a 1pt border, type badge top-left, progress at the bottom. */
 const ContinueWatchingPoster: React.FC<ContinueWatchingPosterProps> = ({
   item,
   useEpisodePoster = false,
   size = "normal",
   showPlayButton = false,
+  badge,
+  badgeColor,
 }) => {
   const api = useAtomValue(apiAtom);
 
@@ -43,21 +51,6 @@ const ContinueWatchingPoster: React.FC<ContinueWatchingPosterProps> = ({
 
       return `${api?.basePath}/Items/${item.Id}/Images/Primary?fillHeight=389&quality=80`;
     }
-    if (item.Type === "Movie") {
-      if (item.ImageTags?.Thumb) {
-        return `${api?.basePath}/Items/${item.Id}/Images/Thumb?fillHeight=389&quality=80&tag=${item.ImageTags?.Thumb}`;
-      }
-
-      return `${api?.basePath}/Items/${item.Id}/Images/Primary?fillHeight=389&quality=80`;
-    }
-    if (item.Type === "Program") {
-      if (item.ImageTags?.Thumb) {
-        return `${api?.basePath}/Items/${item.Id}/Images/Thumb?fillHeight=389&quality=80&tag=${item.ImageTags?.Thumb}`;
-      }
-
-      return `${api?.basePath}/Items/${item.Id}/Images/Primary?fillHeight=389&quality=80`;
-    }
-
     if (item.ImageTags?.Thumb) {
       return `${api?.basePath}/Items/${item.Id}/Images/Thumb?fillHeight=389&quality=80&tag=${item.ImageTags?.Thumb}`;
     }
@@ -66,36 +59,46 @@ const ContinueWatchingPoster: React.FC<ContinueWatchingPosterProps> = ({
     // useEpisodePoster in deps so flipping the prop re-computes the URL live.
   }, [api, item, useEpisodePoster]);
 
-  if (!url)
-    return <View className='aspect-video border border-neutral-800 w-44' />;
+  const box =
+    size === "small"
+      ? Sizes.thumbSmall
+      : size === "tiny"
+        ? Sizes.thumbNextUp
+        : Sizes.thumb;
+
+  // An episode on a rail reads as its show.
+  const label =
+    badge !== undefined
+      ? badge
+      : item.Type === "Episode"
+        ? "SHOW"
+        : typeLabel(item);
 
   return (
-    <View
-      className={`
-      relative w-44 aspect-video  overflow-hidden border border-neutral-800
-      ${size === "small" ? "w-32" : "w-44"}
-    `}
+    <PosterFrame
+      item={item}
+      width={box.w}
+      height={box.h}
+      badge={size === "tiny" ? null : label}
+      badgeColor={badgeColor}
+      watched={size !== "tiny"}
     >
-      <View className='w-full h-full flex items-center justify-center'>
+      {url ? (
         <Image
           key={item.Id}
           id={item.Id}
-          source={{
-            uri: url,
-          }}
+          source={{ uri: url }}
           cachePolicy={"memory-disk"}
           contentFit='cover'
-          className='w-full h-full'
+          style={{ width: "100%", height: "100%" }}
         />
-        {showPlayButton && (
-          <View className='absolute inset-0 flex items-center justify-center'>
-            <Ionicons name='play-circle' size={40} color='white' />
-          </View>
-        )}
-      </View>
-      {!item.UserData?.Played && <WatchedIndicator item={item} />}
-      <ProgressBar item={item} />
-    </View>
+      ) : null}
+      {showPlayButton && (
+        <View className='absolute inset-0 flex items-center justify-center'>
+          <Ionicons name='play' size={28} color={NeonBoard.text} />
+        </View>
+      )}
+    </PosterFrame>
   );
 };
 

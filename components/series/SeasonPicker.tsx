@@ -4,13 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { atom, useAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { Chip } from "@/components/common/Chip";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
-import {
-  SeasonDropdown,
-  type SeasonIndexState,
-} from "@/components/series/SeasonDropdown";
-import { Colors } from "@/constants/Colors";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { EpisodeRow } from "@/components/series/EpisodeRow";
+import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
@@ -18,22 +20,24 @@ import {
   buildOfflineSeasons,
   getDownloadedEpisodesForSeason,
 } from "@/utils/downloads/offline-series";
-import { runtimeTicksToSeconds } from "@/utils/time";
-import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
-import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
-import { Loader } from "../Loader";
 import { PlayedStatus } from "../PlayedStatus";
 
 type Props = {
   item: BaseItemDto;
   initialSeasonIndex?: number;
+  /** The episode that carries the tally (next up). */
+  currentEpisodeId?: string | null;
 };
 
 export const seasonIndexAtom = atom<SeasonIndexState>({});
 
-export const SeasonPicker: React.FC<Props> = ({ item }) => {
+export const SeasonPicker: React.FC<Props> = ({
+  item,
+  initialSeasonIndex,
+  currentEpisodeId,
+}) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const [seasonIndexState, setSeasonIndexState] = useAtom(seasonIndexAtom);
@@ -147,39 +151,86 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
     }
   }, [episodes]);
 
+  const sortedSeasons: BaseItemDto[] = useMemo(
+    () =>
+      [...(seasons ?? [])].sort(
+        (a: BaseItemDto, b: BaseItemDto) =>
+          Number(a.IndexNumber) - Number(b.IndexNumber),
+      ),
+    [seasons],
+  );
+
+  const selectSeason = (season: BaseItemDto) => {
+    if (!item.Id) return;
+    setSeasonIndexState((prev) => ({
+      ...prev,
+      [item.Id!]: season.IndexNumber ?? season.Name,
+    }));
+  };
+
+  // Pick the initial season once: the requested index, else season 1 / 0 / first.
+  useEffect(() => {
+    if (!sortedSeasons.length || seasonIndex !== undefined) return;
+    const byIndex =
+      initialSeasonIndex !== undefined && !Number.isNaN(initialSeasonIndex)
+        ? sortedSeasons.find((s) => s.IndexNumber === initialSeasonIndex)
+        : undefined;
+    const fallback =
+      sortedSeasons.find((s) => s.IndexNumber === 1) ??
+      sortedSeasons.find((s) => s.IndexNumber === 0) ??
+      sortedSeasons[0];
+    selectSeason(byIndex ?? fallback);
+  }, [sortedSeasons, seasonIndex, initialSeasonIndex]);
+
   return (
     <View
       style={{
-        minHeight: 144 * nrOfEpisodes,
+        minHeight: 64 * nrOfEpisodes,
       }}
     >
-      <View className='flex flex-row justify-start items-center px-4'>
-        <SeasonDropdown
-          item={item}
-          seasons={seasons}
-          state={seasonIndexState}
-          onSelect={(season) => {
-            if (!item.Id) return;
-            setSeasonIndexState((prev) => ({
-              ...prev,
-              [item.Id!]: season.IndexNumber ?? season.Name,
-            }));
-          }}
-        />
+      <SectionHeader title={t("item_card.seasons")} accent={NeonBoard.yellow} />
+      <View
+        className='flex flex-row items-center'
+        style={{ paddingLeft: Sizes.gutter, paddingRight: 4, gap: 8 }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+        >
+          {sortedSeasons.map((season: BaseItemDto) => (
+            <Chip
+              key={season.Id ?? String(season.IndexNumber)}
+              label={
+                season.Name || `${t("item_card.season")} ${season.IndexNumber}`
+              }
+              accent={NeonBoard.yellow}
+              selected={
+                Number(season.IndexNumber) === Number(seasonIndex) ||
+                season.Name === seasonIndex
+              }
+              onPress={() => selectSeason(season)}
+            />
+          ))}
+        </ScrollView>
         {episodes?.length && !isOffline ? (
-          <View className='flex flex-row items-center space-x-2'>
+          <View className='flex flex-row items-center' style={{ gap: 4 }}>
             <DownloadItems
               title={t("item_card.download.download_season")}
-              className='ml-2'
               items={episodes || []}
               MissingDownloadIconComponent={() => (
-                <HeaderIcon name='downloads' size={18} />
+                <HeaderIcon
+                  name='downloads'
+                  size={20}
+                  tintColor={NeonBoard.mid}
+                />
               )}
               DownloadedIconComponent={() => (
                 <HeaderIcon
                   name='downloaded'
-                  tintColor={Colors.primary}
-                  size={18}
+                  tintColor={NeonBoard.green}
+                  size={20}
                 />
               )}
             />
@@ -187,59 +238,24 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
           </View>
         ) : null}
       </View>
-      <View className='px-4 flex flex-col mt-4'>
-        {isPending ? (
-          <View
-            style={{
-              minHeight: 144 * nrOfEpisodes,
-            }}
-            className='flex flex-col items-center justify-center'
-          >
-            <Loader />
-          </View>
-        ) : (
+      <View className='flex flex-col' style={{ marginTop: 10 }}>
+        <LoadingLine accent={NeonBoard.yellow} active={isPending} />
+        {!isPending &&
           episodes?.map((e: BaseItemDto) => (
-            <TouchableItemRouter
-              item={e}
+            <EpisodeRow
               key={e.Id}
-              className='flex flex-col mb-4'
-            >
-              <View className='flex flex-row items-start mb-2'>
-                <View className='mr-2'>
-                  <ContinueWatchingPoster
-                    size='small'
-                    item={e}
-                    useEpisodePoster
-                  />
-                </View>
-                <View className='shrink'>
-                  <Text numberOfLines={2}>{e.Name}</Text>
-                  <Text numberOfLines={1} className='text-xs text-neutral-500'>
-                    {`S${e.ParentIndexNumber?.toString()}:E${e.IndexNumber?.toString()}`}
-                  </Text>
-                  <Text className='text-xs text-neutral-500'>
-                    {runtimeTicksToSeconds(e.RunTimeTicks)}
-                  </Text>
-                </View>
-                {!isOffline && (
-                  <View className='self-start ml-auto -mt-0.5'>
-                    <DownloadSingleItem item={e} />
-                  </View>
-                )}
-              </View>
-
-              <Text
-                numberOfLines={3}
-                className='text-xs text-neutral-500 shrink'
-              >
-                {e.Overview}
-              </Text>
-            </TouchableItemRouter>
-          ))
-        )}
-        {(episodes?.length || 0) === 0 ? (
-          <View className='flex flex-col'>
-            <Text className='text-neutral-500'>
+              episode={e}
+              current={!!currentEpisodeId && e.Id === currentEpisodeId}
+              trailing={
+                !isOffline ? <DownloadSingleItem item={e} /> : undefined
+              }
+            />
+          ))}
+        {!isPending && (episodes?.length || 0) === 0 ? (
+          <View
+            style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
+          >
+            <Text variant='meta' muted>
               {t("item_card.no_episodes_for_this_season")}
             </Text>
           </View>

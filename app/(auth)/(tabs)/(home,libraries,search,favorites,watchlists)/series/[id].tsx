@@ -16,16 +16,16 @@ import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
 import { TVSeriesPage } from "@/components/series/TVSeriesPage";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import {
   buildOfflineSeriesFromEpisodes,
   getDownloadedEpisodesForSeries,
 } from "@/utils/downloads/offline-series";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
-import { getLogoImageUrlById } from "@/utils/jellyfin/image/getLogoImageUrlById";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
 
@@ -88,15 +88,7 @@ const page: React.FC = () => {
     });
   }, [isOffline, base64Image, api, item]);
 
-  const logoUrl = useMemo(() => {
-    if (isOffline) {
-      return null; // No logo in offline mode
-    }
-    return getLogoImageUrlById({
-      api,
-      item,
-    });
-  }, [isOffline, api, item]);
+  useSetPageAccent(NeonBoard.yellow);
 
   const { data: allEpisodes, isLoading } = useQuery({
     queryKey: ["AllEpisodes", seriesId, isOffline, downloadedItems.length],
@@ -125,6 +117,20 @@ const page: React.FC = () => {
     enabled: isOffline || (!!api && !!user?.Id),
   });
 
+  const seasonCount = useMemo(
+    () => new Set((allEpisodes ?? []).map((e) => e.ParentIndexNumber)).size,
+    [allEpisodes],
+  );
+  // The next unplayed episode carries the tally in the season list.
+  const nextUpId = useMemo(
+    () =>
+      (allEpisodes ?? []).find(
+        (e) =>
+          !e.UserData?.Played || (e.UserData?.PlaybackPositionTicks ?? 0) > 0,
+      )?.Id ?? null,
+    [allEpisodes],
+  );
+
   useEffect(() => {
     // Don't show header buttons in offline mode
     if (isOffline) {
@@ -148,7 +154,7 @@ const page: React.FC = () => {
                   <HeaderIcon name='downloads' />
                 )}
                 DownloadedIconComponent={() => (
-                  <HeaderIcon name='downloaded' tintColor={Colors.primary} />
+                  <HeaderIcon name='downloaded' tintColor={NeonBoard.green} />
                 )}
               />
             )}
@@ -176,7 +182,8 @@ const page: React.FC = () => {
   return (
     <OfflineModeProvider isOffline={isOffline}>
       <ParallaxScrollView
-        headerHeight={400}
+        headerHeight={210}
+        overlap={40}
         headerImage={
           backdropUrl ? (
             <Image
@@ -193,34 +200,24 @@ const page: React.FC = () => {
               style={{
                 width: "100%",
                 height: "100%",
-                backgroundColor: "#1a1a1a",
+                backgroundColor: NeonBoard.card,
               }}
             />
           )
         }
-        logo={
-          logoUrl ? (
-            <Image
-              source={{
-                uri: logoUrl,
-              }}
-              style={{
-                height: 130,
-                width: "100%",
-              }}
-              contentFit='contain'
-            />
-          ) : undefined
-        }
       >
-        <View className='flex flex-col pt-4'>
-          <SeriesHeader item={item} />
-          {!isOffline && (
-            <View className='mb-4'>
-              <NextUp seriesId={seriesId} />
-            </View>
-          )}
-          <SeasonPicker item={item} initialSeasonIndex={Number(seasonIndex)} />
+        <View className='flex flex-col'>
+          <SeriesHeader
+            item={item}
+            seasons={seasonCount}
+            episodes={allEpisodes?.length}
+          />
+          {!isOffline && <NextUp seriesId={seriesId} />}
+          <SeasonPicker
+            item={item}
+            initialSeasonIndex={Number(seasonIndex)}
+            currentEpisodeId={nextUpId}
+          />
         </View>
       </ParallaxScrollView>
     </OfflineModeProvider>

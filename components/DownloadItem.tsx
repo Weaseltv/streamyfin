@@ -18,7 +18,8 @@ import { Alert, Platform, Switch, View, type ViewProps } from "react-native";
 import { toast } from "sonner-native";
 import { HEADER_ICON_SIZE } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
-import { Colors } from "@/constants/Colors";
+import { ActionCell } from "@/components/item/ActionCell";
+import { Colors, NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import useDefaultPlaySettings from "@/hooks/useDefaultPlaySettings";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -70,6 +71,10 @@ interface DownloadProps extends ViewProps {
   title?: string;
   subtitle?: string;
   size?: "default" | "large";
+  /** Render as an action-strip cell with this label instead of a square button. */
+  label?: string;
+  /** Hairline on the left of the cell. */
+  divider?: boolean;
 }
 
 export const DownloadItems: React.FC<DownloadProps> = ({
@@ -79,6 +84,8 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   title = "Download",
   subtitle = "",
   size = "default",
+  label,
+  divider,
   ...props
 }) => {
   const [api] = useAtom(apiAtom);
@@ -362,8 +369,8 @@ export const DownloadItems: React.FC<DownloadProps> = ({
             size={PROGRESS_RING_SIZE}
             fill={progress}
             width={PROGRESS_RING_WIDTH}
-            tintColor={Colors.primary}
-            backgroundColor='white'
+            tintColor={NeonBoard.green}
+            backgroundColor={NeonBoard.line2}
           />
         </View>
       );
@@ -393,10 +400,21 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   };
 
   return (
-    <View {...props}>
-      <SquareButton size={size} onPress={onButtonPress}>
-        {renderButtonContent()}
-      </SquareButton>
+    <View {...props} style={[label ? { flex: 1 } : null, props.style]}>
+      {label ? (
+        <ActionCell
+          icon={renderButtonContent()}
+          label={label}
+          onPress={onButtonPress}
+          active={allItemsDownloaded}
+          accent={NeonBoard.green}
+          divider={divider}
+        />
+      ) : (
+        <SquareButton size={size} onPress={onButtonPress}>
+          {renderButtonContent()}
+        </SquareButton>
+      )}
       <BottomSheetModal
         ref={bottomSheetModalRef}
         enableDynamicSizing
@@ -512,7 +530,9 @@ export const DownloadItems: React.FC<DownloadProps> = ({
 export const DownloadSingleItem: React.FC<{
   size?: "default" | "large";
   item: BaseItemDto;
-}> = ({ item, size = "default" }) => {
+  label?: string;
+  divider?: boolean;
+}> = ({ item, size = "default", label, divider }) => {
   if (Platform.isTV) return;
 
   return (
@@ -525,10 +545,18 @@ export const DownloadSingleItem: React.FC<{
       }
       subtitle={item.Name!}
       items={[item]}
-      MissingDownloadIconComponent={() => <HeaderIcon name='downloads' />}
-      DownloadedIconComponent={() => (
-        <HeaderIcon name='downloaded' tintColor={Colors.primary} />
+      MissingDownloadIconComponent={() => (
+        <HeaderIcon name='downloads' size={label ? 20 : undefined} />
       )}
+      DownloadedIconComponent={() => (
+        <HeaderIcon
+          name='downloaded'
+          tintColor={NeonBoard.green}
+          size={label ? 20 : undefined}
+        />
+      )}
+      label={label}
+      divider={divider}
     />
   );
 };

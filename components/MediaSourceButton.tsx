@@ -1,12 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   MediaSourceInfo,
   MediaStream,
 } from "@jellyfin/sdk/lib/generated-client";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity } from "react-native";
+import { Loader } from "@/components/Loader";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import type { ThemeColors } from "@/hooks/useImageColorsReturn";
 import { useSettings } from "@/utils/atoms/settings";
 import { rememberSeriesTrackFromRow } from "@/utils/seriesTrackMemory";
@@ -23,22 +27,22 @@ interface Props extends React.ComponentProps<typeof TouchableOpacity> {
     React.SetStateAction<SelectedOptions | undefined>
   >;
   colors?: ThemeColors;
+  /** The item's type colour for the outline. */
+  accent?: string;
+  /** Replace the square button with any pressable (the option rows). */
+  renderTrigger?: (open: () => void) => ReactNode;
 }
 
 export const MediaSourceButton: React.FC<Props> = ({
   item,
   selectedOptions,
   setSelectedOptions,
-  colors,
+  accent = NeonBoard.volt,
+  renderTrigger,
 }: Props) => {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [open, setOpen] = useState(false);
-
-  const effectiveColors = colors || {
-    primary: "#7c3aed",
-    text: "#000000",
-  };
 
   useEffect(() => {
     const firstMediaSource = item?.MediaSources?.[0];
@@ -181,23 +185,27 @@ export const MediaSourceButton: React.FC<Props> = ({
     settings,
   ]);
 
-  const trigger = (
+  const trigger = renderTrigger ? (
+    renderTrigger(() => setOpen(true))
+  ) : (
     <TouchableOpacity
       disabled={!item}
       onPress={() => setOpen(true)}
-      className='relative'
+      accessibilityLabel={t("item_card.media_options")}
+      style={{
+        width: Sizes.button,
+        height: Sizes.button,
+        borderWidth: 1,
+        borderColor: accent,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      <View
-        style={{ backgroundColor: effectiveColors.primary, opacity: 0.7 }}
-        className='absolute w-12 h-12 rounded-full'
-      />
-      <View className='w-12 h-12 rounded-full z-10 items-center justify-center'>
-        {!item ? (
-          <ActivityIndicator size='small' color={effectiveColors.text} />
-        ) : (
-          <Ionicons name='list' size={24} color={effectiveColors.text} />
-        )}
-      </View>
+      {!item ? (
+        <Loader color={accent} />
+      ) : (
+        <Feather name='sliders' size={20} color={accent} />
+      )}
     </TouchableOpacity>
   );
 

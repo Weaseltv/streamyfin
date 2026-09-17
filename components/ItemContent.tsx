@@ -1,39 +1,42 @@
+import { Feather } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { useNavigation } from "expo-router";
 import { useAtom } from "jotai";
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Linking, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type Bitrate } from "@/components/BitrateSelector";
 import { HeaderButtonGroup } from "@/components/common/HeaderButton";
 import { ItemImage } from "@/components/common/ItemImage";
-import { Image } from "@/components/common/ServerImage";
 import { DownloadSingleItem } from "@/components/DownloadItem";
+import { ActionCell, ActionStrip } from "@/components/item/ActionCell";
 import { ItemPeopleSections } from "@/components/item/ItemPeopleSections";
+import { OptionRows } from "@/components/item/OptionRows";
 import { MediaSourceButton } from "@/components/MediaSourceButton";
 import { OverviewText } from "@/components/OverviewText";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
 import { PlayButton } from "@/components/PlayButton";
-import { PlayedStatus } from "@/components/PlayedStatus";
 import { SimilarItems } from "@/components/SimilarItems";
 import { CurrentSeries } from "@/components/series/CurrentSeries";
 import { SeasonEpisodesCarousel } from "@/components/series/SeasonEpisodesCarousel";
+import { NeonBoard, typeAccent } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useDefaultPlaySettings from "@/hooks/useDefaultPlaySettings";
-import { useImageColorsReturn } from "@/hooks/useImageColorsReturn";
+import { useFavorite } from "@/hooks/useFavorite";
+import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useOrientation } from "@/hooks/useOrientation";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { useDownload } from "@/providers/DownloadProvider";
-import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
-import { getLogoImageUrlById } from "@/utils/jellyfin/image/getLogoImageUrlById";
-import { AddToFavorites } from "./AddToFavorites";
 import { AddToWatchlist } from "./AddToWatchlist";
 import { ItemHeader } from "./ItemHeader";
-import { ItemTechnicalDetails } from "./ItemTechnicalDetails";
 import { PlayInRemoteSessionButton } from "./PlayInRemoteSession";
 
 const Chromecast = !Platform.isTV ? require("./Chromecast") : null;
@@ -59,7 +62,6 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   item,
   itemWithSources,
 }) => {
-  const [api] = useAtom(apiAtom);
   const isOffline = useOfflineMode();
   const { getDownloadedItemById } = useDownload();
   // A download pins the tracks it was pulled with, and only the record knows
@@ -74,11 +76,9 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [user] = useAtom(userAtom);
+  const { t } = useTranslation();
 
-  const itemColors = useImageColorsReturn({ item });
-
-  const [loadingLogo, setLoadingLogo] = useState(true);
-  const [headerHeight, setHeaderHeight] = useState(350);
+  const [headerHeight, setHeaderHeight] = useState(230);
 
   const [selectedOptions, setSelectedOptions] = useState<
     SelectedOptions | undefined
@@ -92,18 +92,8 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     defaultSubtitleIndex,
   } = useDefaultPlaySettings(itemWithSources ?? item, settings);
 
-  const logoUrl = useMemo(
-    () => (item ? getLogoImageUrlById({ api, item }) : null),
-    [api, item],
-  );
-
-  const onLogoLoad = React.useCallback(() => {
-    setLoadingLogo(false);
-  }, []);
-
-  const loading = useMemo(() => {
-    return Boolean(logoUrl && loadingLogo);
-  }, [loadingLogo, logoUrl]);
+  const accent = typeAccent(item);
+  useSetPageAccent(item ? accent : undefined);
 
   // Needs to automatically change the selected to the default values for default indexes.
   useEffect(() => {
@@ -122,31 +112,22 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     downloadedTracks,
   ]);
 
+  // Glass squares over the backdrop: cast, remote session, watchlists.
   useEffect(() => {
     if (!Platform.isTV && itemWithSources) {
       navigation.setOptions({
         headerRight: () =>
           item && (
             <HeaderButtonGroup>
-              <Chromecast.Chromecast />
-              {item.Type !== "Program" && (
-                <>
-                  {!Platform.isTV && (
-                    <DownloadSingleItem item={itemWithSources} size='large' />
-                  )}
-                  {user?.Policy?.IsAdministrator &&
-                    !settings.hideRemoteSessionButton && (
-                      <PlayInRemoteSessionButton item={item} size='large' />
-                    )}
-
-                  <PlayedStatus items={[item]} size='large' />
-                  <AddToFavorites item={item} />
-                  {settings.streamyStatsServerUrl &&
-                    !settings.hideWatchlistsTab && (
-                      <AddToWatchlist item={item} />
-                    )}
-                </>
-              )}
+              <Chromecast.Chromecast variant='glass' />
+              {item.Type !== "Program" &&
+                user?.Policy?.IsAdministrator &&
+                !settings.hideRemoteSessionButton && (
+                  <PlayInRemoteSessionButton item={item} size='large' />
+                )}
+              {item.Type !== "Program" &&
+                settings.streamyStatsServerUrl &&
+                !settings.hideWatchlistsTab && <AddToWatchlist item={item} />}
             </HeaderButtonGroup>
           ),
       });
@@ -164,13 +145,28 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   useEffect(() => {
     if (item) {
       if (orientation !== ScreenOrientation.OrientationLock.PORTRAIT_UP)
-        setHeaderHeight(230);
-      else if (item.Type === "Movie") setHeaderHeight(500);
-      else setHeaderHeight(350);
+        setHeaderHeight(200);
+      else if (item.Type === "Movie") setHeaderHeight(230);
+      else setHeaderHeight(230);
     }
   }, [item, orientation]);
 
+  const { isFavorite, toggleFavorite } = useFavorite(item ?? {});
+  const allPlayed = !!item?.UserData?.Played;
+  const togglePlayed = useMarkAsPlayed(item ? [item] : []);
+  const trailerLink = item?.RemoteTrailers?.[0]?.Url;
+  const openTrailer = useCallback(async () => {
+    if (!trailerLink) return;
+    try {
+      await Linking.openURL(trailerLink);
+    } catch (err) {
+      console.error("Failed to open trailer link:", err);
+    }
+  }, [trailerLink]);
+
   if (!item || !selectedOptions) return null;
+
+  const showStrip = item.Type !== "Program";
 
   return (
     <View
@@ -178,17 +174,17 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
       style={{
         paddingLeft: insets.left,
         paddingRight: insets.right,
+        backgroundColor: NeonBoard.stage,
       }}
     >
       <ParallaxScrollView
         className='flex-1'
         headerHeight={headerHeight}
+        overlap={item.Type === "Movie" ? 64 : 40}
         headerImage={
           <View style={[{ flex: 1 }]}>
             <ItemImage
-              variant={
-                item.Type === "Movie" && logoUrl ? "Backdrop" : "Primary"
-              }
+              variant={item.Type === "Movie" ? "Backdrop" : "Primary"}
               item={item}
               style={{
                 width: "100%",
@@ -197,57 +193,107 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
             />
           </View>
         }
-        logo={
-          logoUrl ? (
-            <Image
-              source={{
-                uri: logoUrl,
-              }}
-              style={{
-                height: 130,
-                width: "100%",
-              }}
-              contentFit='contain'
-              onLoad={onLogoLoad}
-              onError={onLogoLoad}
-            />
-          ) : (
-            <View />
-          )
-        }
       >
         <View className='flex flex-col bg-transparent shrink'>
-          <View className='flex flex-col px-4 w-full pt-2 mb-2 shrink'>
-            <ItemHeader item={item} className='mb-2' />
+          <ItemHeader item={item} />
 
-            <View className='flex flex-row px-0 mb-2 justify-between space-x-2'>
-              <PlayButton
+          <View
+            className='flex flex-row items-stretch'
+            style={{
+              paddingHorizontal: Sizes.gutter,
+              gap: 10,
+              marginTop: 14,
+              marginBottom: 12,
+            }}
+          >
+            <PlayButton selectedOptions={selectedOptions} item={item} />
+            {!isOffline && (
+              <MediaSourceButton
                 selectedOptions={selectedOptions}
-                item={item}
-                colors={itemColors}
+                setSelectedOptions={setSelectedOptions}
+                item={itemWithSources}
+                accent={accent}
               />
-              <View className='w-1' />
-              {!isOffline && (
-                <MediaSourceButton
-                  selectedOptions={selectedOptions}
-                  setSelectedOptions={setSelectedOptions}
-                  item={itemWithSources}
-                  colors={itemColors}
-                />
-              )}
-            </View>
+            )}
           </View>
-          {item.Type === "Episode" && (
-            <SeasonEpisodesCarousel item={item} loading={loading} />
+
+          {showStrip && (
+            <ActionStrip>
+              <ActionCell
+                icon={
+                  <Feather
+                    name='heart'
+                    size={18}
+                    color={isFavorite ? NeonBoard.volt : NeonBoard.text}
+                  />
+                }
+                label={t("item.watchlist")}
+                active={!!isFavorite}
+                onPress={toggleFavorite}
+              />
+              <ActionCell
+                divider
+                icon={
+                  <Feather
+                    name='check-circle'
+                    size={18}
+                    color={allPlayed ? NeonBoard.green : NeonBoard.text}
+                  />
+                }
+                label={t("item.played")}
+                active={allPlayed}
+                accent={NeonBoard.green}
+                onPress={() => void togglePlayed(!allPlayed)}
+              />
+              {!isOffline && itemWithSources ? (
+                <DownloadSingleItem
+                  item={itemWithSources}
+                  label={t("item.download")}
+                  divider
+                />
+              ) : null}
+              {trailerLink ? (
+                <ActionCell
+                  divider
+                  icon={
+                    <Feather name='film' size={18} color={NeonBoard.text} />
+                  }
+                  label={t("item.trailer")}
+                  onPress={openTrailer}
+                />
+              ) : null}
+            </ActionStrip>
           )}
+
+          {item.Type === "Episode" && <SeasonEpisodesCarousel item={item} />}
 
           {!isOffline &&
             selectedOptions.mediaSource?.MediaStreams &&
             selectedOptions.mediaSource.MediaStreams.length > 0 && (
-              <ItemTechnicalDetails source={selectedOptions.mediaSource} />
+              <MediaSourceButton
+                selectedOptions={selectedOptions}
+                setSelectedOptions={setSelectedOptions}
+                item={itemWithSources}
+                accent={accent}
+                renderTrigger={(open) => (
+                  <OptionRows
+                    selectedOptions={selectedOptions}
+                    onPress={open}
+                  />
+                )}
+              />
             )}
 
-          <OverviewText text={item.Overview} className='px-4 mb-4' />
+          <OverviewText
+            text={item.Overview}
+            accent={accent}
+            style={{
+              paddingHorizontal: Sizes.gutter,
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: NeonBoard.line,
+            }}
+          />
 
           {item.Type !== "Program" && (
             <>
@@ -257,7 +303,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
 
               <ItemPeopleSections item={item} />
 
-              {!isOffline && <SimilarItems itemId={item.Id} />}
+              {!isOffline && <SimilarItems itemId={item.Id} accent={accent} />}
             </>
           )}
         </View>

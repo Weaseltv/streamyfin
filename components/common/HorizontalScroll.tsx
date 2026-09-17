@@ -1,6 +1,7 @@
 import { FlashList, type FlashListProps } from "@shopify/flash-list";
 import React, { useImperativeHandle, useRef } from "react";
 import { View, type ViewStyle } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import { Text } from "./Text";
 
 export interface HorizontalScrollRef {
@@ -53,14 +54,26 @@ export const HorizontalScroll = <T,>(
   }));
 
   const renderFlashListItem = ({ item, index }: { item: T; index: number }) => (
-    <View className='mr-2'>{renderItem(item, index)}</View>
+    <View style={{ marginRight: 10 }}>{renderItem(item, index)}</View>
   );
 
   if (!data || loading) {
     return (
-      <View className='px-4'>
-        <View className='bg-neutral-950 h-24 w-full mb-2' />
-        <View className='bg-neutral-950 h-10 w-full mb-1' />
+      <View style={{ paddingHorizontal: 12 }}>
+        <View
+          style={{
+            height: 96,
+            marginBottom: 8,
+            backgroundColor: NeonBoard.card2,
+          }}
+        />
+        <View
+          style={{
+            height: 40,
+            marginBottom: 4,
+            backgroundColor: NeonBoard.card2,
+          }}
+        />
       </View>
     );
   }
@@ -75,13 +88,13 @@ export const HorizontalScroll = <T,>(
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: 12,
           ...contentContainerStyle,
         }}
         keyExtractor={keyExtractor}
         ListEmptyComponent={() => (
           <View className='flex-1 justify-center items-center'>
-            <Text className='text-center text-gray-500'>
+            <Text variant='meta' muted className='text-center'>
               {noItemsText || "No data available"}
             </Text>
           </View>

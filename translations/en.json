@@ -549,7 +549,8 @@
         "could_not_get_download_url_for_item": "Could not get download URL for {{itemName}}",
         "file_deleted": "{{item}} deleted"
       }
-    }
+    },
+    "featured": "Featured"
   },
   "common": {
     "no_results": "No results",
@@ -576,7 +577,8 @@
     "movies": "Movies",
     "loading": "Loading...",
     "seeAll": "See all",
-    "close": "Close"
+    "close": "Close",
+    "default": "Default"
   },
   "search": {
     "search": "Search...",
@@ -627,7 +629,9 @@
       "series": "Series",
       "boxsets": "Box sets",
       "playlists": "Playlists",
-      "items": "Items"
+      "items": "Items",
+      "albums": "albums",
+      "channels": "channels"
     },
     "options": {
       "display": "Display",
@@ -651,7 +655,8 @@
       "reset": "Reset",
       "asc": "Ascending",
       "desc": "Descending"
-    }
+    },
+    "libraries_count": "{{count}} libraries"
   },
   "favorites": {
     "series": "Series",
@@ -754,7 +759,6 @@
   },
   "item_card": {
     "next_up": "Next up",
-    "no_items_to_display": "No items to display",
     "cast_and_crew": "Cast & crew",
     "series": "Series",
     "seasons": "Seasons",
@@ -765,7 +769,6 @@
     "view_season": "View season",
     "select_season": "Select season",
     "no_episodes_for_this_season": "No episodes for this season",
-    "overview": "Overview",
     "more_with": "More with {{name}}",
     "similar_items": "Similar items",
     "no_similar_items_found": "No similar items found",
@@ -1109,6 +1112,15 @@
   },
   "item": {
     "play_runtime": "Play · {{time}}",
-    "resume_left": "Resume · {{time}} left"
+    "resume_left": "Resume · {{time}} left",
+    "resume": "Resume",
+    "play": "Play",
+    "watchlist": "Watchlist",
+    "played": "Played",
+    "download": "Download",
+    "trailer": "Trailer",
+    "downloaded": "Downloaded",
+    "episodes_count": "{{count}} episodes",
+    "seasons_count": "{{count}} seasons"
   }
 }

@@ -3,7 +3,8 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import React from "react";
 import { Platform, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip } from "@/constants/neon";
 import { scaleSize } from "@/utils/scaleSize";
 
 const isAggregateType = (item: BaseItemDto) =>
@@ -21,14 +22,13 @@ const tvBadgeBase: ViewStyle = {
   justifyContent: "center",
 };
 
-// Mobile uses raw dp — no scaling.
-const mobileBadgeBase: ViewStyle = {
+/** Phone: a 20 square, top-right, on the card. */
+const squareBase: ViewStyle = {
   position: "absolute",
   top: 4,
   right: 4,
   height: 20,
-  borderRadius: 10,
-  backgroundColor: Colors.primary,
+  minWidth: 20,
   alignItems: "center",
   justifyContent: "center",
 };
@@ -37,8 +37,7 @@ const mobileBadgeBase: ViewStyle = {
  * Renders the unplayed-episode count badge for Series/BoxSet items that still
  * have episodes left to watch. Returns null for non-aggregate types, fully
  * watched items, or items with no unplayed count, so it is safe to mount
- * unconditionally as an overlay (e.g. on top of the tvOS glass poster, where
- * the watched checkmark is drawn natively and only the count needs RN).
+ * unconditionally as an overlay.
  */
 export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
   ({ item }) => {
@@ -71,8 +70,22 @@ export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
     }
 
     return (
-      <View style={[mobileBadgeBase, { minWidth: 20, paddingHorizontal: 5 }]}>
-        <Text style={{ fontSize: 12, fontWeight: "700", color: "white" }}>
+      <View
+        style={[
+          squareBase,
+          {
+            paddingHorizontal: 5,
+            backgroundColor: NeonBoard.stage,
+            borderWidth: 1,
+            borderColor: NeonBoard.yellow,
+          },
+        ]}
+      >
+        <Text
+          variant='badge'
+          allowFontScaling={false}
+          accent={NeonBoard.yellow}
+        >
           {label}
         </Text>
       </View>
@@ -80,6 +93,11 @@ export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
   },
 );
 
+/**
+ * Played state on a card. Phone: a 20 green square with a check glyph and a
+ * green glow, top-right; a Series / BoxSet with episodes left shows the count
+ * in a yellow hairline badge instead.
+ */
 export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
   const isMovieOrEpisode = item.Type === "Movie" || item.Type === "Episode";
   const isAggregate = isAggregateType(item);
@@ -98,23 +116,19 @@ export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
     return <UnplayedCountBadge item={item} />;
   }
 
-  // Mobile: accent corner ribbon for unwatched Movie/Episode (existing behavior)
-  return (
-    <>
-      {/* Strict === false: items without UserData (unknown state) get no ribbon */}
-      {isMovieOrEpisode && item.UserData?.Played === false && (
-        <View className='bg-volt w-8 h-8 absolute -top-4 -right-4 rotate-45' />
-      )}
+  if (isPlayed && (isMovieOrEpisode || isAggregate)) {
+    return (
+      <View
+        style={[
+          squareBase,
+          { width: 20, backgroundColor: NeonBoard.green },
+          glowChip(NeonBoard.green),
+        ]}
+      >
+        <Ionicons name='checkmark' size={14} color={NeonBoard.onAccent} />
+      </View>
+    );
+  }
 
-      {/* Fully watched Series/BoxSet → small accent checkmark */}
-      {isAggregate && isPlayed && (
-        <View style={[mobileBadgeBase, { width: 20 }]}>
-          <Ionicons name='checkmark' size={13} color='white' />
-        </View>
-      )}
-
-      {/* Series/BoxSet with remaining episodes → count badge */}
-      <UnplayedCountBadge item={item} />
-    </>
-  );
+  return <UnplayedCountBadge item={item} />;
 };

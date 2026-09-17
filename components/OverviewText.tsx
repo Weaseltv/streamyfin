@@ -7,11 +7,13 @@ import { tc } from "@/utils/textTools";
 interface Props extends ViewProps {
   text?: string | null;
   characterLimit?: number;
+  accent?: string;
 }
 
 export const OverviewText: React.FC<Props> = ({
   text,
-  characterLimit = 100,
+  characterLimit = 160,
+  accent,
   ...props
 }) => {
   const [limit, setLimit] = useState(characterLimit);
@@ -21,7 +23,6 @@ export const OverviewText: React.FC<Props> = ({
 
   return (
     <View className='flex flex-col' {...props}>
-      <Text className='text-lg font-bold mb-2'>{t("item_card.overview")}</Text>
       <TouchableOpacity
         onPress={() =>
           setLimit((prev) =>
@@ -30,9 +31,11 @@ export const OverviewText: React.FC<Props> = ({
         }
       >
         <View>
-          <Text>{tc(text, limit)}</Text>
+          <Text variant='body' muted style={{ fontSize: 13, lineHeight: 20 }}>
+            {tc(text, limit)}
+          </Text>
           {text.length > characterLimit && (
-            <Text className='text-volt mt-1'>
+            <Text variant='tally' accent={accent} style={{ marginTop: 6 }}>
               {limit === characterLimit
                 ? t("item_card.show_more")
                 : t("item_card.show_less")}

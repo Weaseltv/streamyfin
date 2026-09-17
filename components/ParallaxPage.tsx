@@ -16,6 +16,8 @@ interface Props extends ViewProps {
   logo?: ReactElement;
   episodePoster?: ReactElement;
   headerHeight?: number;
+  /** How far the content overlaps the backdrop (the slate sits on it). */
+  overlap?: number;
   onEndReached?: (() => void) | null | undefined;
 }
 
@@ -24,6 +26,7 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
   headerImage,
   episodePoster,
   headerHeight = 400,
+  overlap = 50,
   logo,
   onEndReached,
   ...props
@@ -101,8 +104,8 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
 
         <View
           style={{
-            top: -50,
-            // Clear the translucent tab bar so the last section stays readable
+            top: -overlap,
+            marginBottom: -overlap,
             paddingBottom: insets.bottom + 32,
           }}
           className='relative flex-1 bg-transparent'
@@ -115,17 +118,16 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
               position: "absolute",
               left: 0,
               right: 0,
-              top: -150,
-              height: 200,
+              top: -(headerHeight - overlap),
+              height: headerHeight,
             }}
           />
           <View
-            // Background Linear Gradient
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              top: 50,
+              top: overlap,
               height: "100%",
               backgroundColor: NeonBoard.stage,
             }}

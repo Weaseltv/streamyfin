@@ -118,7 +118,7 @@ export function InfiniteHorizontalScroll({
       <FlashList
         data={flatData}
         renderItem={({ item, index }) => (
-          <View className='mr-2'>{renderItem(item, index)}</View>
+          <View style={{ marginRight: 10 }}>{renderItem(item, index)}</View>
         )}
         horizontal
         onEndReached={() => {
@@ -128,13 +128,13 @@ export function InfiniteHorizontalScroll({
         }}
         onEndReachedThreshold={0.5}
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: 12,
           ...contentContainerStyle,
         }}
         showsHorizontalScrollIndicator={false}
         ListEmptyComponent={
           <View className='flex-1 justify-center items-center'>
-            <Text className='text-center text-gray-500'>
+            <Text variant='meta' muted className='text-center'>
               {t("item_card.no_data_available")}
             </Text>
           </View>

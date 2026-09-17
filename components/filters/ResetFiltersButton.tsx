@@ -1,29 +1,29 @@
-import { Ionicons } from "@expo/vector-icons";
-import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import type { TouchableOpacityProps } from "react-native";
+import { Chip } from "@/components/common/Chip";
+import { NeonBoard } from "@/constants/Colors";
 import { useFilterReset } from "@/hooks/useFilterReset";
 
 interface Props extends TouchableOpacityProps {
   libraryId: string;
 }
 
-export const ResetFiltersButton: React.FC<Props> = ({
-  libraryId,
-  ...props
-}) => {
+/** The "Reset" chip, shown only while a filter or sort is active. */
+export const ResetFiltersButton: React.FC<Props> = ({ libraryId, style }) => {
   const { hasActiveFilters, resetAllFilters } = useFilterReset(libraryId);
+  const { t } = useTranslation();
 
   if (!hasActiveFilters) {
     return null;
   }
 
   return (
-    <TouchableOpacity
-      className='bg-volt rounded-full w-[30px] h-[30px] flex items-center justify-center mr-1'
-      {...props}
-      // After the spread so a forwarded onPress can't disable the reset.
+    <Chip
+      label={t("library.filters.reset")}
+      icon={<Feather name='x' size={13} color={NeonBoard.text} />}
       onPress={resetAllFilters}
-    >
-      <Ionicons name='close' size={20} color='white' />
-    </TouchableOpacity>
+      style={style}
+    />
   );
 };

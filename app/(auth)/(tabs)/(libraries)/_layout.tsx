@@ -211,9 +211,12 @@ export default function IndexLayout() {
         options={{
           title: "",
           headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
+          header: ({ navigation }) => (
+            <NeonHeader
+              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+              downloads={false}
+            />
+          ),
         }}
       />
       {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (

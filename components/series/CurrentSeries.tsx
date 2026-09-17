@@ -3,11 +3,13 @@ import { useAtom } from "jotai";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { getPrimaryImageUrlById } from "@/utils/jellyfin/image/getPrimaryImageUrlById";
 import { HorizontalScroll } from "../common/HorizontalScroll";
+import { SectionHeader } from "../common/SectionHeader";
 import { Text } from "../common/Text";
 import Poster from "../posters/Poster";
 
@@ -22,9 +24,7 @@ export const CurrentSeries: React.FC<Props> = ({ item, ...props }) => {
 
   return (
     <View {...props}>
-      <Text className='text-lg font-bold mb-2 px-4'>
-        {t("item_card.series")}
-      </Text>
+      <SectionHeader title={t("item_card.series")} accent={NeonBoard.yellow} />
       <HorizontalScroll
         data={[item]}
         height={POSTER_CAROUSEL_HEIGHT}
@@ -34,13 +34,19 @@ export const CurrentSeries: React.FC<Props> = ({ item, ...props }) => {
             onPress={() =>
               item?.SeriesId && router.push(`/series/${item.SeriesId}`)
             }
-            className='flex flex-col space-y-2 w-28'
+            style={{ width: 110 }}
           >
             <Poster
               id={item?.Id}
               url={getPrimaryImageUrlById({ api, id: item?.ParentId })}
             />
-            <Text numberOfLines={1}>{item?.SeriesName}</Text>
+            <Text
+              variant='cardTitle'
+              numberOfLines={1}
+              style={{ marginTop: 6 }}
+            >
+              {item?.SeriesName}
+            </Text>
           </TouchableOpacity>
         )}
       />

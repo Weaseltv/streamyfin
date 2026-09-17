@@ -6,25 +6,25 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  ScrollView,
-  View,
-  type ViewProps,
-} from "react-native";
+import { ScrollView, View, type ViewProps } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
-import MoviePoster from "@/components/posters/MoviePoster";
+import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
+import { RailSkeleton } from "@/components/home/RailSkeleton";
+import { Loader } from "@/components/Loader";
+import { Sizes } from "@/constants/neon";
 import { useSettings } from "@/utils/atoms/settings";
-import { Colors } from "../../constants/Colors";
-import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
-import SeriesPoster from "../posters/SeriesPoster";
 
 interface Props extends ViewProps {
   title?: string | null;
   orientation?: "horizontal" | "vertical";
+  /** Rule colour: volt on Home; the type colour elsewhere. */
+  accent?: string;
+  /** Badge override for every card (the next-up rail). */
+  badge?: string | null;
+  badgeColor?: string;
   disabled?: boolean;
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[], QueryKey, number>;
@@ -38,6 +38,9 @@ interface Props extends ViewProps {
 export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   title,
   orientation = "vertical",
+  accent,
+  badge,
+  badgeColor,
   disabled = false,
   queryFn,
   queryKey,
@@ -106,7 +109,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   }, [data]);
 
   const snapOffsets = useMemo(() => {
-    const itemWidth = orientation === "horizontal" ? 184 : 120; // w-44 (176px) + mr-2 (8px) or w-28 (112px) + mr-2 (8px)
+    const itemWidth = railCardWidth(orientation) + RAIL_GAP;
     return allItems.map((_, index) => index * itemWidth);
   }, [allItems, orientation]);
 
@@ -132,43 +135,25 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     <View {...props}>
       <SectionHeader
         title={title}
-        actionLabel={t("common.seeAll", { defaultValue: "See all" })}
+        accent={accent}
+        actionLabel={
+          onPressSeeAll
+            ? t("common.seeAll", { defaultValue: "See all" })
+            : undefined
+        }
         actionDisabled={isLoading}
         onPressAction={onPressSeeAll}
+        count={isLoading || onPressSeeAll ? undefined : allItems.length}
       />
       {isLoading === false && allItems.length === 0 && (
-        <View className='px-4'>
-          <Text className='text-neutral-500'>{t("home.no_items")}</Text>
+        <View style={{ paddingHorizontal: Sizes.gutter }}>
+          <Text variant='meta' muted>
+            {t("home.no_items")}
+          </Text>
         </View>
       )}
       {isLoading ? (
-        <View
-          className={`
-            flex flex-row gap-2 px-4
-        `}
-        >
-          {[1, 2, 3].map((i) => (
-            <View className='w-44' key={i}>
-              <View className='bg-neutral-900 h-24 w-full mb-1' />
-              <View className='overflow-hidden mb-1 self-start'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900'
-                  numberOfLines={1}
-                >
-                  Nisi mollit voluptate amet.
-                </Text>
-              </View>
-              <View className='overflow-hidden self-start mb-1'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900 text-xs'
-                  numberOfLines={1}
-                >
-                  Lorem ipsum
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        <RailSkeleton orientation={orientation} />
       ) : (
         <ScrollView
           horizontal
@@ -178,57 +163,26 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
           snapToOffsets={snapOffsets}
           decelerationRate='fast'
         >
-          <View className='px-4 flex flex-row'>
+          <View
+            style={{
+              paddingHorizontal: Sizes.gutter,
+              flexDirection: "row",
+              gap: RAIL_GAP,
+            }}
+          >
             {allItems.map((item, index) => (
               <TouchableItemRouter
                 item={item}
                 key={`${item.Id}-${index}`}
-                className={`mr-2
-                  ${orientation === "horizontal" ? "w-44" : "w-28"}
-                `}
+                style={{ width: railCardWidth(orientation) }}
               >
-                {item.Type === "Episode" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster
-                    item={item}
-                    useEpisodePoster={settings?.useEpisodeImagesForNextUp}
-                  />
-                )}
-                {item.Type === "Episode" && orientation === "vertical" && (
-                  <SeriesPoster item={item} />
-                )}
-                {item.Type === "Movie" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Movie" && orientation === "vertical" && (
-                  <MoviePoster item={item} />
-                )}
-                {item.Type === "Series" && orientation === "vertical" && (
-                  <SeriesPoster item={item} />
-                )}
-                {item.Type === "Series" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Program" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "BoxSet" && orientation === "vertical" && (
-                  <MoviePoster item={item} />
-                )}
-                {item.Type === "BoxSet" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Playlist" && orientation === "vertical" && (
-                  <MoviePoster item={item} />
-                )}
-                {item.Type === "Playlist" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Video" && orientation === "vertical" && (
-                  <MoviePoster item={item} />
-                )}
-                {item.Type === "Video" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
+                <ItemCard
+                  item={item}
+                  orientation={orientation}
+                  useEpisodePoster={settings?.useEpisodeImagesForNextUp}
+                  badge={badge}
+                  badgeColor={badgeColor}
+                />
                 <ItemCardText item={item} />
               </TouchableItemRouter>
             ))}
@@ -236,11 +190,10 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
             {isFetchingNextPage && (
               <View
                 style={{
-                  marginLeft: 8,
                   marginTop: orientation === "horizontal" ? 37 : 70,
                 }}
               >
-                <ActivityIndicator size='small' color={Colors.primary} />
+                <Loader />
               </View>
             )}
           </View>

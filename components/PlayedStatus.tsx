@@ -2,7 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type React from "react";
 import { useCallback } from "react";
 import { View, type ViewProps } from "react-native";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { HeaderIcon } from "./common/HeaderIcon";
 import { SquareButton } from "./SquareButton";
@@ -25,7 +25,7 @@ export const PlayedStatus: React.FC<Props> = ({ items, ...props }) => {
       <SquareButton onPress={handlePress} size={props.size}>
         <HeaderIcon
           name={allPlayed ? "played" : "unplayed"}
-          tintColor={allPlayed ? Colors.primary : "white"}
+          tintColor={allPlayed ? NeonBoard.green : NeonBoard.text}
           size={props.size === "large" ? undefined : 18}
         />
       </SquareButton>

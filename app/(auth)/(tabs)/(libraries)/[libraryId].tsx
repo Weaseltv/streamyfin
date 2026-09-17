@@ -28,6 +28,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { PageHead } from "@/components/common/PageHead";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import {
@@ -41,6 +43,8 @@ import { Loader } from "@/components/Loader";
 import { ItemPoster } from "@/components/posters/ItemPoster";
 import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
+import { libraryAccent, NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
@@ -49,7 +53,6 @@ import { useOrientation } from "@/hooks/useOrientation";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
-import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import {
   FilterByOption,
@@ -75,8 +78,11 @@ import {
   yearFilterAtom,
   yearPreferenceAtom,
 } from "@/utils/atoms/filters";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
+
+const GRID_GAP = 10;
 
 const TV_ITEM_GAP = 20;
 const TV_HORIZONTAL_PADDING = 60;
@@ -332,13 +338,22 @@ const Page = () => {
       // TV uses flexWrap, so nrOfCols is just for mobile
       return 1;
     }
-    if (screenWidth < 300) return 2;
-    if (screenWidth < 500) return 3;
-    if (screenWidth < 800) return 5;
-    if (screenWidth < 1000) return 6;
-    if (screenWidth < 1500) return 7;
-    return 6;
+    // 110-wide posters at a 12 gutter and 10 gap: 3 across on a 390 phone.
+    return Math.max(
+      2,
+      Math.floor(
+        (screenWidth - Sizes.gutter * 2 + GRID_GAP) / (110 + GRID_GAP),
+      ),
+    );
   }, [screenWidth, orientation]);
+
+  const cardWidth = useMemo(
+    () =>
+      Math.floor(
+        (screenWidth - Sizes.gutter * 2 - GRID_GAP * (nrOfCols - 1)) / nrOfCols,
+      ),
+    [screenWidth, nrOfCols],
+  );
 
   const { data: library, isLoading: isLibraryLoading } = useQuery({
     queryKey: ["library", libraryId],
@@ -360,6 +375,9 @@ const Page = () => {
       title: library?.Name || "",
     });
   }, [library]);
+
+  const accent = libraryAccent(library?.CollectionType, library?.Name);
+  useSetPageAccent(library ? accent : undefined);
 
   // If this See-All detail was deep-linked on top of the libraries index, collapse
   // the libraries stack to just this screen. Otherwise the stack is [index, detail],
@@ -516,36 +534,38 @@ const Page = () => {
     }
   }, [isFetching, flatData]);
 
+  // A typed library does not repeat its type on every card.
+  const typedLibrary =
+    library?.CollectionType === "movies" ||
+    library?.CollectionType === "tvshows";
+
   const renderItem = useCallback(
     ({ item, index }: { item: BaseItemDto; index: number }) => (
       <TouchableItemRouter
         key={item.Id}
         style={{
           width: "100%",
-          marginBottom: 4,
+          marginBottom: 6,
+          alignItems:
+            index % nrOfCols === 0
+              ? "flex-start"
+              : (index + 1) % nrOfCols === 0
+                ? "flex-end"
+                : "center",
         }}
         item={item}
       >
-        <View
-          style={{
-            alignSelf:
-              orientation === ScreenOrientation.OrientationLock.PORTRAIT_UP
-                ? index % nrOfCols === 0
-                  ? "flex-end"
-                  : (index + 1) % nrOfCols === 0
-                    ? "flex-start"
-                    : "center"
-                : "center",
-            width: "89%",
-          }}
-        >
-          {/* <MoviePoster item={item} /> */}
-          <ItemPoster item={item} />
+        <View style={{ width: cardWidth }}>
+          <ItemPoster
+            item={item}
+            width={cardWidth}
+            badge={typedLibrary ? null : undefined}
+          />
           <ItemCardText item={item} />
         </View>
       </TouchableItemRouter>
     ),
-    [orientation, nrOfCols],
+    [nrOfCols, cardWidth, typedLibrary],
   );
 
   const renderTVItem = useCallback(
@@ -631,154 +651,191 @@ const Page = () => {
 
   const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
   const generalFilters = useFilterOptions();
+  const totalCount = data?.pages?.[0]?.TotalRecordCount;
+  const libraryTypeLabel =
+    library?.CollectionType === "movies"
+      ? t("library.item_types.movies")
+      : library?.CollectionType === "tvshows"
+        ? t("library.item_types.series")
+        : library?.CollectionType === "boxsets"
+          ? t("library.item_types.boxsets")
+          : t("library.item_types.items");
+  const sortLabel =
+    sortBy[0] === SortByOption.SortName
+      ? sortOrder[0] === SortOrderOption.Descending
+        ? "Z – A"
+        : "A – Z"
+      : undefined;
+
   const ListHeaderComponent = useCallback(
     () => (
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          display: "flex",
-          paddingHorizontal: 15,
-          paddingVertical: 16,
-          flexDirection: "row",
-        }}
-        data={[
-          {
-            key: "reset",
-            component: <ResetFiltersButton libraryId={libraryId} />,
-          },
-          {
-            key: "genre",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='genreFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: libraryId,
-                  });
-                  return response.data.Genres || [];
-                }}
-                set={setGenres}
-                values={selectedGenres}
-                title={t("library.filters.genres")}
-                renderItemLabel={(item) => item.toString()}
-              />
-            ),
-          },
-          {
-            key: "year",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='yearFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: libraryId,
-                  });
-                  return response.data.Years || [];
-                }}
-                set={setYears}
-                values={selectedYears}
-                title={t("library.filters.years")}
-                renderItemLabel={(item) => item.toString()}
-              />
-            ),
-          },
-          {
-            key: "tags",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='tagsFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: libraryId,
-                  });
-                  return response.data.Tags || [];
-                }}
-                set={setTags}
-                values={selectedTags}
-                title={t("library.filters.tags")}
-                renderItemLabel={(item) => item.toString()}
-              />
-            ),
-          },
-          {
-            key: "sortBy",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='sortBy'
-                queryFn={async () => sortOptions.map((s) => s.key)}
-                set={setSortBy}
-                values={sortBy}
-                title={t("library.filters.sort_by")}
-                renderItemLabel={(item) =>
-                  sortOptions.find((i) => i.key === item)?.value || ""
-                }
-              />
-            ),
-          },
-          {
-            key: "sortOrder",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='sortOrder'
-                queryFn={async () => sortOrderOptions.map((s) => s.key)}
-                set={setSortOrder}
-                values={sortOrder}
-                title={t("library.filters.sort_order")}
-                renderItemLabel={(item) =>
-                  sortOrderOptions.find((i) => i.key === item)?.value || ""
-                }
-              />
-            ),
-          },
-          {
-            key: "filterOptions",
-            component: (
-              <FilterButton
-                className='mr-1'
-                id={libraryId}
-                queryKey='filters'
-                queryFn={async () => generalFilters.map((s) => s.key)}
-                set={setFilter}
-                values={filterBy}
-                title={t("library.filters.filter_by")}
-                renderItemLabel={(item) =>
-                  generalFilters.find((i) => i.key === item)?.value || ""
-                }
-              />
-            ),
-          },
-        ]}
-        renderItem={({ item }) => item.component}
-        keyExtractor={(item) => item.key}
-      />
+      <View>
+        <PageHead
+          eyebrow={
+            totalCount !== undefined
+              ? `${t("tabs.library")} · ${totalCount} ${libraryTypeLabel}`
+              : t("tabs.library")
+          }
+          title={library?.Name ?? ""}
+          trailing={sortLabel}
+          accent={accent}
+        />
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            display: "flex",
+            paddingHorizontal: Sizes.gutter,
+            paddingVertical: 12,
+            flexDirection: "row",
+            gap: 8,
+          }}
+          data={[
+            {
+              key: "reset",
+              component: <ResetFiltersButton libraryId={libraryId} />,
+            },
+            {
+              key: "genre",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  id={libraryId}
+                  queryKey='genreFilter'
+                  queryFn={async () => {
+                    if (!api) return null;
+                    const response = await getFilterApi(
+                      api,
+                    ).getQueryFiltersLegacy({
+                      userId: user?.Id,
+                      parentId: libraryId,
+                    });
+                    return response.data.Genres || [];
+                  }}
+                  set={setGenres}
+                  values={selectedGenres}
+                  title={t("library.filters.genres")}
+                  renderItemLabel={(item) => item.toString()}
+                />
+              ),
+            },
+            {
+              key: "year",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  id={libraryId}
+                  queryKey='yearFilter'
+                  queryFn={async () => {
+                    if (!api) return null;
+                    const response = await getFilterApi(
+                      api,
+                    ).getQueryFiltersLegacy({
+                      userId: user?.Id,
+                      parentId: libraryId,
+                    });
+                    return response.data.Years || [];
+                  }}
+                  set={setYears}
+                  values={selectedYears}
+                  title={t("library.filters.years")}
+                  renderItemLabel={(item) => item.toString()}
+                />
+              ),
+            },
+            {
+              key: "tags",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  id={libraryId}
+                  queryKey='tagsFilter'
+                  queryFn={async () => {
+                    if (!api) return null;
+                    const response = await getFilterApi(
+                      api,
+                    ).getQueryFiltersLegacy({
+                      userId: user?.Id,
+                      parentId: libraryId,
+                    });
+                    return response.data.Tags || [];
+                  }}
+                  set={setTags}
+                  values={selectedTags}
+                  title={t("library.filters.tags")}
+                  renderItemLabel={(item) => item.toString()}
+                />
+              ),
+            },
+            {
+              key: "sortBy",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  showValue
+                  id={libraryId}
+                  queryKey='sortBy'
+                  queryFn={async () => sortOptions.map((s) => s.key)}
+                  set={setSortBy}
+                  values={sortBy}
+                  title={t("library.filters.sort_by")}
+                  renderItemLabel={(item) =>
+                    sortOptions.find((i) => i.key === item)?.value || ""
+                  }
+                />
+              ),
+            },
+            {
+              key: "sortOrder",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  showValue
+                  id={libraryId}
+                  queryKey='sortOrder'
+                  queryFn={async () => sortOrderOptions.map((s) => s.key)}
+                  set={setSortOrder}
+                  values={sortOrder}
+                  title={t("library.filters.sort_order")}
+                  renderItemLabel={(item) =>
+                    sortOrderOptions.find((i) => i.key === item)?.value || ""
+                  }
+                />
+              ),
+            },
+            {
+              key: "filterOptions",
+              component: (
+                <FilterButton
+                  accent={accent}
+                  id={libraryId}
+                  queryKey='filters'
+                  queryFn={async () => generalFilters.map((s) => s.key)}
+                  set={setFilter}
+                  values={filterBy}
+                  title={t("library.filters.filter_by")}
+                  renderItemLabel={(item) =>
+                    generalFilters.find((i) => i.key === item)?.value || ""
+                  }
+                />
+              ),
+            },
+          ]}
+          renderItem={({ item }) => item.component}
+          keyExtractor={(item) => item.key}
+        />
+      </View>
     ),
     [
       libraryId,
       api,
       user?.Id,
+      accent,
+      library?.Name,
+      totalCount,
+      libraryTypeLabel,
+      sortLabel,
+      t,
       selectedGenres,
       setGenres,
       selectedYears,
@@ -970,7 +1027,7 @@ const Page = () => {
 
   const insets = useSafeAreaInsets();
 
-  if (isLoading || isLibraryLoading)
+  if (Platform.isTV && (isLoading || isLibraryLoading))
     return (
       <View className='w-full h-full flex items-center justify-center'>
         <Loader />
@@ -979,44 +1036,50 @@ const Page = () => {
 
   // Mobile return
   if (!Platform.isTV) {
+    const busy = isLoading || isLibraryLoading;
     return (
-      <FlashList
-        ref={flashListRef}
-        key={orientation}
-        ListEmptyComponent={
-          <View className='flex flex-col items-center justify-center h-full'>
-            <Text className='font-bold text-xl text-neutral-500'>
-              {t("library.no_results")}
-            </Text>
-          </View>
-        }
-        contentInsetAdjustmentBehavior='automatic'
-        data={flatData}
-        renderItem={renderItem}
-        extraData={[orientation, nrOfCols]}
-        keyExtractor={keyExtractor}
-        numColumns={nrOfCols}
-        onEndReached={() => {
-          if (hasNextPage) {
-            fetchNextPage();
+      <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+        <LoadingLine accent={accent} active={busy || isFetching} />
+        <FlashList
+          ref={flashListRef}
+          key={orientation}
+          ListEmptyComponent={
+            busy ? null : (
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 48,
+                }}
+              >
+                <Text variant='section' muted>
+                  {t("library.no_results")}
+                </Text>
+              </View>
+            )
           }
-        }}
-        onEndReachedThreshold={1}
-        ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={{
-          paddingBottom: 24,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-        }}
-        ItemSeparatorComponent={() => (
-          <View
-            style={{
-              width: 10,
-              height: 10,
-            }}
-          />
-        )}
-      />
+          data={flatData}
+          renderItem={renderItem}
+          extraData={[orientation, nrOfCols, cardWidth]}
+          keyExtractor={keyExtractor}
+          numColumns={nrOfCols}
+          onEndReached={() => {
+            if (hasNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={1}
+          ListHeaderComponent={ListHeaderComponent}
+          contentContainerStyle={{
+            paddingBottom: 24,
+            paddingLeft: insets.left + Sizes.gutter,
+            paddingRight: insets.right + Sizes.gutter,
+          }}
+          ItemSeparatorComponent={() => (
+            <View style={{ width: GRID_GAP, height: GRID_GAP }} />
+          )}
+        />
+      </View>
     );
   }
 

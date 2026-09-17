@@ -8,17 +8,22 @@ import { useTranslation } from "react-i18next";
 import { ScrollView, View, type ViewProps } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
-import MoviePoster from "@/components/posters/MoviePoster";
+import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
+import { RailSkeleton } from "@/components/home/RailSkeleton";
+import { Sizes } from "@/constants/neon";
 import { useInView } from "@/hooks/useInView";
 import { useSettings } from "@/utils/atoms/settings";
-import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
-import SeriesPoster from "../posters/SeriesPoster";
 
 interface Props extends ViewProps {
   title?: string | null;
   orientation?: "horizontal" | "vertical";
+  /** Rule colour: volt on Home; the type colour on item, search and watchlist pages. */
+  accent?: string;
+  /** Badge override for every card (the next-up rail). */
+  badge?: string | null;
+  badgeColor?: string;
   disabled?: boolean;
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[]>;
@@ -30,6 +35,9 @@ interface Props extends ViewProps {
 export const ScrollingCollectionList: React.FC<Props> = ({
   title,
   orientation = "vertical",
+  accent,
+  badge,
+  badgeColor,
   disabled = false,
   queryFn,
   queryKey,
@@ -63,75 +71,42 @@ export const ScrollingCollectionList: React.FC<Props> = ({
 
   return (
     <View ref={ref} onLayout={onLayout} {...props}>
-      <SectionHeader title={title} className='px-4' />
+      <SectionHeader
+        title={title}
+        accent={accent}
+        count={shouldShowSkeleton ? undefined : data?.length}
+      />
       {!shouldShowSkeleton && data?.length === 0 && (
-        <View className='px-4'>
-          <Text className='text-neutral-500'>{t("home.no_items")}</Text>
+        <View style={{ paddingHorizontal: Sizes.gutter }}>
+          <Text variant='meta' muted>
+            {t("home.no_items")}
+          </Text>
         </View>
       )}
       {shouldShowSkeleton ? (
-        <View
-          className={`
-            flex flex-row gap-2 px-4
-        `}
-        >
-          {[1, 2, 3].map((i) => (
-            <View className='w-44' key={i}>
-              <View className='bg-neutral-900 h-24 w-full mb-1' />
-              <View className='overflow-hidden mb-1 self-start'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900'
-                  numberOfLines={1}
-                >
-                  Nisi mollit voluptate amet.
-                </Text>
-              </View>
-              <View className='overflow-hidden self-start mb-1'>
-                <Text
-                  className='text-neutral-900 bg-neutral-900 text-xs'
-                  numberOfLines={1}
-                >
-                  Lorem ipsum
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        <RailSkeleton orientation={orientation} />
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className='px-4 flex flex-row'>
+          <View
+            style={{
+              paddingHorizontal: Sizes.gutter,
+              flexDirection: "row",
+              gap: RAIL_GAP,
+            }}
+          >
             {data?.map((item) => (
               <TouchableItemRouter
                 item={item}
                 key={item.Id}
-                className={`mr-2 
-                  ${orientation === "horizontal" ? "w-44" : "w-28"}
-                `}
+                style={{ width: railCardWidth(orientation) }}
               >
-                {item.Type === "Episode" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster
-                    item={item}
-                    useEpisodePoster={settings?.useEpisodeImagesForNextUp}
-                  />
-                )}
-                {item.Type === "Episode" && orientation === "vertical" && (
-                  <SeriesPoster item={item} />
-                )}
-                {item.Type === "Movie" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Movie" && orientation === "vertical" && (
-                  <MoviePoster item={item} />
-                )}
-                {item.Type === "Series" && orientation === "vertical" && (
-                  <SeriesPoster item={item} />
-                )}
-                {item.Type === "Series" && orientation === "horizontal" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
-                {item.Type === "Program" && (
-                  <ContinueWatchingPoster item={item} />
-                )}
+                <ItemCard
+                  item={item}
+                  orientation={orientation}
+                  useEpisodePoster={settings?.useEpisodeImagesForNextUp}
+                  badge={badge}
+                  badgeColor={badgeColor}
+                />
                 <ItemCardText item={item} />
               </TouchableItemRouter>
             ))}
