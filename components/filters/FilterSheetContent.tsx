@@ -1,12 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "@/components/common/Input";
+import { NeonSheetHead, NeonSheetRow } from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 
 interface Props<T> {
   title: string;
@@ -19,7 +22,6 @@ interface Props<T> {
 }
 
 const SEARCH_THRESHOLD = 15;
-const ROW_RADIUS = 20;
 
 /**
  * Sheet content for FilterButton, rendered inside the GlobalModal bottom
@@ -33,7 +35,7 @@ const ROW_RADIUS = 20;
  * The sheet sizes itself to this content, and it measures the scrollable's
  * content rather than the view tree: a title sitting next to the list is not
  * counted, and the sheet then opens too short and clips its last rows. So the
- * title, the count and the search box are the list's header instead.
+ * head, the count and the search box are the list's header instead.
  */
 export const FilterSheetContent = <T,>({
   title,
@@ -84,57 +86,56 @@ export const FilterSheetContent = <T,>({
       keyboardShouldPersistTaps='handled'
       initialNumToRender={20}
       style={{
-        paddingLeft: Math.max(16, insets.left),
-        paddingRight: Math.max(16, insets.right),
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
       }}
       contentContainerStyle={{ paddingBottom: Math.max(16, insets.bottom) }}
       ListHeaderComponent={
         <>
-          <Text className='font-bold text-2xl mt-2'>{title}</Text>
-          <Text className='mb-2 text-neutral-500'>
-            {t("search.x_items", { count: data.length })}
-          </Text>
+          <NeonSheetHead
+            title={title}
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text variant='tally' accent={NeonBoard.volt}>
+                  {t("search.x_items", { count: data.length })}
+                </Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  hitSlop={8}
+                  accessibilityRole='button'
+                  style={{
+                    width: Sizes.iconButton,
+                    height: Sizes.iconButton,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: 4,
+                  }}
+                >
+                  <Feather name='x' size={22} color={NeonBoard.text} />
+                </TouchableOpacity>
+              </View>
+            }
+          />
           {showSearch && (
-            <Input
-              placeholder={t("search.search")}
-              className='my-2 border-neutral-800 border'
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType='done'
-            />
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+              <Input
+                placeholder={t("search.search")}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType='done'
+              />
+            </View>
           )}
         </>
       }
-      ItemSeparatorComponent={() => (
-        <View
-          style={{ height: StyleSheet.hairlineWidth }}
-          className='bg-neutral-700'
-        />
-      )}
-      renderItem={({ item, index }) => {
+      renderItem={({ item }) => {
         const selected = values.some((v) => isEqual(v, item));
-        // The  block used to come from a wrapper around the list; the
-        // list now carries its own header, so the ends round themselves.
-        const isFirst = index === 0;
-        const isLast = index === filteredData.length - 1;
         return (
-          <TouchableOpacity
+          <NeonSheetRow
+            label={renderItemLabel(item)}
+            selected={selected}
             onPress={() => select(item)}
-            style={{
-              borderTopLeftRadius: isFirst ? ROW_RADIUS : 0,
-              borderTopRightRadius: isFirst ? ROW_RADIUS : 0,
-              borderBottomLeftRadius: isLast ? ROW_RADIUS : 0,
-              borderBottomRightRadius: isLast ? ROW_RADIUS : 0,
-            }}
-            className='bg-neutral-800 px-4 py-3 flex flex-row items-center justify-between'
-          >
-            <Text className='flex shrink'>{renderItemLabel(item)}</Text>
-            <Ionicons
-              name={selected ? "radio-button-on" : "radio-button-off"}
-              size={24}
-              color='white'
-            />
-          </TouchableOpacity>
+          />
         );
       }}
     />

@@ -1,74 +1,153 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
-import { MediaStatus } from "@/utils/jellyseerr/server/constants/media";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { type StyleProp, TouchableOpacity, type ViewStyle } from "react-native";
+import { Badge } from "@/components/Badge";
+import { NeonBoard } from "@/constants/Colors";
+import {
+  MediaRequestStatus,
+  MediaStatus,
+} from "@/utils/jellyseerr/server/constants/media";
 
 interface Props {
   mediaStatus?: MediaStatus;
+  /** The request's own status, for Approved / Declined when the media has no status yet. */
+  requestStatus?: MediaRequestStatus;
+  /** Show the volt `Request` badge when the item carries no status. */
   showRequestIcon: boolean;
   onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
-const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
-  mediaStatus,
-  showRequestIcon,
-  onPress,
-  ...props
-}) => {
-  const [badgeIcon, setBadgeIcon] =
-    useState<keyof typeof MaterialCommunityIcons.glyphMap>();
-  const [badgeStyle, setBadgeStyle] = useState<string>();
+type StatusBadge = {
+  label: string;
+  tint: string;
+  filled: boolean;
+};
 
-  // Match similar to what Jellyseerr is currently using
-  // https://github.com/Fallenbagel/jellyseerr/blob/8a097d5195749c8d1dca9b473b8afa96a50e2fe2/src/components/Common/StatusBadgeMini/index.tsx#L33C1-L62C4
-  useEffect(() => {
+/**
+ * Maps a Seerr media / request status to a Neon Board badge:
+ * Available = green filled, Partial / Processing = cyan, Pending = warn,
+ * Approved = green outline, Declined / Blacklisted = red, and `Request` in
+ * volt when the item has no status and can be requested.
+ */
+export const useJellyseerrStatusBadge = (
+  mediaStatus?: MediaStatus,
+  requestStatus?: MediaRequestStatus,
+  showRequestIcon = false,
+): StatusBadge | undefined => {
+  const { t } = useTranslation();
+  return useMemo(() => {
+    if (mediaStatus === MediaStatus.AVAILABLE) {
+      return {
+        label: t("jellyseerr.media_status.available"),
+        tint: NeonBoard.green,
+        filled: true,
+      };
+    }
+    if (requestStatus === MediaRequestStatus.DECLINED) {
+      return {
+        label: t("jellyseerr.media_status.declined"),
+        tint: NeonBoard.red,
+        filled: false,
+      };
+    }
     switch (mediaStatus) {
-      case MediaStatus.PROCESSING:
-        setBadgeStyle(
-          "bg-indigo-500 border-indigo-400 ring-indigo-400 text-indigo-100",
-        );
-        setBadgeIcon("clock");
-        break;
-      case MediaStatus.AVAILABLE:
-        setBadgeStyle("bg-volt border-green-400 ring-green-400 text-green-100");
-        setBadgeIcon("check");
-        break;
-      case MediaStatus.PENDING:
-        setBadgeStyle(
-          "bg-yellow-500 border-yellow-400 ring-yellow-400 text-yellow-100",
-        );
-        setBadgeIcon("bell");
-        break;
-      case MediaStatus.BLACKLISTED:
-        setBadgeStyle("bg-red-500 border-white-400 ring-white-400 text-white");
-        setBadgeIcon("eye-off");
-        break;
       case MediaStatus.PARTIALLY_AVAILABLE:
-        setBadgeStyle(
-          "bg-green-500 border-green-400 ring-green-400 text-green-100",
-        );
-        setBadgeIcon("minus");
-        break;
+        return {
+          label: t("jellyseerr.media_status.partial"),
+          tint: NeonBoard.cyan,
+          filled: false,
+        };
+      case MediaStatus.PROCESSING:
+        return {
+          label: t("jellyseerr.media_status.processing"),
+          tint: NeonBoard.cyan,
+          filled: false,
+        };
+      case MediaStatus.PENDING:
+        return {
+          label: t("jellyseerr.media_status.pending"),
+          tint: NeonBoard.warn,
+          filled: false,
+        };
+      case MediaStatus.BLACKLISTED:
+        return {
+          label: t("jellyseerr.media_status.blacklisted"),
+          tint: NeonBoard.red,
+          filled: false,
+        };
       default:
-        if (showRequestIcon) {
-          setBadgeStyle("bg-green-600");
-          setBadgeIcon("plus");
-        }
         break;
     }
-  }, [mediaStatus, showRequestIcon, setBadgeStyle, setBadgeIcon]);
+    if (requestStatus === MediaRequestStatus.APPROVED) {
+      return {
+        label: t("jellyseerr.media_status.approved"),
+        tint: NeonBoard.green,
+        filled: false,
+      };
+    }
+    if (requestStatus === MediaRequestStatus.PENDING) {
+      return {
+        label: t("jellyseerr.media_status.pending"),
+        tint: NeonBoard.warn,
+        filled: false,
+      };
+    }
+    if (requestStatus === MediaRequestStatus.FAILED) {
+      return {
+        label: t("jellyseerr.media_status.failed"),
+        tint: NeonBoard.red,
+        filled: false,
+      };
+    }
+    if (showRequestIcon) {
+      return {
+        label: t("jellyseerr.request_button"),
+        tint: NeonBoard.volt,
+        filled: false,
+      };
+    }
+    return undefined;
+  }, [mediaStatus, requestStatus, showRequestIcon, t]);
+};
+
+/** The status badge on Seerr posters and season rows. */
+const JellyseerrStatusIcon: React.FC<Props> = ({
+  mediaStatus,
+  requestStatus,
+  showRequestIcon,
+  onPress,
+  style,
+}) => {
+  const badge = useJellyseerrStatusBadge(
+    mediaStatus,
+    requestStatus,
+    showRequestIcon,
+  );
+
+  if (!badge) return null;
+
+  const element = (
+    <Badge
+      text={badge.label}
+      tint={badge.tint}
+      variant={badge.filled ? "filled" : "outline"}
+      glow
+      style={onPress ? undefined : style}
+    />
+  );
+
+  if (!onPress) return element;
 
   return (
-    badgeIcon && (
-      <TouchableOpacity onPress={onPress} disabled={onPress === undefined}>
-        <View
-          className={`${badgeStyle ?? "bg-volt"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
-          {...props}
-        >
-          <MaterialCommunityIcons name={badgeIcon} size={18} color='white' />
-        </View>
-      </TouchableOpacity>
-    )
+    <TouchableOpacity
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole='button'
+      style={style}
+    >
+      {element}
+    </TouchableOpacity>
   );
 };
 

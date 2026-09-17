@@ -13,9 +13,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { Badge } from "@/components/Badge";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { NeonProgress } from "@/components/common/NeonProgress";
 import { Text } from "@/components/common/Text";
-import { Loader } from "@/components/Loader";
 import Poster from "@/components/posters/Poster";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useInterval } from "@/hooks/useInterval";
 import { useSessions, type useSessionsProps } from "@/hooks/useSessions";
 import { apiAtom } from "@/providers/JellyfinProvider";
@@ -27,17 +30,12 @@ export default function SessionsPage() {
   const { sessions, isLoading } = useSessions({} as useSessionsProps);
   const { t } = useTranslation();
 
-  if (isLoading)
-    return (
-      <View className='justify-center items-center h-full'>
-        <Loader />
-      </View>
-    );
+  if (isLoading) return <LoadingLine />;
 
   if (!sessions || sessions.length === 0)
     return (
       <View className='h-full w-full flex justify-center items-center'>
-        <Text className='text-lg text-neutral-500'>
+        <Text variant='body' muted>
           {t("home.sessions.no_active_sessions")}
         </Text>
       </View>
@@ -47,8 +45,8 @@ export default function SessionsPage() {
     <FlashList
       contentInsetAdjustmentBehavior='automatic'
       contentContainerStyle={{
-        paddingTop: Platform.OS === "android" ? 17 : 0,
-        paddingHorizontal: 17,
+        paddingTop: Platform.OS === "android" ? 10 : 0,
+        paddingHorizontal: Sizes.gutter,
         paddingBottom: 150,
       }}
       data={sessions}
@@ -63,6 +61,7 @@ interface SessionCardProps {
 }
 
 const SessionCard = ({ session }: SessionCardProps) => {
+  const { t } = useTranslation();
   const api = useAtomValue(apiAtom);
   const [remainingTicks, setRemainingTicks] = useState<number>(0);
 
@@ -185,8 +184,11 @@ const SessionCard = ({ session }: SessionCardProps) => {
   useInterval(tick, 1000);
 
   return (
-    <View className='flex flex-col shadow-md bg-neutral-900 mb-4'>
-      <View className='flex flex-row p-4'>
+    <View
+      className='flex flex-col mb-4'
+      style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
+    >
+      <View className='flex flex-row py-3'>
         <View className='w-20 pr-4'>
           <Poster
             id={session.NowPlayingItem?.Id}
@@ -198,10 +200,8 @@ const SessionCard = ({ session }: SessionCardProps) => {
             <View className='flex-1 pr-4'>
               {session.NowPlayingItem?.Type === "Episode" ? (
                 <>
-                  <Text className='font-bold'>
-                    {session.NowPlayingItem?.Name}
-                  </Text>
-                  <Text numberOfLines={1} className='text-xs opacity-50'>
+                  <Text variant='rowTitle'>{session.NowPlayingItem?.Name}</Text>
+                  <Text numberOfLines={1} variant='meta' muted>
                     {`S${session.NowPlayingItem.ParentIndexNumber?.toString()}:E${session.NowPlayingItem.IndexNumber?.toString()}`}
                     {" - "}
                     {session.NowPlayingItem.SeriesName}
@@ -209,19 +209,17 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 </>
               ) : (
                 <>
-                  <Text className='font-bold'>
-                    {session.NowPlayingItem?.Name}
-                  </Text>
-                  <Text className='text-xs opacity-50'>
+                  <Text variant='rowTitle'>{session.NowPlayingItem?.Name}</Text>
+                  <Text variant='meta' muted>
                     {session.NowPlayingItem?.ProductionYear}
                   </Text>
-                  <Text className='text-xs opacity-50'>
+                  <Text variant='meta' muted>
                     {session.NowPlayingItem?.SeriesName}
                   </Text>
                 </>
               )}
             </View>
-            <Text className='text-xs opacity-50 align-right text-right'>
+            <Text variant='caption' muted className='text-right'>
               {session.UserName}
               {"\n"}
               {session.Client}
@@ -234,25 +232,23 @@ const SessionCard = ({ session }: SessionCardProps) => {
           <View className='flex-1' />
           <View className='flex flex-col align-bottom'>
             <View className='flex flex-row justify-between align-bottom mb-1'>
-              <Text className='-ml-0.5 text-xs opacity-50 align-left text-left'>
+              <View className='-ml-0.5'>
                 {!session.PlayState?.IsPaused ? (
-                  <Ionicons name='play' size={14} color='white' />
+                  <Ionicons name='play' size={14} color={NeonBoard.volt} />
                 ) : (
-                  <Ionicons name='pause' size={14} color='white' />
+                  <Ionicons name='pause' size={14} color={NeonBoard.mid} />
                 )}
-              </Text>
-              <Text className='text-xs opacity-50 align-right text-right'>
-                {formatTimeString(remainingTicks, "tick")} left
+              </View>
+              <Text variant='caption' muted className='text-right'>
+                {t("home.downloads.time_left", {
+                  time: formatTimeString(remainingTicks, "tick"),
+                })}
               </Text>
             </View>
-            <View className='align-bottom bg-gray-800 h-1'>
-              <View
-                className={"bg-volt h-full"}
-                style={{
-                  width: `${getProgressPercentage()}%`,
-                }}
-              />
-            </View>
+            <NeonProgress
+              progress={getProgressPercentage() / 100}
+              color={NeonBoard.volt}
+            />
 
             {/* Session controls */}
             <View className='flex flex-row mt-2 space-x-4 justify-center'>
@@ -268,7 +264,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 <MaterialCommunityIcons
                   name='skip-previous'
                   size={24}
-                  color='white'
+                  color={NeonBoard.text}
                 />
               </TouchableOpacity>
 
@@ -282,9 +278,9 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 }}
               >
                 {session.PlayState?.IsPaused ? (
-                  <Ionicons name='play' size={24} color='white' />
+                  <Ionicons name='play' size={24} color={NeonBoard.text} />
                 ) : (
-                  <Ionicons name='pause' size={24} color='white' />
+                  <Ionicons name='pause' size={24} color={NeonBoard.text} />
                 )}
               </TouchableOpacity>
 
@@ -295,7 +291,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                   opacity: isControlLoading[PlaystateCommand.Stop] ? 0.5 : 1,
                 }}
               >
-                <Ionicons name='stop' size={24} color='white' />
+                <Ionicons name='stop' size={24} color={NeonBoard.text} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -310,7 +306,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 <MaterialCommunityIcons
                   name='skip-next'
                   size={24}
-                  color='white'
+                  color={NeonBoard.text}
                 />
               </TouchableOpacity>
 
@@ -323,7 +319,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                     : 1,
                 }}
               >
-                <Ionicons name='volume-low' size={24} color='white' />
+                <Ionicons name='volume-low' size={24} color={NeonBoard.text} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -338,7 +334,9 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 <Ionicons
                   name='volume-mute'
                   size={24}
-                  color={session.PlayState?.IsMuted ? "red" : "white"}
+                  color={
+                    session.PlayState?.IsMuted ? NeonBoard.red : NeonBoard.text
+                  }
                 />
               </TouchableOpacity>
 
@@ -351,7 +349,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                     : 1,
                 }}
               >
-                <Ionicons name='volume-high' size={24} color='white' />
+                <Ionicons name='volume-high' size={24} color={NeonBoard.text} />
               </TouchableOpacity>
             </View>
           </View>
@@ -368,21 +366,31 @@ interface TranscodingBadgesProps {
 
 const TranscodingBadges = ({ properties }: TranscodingBadgesProps) => {
   const iconMap = {
-    bitrate: <Ionicons name='speedometer-outline' size={12} color='white' />,
-    codec: <Ionicons name='layers-outline' size={12} color='white' />,
-    videoRange: (
-      <Ionicons name='color-palette-outline' size={12} color='white' />
+    bitrate: (
+      <Ionicons name='speedometer-outline' size={12} color={NeonBoard.mid} />
     ),
-    resolution: <Ionicons name='film-outline' size={12} color='white' />,
-    language: <Ionicons name='language-outline' size={12} color='white' />,
-    audioChannels: <Ionicons name='mic-outline' size={12} color='white' />,
-    hwType: <Ionicons name='hardware-chip-outline' size={12} color='white' />,
+    codec: <Ionicons name='layers-outline' size={12} color={NeonBoard.mid} />,
+    videoRange: (
+      <Ionicons name='color-palette-outline' size={12} color={NeonBoard.mid} />
+    ),
+    resolution: (
+      <Ionicons name='film-outline' size={12} color={NeonBoard.mid} />
+    ),
+    language: (
+      <Ionicons name='language-outline' size={12} color={NeonBoard.mid} />
+    ),
+    audioChannels: (
+      <Ionicons name='mic-outline' size={12} color={NeonBoard.mid} />
+    ),
+    hwType: (
+      <Ionicons name='hardware-chip-outline' size={12} color={NeonBoard.mid} />
+    ),
   } as const;
 
   const icon = (val: string) => {
     return (
       iconMap[val as keyof typeof iconMap] ?? (
-        <Ionicons name='layers-outline' size={12} color='white' />
+        <Ionicons name='layers-outline' size={12} color={NeonBoard.mid} />
       )
     );
   };
@@ -403,8 +411,8 @@ const TranscodingBadges = ({ properties }: TranscodingBadgesProps) => {
     .map(([key]) => (
       <Badge
         key={key}
-        variant='gray'
-        className='m-0 p-0 pt-0.5 mr-1'
+        variant='outline'
+        style={{ marginRight: 4, marginBottom: 4 }}
         text={formatVal(key, properties[key as keyof StreamProps])}
         iconLeft={icon(key)}
       />
@@ -439,25 +447,30 @@ const TranscodingStreamView = ({
   return (
     <View className='flex flex-col pt-2 first:pt-0'>
       <View className='flex flex-row'>
-        <Text className='text-xs opacity-50 w-20 font-bold text-right pr-4'>
+        <Text
+          variant='eyebrow'
+          muted
+          className='w-20 text-right pr-4'
+          style={{ paddingTop: 3 }}
+        >
           {title}
         </Text>
-        <Text className='flex-1'>
+        <View className='flex-1 flex-row flex-wrap'>
           <TranscodingBadges properties={properties} />
-        </Text>
+        </View>
       </View>
       {isTranscoding && transcodeProperties ? (
         <View className='flex flex-row'>
-          <Text className='-mt-0 text-xs opacity-50 w-20 font-bold text-right pr-4'>
+          <View className='w-20 items-end pr-4'>
             <MaterialCommunityIcons
               name='arrow-right-bottom'
               size={14}
-              color='white'
+              color={NeonBoard.mid}
             />
-          </Text>
-          <Text className='flex-1 text-sm mt-1'>
+          </View>
+          <View className='flex-1 flex-row flex-wrap mt-1'>
             <TranscodingBadges properties={transcodeProperties} />
-          </Text>
+          </View>
         </View>
       ) : null}
     </View>
@@ -497,7 +510,10 @@ const TranscodingView = ({ session }: SessionCardProps) => {
   };
 
   return (
-    <View className='flex flex-col bg-neutral-800 rounded-b-2xl p-4 pt-2'>
+    <View
+      className='flex flex-col pb-3 pt-2'
+      style={{ borderTopWidth: 1, borderTopColor: NeonBoard.line }}
+    >
       <TranscodingStreamView
         title={t("common.video")}
         properties={{

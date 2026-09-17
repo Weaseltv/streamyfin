@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/common/Input";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
 import { useCustomHeaderRows } from "@/hooks/useCustomHeaderRows";
 import {
   type CustomHeader,
@@ -128,7 +129,7 @@ export function CustomHeaderList({
         autoComplete='off'
         importantForAutofill='no'
         textContentType='none'
-        extraClassName='pr-12 border border-neutral-700'
+        extraClassName='pr-12'
         clearButtonMode='never'
       />
       <TouchableOpacity
@@ -145,7 +146,7 @@ export function CustomHeaderList({
         <Ionicons
           name={revealedRows.has(rowIds[index]) ? "eye-off" : "eye"}
           size={20}
-          color='#9CA3AF'
+          color={NeonBoard.mid}
         />
       </TouchableOpacity>
     </View>
@@ -157,7 +158,7 @@ export function CustomHeaderList({
    * doesn't say what it toggles. Both address the whole group.
    */
   const groupFooter = (group: HeaderGroup) => (
-    <View className='flex-row items-center justify-between border-t border-neutral-800 pt-3'>
+    <View className='flex-row items-center justify-between border-t border-line pt-3'>
       <View className='flex-row items-center gap-x-2'>
         <SettingSwitch
           value={group.indices.every((index) => headers[index].enabled)}
@@ -166,7 +167,7 @@ export function CustomHeaderList({
             updateRows(group.indices, { enabled }, true)
           }
         />
-        <Text className='text-xs text-neutral-400'>
+        <Text variant='meta' muted>
           {t("custom_headers.enabled")}
         </Text>
       </View>
@@ -176,8 +177,10 @@ export function CustomHeaderList({
         className='flex-row items-center gap-x-1 py-1 px-2'
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name='trash-outline' size={15} color='#F87171' />
-        <Text className='text-xs text-red-400'>{t("common.remove")}</Text>
+        <Ionicons name='trash-outline' size={15} color={NeonBoard.red} />
+        <Text variant='chip' style={{ color: NeonBoard.red }}>
+          {t("common.remove")}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -185,8 +188,8 @@ export function CustomHeaderList({
   return (
     <View className='gap-y-2'>
       {headers.length === 0 ? (
-        <View className='bg-neutral-900 border border-neutral-800 p-4'>
-          <Text className='text-neutral-400 text-sm text-center'>
+        <View className='border-b border-line py-4'>
+          <Text variant='meta' muted className='text-center'>
             {t("custom_headers.no_headers")}
           </Text>
         </View>
@@ -197,16 +200,18 @@ export function CustomHeaderList({
             // Spacing is explicit rather than `gap-y-*`: that utility lands as
             // a leading margin on every child here, so a nested one indents the
             // whole card away from its own top padding.
-            className='bg-neutral-900 border border-neutral-800 p-4'
+            className='border-b border-line py-4'
           >
             {group.preset ? (
               <>
                 {/* A preset's header names are fixed, so they label the value
                     they belong to instead of being editable fields. */}
-                <Text className='font-semibold mb-4'>{group.preset.label}</Text>
+                <Text variant='rowTitle' className='mb-4'>
+                  {group.preset.label}
+                </Text>
                 {group.indices.map((index) => (
                   <View key={rowIds[index]} className='mb-4'>
-                    <Text className='text-xs text-neutral-400 mb-2'>
+                    <Text variant='meta' muted className='mb-2'>
                       {headers[index].key}
                     </Text>
                     {valueField(index)}
@@ -218,7 +223,7 @@ export function CustomHeaderList({
               // that the name is the user's to write here.
               <>
                 <View className='mb-4'>
-                  <Text className='text-xs text-neutral-400 mb-2'>
+                  <Text variant='meta' muted className='mb-2'>
                     {t("custom_headers.header_key")}
                   </Text>
                   <Input
@@ -231,11 +236,10 @@ export function CustomHeaderList({
                     autoCorrect={false}
                     autoComplete='off'
                     importantForAutofill='no'
-                    extraClassName='border border-neutral-700'
                   />
                 </View>
                 <View className='mb-4'>
-                  <Text className='text-xs text-neutral-400 mb-2'>
+                  <Text variant='meta' muted className='mb-2'>
                     {t("custom_headers.header_value")}
                   </Text>
                   {valueField(group.indices[0])}
@@ -248,23 +252,27 @@ export function CustomHeaderList({
         ))
       )}
 
-      <View className='flex-row gap-x-2'>
-        <Button
-          className='flex-1 border border-neutral-700'
-          disabled={disabled}
-          onPress={addPreset}
-          color='black'
-        >
-          {t("custom_headers.add_preset")}
-        </Button>
-        <Button
-          className='flex-1 border border-neutral-700'
-          disabled={disabled}
-          onPress={() => appendRows([{ key: "", value: "", enabled: true }])}
-          color='black'
-        >
-          {t("custom_headers.add_custom")}
-        </Button>
+      <View className='flex-row gap-x-2 mt-2'>
+        <View className='flex-1'>
+          <Button
+            variant='border'
+            compact
+            disabled={disabled}
+            onPress={addPreset}
+          >
+            {t("custom_headers.add_preset")}
+          </Button>
+        </View>
+        <View className='flex-1'>
+          <Button
+            variant='border'
+            compact
+            disabled={disabled}
+            onPress={() => appendRows([{ key: "", value: "", enabled: true }])}
+          >
+            {t("custom_headers.add_custom")}
+          </Button>
+        </View>
       </View>
     </View>
   );

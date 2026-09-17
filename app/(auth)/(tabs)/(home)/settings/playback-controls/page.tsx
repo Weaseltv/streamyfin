@@ -1,5 +1,6 @@
 import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChromecastSettings } from "@/components/settings/ChromecastSettings";
 import { GestureControls } from "@/components/settings/GestureControls";
 import { MediaProvider } from "@/components/settings/MediaContext";
 import { MediaToggles } from "@/components/settings/MediaToggles";
@@ -7,7 +8,7 @@ import { MpvBufferSettings } from "@/components/settings/MpvBufferSettings";
 import { MpvVoSettings } from "@/components/settings/MpvVoSettings";
 import { PlaybackControlsSettings } from "@/components/settings/PlaybackControlsSettings";
 import { VideoPlayerSelector } from "@/components/settings/VideoPlayerSelector";
-import { ChromecastSettings } from "../../../../../../components/settings/ChromecastSettings";
+import { Sizes } from "@/constants/neon";
 
 export default function PlaybackControlsPage() {
   const insets = useSafeAreaInsets();
@@ -22,8 +23,11 @@ export default function PlaybackControlsPage() {
       }}
     >
       <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+          paddingBottom: 16,
+        }}
       >
         <View>
           <VideoPlayerSelector className='mb-4' />

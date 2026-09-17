@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { t } from "i18next";
@@ -9,7 +9,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Switch,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,15 +17,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { Button } from "@/components/Button";
 import { HeaderButton } from "@/components/common/HeaderButton";
-import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Input } from "@/components/common/Input";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Text } from "@/components/common/Text";
 import JellyfinServerDiscovery from "@/components/JellyfinServerDiscovery";
 import { QuickConnectCodeModal } from "@/components/login/QuickConnectCodeModal";
 import { PreviousServersList } from "@/components/PreviousServersList";
 import { CustomHeaderSheet } from "@/components/settings/CustomHeaderSheet";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { DEFAULT_SERVER_URL } from "@/constants/DefaultServer";
+import { glow, Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import {
   apiAtom,
@@ -39,10 +41,46 @@ import {
   ServerTooOldError,
 } from "@/utils/jellyfin/checkServer";
 import type { SavedServer } from "@/utils/secureCredentials";
+import { serverHost } from "@/utils/serverHost";
 
 const CredentialsSchema = z.object({
   username: z.string().min(1, t("login.username_required")),
 });
+
+const ACCENT = NeonBoard.volt;
+const MASCOT = 96;
+const LABEL_WIDTH = 104;
+
+/** A 12 `mid` inline error under a field. */
+const FieldError: React.FC<{ message?: string | null }> = ({ message }) =>
+  message ? (
+    <Text
+      variant='meta'
+      accent={NeonBoard.red}
+      style={{ marginTop: 6, paddingHorizontal: Sizes.gutter }}
+    >
+      {message}
+    </Text>
+  ) : null;
+
+/** The text wordmark: `WEASEL` in `text`, `PLEX` in volt, Condensed 36. */
+const Wordmark: React.FC = () => (
+  <Text
+    variant='display'
+    allowFontScaling={false}
+    style={{ fontSize: 36, lineHeight: 40, letterSpacing: 0.5 }}
+  >
+    WEASEL
+    <Text
+      variant='display'
+      allowFontScaling={false}
+      accent={ACCENT}
+      style={{ fontSize: 36, lineHeight: 40, letterSpacing: 0.5 }}
+    >
+      PLEX
+    </Text>
+  </Text>
+);
 
 export const Login: React.FC = () => {
   const api = useAtomValue(apiAtom);
@@ -79,6 +117,11 @@ export const Login: React.FC = () => {
     username: _username || "",
     password: _password || "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Failures show inline in red under the field they belong to.
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Custom proxy auth headers entered before connecting. Passing `undefined`
   // keeps whatever is already saved for the server (see checkJellyfinServer),
@@ -166,19 +209,22 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: serverName,
+      headerTitle: "",
       headerLeft: () =>
         api?.basePath ? (
           <HeaderButton
             placement='left'
             variant='text'
             onPress={() => {
+              setLoginError(null);
               removeServer();
             }}
-            style={{ flexDirection: "row", gap: 4 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
           >
-            <HeaderIcon name='back' tintColor={Colors.primary} size={18} />
-            <Text className='text-volt'>{t("login.change_server")}</Text>
+            <Feather name='chevron-left' size={22} color={ACCENT} />
+            <Text variant='rowTitle' accent={ACCENT}>
+              {t("login.change_server")}
+            </Text>
           </HeaderButton>
         ) : null,
     });
@@ -188,7 +234,10 @@ export const Login: React.FC = () => {
     Keyboard.dismiss();
 
     const result = CredentialsSchema.safeParse(credentials);
-    if (!result.success) return;
+    if (!result.success) {
+      setLoginError(t("login.username_required"));
+      return;
+    }
 
     const ok = await performLogin(credentials.username, credentials.password);
     // The protection picker shows AFTER a successful login (global modal) —
@@ -203,18 +252,16 @@ export const Login: React.FC = () => {
     password: string,
   ): Promise<boolean> => {
     setLoading(true);
+    setLoginError(null);
     try {
       await login(username, password, serverName);
       return true;
     } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert(t("login.connection_failed"), error.message);
-      } else {
-        Alert.alert(
-          t("login.connection_failed"),
-          t("login.an_unexpected_error_occurred"),
-        );
-      }
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : t("login.an_unexpected_error_occurred"),
+      );
       return false;
     } finally {
       setLoading(false);
@@ -246,25 +293,24 @@ export const Login: React.FC = () => {
   const handleConnect = useCallback(
     async (url: string, headers?: CustomHeader[]) => {
       setLoadingServerCheck(true);
+      setServerError(null);
       try {
         const result = await checkJellyfinServer(
           url.trim().replace(/\/$/, ""),
           headers,
         );
         if (!result) {
-          Alert.alert(
-            t("login.connection_failed"),
-            t("login.could_not_connect_to_server"),
-          );
+          setServerError(t("login.could_not_connect_to_server"));
           return;
         }
         setServerName(result.name);
         await setServer({ address: result.url });
       } catch (e) {
         if (e instanceof ServerTooOldError) {
-          Alert.alert(
-            t("login.too_old_server_text"),
-            t("login.too_old_server_description"),
+          setServerError(
+            `${t("login.too_old_server_text")} · ${t(
+              "login.too_old_server_description",
+            )}`,
           );
         }
       } finally {
@@ -289,56 +335,91 @@ export const Login: React.FC = () => {
     }
   };
 
+  const host = serverHost(api?.basePath);
+  const disabledGlyph = NeonBoard.low;
+
   return (
-    <SafeAreaView style={{ flex: 1, paddingBottom: 16 }}>
+    <SafeAreaView
+      style={{ flex: 1, paddingBottom: 16, backgroundColor: NeonBoard.stage }}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
         {api?.basePath ? (
-          <View className='flex flex-col flex-1 justify-center'>
-            <View className='px-4 w-full'>
-              <View className='flex flex-col space-y-2'>
-                <Text className='text-2xl font-bold -mb-2'>
-                  {serverName ? (
-                    <>
-                      {`${t("login.login_to_title")} `}
-                      <Text className='text-volt'>{serverName}</Text>
-                    </>
-                  ) : (
-                    t("login.login_title")
-                  )}
-                </Text>
-                <Text className='text-xs text-neutral-400'>{api.basePath}</Text>
-                <Input
-                  placeholder={t("login.username_placeholder")}
-                  onChangeText={(text) =>
-                    setCredentials((prev) => ({ ...prev, username: text }))
-                  }
-                  onEndEditing={(e) => {
-                    const newValue = e.nativeEvent.text;
-                    if (newValue && newValue !== credentials.username) {
-                      setCredentials((prev) => ({
-                        ...prev,
-                        username: newValue,
-                      }));
-                    }
-                  }}
-                  value={credentials.username}
-                  keyboardType='default'
-                  returnKeyType='done'
-                  autoCapitalize='none'
-                  autoCorrect={false}
-                  textContentType='username'
-                  clearButtonMode='while-editing'
-                  maxLength={500}
-                />
+          <ScrollView
+            keyboardShouldPersistTaps='handled'
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+          >
+            {/* Page head: host eyebrow, title, note */}
+            <View style={{ paddingHorizontal: Sizes.gutter }}>
+              <Text variant='eyebrow' accent={ACCENT} numberOfLines={1}>
+                {host || api.basePath}
+              </Text>
+              <Text variant='display' style={{ marginTop: 4 }}>
+                {serverName
+                  ? `${t("login.login_to_title")} ${serverName}`
+                  : t("login.log_in_to_weaselplex")}
+              </Text>
+              <Text
+                variant='body'
+                muted
+                style={{ fontSize: 13, lineHeight: 18, marginTop: 6 }}
+              >
+                {t("login.account_note")}
+              </Text>
+            </View>
 
-                <Input
-                  placeholder={t("login.password_placeholder")}
-                  onChangeText={(text) =>
-                    setCredentials((prev) => ({ ...prev, password: text }))
+            <SectionHeader
+              title={t("home.settings.switch_user.account")}
+              accent={ACCENT}
+            />
+
+            {/* Username */}
+            <View style={fieldRow}>
+              <Text variant='meta' muted style={{ width: LABEL_WIDTH }}>
+                {t("login.username_placeholder")}
+              </Text>
+              <Input
+                style={{ flex: 1 }}
+                placeholder={t("login.username_placeholder")}
+                onChangeText={(text) => {
+                  setLoginError(null);
+                  setCredentials((prev) => ({ ...prev, username: text }));
+                }}
+                onEndEditing={(e) => {
+                  const newValue = e.nativeEvent.text;
+                  if (newValue && newValue !== credentials.username) {
+                    setCredentials((prev) => ({
+                      ...prev,
+                      username: newValue,
+                    }));
                   }
+                }}
+                value={credentials.username}
+                keyboardType='default'
+                returnKeyType='done'
+                autoCapitalize='none'
+                autoCorrect={false}
+                textContentType='username'
+                clearButtonMode='while-editing'
+                maxLength={500}
+              />
+            </View>
+
+            {/* Password with the eye toggle */}
+            <View style={fieldRow}>
+              <Text variant='meta' muted style={{ width: LABEL_WIDTH }}>
+                {t("login.password_placeholder")}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <Input
+                  style={{ paddingRight: 44 }}
+                  placeholder={t("login.password_placeholder")}
+                  onChangeText={(text) => {
+                    setLoginError(null);
+                    setCredentials((prev) => ({ ...prev, password: text }));
+                  }}
                   onEndEditing={(e) => {
                     const newValue = e.nativeEvent.text;
                     if (newValue && newValue !== credentials.password) {
@@ -349,92 +430,178 @@ export const Login: React.FC = () => {
                     }
                   }}
                   value={credentials.password}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   keyboardType='default'
                   returnKeyType='done'
                   autoCapitalize='none'
                   textContentType='password'
-                  clearButtonMode='while-editing'
+                  clearButtonMode='never'
                   maxLength={500}
+                  onSubmitEditing={handleLogin}
                 />
                 <TouchableOpacity
-                  onPress={() => setSaveAccount(!saveAccount)}
-                  className='flex flex-row items-center py-2'
-                  activeOpacity={0.7}
+                  onPress={() => setShowPassword((v) => !v)}
+                  accessibilityRole='button'
+                  accessibilityLabel={
+                    showPassword
+                      ? t("custom_headers.hide_value")
+                      : t("custom_headers.show_value")
+                  }
+                  hitSlop={8}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <Switch
-                    value={saveAccount}
-                    onValueChange={setSaveAccount}
-                    trackColor={{ false: "#3f3f46", true: Colors.primary }}
-                    thumbColor='white'
+                  <Feather
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color={NeonBoard.mid}
                   />
-                  <Text className='ml-3 text-neutral-300'>
-                    {t("save_account.save_for_later")}
-                  </Text>
                 </TouchableOpacity>
-                <View className='flex flex-row items-center justify-between'>
-                  <Button
-                    onPress={handleLogin}
-                    loading={loading}
-                    disabled={!credentials.username.trim()}
-                    className='flex-1 mr-2'
-                  >
-                    {t("login.login_button")}
-                  </Button>
-                  <TouchableOpacity
-                    onPress={handleQuickConnect}
-                    className='p-2 bg-neutral-900 h-12 w-12 flex items-center justify-center'
-                  >
-                    <MaterialCommunityIcons
-                      name='cellphone-lock'
-                      size={24}
-                      color='white'
-                    />
-                  </TouchableOpacity>
-                </View>
               </View>
             </View>
+            <FieldError message={loginError} />
 
-            <View className='absolute bottom-0 left-0 w-full px-4 mb-2' />
-          </View>
-        ) : (
-          <View className='flex flex-col flex-1 items-center justify-center w-full'>
-            <View className='flex flex-col gap-y-2 px-4 w-full -mt-36'>
-              <Image
-                style={{
-                  width: "100%",
-                  height: 96,
-                  alignSelf: "center",
-                  marginBottom: 4,
-                }}
-                contentFit='contain'
-                source={require("@/assets/images/weaselplex-login-logo.png")}
+            {/* Save this account */}
+            <TouchableOpacity
+              onPress={() => setSaveAccount(!saveAccount)}
+              activeOpacity={0.7}
+              accessibilityRole='switch'
+              accessibilityState={{ checked: saveAccount }}
+              style={[
+                fieldRow,
+                { justifyContent: "space-between", minHeight: Sizes.row },
+              ]}
+            >
+              <Text variant='rowTitle'>{t("save_account.save_for_later")}</Text>
+              <SettingSwitch
+                value={saveAccount}
+                onValueChange={setSaveAccount}
               />
+            </TouchableOpacity>
+
+            <View style={{ paddingHorizontal: Sizes.gutter, marginTop: 20 }}>
+              <Button
+                onPress={handleLogin}
+                loading={loading}
+                disabled={!credentials.username.trim()}
+                accent={ACCENT}
+                iconLeft={
+                  <Feather
+                    name='arrow-right'
+                    size={18}
+                    color={
+                      credentials.username.trim()
+                        ? NeonBoard.onAccent
+                        : disabledGlyph
+                    }
+                  />
+                }
+              >
+                {t("login.login_button")}
+              </Button>
+              <Button
+                onPress={handleQuickConnect}
+                color='white'
+                variant='border'
+                style={{ marginTop: 12 }}
+                iconLeft={
+                  <Feather name='grid' size={18} color={NeonBoard.text} />
+                }
+              >
+                {t("login.quick_connect")}
+              </Button>
+            </View>
+          </ScrollView>
+        ) : (
+          <ScrollView
+            keyboardShouldPersistTaps='handled'
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              paddingVertical: 24,
+            }}
+          >
+            {/* Brand: 96 mascot with a volt glow over the text wordmark */}
+            <View style={{ alignItems: "center", paddingHorizontal: 12 }}>
+              <View
+                style={[
+                  {
+                    width: MASCOT,
+                    height: MASCOT,
+                    borderRadius: MASCOT / 2,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                  glow(ACCENT, 24, 0.6),
+                ]}
+              >
+                <Image
+                  source={require("@/assets/images/weaselplex-mascot-white.png")}
+                  style={{ width: MASCOT, height: MASCOT }}
+                  contentFit='contain'
+                />
+              </View>
+              <View style={{ marginTop: 16 }}>
+                <Wordmark />
+              </View>
               <Text
-                style={{ color: Colors.textSecondary }}
-                className='text-center'
+                variant='body'
+                muted
+                style={{ marginTop: 10, textAlign: "center" }}
               >
                 {t("server.enter_url_to_jellyfin_server")}
               </Text>
+            </View>
+
+            {/* Server URL */}
+            <View style={[fieldRow, { marginTop: 20 }]}>
+              <Text variant='meta' muted style={{ width: LABEL_WIDTH }}>
+                {t("server.server_url")}
+              </Text>
               <Input
+                style={{ flex: 1 }}
                 aria-label={t("server.server_url")}
                 placeholder={t("server.server_url_placeholder")}
-                onChangeText={setServerURL}
+                onChangeText={(text) => {
+                  setServerError(null);
+                  setServerURL(text);
+                }}
                 value={serverURL}
                 keyboardType='url'
-                returnKeyType='done'
+                returnKeyType='go'
                 autoCapitalize='none'
+                autoCorrect={false}
                 textContentType='URL'
                 maxLength={500}
+                onSubmitEditing={() => handleConnect(serverURL, connectHeaders)}
               />
+            </View>
+            <FieldError message={serverError} />
+
+            <View style={{ paddingHorizontal: Sizes.gutter, marginTop: 16 }}>
               <Button
                 loading={loadingServerCheck}
                 disabled={loadingServerCheck}
                 onPress={async () => {
                   await handleConnect(serverURL, connectHeaders);
                 }}
-                color='primary'
-                className='w-full'
+                accent={ACCENT}
+                iconLeft={
+                  <Feather
+                    name='arrow-right'
+                    size={18}
+                    color={
+                      loadingServerCheck ? disabledGlyph : NeonBoard.onAccent
+                    }
+                  />
+                }
               >
                 {t("server.connect_button")}
               </Button>
@@ -443,50 +610,52 @@ export const Login: React.FC = () => {
                   the very first request, so they are configured here. */}
               <TouchableOpacity
                 onPress={openHeaderSheet}
-                className='flex flex-row items-center justify-between py-3'
                 activeOpacity={0.7}
+                accessibilityRole='button'
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: 12,
+                }}
               >
-                <Text className='text-volt'>
+                <Text variant='rowTitle' accent={ACCENT}>
                   {t("custom_headers.advanced_title")}
                 </Text>
-                <View className='flex flex-row items-center'>
-                  <Text className='text-xs text-neutral-400 mr-1'>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text variant='meta' muted style={{ marginRight: 4 }}>
                     {usableHeaders.length > 0
                       ? t("custom_headers.header_count", {
                           count: usableHeaders.length,
                         })
                       : t("custom_headers.source_none")}
                   </Text>
-                  <Ionicons
-                    name='chevron-forward'
-                    size={18}
-                    color={Colors.primary}
-                  />
+                  <Feather name='chevron-right' size={18} color={ACCENT} />
                 </View>
               </TouchableOpacity>
-
-              {/* The headers above belong to the URL that was typed with them.
-                  A server picked from a list connects with its own saved ones —
-                  passing these would overwrite them. */}
-              <JellyfinServerDiscovery
-                onServerSelect={async (server) => {
-                  setServerURL(server.address);
-                  if (server.serverName) {
-                    setServerName(server.serverName);
-                  }
-                  await handleConnect(server.address);
-                }}
-              />
-              <PreviousServersList
-                onServerSelect={async (s) => {
-                  await handleConnect(s.address);
-                }}
-                onQuickLogin={handleQuickLoginWithSavedCredential}
-                onPasswordLogin={handlePasswordLogin}
-                onAddAccount={handleAddAccount}
-              />
             </View>
-          </View>
+
+            {/* A server picked from a list connects with its own saved
+                headers — passing the ones typed above would overwrite them. */}
+            <PreviousServersList
+              onServerSelect={async (s) => {
+                await handleConnect(s.address);
+              }}
+              onQuickLogin={handleQuickLoginWithSavedCredential}
+              onPasswordLogin={handlePasswordLogin}
+              onAddAccount={handleAddAccount}
+            />
+
+            <JellyfinServerDiscovery
+              onServerSelect={async (server) => {
+                setServerURL(server.address);
+                if (server.serverName) {
+                  setServerName(server.serverName);
+                }
+                await handleConnect(server.address);
+              }}
+            />
+          </ScrollView>
         )}
       </KeyboardAvoidingView>
 
@@ -498,4 +667,14 @@ export const Login: React.FC = () => {
       />
     </SafeAreaView>
   );
+};
+
+/** A field row on the stage: 12 `mid` label, the field, a 1pt `line` rule. */
+const fieldRow = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  paddingHorizontal: Sizes.gutter,
+  paddingVertical: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: NeonBoard.line,
 };

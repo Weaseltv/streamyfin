@@ -1,18 +1,18 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import type { Feather } from "@expo/vector-icons";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/Colors";
+import { Platform, View } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import type { AccountSecurityType } from "@/utils/secureCredentials";
 import { Button } from "./Button";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  NeonSheetRow,
+  neonSheetModalProps,
+} from "./common/NeonSheet";
 import { Text } from "./common/Text";
 import { PinInput } from "./inputs/PinInput";
 
@@ -27,7 +27,7 @@ interface SecurityOption {
   type: AccountSecurityType;
   titleKey: string;
   descriptionKey: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Feather.glyphMap;
 }
 
 const SECURITY_OPTIONS: SecurityOption[] = [
@@ -35,19 +35,19 @@ const SECURITY_OPTIONS: SecurityOption[] = [
     type: "none",
     titleKey: "save_account.no_protection",
     descriptionKey: "save_account.no_protection_desc",
-    icon: "flash-outline",
+    icon: "zap",
   },
   {
     type: "pin",
     titleKey: "save_account.pin_code",
     descriptionKey: "save_account.pin_code_desc",
-    icon: "keypad-outline",
+    icon: "hash",
   },
   {
     type: "password",
     titleKey: "save_account.password",
     descriptionKey: "save_account.password_desc",
-    icon: "lock-closed-outline",
+    icon: "lock",
   },
 ];
 
@@ -58,7 +58,6 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
   username,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [selectedType, setSelectedType] = useState<AccountSecurityType>("none");
   const [pinCode, setPinCode] = useState("");
@@ -100,17 +99,6 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
     setPinError(null);
   };
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleOptionSelect = (type: AccountSecurityType) => {
     setSelectedType(type);
     setPinCode("");
@@ -147,113 +135,77 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
       ref={bottomSheetModalRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      backdropComponent={renderBackdrop}
+      {...neonSheetModalProps}
       keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
       keyboardBlurBehavior='restore'
       android_keyboardInputMode='adjustResize'
       topInset={isAndroid ? 0 : undefined}
     >
-      <BottomSheetView
-        style={{
-          flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-          paddingBottom: Math.max(16, insets.bottom),
-        }}
-      >
-        <View className='flex-1'>
-          {/* Header */}
-          <View className='mb-4'>
-            <Text className='font-bold text-2xl text-neutral-100'>
-              {t("save_account.title")}
-            </Text>
-            <Text className='text-neutral-400 mt-1'>{username}</Text>
-          </View>
-
-          {/* PIN Entry Step */}
-          {selectedType === "pin" ? (
-            <View className='flex-1'>
-              <View className='p-4 border border-neutral-800 bg-neutral-900 mb-4'>
-                <Text className='text-neutral-100 text-center text-lg mb-4'>
-                  {t("pin.setup_pin")}
-                </Text>
-                <PinInput
-                  value={pinCode}
-                  onChangeText={setPinCode}
-                  length={4}
-                  style={{ paddingHorizontal: 16 }}
-                  autoFocus
-                />
-                {pinError && (
-                  <Text className='text-red-500 text-center mt-3'>
-                    {pinError}
-                  </Text>
-                )}
-              </View>
-            </View>
-          ) : (
-            /* Security Options */
-            <View className='flex-1'>
-              <Text className='text-neutral-400 mb-3'>
-                {t("save_account.security_option")}
-              </Text>
-              <View className='bg-neutral-800 overflow-hidden'>
-                {SECURITY_OPTIONS.map((option, index) => (
-                  <TouchableOpacity
-                    key={option.type}
-                    onPress={() => handleOptionSelect(option.type)}
-                    className={`flex-row items-center p-4 ${
-                      index < SECURITY_OPTIONS.length - 1
-                        ? "border-b border-neutral-700"
-                        : ""
-                    }`}
-                  >
-                    <View className='w-10 h-10 bg-neutral-700 rounded-full items-center justify-center mr-3'>
-                      <Ionicons name={option.icon} size={20} color='white' />
-                    </View>
-                    <View className='flex-1'>
-                      <Text className='text-neutral-100 font-medium'>
-                        {t(option.titleKey)}
-                      </Text>
-                      <Text className='text-neutral-400 text-sm'>
-                        {t(option.descriptionKey)}
-                      </Text>
-                    </View>
-                    <View
-                      className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                        selectedType === option.type
-                          ? "border-volt bg-volt"
-                          : "border-neutral-500"
-                      }`}
-                    >
-                      {selectedType === option.type && (
-                        <Ionicons name='checkmark' size={14} color='white' />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Buttons */}
-          <View className='flex-row gap-3 mt-4'>
-            <Button onPress={handleCancel} color='black' className='flex-1'>
+      <NeonSheet
+        fill
+        eyebrow={username}
+        title={t("save_account.title")}
+        onClose={handleCancel}
+        primary={
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Button
+              onPress={handleCancel}
+              variant='border'
+              color='white'
+              style={{ flex: 1 }}
+            >
               {t("save_account.cancel_button")}
             </Button>
             <Button
               onPress={handleSave}
               color='primary'
-              className='flex-1'
+              style={{ flex: 1 }}
               disabled={!canSave()}
             >
               {t("save_account.save_button")}
             </Button>
           </View>
-        </View>
-      </BottomSheetView>
+        }
+      >
+        {selectedType === "pin" ? (
+          <View>
+            <NeonSheetNote center>{t("pin.setup_pin")}</NeonSheetNote>
+            <PinInput
+              value={pinCode}
+              onChangeText={setPinCode}
+              length={4}
+              style={{ paddingHorizontal: 16, marginTop: 12 }}
+              autoFocus
+            />
+            {pinError && (
+              <Text
+                variant='caption'
+                style={{
+                  color: NeonBoard.red,
+                  textAlign: "center",
+                  marginTop: 12,
+                }}
+              >
+                {pinError}
+              </Text>
+            )}
+          </View>
+        ) : (
+          <View>
+            <NeonSheetNote>{t("save_account.security_option")}</NeonSheetNote>
+            {SECURITY_OPTIONS.map((option) => (
+              <NeonSheetRow
+                key={option.type}
+                label={t(option.titleKey)}
+                subtitle={t(option.descriptionKey)}
+                icon={option.icon}
+                selected={selectedType === option.type}
+                onPress={() => handleOptionSelect(option.type)}
+              />
+            ))}
+          </View>
+        )}
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

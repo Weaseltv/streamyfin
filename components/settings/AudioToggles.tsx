@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View, type ViewProps } from "react-native";
@@ -8,7 +7,7 @@ import { ORIGINAL_LANGUAGE } from "@/utils/jellyfin/serverVersion";
 import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
-import { PlatformDropdown } from "../PlatformDropdown";
+import { DropdownTrigger, PlatformDropdown } from "../PlatformDropdown";
 import { useMedia } from "./MediaContext";
 
 interface Props extends ViewProps {}
@@ -94,19 +93,19 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
     );
   }, [settings?.defaultAudioLanguage, t]);
 
-  const audioLanguageTrigger = (
-    <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-      <Text className='mr-1 text-[#8E8D91]'>{audioLanguageLabel}</Text>
-      <Ionicons name='chevron-expand-sharp' size={18} color='#5A5960' />
-    </View>
-  );
-
   // Same condition as the TV control: MediaContext discards a locked write, so
   // an active selector here would look functional while doing nothing.
   const canChangeAudioLanguage =
     isReady &&
     !pluginSettings?.defaultAudioLanguage?.locked &&
     !pluginSettings?.playDefaultAudioTrack?.locked;
+
+  const audioLanguageTrigger = (
+    <DropdownTrigger
+      value={audioLanguageLabel}
+      disabled={!canChangeAudioLanguage}
+    />
+  );
 
   const audioTranscodeModeLabels: Record<AudioTranscodeMode, string> = {
     [AudioTranscodeMode.Auto]: t("home.settings.audio.transcode_mode.auto"),
@@ -180,7 +179,7 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
       <ListGroup
         title={t("home.settings.audio.audio_title")}
         description={
-          <Text className='text-[#8E8D91] text-xs'>
+          <Text variant='meta' muted>
             {t("home.settings.audio.audio_hint")}
           </Text>
         }
@@ -224,20 +223,13 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
           <PlatformDropdown
             groups={audioTranscodeModeOptions}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {
-                    audioTranscodeModeLabels[
-                      settings?.audioTranscodeMode || AudioTranscodeMode.Auto
-                    ]
-                  }
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+              <DropdownTrigger
+                value={
+                  audioTranscodeModeLabels[
+                    settings?.audioTranscodeMode || AudioTranscodeMode.Auto
+                  ]
+                }
+              />
             }
             title={t("home.settings.audio.transcode_mode.title")}
           />

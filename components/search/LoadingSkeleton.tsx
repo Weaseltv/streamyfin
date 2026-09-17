@@ -5,12 +5,15 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { Text } from "../common/Text";
+import { RailSkeleton } from "@/components/home/RailSkeleton";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 
 interface Props {
   isLoading: boolean;
 }
 
+/** Three section-shaped `card2` blocks in place of the result rails while a search runs. */
 export const LoadingSkeleton: React.FC<Props> = ({ isLoading }) => {
   const opacity = useSharedValue(1);
 
@@ -32,33 +35,31 @@ export const LoadingSkeleton: React.FC<Props> = ({ isLoading }) => {
   );
 
   return (
-    <Animated.View style={animatedStyle} className='mt-2 absolute w-full'>
+    <Animated.View
+      pointerEvents='none'
+      style={[animatedStyle, { position: "absolute", width: "100%" }]}
+    >
       {[1, 2, 3].map((s) => (
-        <View className='px-4 mb-4' key={s}>
-          <View className='w-1/2 bg-neutral-900 h-6 mb-2' />
-          <View className='flex flex-row gap-2'>
-            {[1, 2, 3].map((i) => (
-              <View className='w-28' key={i}>
-                <View className='bg-neutral-900 h-40 w-full mb-1' />
-                <View className='overflow-hidden mb-1 self-start'>
-                  <Text
-                    className='text-neutral-900 bg-neutral-900'
-                    numberOfLines={1}
-                  >
-                    Nisi mollit voluptate amet.
-                  </Text>
-                </View>
-                <View className='overflow-hidden self-start mb-1'>
-                  <Text
-                    className='text-neutral-900 bg-neutral-900 text-xs'
-                    numberOfLines={1}
-                  >
-                    Lorem ipsum
-                  </Text>
-                </View>
-              </View>
-            ))}
+        <View key={s} style={{ marginBottom: 16 }}>
+          <View
+            style={{
+              marginHorizontal: Sizes.gutter,
+              marginTop: 10,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottomWidth: 1,
+              borderBottomColor: NeonBoard.line,
+            }}
+          >
+            <View
+              style={{
+                width: 120,
+                height: 16,
+                backgroundColor: NeonBoard.card2,
+              }}
+            />
           </View>
+          <RailSkeleton orientation={s === 3 ? "horizontal" : "vertical"} />
         </View>
       ))}
     </Animated.View>

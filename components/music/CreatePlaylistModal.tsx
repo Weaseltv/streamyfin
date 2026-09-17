@@ -1,6 +1,4 @@
 import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
   BottomSheetModal,
   BottomSheetTextInput,
   BottomSheetView,
@@ -13,11 +11,16 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Keyboard } from "react-native";
+import { Keyboard, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import {
+  NeonSheetHead,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace } from "@/constants/neon";
 import { useCreatePlaylist } from "@/hooks/usePlaylistMutations";
 
 interface Props {
@@ -39,6 +42,7 @@ export const CreatePlaylistModal: React.FC<Props> = ({
   const createPlaylist = useCreatePlaylist();
 
   const [name, setName] = useState("");
+  const [focused, setFocused] = useState(false);
   const snapPoints = useMemo(() => ["40%"], []);
 
   useEffect(() => {
@@ -58,17 +62,6 @@ export const CreatePlaylistModal: React.FC<Props> = ({
       }
     },
     [setOpen],
-  );
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
   );
 
   const handleCreate = useCallback(async () => {
@@ -93,65 +86,60 @@ export const CreatePlaylistModal: React.FC<Props> = ({
       index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
       keyboardBehavior='interactive'
       keyboardBlurBehavior='restore'
     >
       <BottomSheetView
         style={{
           flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: insets.bottom + 16,
         }}
       >
-        <Text className='font-bold text-2xl mb-6'>
-          {t("music.playlists.create_playlist")}
-        </Text>
-
-        <Text className='text-neutral-400 mb-2 text-sm'>
-          {t("music.playlists.playlist_name")}
-        </Text>
-        <BottomSheetTextInput
-          placeholder={t("music.playlists.enter_name")}
-          placeholderTextColor='#737373'
-          value={name}
-          onChangeText={setName}
-          autoFocus
-          returnKeyType='done'
-          onSubmitEditing={handleCreate}
-          style={{
-            backgroundColor: "#262626",
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            fontSize: 16,
-            color: "white",
-            marginBottom: 24,
-          }}
+        <NeonSheetHead
+          eyebrow={t("music.tabs.playlists")}
+          title={t("music.playlists.create_playlist")}
+          onClose={() => setOpen(false)}
         />
 
-        <Button
-          onPress={handleCreate}
-          disabled={!isValid || createPlaylist.isPending}
-          className={`py-4  ${isValid ? "bg-volt" : "bg-neutral-700"}`}
-        >
-          {createPlaylist.isPending ? (
-            <ActivityIndicator color='white' />
-          ) : (
-            <Text
-              className={`text-center font-semibold ${isValid ? "text-white" : "text-neutral-500"}`}
-            >
-              {t("music.playlists.create")}
-            </Text>
-          )}
-        </Button>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <Text variant='caption' muted style={{ marginBottom: 6 }}>
+            {t("music.playlists.playlist_name")}
+          </Text>
+          <BottomSheetTextInput
+            placeholder={t("music.playlists.enter_name")}
+            placeholderTextColor={NeonBoard.low}
+            value={name}
+            onChangeText={setName}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            autoFocus
+            returnKeyType='done'
+            onSubmitEditing={handleCreate}
+            style={{
+              backgroundColor: NeonBoard.card2,
+              borderWidth: 1,
+              borderColor: focused ? NeonBoard.volt : NeonBoard.line2,
+              borderRadius: 0,
+              color: NeonBoard.text,
+              paddingHorizontal: 14,
+              minHeight: 48,
+              ...FontFace.bodySemi,
+              fontSize: 15,
+              marginBottom: 20,
+            }}
+          />
+
+          <Button
+            onPress={handleCreate}
+            disabled={!isValid || createPlaylist.isPending}
+            loading={createPlaylist.isPending}
+          >
+            {t("music.playlists.create")}
+          </Button>
+        </View>
       </BottomSheetView>
     </BottomSheetModal>
   );

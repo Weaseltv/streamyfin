@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import {
   commonScreenOptions,
+  neonRootScreenOptions,
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
@@ -13,13 +14,7 @@ export default function SearchLayout() {
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen
         name='index'
-        options={{
-          headerShown: !Platform.isTV,
-          headerTitle: t("tabs.search"),
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
+        options={{ ...neonRootScreenOptions, title: t("tabs.search") }}
       />
       {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
         <Stack.Screen key={name} name={name} options={options} />

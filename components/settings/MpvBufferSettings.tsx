@@ -1,12 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { Stepper } from "@/components/inputs/Stepper";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
 import { type MpvCacheMode, useSettings } from "@/utils/atoms/settings";
-import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -49,14 +49,7 @@ export const MpvBufferSettings: React.FC = () => {
       <ListItem title={t("home.settings.buffer.cache_mode")}>
         <PlatformDropdown
           groups={cacheModeOptions}
-          trigger={
-            <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-              <Text className='mr-1 text-[#8E8D91]'>
-                {currentCacheModeLabel}
-              </Text>
-              <Ionicons name='chevron-expand-sharp' size={18} color='#5A5960' />
-            </View>
-          }
+          trigger={<DropdownTrigger value={currentCacheModeLabel} />}
           title={t("home.settings.buffer.cache_mode")}
         />
       </ListItem>

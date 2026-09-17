@@ -74,6 +74,7 @@ const RecentRequestsSlide: React.FC<SlideProps & ViewProps> = ({
       <Slide
         {...props}
         slide={slide}
+        count={requests.results.length}
         data={
           requests.results.map((item) => ({
             ...item,

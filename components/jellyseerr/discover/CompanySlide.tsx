@@ -12,6 +12,8 @@ import {
 } from "@/utils/jellyseerr/src/components/Discover/NetworkSlider";
 import type { Studio } from "@/utils/jellyseerr/src/components/Discover/StudioSlider";
 
+const COMPANY_CARD_WIDTH = 128;
+
 const CompanySlide: React.FC<
   { data: Network[] | Studio[] } & SlideProps & ViewProps
 > = ({ slide, data, ...props }) => {
@@ -36,9 +38,9 @@ const CompanySlide: React.FC<
       data={data}
       keyExtractor={(item) => item.id.toString()}
       renderItem={(item, _index) => (
-        <TouchableOpacity className='mr-2' onPress={() => navigate(item)}>
+        <TouchableOpacity onPress={() => navigate(item)}>
           <GenericSlideCard
-            className='w-28 overflow-hidden border border-neutral-900 p-4'
+            style={{ width: COMPANY_CARD_WIDTH, padding: 16 }}
             id={item.id.toString()}
             url={jellyseerrApi?.imageProxy(
               item.image,

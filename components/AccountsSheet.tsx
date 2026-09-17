@@ -1,23 +1,25 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, TouchableOpacity, View } from "react-native";
+import { Platform, TouchableOpacity, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import {
   deleteAccountCredential,
   type SavedServer,
   type SavedServerAccount,
 } from "@/utils/secureCredentials";
+import { serverHost } from "@/utils/serverHost";
 import { Button } from "./Button";
+import { useConfirmDialog } from "./common/ConfirmDialog";
+import {
+  NeonSheet,
+  NeonSheetNote,
+  neonSheetModalProps,
+} from "./common/NeonSheet";
 import { Text } from "./common/Text";
 
 interface AccountsSheetProps {
@@ -38,8 +40,8 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
   onAccountDeleted,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { confirm, dialog } = useConfirmDialog();
 
   const isAndroid = Platform.OS === "android";
   const snapPoints = useMemo(
@@ -64,45 +66,31 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleDeleteAccount = async (account: SavedServerAccount) => {
     if (!server) return;
 
-    Alert.alert(
-      t("server.remove_saved_login"),
-      t("server.remove_account_description", { username: account.username }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.remove"),
-          style: "destructive",
-          onPress: async () => {
-            await deleteAccountCredential(server.address, account.userId);
-            onAccountDeleted?.();
-          },
-        },
-      ],
-    );
+    confirm({
+      title: t("server.remove_saved_login"),
+      message: t("server.remove_account_description", {
+        username: account.username,
+      }),
+      confirmLabel: t("common.remove"),
+      destructive: true,
+      onConfirm: async () => {
+        await deleteAccountCredential(server.address, account.userId);
+        onAccountDeleted?.();
+      },
+    });
   };
 
   const getSecurityIcon = (
     securityType: SavedServerAccount["securityType"],
-  ): keyof typeof Ionicons.glyphMap => {
+  ): keyof typeof Feather.glyphMap => {
     switch (securityType) {
       case "pin":
-        return "keypad";
+        return "hash";
       case "password":
-        return "lock-closed";
+        return "lock";
       default:
         return "key";
     }
@@ -111,9 +99,16 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
   const renderRightActions = (account: SavedServerAccount) => (
     <TouchableOpacity
       onPress={() => handleDeleteAccount(account)}
-      className='bg-red-600 justify-center items-center px-5'
+      accessibilityRole='button'
+      accessibilityLabel={t("common.remove")}
+      style={{
+        backgroundColor: NeonBoard.red,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20,
+      }}
     >
-      <Ionicons name='trash' size={20} color='white' />
+      <Feather name='trash-2' size={20} color={NeonBoard.text} />
     </TouchableOpacity>
   );
 
@@ -124,100 +119,93 @@ export const AccountsSheet: React.FC<AccountsSheetProps> = ({
       ref={bottomSheetModalRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: "white" }}
-      backgroundStyle={{ backgroundColor: Colors.surface }}
-      backdropComponent={renderBackdrop}
+      {...neonSheetModalProps}
     >
-      <BottomSheetView
-        style={{
-          flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
-          paddingBottom: Math.max(16, insets.bottom),
-        }}
-      >
-        <View className='flex-1'>
-          {/* Header */}
-          <View className='mb-4'>
-            <Text className='font-bold text-2xl text-neutral-100'>
-              {t("server.select_account")}
-            </Text>
-            <Text className='text-neutral-400 mt-1'>
-              {server.name || server.address}
-            </Text>
-          </View>
-
-          {/* Account List */}
-          <View className='bg-neutral-800 overflow-hidden mb-4'>
-            {server.accounts.map((account, index) => (
-              <Swipeable
-                key={account.userId}
-                renderRightActions={() => renderRightActions(account)}
-                overshootRight={false}
-              >
-                <TouchableOpacity
-                  onPress={() => {
-                    setOpen(false);
-                    onAccountSelect(account);
-                  }}
-                  className={`flex-row items-center p-4 bg-neutral-800 ${
-                    index < server.accounts.length - 1
-                      ? "border-b border-neutral-700"
-                      : ""
-                  }`}
-                >
-                  {/* Avatar */}
-                  <View className='w-10 h-10 bg-neutral-700 rounded-full items-center justify-center mr-3'>
-                    <Ionicons name='person' size={20} color='white' />
-                  </View>
-
-                  {/* Account Info */}
-                  <View className='flex-1'>
-                    <Text className='text-neutral-100 font-medium'>
-                      {account.username}
-                    </Text>
-                    <Text className='text-neutral-500 text-sm'>
-                      {account.securityType === "none"
-                        ? t("save_account.no_protection")
-                        : account.securityType === "pin"
-                          ? t("save_account.pin_code")
-                          : t("save_account.password")}
-                    </Text>
-                  </View>
-
-                  {/* Security Icon */}
-                  <Ionicons
-                    name={getSecurityIcon(account.securityType)}
-                    size={18}
-                    color={Colors.primary}
-                  />
-                </TouchableOpacity>
-              </Swipeable>
-            ))}
-          </View>
-
-          {/* Hint */}
-          <Text className='text-xs text-neutral-500 mb-4 ml-1'>
-            {t("server.swipe_to_remove")}
-          </Text>
-
-          {/* Add Account Button */}
+      <NeonSheet
+        fill
+        eyebrow={server.name || serverHost(server.address)}
+        title={t("server.select_account")}
+        onClose={() => setOpen(false)}
+        primary={
           <Button
             onPress={() => {
               setOpen(false);
               onAddAccount();
             }}
             color='primary'
+            iconLeft={
+              <Feather name='plus' size={18} color={NeonBoard.onAccent} />
+            }
           >
-            <View className='flex-row items-center justify-center'>
-              <Ionicons name='add' size={20} color='white' />
-              <Text className='text-white font-semibold ml-2'>
-                {t("server.add_account")}
-              </Text>
-            </View>
+            {t("server.add_account")}
           </Button>
-        </View>
-      </BottomSheetView>
+        }
+      >
+        {server.accounts.map((account) => (
+          <Swipeable
+            key={account.userId}
+            renderRightActions={() => renderRightActions(account)}
+            overshootRight={false}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                setOpen(false);
+                onAccountSelect(account);
+              }}
+              activeOpacity={0.7}
+              accessibilityRole='button'
+              style={{
+                minHeight: 52,
+                paddingVertical: 8,
+                paddingLeft: Sizes.rowLead,
+                paddingRight: Sizes.gutter,
+                flexDirection: "row",
+                alignItems: "center",
+                borderBottomWidth: 1,
+                borderBottomColor: NeonBoard.line,
+                backgroundColor: NeonBoard.card,
+              }}
+            >
+              {/* People avatar: the one round shape on the panel. */}
+              <View
+                className='rounded-full'
+                style={{
+                  width: 36,
+                  height: 36,
+                  backgroundColor: NeonBoard.card2,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
+                }}
+              >
+                <Feather name='user' size={18} color={NeonBoard.mid} />
+              </View>
+
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text variant='rowTitle' numberOfLines={1}>
+                  {account.username}
+                </Text>
+                <Text variant='meta' muted style={{ marginTop: 2 }}>
+                  {account.securityType === "none"
+                    ? t("save_account.no_protection")
+                    : account.securityType === "pin"
+                      ? t("save_account.pin_code")
+                      : t("save_account.password")}
+                </Text>
+              </View>
+
+              <Feather
+                name={getSecurityIcon(account.securityType)}
+                size={18}
+                color={NeonBoard.volt}
+              />
+            </TouchableOpacity>
+          </Swipeable>
+        ))}
+
+        <NeonSheetNote>{t("server.swipe_to_remove")}</NeonSheetNote>
+        {dialog}
+      </NeonSheet>
     </BottomSheetModal>
   );
 };

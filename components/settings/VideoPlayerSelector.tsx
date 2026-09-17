@@ -1,9 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import { type ViewProps } from "react-native";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
 import {
   getActiveVideoPlayer,
   isNativePlayerSupported,
@@ -65,7 +67,7 @@ export const VideoPlayerSelector: React.FC<ViewProps> = ({ ...props }) => {
     <ListGroup
       title={t("home.settings.video_player.title")}
       description={
-        <Text className='text-[#8E8D91] text-xs'>
+        <Text variant='meta' muted>
           {t("home.settings.video_player.native_note")}
         </Text>
       }
@@ -74,12 +76,7 @@ export const VideoPlayerSelector: React.FC<ViewProps> = ({ ...props }) => {
       <ListItem title={t("home.settings.video_player.title")}>
         <PlatformDropdown
           groups={playerOptionGroups}
-          trigger={
-            <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-              <Text className='mr-1 text-[#8E8D91]'>{currentPlayerLabel}</Text>
-              <Ionicons name='chevron-expand-sharp' size={18} color='#5A5960' />
-            </View>
-          }
+          trigger={<DropdownTrigger value={currentPlayerLabel} />}
           title={t("home.settings.video_player.title")}
         />
       </ListItem>

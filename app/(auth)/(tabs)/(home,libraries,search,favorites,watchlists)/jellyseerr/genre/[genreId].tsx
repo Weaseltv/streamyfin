@@ -82,11 +82,12 @@ export default function JellyseerrGenrePage() {
       }}
       logo={
         <Text
-          className='text-4xl font-bold text-center bottom-1'
-          style={{
-            ...textShadowStyle.shadow,
-            shadowRadius: 10,
-          }}
+          variant='display'
+          style={[
+            { textAlign: "center", bottom: 4 },
+            textShadowStyle.shadow,
+            { shadowRadius: 10 },
+          ]}
         >
           {name}
         </Text>

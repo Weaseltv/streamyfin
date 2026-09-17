@@ -1,45 +1,207 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, useBottomSheet } from "@gorhom/bottom-sheet";
 import type { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useQuery } from "@tanstack/react-query";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
+import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
-import { Text } from "@/components/common/Text";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
-import { Colors } from "@/constants/Colors";
+import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import type {
   QualityProfile,
   RootFolder,
   Tag,
 } from "@/utils/jellyseerr/server/api/servarr/base";
-import type { MediaType } from "@/utils/jellyseerr/server/constants/media";
+import {
+  MediaStatus,
+  MediaType,
+} from "@/utils/jellyseerr/server/constants/media";
 import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
 import { writeDebugLog } from "@/utils/log";
+import { NeonSheet, neonSheetModalProps } from "../common/NeonSheet";
+import { Text } from "../common/Text";
+import { PlatformDropdown } from "../PlatformDropdown";
+
+/** A season as the request sheet shows it: number, episode count and Seerr status. */
+export interface RequestSeason {
+  seasonNumber: number;
+  episodeCount: number;
+  status: MediaStatus;
+}
 
 interface Props {
   id: number;
   title: string;
   requestBody?: MediaRequestBody;
   type: MediaType;
+  /** Series only: the season rows; those already available are not selectable. */
+  seasons?: RequestSeason[];
   isAnime?: boolean;
   is4k?: boolean;
   onRequested?: () => void;
   onDismiss?: () => void;
 }
 
+const CHECK = 20;
+
+/**
+ * A 52 season row: square 20 checkbox (checked = filled volt with a glow,
+ * unchecked = 1pt `line2`), "Season n" + "n episodes", and the status badge
+ * on the right when the season is already requested or available.
+ */
+export const SeasonRow: React.FC<{
+  season: RequestSeason;
+  checked?: boolean;
+  onToggle?: () => void;
+  /** Right side when the row is not selectable (a status badge, a request badge). */
+  right?: React.ReactNode;
+  /** Something other than the checkbox on the left (the seasons list's chevron). */
+  leading?: React.ReactNode;
+  accent?: string;
+}> = ({
+  season,
+  checked = false,
+  onToggle,
+  right,
+  leading,
+  accent = NeonBoard.volt,
+}) => {
+  const { t } = useTranslation();
+  const selectable = !!onToggle;
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      disabled={!selectable}
+      activeOpacity={0.7}
+      accessibilityRole={selectable ? "checkbox" : undefined}
+      accessibilityState={{ checked, disabled: !selectable }}
+      style={{
+        minHeight: 52,
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        paddingVertical: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+      }}
+    >
+      {leading !== undefined ? (
+        leading
+      ) : onToggle || right === undefined ? (
+        <View
+          style={[
+            {
+              width: CHECK,
+              height: CHECK,
+              marginRight: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: checked ? accent : NeonBoard.line2,
+              backgroundColor: checked ? accent : "transparent",
+              opacity: selectable ? 1 : 0.5,
+            },
+            checked ? glowChip(accent) : null,
+          ]}
+        >
+          {checked ? (
+            <Feather name='check' size={14} color={NeonBoard.onAccent} />
+          ) : null}
+        </View>
+      ) : null}
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <Text variant='rowTitle' numberOfLines={1}>
+          {t("jellyseerr.season_number", {
+            season_number: season.seasonNumber,
+          })}
+        </Text>
+        <Text variant='meta' muted numberOfLines={1} style={{ marginTop: 2 }}>
+          {t("jellyseerr.number_episodes", {
+            episode_number: season.episodeCount,
+          })}
+        </Text>
+      </View>
+      {right}
+    </TouchableOpacity>
+  );
+};
+
+/** A 52 picker row: label in `text`, the value in volt with a caret. */
+const PickerRow: React.FC<{ label: string; value?: string | null }> = ({
+  label,
+  value,
+}) => (
+  <View
+    style={{
+      minHeight: 52,
+      paddingLeft: Sizes.rowLead,
+      paddingRight: Sizes.gutter,
+      paddingVertical: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: NeonBoard.card2,
+      borderBottomWidth: 1,
+      borderBottomColor: NeonBoard.line,
+    }}
+  >
+    <Text variant='rowTitle' numberOfLines={1} style={{ flex: 1 }}>
+      {label}
+    </Text>
+    <Text
+      variant='rowTitle'
+      accent={NeonBoard.volt}
+      numberOfLines={1}
+      style={{ maxWidth: "55%", fontSize: 14 }}
+    >
+      {value ?? "—"}
+    </Text>
+    <Feather
+      name='chevron-down'
+      size={16}
+      color={NeonBoard.volt}
+      style={{ marginLeft: 6 }}
+    />
+  </View>
+);
+
+const CloseHead: React.FC<{
+  eyebrow: string;
+  title: string;
+  children?: React.ReactNode;
+  primary?: React.ReactNode;
+}> = ({ eyebrow, title, children, primary }) => {
+  const { close } = useBottomSheet();
+  return (
+    <NeonSheet
+      eyebrow={eyebrow}
+      title={title}
+      onClose={() => close()}
+      primary={primary}
+    >
+      {children}
+    </NeonSheet>
+  );
+};
+
 const RequestModal = forwardRef<
   BottomSheetModalMethods,
   Props & Omit<ViewProps, "id">
 >(
   (
-    { id, title, requestBody, type, isAnime = false, onRequested, onDismiss },
+    {
+      id,
+      title,
+      requestBody,
+      type,
+      seasons,
+      isAnime = false,
+      onRequested,
+      onDismiss,
+    },
     ref,
   ) => {
     const { jellyseerrApi, jellyseerrUser, requestMedia } = useJellyseerr();
@@ -48,6 +210,7 @@ const RequestModal = forwardRef<
       mediaType: type,
       userId: jellyseerrUser?.id,
     });
+    const [selectedSeasons, setSelectedSeasons] = useState<number[]>([]);
 
     const [qualityProfileOpen, setQualityProfileOpen] = useState(false);
     const [rootFolderOpen, setRootFolderOpen] = useState(false);
@@ -55,6 +218,16 @@ const RequestModal = forwardRef<
     const [usersOpen, setUsersOpen] = useState(false);
 
     const { t } = useTranslation();
+
+    const isTv = type === MediaType.TV;
+
+    // The caller decides which seasons the request starts with (all unknown
+    // ones, or a single one); the rows let the user narrow that down.
+    useEffect(() => {
+      setSelectedSeasons(
+        Array.isArray(requestBody?.seasons) ? requestBody.seasons : [],
+      );
+    }, [requestBody?.seasons]);
 
     // Reset all dropdown states when modal closes
     const handleDismiss = useCallback(() => {
@@ -145,16 +318,16 @@ const RequestModal = forwardRef<
     }, [defaultServiceDetails]);
 
     const seasonTitle = useMemo(() => {
-      if (!requestBody?.seasons || requestBody.seasons.length === 0) {
+      if (!isTv || selectedSeasons.length === 0) {
         return undefined;
       }
-      if (requestBody.seasons.length > 1) {
+      if (selectedSeasons.length > 1) {
         return t("jellyseerr.season_all");
       }
       return t("jellyseerr.season_number", {
-        season_number: requestBody.seasons[0],
+        season_number: selectedSeasons[0],
       });
-    }, [requestBody?.seasons]);
+    }, [isTv, selectedSeasons]);
 
     const pathTitleExtractor = (item: RootFolder) =>
       `${item.path} (${item.freeSpace.bytesToReadable()})`;
@@ -267,6 +440,7 @@ const RequestModal = forwardRef<
         tags: defaultTags.map((t) => t.id),
         ...requestBody,
         ...requestOverrides,
+        ...(isTv ? { seasons: selectedSeasons } : null),
       };
 
       writeDebugLog("Sending Jellyseerr advanced request", body);
@@ -282,7 +456,63 @@ const RequestModal = forwardRef<
       defaultProfile,
       defaultFolder,
       defaultTags,
+      isTv,
+      selectedSeasons,
+      seasonTitle,
     ]);
+
+    const toggleSeason = useCallback(
+      (seasonNumber: number) =>
+        setSelectedSeasons((prev) =>
+          prev.includes(seasonNumber)
+            ? prev.filter((n) => n !== seasonNumber)
+            : [...prev, seasonNumber].sort((a, b) => a - b),
+        ),
+      [],
+    );
+
+    const seasonRows = useMemo(
+      () =>
+        (seasons ?? [])
+          .filter((s) => s.seasonNumber !== 0)
+          .sort((a, b) => a.seasonNumber - b.seasonNumber),
+      [seasons],
+    );
+
+    const selectedProfileName =
+      defaultServiceDetails?.profiles.find(
+        (p) => p.id === (requestOverrides.profileId || defaultProfile?.id),
+      )?.name || defaultProfile?.name;
+
+    const selectedFolder = defaultServiceDetails?.rootFolders.find(
+      (f) => f.path === (requestOverrides.rootFolder || defaultFolder?.path),
+    );
+    const selectedFolderTitle = selectedFolder
+      ? pathTitleExtractor(selectedFolder)
+      : defaultFolder
+        ? pathTitleExtractor(defaultFolder)
+        : undefined;
+
+    const selectedTagsTitle = requestOverrides.tags
+      ? defaultServiceDetails?.tags
+          .filter((t) => requestOverrides.tags!.includes(t.id))
+          .map((t) => t.label)
+          .join(", ") || defaultTags.map((t) => t.label).join(", ")
+      : defaultTags.map((t) => t.label).join(", ");
+
+    const selectedUserName =
+      users?.find(
+        (u) => u.id === (requestOverrides.userId || jellyseerrUser?.id),
+      )?.displayName || jellyseerrUser?.displayName;
+
+    const requestLabel =
+      isTv && selectedSeasons.length > 0
+        ? t("request.button_seasons", { count: selectedSeasons.length })
+        : t("jellyseerr.request_button");
+
+    const eyebrow = `${t("jellyseerr.request_button")} · ${
+      isTv ? t("search.series") : t("search.movies")
+    }`;
 
     return (
       <BottomSheetModal
@@ -290,148 +520,105 @@ const RequestModal = forwardRef<
         enableDynamicSizing
         enableDismissOnClose
         onDismiss={handleDismiss}
-        handleIndicatorStyle={{
-          backgroundColor: "white",
-        }}
-        backgroundStyle={{
-          backgroundColor: Colors.surface,
-        }}
-        backdropComponent={(sheetProps: BottomSheetBackdropProps) => (
-          <BottomSheetBackdrop
-            {...sheetProps}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-          />
-        )}
+        {...neonSheetModalProps}
         stackBehavior='push'
       >
-        <BottomSheetView>
-          <View className='flex flex-col space-y-4 px-4 pb-8 pt-2'>
-            <View>
-              <Text className='font-bold text-2xl text-neutral-100'>
-                {t("jellyseerr.advanced")}
-              </Text>
-              {seasonTitle && (
-                <Text className='text-neutral-300'>{seasonTitle}</Text>
-              )}
-            </View>
-            <View className='flex flex-col space-y-2'>
-              {defaultService && defaultServiceDetails && users && (
-                <>
-                  <View className='flex flex-col'>
-                    <Text className='opacity-50 mb-1 text-xs'>
-                      {t("jellyseerr.quality_profile")}
-                    </Text>
-                    <PlatformDropdown
-                      groups={qualityProfileOptions}
-                      trigger={
-                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
-                          <Text numberOfLines={1}>
-                            {defaultServiceDetails.profiles.find(
-                              (p) =>
-                                p.id ===
-                                (requestOverrides.profileId ||
-                                  defaultProfile?.id),
-                            )?.name || defaultProfile?.name}
-                          </Text>
-                        </View>
-                      }
-                      title={t("jellyseerr.quality_profile")}
-                      open={qualityProfileOpen}
-                      onOpenChange={setQualityProfileOpen}
-                    />
-                  </View>
-
-                  <View className='flex flex-col'>
-                    <Text className='opacity-50 mb-1 text-xs'>
-                      {t("jellyseerr.root_folder")}
-                    </Text>
-                    <PlatformDropdown
-                      groups={rootFolderOptions}
-                      trigger={
-                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
-                          <Text numberOfLines={1}>
-                            {defaultServiceDetails.rootFolders.find(
-                              (f) =>
-                                f.path ===
-                                (requestOverrides.rootFolder ||
-                                  defaultFolder?.path),
-                            )
-                              ? pathTitleExtractor(
-                                  defaultServiceDetails.rootFolders.find(
-                                    (f) =>
-                                      f.path ===
-                                      (requestOverrides.rootFolder ||
-                                        defaultFolder?.path),
-                                  )!,
-                                )
-                              : pathTitleExtractor(defaultFolder!)}
-                          </Text>
-                        </View>
-                      }
-                      title={t("jellyseerr.root_folder")}
-                      open={rootFolderOpen}
-                      onOpenChange={setRootFolderOpen}
-                    />
-                  </View>
-
-                  <View className='flex flex-col'>
-                    <Text className='opacity-50 mb-1 text-xs'>
-                      {t("jellyseerr.tags")}
-                    </Text>
-                    <PlatformDropdown
-                      groups={tagsOptions}
-                      trigger={
-                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
-                          <Text numberOfLines={1}>
-                            {requestOverrides.tags
-                              ? defaultServiceDetails.tags
-                                  .filter((t) =>
-                                    requestOverrides.tags!.includes(t.id),
-                                  )
-                                  .map((t) => t.label)
-                                  .join(", ") ||
-                                defaultTags.map((t) => t.label).join(", ")
-                              : defaultTags.map((t) => t.label).join(", ")}
-                          </Text>
-                        </View>
-                      }
-                      title={t("jellyseerr.tags")}
-                      open={tagsOpen}
-                      onOpenChange={setTagsOpen}
-                    />
-                  </View>
-
-                  <View className='flex flex-col'>
-                    <Text className='opacity-50 mb-1 text-xs'>
-                      {t("jellyseerr.request_as")}
-                    </Text>
-                    <PlatformDropdown
-                      groups={usersOptions}
-                      trigger={
-                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
-                          <Text numberOfLines={1}>
-                            {users.find(
-                              (u) =>
-                                u.id ===
-                                (requestOverrides.userId || jellyseerrUser?.id),
-                            )?.displayName || jellyseerrUser!.displayName}
-                          </Text>
-                        </View>
-                      }
-                      title={t("jellyseerr.request_as")}
-                      open={usersOpen}
-                      onOpenChange={setUsersOpen}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-            <Button className='mt-auto' onPress={request} color='primary'>
-              {t("jellyseerr.request_button")}
+        <CloseHead
+          eyebrow={eyebrow}
+          title={title}
+          primary={
+            <Button
+              accent={NeonBoard.volt}
+              onPress={request}
+              disabled={isTv && selectedSeasons.length === 0}
+              iconLeft={
+                <Feather name='inbox' size={18} color={NeonBoard.onAccent} />
+              }
+            >
+              {requestLabel}
             </Button>
-          </View>
-        </BottomSheetView>
+          }
+        >
+          {isTv && seasonRows.length > 0 && (
+            <View>
+              {seasonRows.map((season) => {
+                const selectable = season.status === MediaStatus.UNKNOWN;
+                return (
+                  <SeasonRow
+                    key={season.seasonNumber}
+                    season={season}
+                    checked={selectedSeasons.includes(season.seasonNumber)}
+                    onToggle={
+                      selectable
+                        ? () => toggleSeason(season.seasonNumber)
+                        : undefined
+                    }
+                    right={
+                      selectable ? undefined : (
+                        <JellyseerrStatusIcon
+                          mediaStatus={season.status}
+                          showRequestIcon={false}
+                        />
+                      )
+                    }
+                  />
+                );
+              })}
+            </View>
+          )}
+          {defaultService && defaultServiceDetails && users && (
+            <View>
+              <PlatformDropdown
+                groups={qualityProfileOptions}
+                trigger={
+                  <PickerRow
+                    label={t("jellyseerr.quality_profile")}
+                    value={selectedProfileName}
+                  />
+                }
+                title={t("jellyseerr.quality_profile")}
+                open={qualityProfileOpen}
+                onOpenChange={setQualityProfileOpen}
+              />
+              <PlatformDropdown
+                groups={rootFolderOptions}
+                trigger={
+                  <PickerRow
+                    label={t("jellyseerr.root_folder")}
+                    value={selectedFolderTitle}
+                  />
+                }
+                title={t("jellyseerr.root_folder")}
+                open={rootFolderOpen}
+                onOpenChange={setRootFolderOpen}
+              />
+              <PlatformDropdown
+                groups={tagsOptions}
+                trigger={
+                  <PickerRow
+                    label={t("jellyseerr.tags")}
+                    value={selectedTagsTitle}
+                  />
+                }
+                title={t("jellyseerr.tags")}
+                open={tagsOpen}
+                onOpenChange={setTagsOpen}
+              />
+              <PlatformDropdown
+                groups={usersOptions}
+                trigger={
+                  <PickerRow
+                    label={t("jellyseerr.request_as")}
+                    value={selectedUserName}
+                  />
+                }
+                title={t("jellyseerr.request_as")}
+                open={usersOpen}
+                onOpenChange={setUsersOpen}
+              />
+            </View>
+          )}
+        </CloseHead>
       </BottomSheetModal>
     );
   },

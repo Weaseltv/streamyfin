@@ -11,6 +11,8 @@ import { DiscoverSliderType } from "@/utils/jellyseerr/server/constants/discover
 import type { GenreSliderItem } from "@/utils/jellyseerr/server/interfaces/api/discoverInterfaces";
 import { genreColorMap } from "@/utils/jellyseerr/src/components/Discover/constants";
 
+const GENRE_CARD_WIDTH = 128;
+
 const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
   const segments = useSegments();
   const { jellyseerrApi } = useJellyseerr();
@@ -46,9 +48,9 @@ const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
         data={data}
         keyExtractor={(item) => item.id.toString()}
         renderItem={(item, _index) => (
-          <TouchableOpacity className='mr-2' onPress={() => navigate(item)}>
+          <TouchableOpacity onPress={() => navigate(item)}>
             <GenericSlideCard
-              className='w-28 overflow-hidden border border-neutral-900'
+              style={{ width: GENRE_CARD_WIDTH }}
               id={item.id.toString()}
               title={item.name}
               colors={["transparent", "transparent"]}

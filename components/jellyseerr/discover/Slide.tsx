@@ -3,25 +3,28 @@ import { t } from "i18next";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { View, type ViewProps, type ViewStyle } from "react-native";
-import { Text } from "@/components/common/Text";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { RAIL_GAP } from "@/components/home/ItemCard";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { DiscoverSliderType } from "@/utils/jellyseerr/server/constants/discover";
 import type DiscoverSlider from "@/utils/jellyseerr/server/entity/DiscoverSlider";
 
 export interface SlideProps {
   slide: DiscoverSlider;
   contentContainerStyle?: ViewStyle;
+  /** Trailing count on the rule (finite lists only). */
+  count?: number;
 }
 
 interface Props<T> extends SlideProps {
   data: T[];
-  renderItem: (
-    item: T,
-    index: number,
-  ) => React.ComponentType<any> | React.ReactElement | null | undefined;
+  renderItem: (item: T, index: number) => React.ReactElement | null | undefined;
   keyExtractor: (item: T) => string;
   onEndReached?: (() => void) | null | undefined;
 }
 
+/** A discover rail: section head on a volt rule, cards on a 12 gutter with a 10 gap. */
 const Slide = <T,>({
   data,
   slide,
@@ -29,17 +32,22 @@ const Slide = <T,>({
   keyExtractor,
   onEndReached,
   contentContainerStyle,
+  count,
   ...props
 }: PropsWithChildren<Props<T> & ViewProps>) => {
   return (
     <View {...props}>
-      <Text className='font-bold text-lg mb-2 px-4'>
-        {t(`search.${DiscoverSliderType[slide.type].toString().toLowerCase()}`)}
-      </Text>
+      <SectionHeader
+        title={t(
+          `search.${DiscoverSliderType[slide.type].toString().toLowerCase()}`,
+        )}
+        accent={NeonBoard.volt}
+        count={count}
+      />
       <FlashList
         horizontal
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: Sizes.gutter,
           ...(contentContainerStyle ? contentContainerStyle : {}),
         }}
         showsHorizontalScrollIndicator={false}
@@ -47,9 +55,12 @@ const Slide = <T,>({
         data={data}
         onEndReachedThreshold={1}
         onEndReached={onEndReached}
-        //@ts-expect-error
         renderItem={({ item, index }) =>
-          item ? renderItem(item, index) : null
+          item ? (
+            <View style={{ marginRight: RAIL_GAP }}>
+              {renderItem(item, index)}
+            </View>
+          ) : null
         }
       />
     </View>

@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { SubtitlePlaybackMode } from "@jellyfin/sdk/lib/generated-client";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +9,7 @@ import { useSettings } from "@/utils/atoms/settings";
 import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
-import { PlatformDropdown } from "../PlatformDropdown";
+import { DropdownTrigger, PlatformDropdown } from "../PlatformDropdown";
 import { useMedia } from "./MediaContext";
 
 interface Props extends ViewProps {}
@@ -101,7 +100,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
         className='mb-4'
         title={t("home.settings.subtitles.subtitle_title")}
         description={
-          <Text className='text-[#8E8D91] text-xs'>
+          <Text variant='meta' muted>
             {t("home.settings.subtitles.subtitle_hint")}
           </Text>
         }
@@ -110,17 +109,12 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           <PlatformDropdown
             groups={subtitleLanguageOptionGroups}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {settings?.defaultSubtitleLanguage?.DisplayName ||
-                    t("home.settings.subtitles.none")}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+              <DropdownTrigger
+                value={
+                  settings?.defaultSubtitleLanguage?.DisplayName ||
+                  t("home.settings.subtitles.none")
+                }
+              />
             }
             title={t("home.settings.subtitles.language")}
           />
@@ -133,17 +127,12 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           <PlatformDropdown
             groups={subtitleModeOptionGroups}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {t(subtitleModeKeys[settings?.subtitleMode]) ||
-                    t("home.settings.subtitles.loading")}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+              <DropdownTrigger
+                value={
+                  t(subtitleModeKeys[settings?.subtitleMode]) ||
+                  t("home.settings.subtitles.loading")
+                }
+              />
             }
             title={t("home.settings.subtitles.subtitle_mode")}
           />
@@ -196,18 +185,17 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           t("home.settings.subtitles.opensubtitles_title") || "OpenSubtitles"
         }
         description={
-          <Text className='text-[#8E8D91] text-xs'>
+          <Text variant='meta' muted>
             {t("home.settings.subtitles.opensubtitles_hint") ||
               "Enter your OpenSubtitles API key to enable client-side subtitle search as a fallback when your Jellyfin server doesn't have a subtitle provider configured."}
           </Text>
         }
       >
-        <View className='p-4'>
-          <Text className='text-xs text-gray-400 mb-2'>
+        <View className='px-3 pt-1 pb-3'>
+          <Text variant='meta' muted className='mb-2'>
             {t("home.settings.subtitles.opensubtitles_api_key") || "API Key"}
           </Text>
           <Input
-            className='border border-neutral-800'
             placeholder={
               t("home.settings.subtitles.opensubtitles_api_key_placeholder") ||
               "Enter API key..."
@@ -221,7 +209,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
             autoCorrect={false}
             secureTextEntry
           />
-          <Text className='text-xs text-gray-500 mt-2'>
+          <Text variant='caption' muted className='mt-2'>
             {t("home.settings.subtitles.opensubtitles_get_key") ||
               "Get your free API key at opensubtitles.com/en/consumers"}
           </Text>

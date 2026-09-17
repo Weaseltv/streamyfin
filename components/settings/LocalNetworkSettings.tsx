@@ -1,10 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 import { toast } from "sonner-native";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
+import { NeonBoard } from "@/constants/Colors";
 import { useWifiSSID } from "@/hooks/useWifiSSID";
 import { openLocationSettings } from "@/modules/wifi-ssid";
 import { useServerUrl } from "@/providers/ServerUrlProvider";
@@ -52,26 +54,35 @@ function StatusDisplay({
   const urlType = isUsingLocalUrl
     ? t("home.settings.network.local")
     : t("home.settings.network.remote");
-  const urlTypeColor = isUsingLocalUrl ? "text-green-500" : "text-blue-500";
+  const urlTypeColor = isUsingLocalUrl ? NeonBoard.green : NeonBoard.volt;
 
   return (
-    <View className='px-4 py-2 bg-neutral-900 mt-4'>
-      <View className='flex-row justify-between items-center py-1'>
-        <Text className='text-neutral-400'>
+    <View className='mt-4'>
+      <SectionHeader title={t("jellyseerr.status")} />
+      <View
+        className='flex-row justify-between items-center py-2 px-3'
+        style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
+      >
+        <Text variant='rowTitle'>
           {t("home.settings.network.current_wifi")}
         </Text>
-        <Text>{wifiStatus}</Text>
-      </View>
-      <View className='flex-row justify-between items-center py-1'>
-        <Text className='text-neutral-400'>
-          {t("home.settings.network.using_url")}
+        <Text variant='meta' muted>
+          {wifiStatus}
         </Text>
-        <Text className={urlTypeColor}>{urlType}</Text>
+      </View>
+      <View
+        className='flex-row justify-between items-center py-2 px-3'
+        style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
+      >
+        <Text variant='rowTitle'>{t("home.settings.network.using_url")}</Text>
+        <Text variant='chip' style={{ color: urlTypeColor }}>
+          {urlType}
+        </Text>
       </View>
 
       {locationBlocked && (
-        <View className='mt-2 pt-2 border-t border-neutral-800'>
-          <Text className='text-xs text-amber-400'>
+        <View className='mt-2 px-3'>
+          <Text variant='caption' style={{ color: NeonBoard.warn }}>
             {t("home.settings.network.location_off_description")}
           </Text>
           <TouchableOpacity
@@ -79,7 +90,7 @@ function StatusDisplay({
             className='mt-2 self-start'
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text className='text-xs text-blue-400 font-semibold'>
+            <Text variant='chip' accent={NeonBoard.volt}>
               {t("home.settings.network.open_location_settings")}
             </Text>
           </TouchableOpacity>
@@ -210,12 +221,12 @@ export function LocalNetworkSettings(): React.ReactElement | null {
           <ListGroup
             title={t("home.settings.network.local_url")}
             description={
-              <Text className='text-[#8E8D91] text-xs'>
+              <Text variant='meta' muted>
                 {t("home.settings.network.local_url_hint")}
               </Text>
             }
           >
-            <View>
+            <View className='px-3 pb-2'>
               <ServerUrlField
                 value={localUrlDraft}
                 onChangeText={setLocalUrlDraft}
@@ -236,7 +247,7 @@ export function LocalNetworkSettings(): React.ReactElement | null {
                   onPress={() => handleRemoveNetwork(wifiSSID)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name='close-circle' size={22} color='#EF4444' />
+                  <Feather name='x' size={20} color={NeonBoard.red} />
                 </TouchableOpacity>
               </ListItem>
             ))}
@@ -249,8 +260,9 @@ export function LocalNetworkSettings(): React.ReactElement | null {
           </ListGroup>
 
           {!locationBlocked && (
-            <View className='py-2'>
+            <View className='py-3'>
               <Button
+                variant='border'
                 onPress={handleAddCurrentNetwork}
                 disabled={!currentSSID || permissionStatus !== "granted"}
               >
@@ -272,7 +284,7 @@ export function LocalNetworkSettings(): React.ReactElement | null {
 
       {permissionStatus === "denied" && (
         <View className='py-2'>
-          <Text className='text-xs text-red-500'>
+          <Text variant='meta' style={{ color: NeonBoard.red }}>
             {t("home.settings.network.permission_denied_explanation")}
           </Text>
         </View>

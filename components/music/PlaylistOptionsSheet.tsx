@@ -1,17 +1,17 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  NeonSheetHead,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDeletePlaylist } from "@/hooks/usePlaylistMutations";
@@ -50,17 +50,6 @@ export const PlaylistOptionsSheet: React.FC<Props> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handleDeletePlaylist = useCallback(() => {
     if (!playlist?.Id) return;
 
@@ -89,29 +78,40 @@ export const PlaylistOptionsSheet: React.FC<Props> = ({
       index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
     >
       <BottomSheetView
         style={{
           flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: insets.bottom,
         }}
       >
-        <View className='flex-col overflow-hidden bg-neutral-800'>
+        <NeonSheetHead
+          eyebrow={t("music.tabs.playlists")}
+          title={playlist.Name ?? t("music.tabs.playlists")}
+          onClose={() => setOpen(false)}
+        />
+        <View>
           <TouchableOpacity
             onPress={handleDeletePlaylist}
-            className='flex-row items-center px-4 py-3.5'
+            accessibilityRole='button'
+            style={{
+              minHeight: 52,
+              paddingLeft: Sizes.rowLead,
+              paddingRight: Sizes.gutter,
+              flexDirection: "row",
+              alignItems: "center",
+              borderBottomWidth: 1,
+              borderBottomColor: NeonBoard.line,
+            }}
           >
-            <Ionicons name='trash-outline' size={22} color='#ef4444' />
-            <Text className='text-red-500 ml-4 text-base'>
+            <Feather name='trash-2' size={18} color={NeonBoard.red} />
+            <Text
+              variant='rowTitle'
+              style={{ color: NeonBoard.red, marginLeft: 14 }}
+            >
               {t("music.playlists.delete_playlist")}
             </Text>
           </TouchableOpacity>
@@ -120,10 +120,3 @@ export const PlaylistOptionsSheet: React.FC<Props> = ({
     </BottomSheetModal>
   );
 };
-
-const _styles = StyleSheet.create({
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#404040",
-  },
-});

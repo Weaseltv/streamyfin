@@ -1,11 +1,12 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useCallback, useEffect } from "react";
 import { useWindowDimensions } from "react-native";
-import { Colors } from "@/constants/Colors";
+import {
+  NeonSheetBackdrop,
+  neonSheetBackgroundStyle,
+  neonSheetHandleIndicatorStyle,
+  neonSheetHandleStyle,
+} from "@/components/common/NeonSheet";
 import { SHEET_MAX_HEIGHT_RATIO } from "@/constants/Values";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 
@@ -40,26 +41,13 @@ export const GlobalModal = () => {
     [hideModal],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
+  // The P14 panel: `card` fill with a 1pt `line2` top border, radius 0, no
+  // grabber (the sheet head carries the close glyph), flat `stage` scrim.
   const defaultOptions = {
     enableDynamicSizing: true,
     enablePanDownToClose: true,
-    backgroundStyle: {
-      backgroundColor: Colors.surface,
-    },
-    handleIndicatorStyle: {
-      backgroundColor: "white",
-    },
+    backgroundStyle: neonSheetBackgroundStyle,
+    handleIndicatorStyle: neonSheetHandleIndicatorStyle,
   };
 
   // Merge default options with provided options
@@ -78,8 +66,9 @@ export const GlobalModal = () => {
             maxDynamicContentSize,
           })}
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
+      backdropComponent={NeonSheetBackdrop}
       handleIndicatorStyle={modalOptions.handleIndicatorStyle}
+      handleStyle={neonSheetHandleStyle}
       backgroundStyle={modalOptions.backgroundStyle}
       enablePanDownToClose={modalOptions.enablePanDownToClose}
       enableDismissOnClose

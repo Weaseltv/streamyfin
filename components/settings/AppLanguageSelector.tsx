@@ -1,13 +1,11 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View, type ViewProps } from "react-native";
 import { APP_LANGUAGES } from "@/i18n";
 import { useSettings } from "@/utils/atoms/settings";
-import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
-import { PlatformDropdown } from "../PlatformDropdown";
+import { DropdownTrigger, PlatformDropdown } from "../PlatformDropdown";
 
 interface Props extends ViewProps {}
 
@@ -51,18 +49,13 @@ export const AppLanguageSelector: React.FC<Props> = () => {
           <PlatformDropdown
             groups={optionGroups}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-2'>
-                  {APP_LANGUAGES.find(
+              <DropdownTrigger
+                value={
+                  APP_LANGUAGES.find(
                     (l) => l.value === settings?.preferedLanguage,
-                  )?.label || t("home.settings.languages.system")}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+                  )?.label || t("home.settings.languages.system")
+                }
+              />
             }
             title={t("home.settings.languages.title")}
           />

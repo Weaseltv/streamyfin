@@ -7,7 +7,7 @@ import { NeonBoard } from "@/constants/Colors";
 
 export const textShadowStyle = StyleSheet.create({
   shadow: {
-    shadowColor: "#000",
+    shadowColor: NeonBoard.video,
     shadowOffset: {
       width: 1,
       height: 1,
@@ -49,10 +49,19 @@ const GenericSlideCard: React.FC<
           }}
         />
         {title && (
-          <View className='absolute justify-center top-0 left-0 right-0 bottom-0 items-center'>
+          <View
+            style={{
+              position: "absolute",
+              inset: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 8,
+            }}
+          >
             <Text
-              className='text-center font-bold'
-              style={textShadowStyle.shadow}
+              variant='section'
+              numberOfLines={2}
+              style={[{ textAlign: "center" }, textShadowStyle.shadow]}
             >
               {title}
             </Text>

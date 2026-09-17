@@ -1,30 +1,85 @@
-import { Ionicons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { Image } from "expo-image";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
 import { NeonBoard } from "@/constants/Colors";
-import useRouter from "@/hooks/useAppRouter";
+import { Sizes } from "@/constants/neon";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
-import { storage } from "@/utils/mmkv";
 import { Text } from "../common/Text";
+import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
+const EPISODE_ROW = 44;
+
+/** "S1:E1 · Body Shop" */
+const episodeTitle = (item: BaseItemDto) =>
+  `S${item.ParentIndexNumber ?? 0}:E${item.IndexNumber ?? 0} · ${item.Name ?? ""}`;
+
+const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => {
+  const { deleteFile } = useDownload();
+  const confirmDelete = useConfirmDelete();
+
+  const onLongPress = useCallback(
+    () =>
+      confirmDelete({
+        title: episodeTitle(item),
+        onConfirm: () => {
+          if (item.Id) deleteFile(item.Id);
+        },
+      }),
+    [confirmDelete, deleteFile, item],
+  );
+
+  return (
+    <TouchableItemRouter
+      item={item}
+      onLongPress={onLongPress}
+      style={{
+        minHeight: EPISODE_ROW,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+      }}
+    >
+      <Text
+        variant='rowTitle'
+        numberOfLines={1}
+        style={{ flexShrink: 1, paddingRight: 12, fontSize: 16 }}
+      >
+        {episodeTitle(item)}
+      </Text>
+      <DownloadSize items={[item]} variant='tally' accent={NeonBoard.mid} />
+    </TouchableItemRouter>
+  );
+};
+
+/**
+ * A downloaded series as its own section: the name on a yellow rule with
+ * "SERIES · n EPISODES" right (tap opens the series, long press asks to
+ * delete every episode), then 44 episode rows with sizes on the right.
+ */
 export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
   const { t } = useTranslation();
   const { deleteItems } = useDownload();
   const confirmDelete = useConfirmDelete();
-  const router = useRouter();
 
-  // Keyed on SeriesId so recycled FlashList cells re-read the correct poster
-  // instead of freezing the first-rendered series' image (empty deps bug).
-  const base64Image = useMemo(() => {
-    const seriesId = items[0]?.SeriesId;
-    return seriesId ? storage.getString(seriesId) : undefined;
-  }, [items[0]?.SeriesId]);
+  const episodes = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) =>
+          (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
+          (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
+      ),
+    [items],
+  );
 
   const deleteSeries = useCallback(
     () =>
@@ -44,50 +99,28 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
     [confirmDelete, deleteSeries, items, t],
   );
 
-  return (
-    <TouchableOpacity
-      onPress={() =>
-        router.push({
-          pathname: "/series/[id]",
-          params: { id: items[0].SeriesId!, offline: "true" },
-        })
-      }
-      onLongPress={showActionSheet}
-    >
-      {base64Image ? (
-        <View className='w-28 aspect-[10/15] overflow-hidden mr-2 border border-neutral-900'>
-          <Image
-            source={{
-              uri: `data:image/jpeg;base64,${base64Image}`,
-            }}
-            style={{
-              width: "100%",
-              height: "100%",
-            }}
-            contentFit='cover'
-          />
-          <View className='absolute bottom-1 right-1'>
-            <Text variant='tally' accent={NeonBoard.yellow}>
-              {items.length}
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <View className='w-28 aspect-[10/15] bg-neutral-900 mr-2 flex items-center justify-center'>
-          <Ionicons
-            name='image-outline'
-            size={24}
-            color='gray'
-            className='self-center mt-16'
-          />
-        </View>
-      )}
+  const seriesItem = useMemo<BaseItemDto>(
+    () => ({ Id: items[0]?.SeriesId ?? undefined, Type: "Series" }),
+    [items],
+  );
 
-      <View className='w-28 mt-2 flex flex-col'>
-        <Text numberOfLines={2}>{items[0].SeriesName}</Text>
-        <Text className='text-xs opacity-50'>{items[0].ProductionYear}</Text>
-        <DownloadSize items={items} />
-      </View>
-    </TouchableOpacity>
+  return (
+    <View>
+      <TouchableItemRouter
+        item={seriesItem}
+        onLongPress={showActionSheet}
+        activeOpacity={0.7}
+      >
+        <SectionHeader
+          title={items[0]?.SeriesName ?? ""}
+          accent={NeonBoard.yellow}
+          count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
+          className='px-3'
+        />
+      </TouchableItemRouter>
+      {episodes.map((item) => (
+        <EpisodeRow key={item.Id} item={item} />
+      ))}
+    </View>
   );
 };

@@ -1,15 +1,18 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   TouchableOpacity,
   type TouchableOpacityProps,
   View,
 } from "react-native";
 import { toast } from "sonner-native";
+import { Badge } from "@/components/Badge";
+import { NeonProgress } from "@/components/common/NeonProgress";
 import { Text } from "@/components/common/Text";
+import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
+import { glowRule, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -17,7 +20,11 @@ import { calculateSmoothedETA } from "@/providers/Downloads/hooks/useDownloadSpe
 import { JobStatus } from "@/providers/Downloads/types";
 import { estimateDownloadSize } from "@/utils/download";
 import { storage } from "@/utils/mmkv";
-import { formatTimeString } from "@/utils/time";
+
+const POSTER = { w: 40, h: 58 };
+const ACTIVE_ROW = 76;
+const QUEUE_ROW = 60;
+const PROGRESS_WIDTH = 200;
 
 const bytesToMB = (bytes: number) => {
   return bytes / 1024 / 1024;
@@ -25,15 +32,37 @@ const bytesToMB = (bytes: number) => {
 
 const formatBytes = (bytes: number): string => {
   if (bytes >= 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 };
+
+/** "4 min left" / "12 sec left" style remaining time. */
+const formatRemaining = (seconds: number): string => {
+  if (seconds >= 3600) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+    return `${h} h ${m} min`;
+  }
+  if (seconds >= 60) return `${Math.round(seconds / 60)} min`;
+  return `${Math.max(1, Math.round(seconds))} sec`;
+};
+
+const rowTitle = (process: JobStatus) =>
+  process.item.Type === "Episode" && process.item.SeriesName
+    ? `${process.item.SeriesName} · S${process.item.ParentIndexNumber ?? 0}:E${process.item.IndexNumber ?? 0}`
+    : (process.item.Name ?? "");
 
 interface DownloadCardProps extends TouchableOpacityProps {
   process: JobStatus;
 }
 
+/**
+ * One in-flight download. Downloading = the 76 "active" row: 3pt type tally,
+ * 40×58 poster, title + type badge, "412 MB of 1.2 GB · 3.1 MB/s · 4 min
+ * left", a 200-wide 3pt progress in the type colour and a red `x` to cancel.
+ * Queued = the 60 row with a `Queued` outline badge in `mid`.
+ */
 export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
   const { t } = useTranslation();
   const { cancelDownload } = useDownload();
@@ -66,7 +95,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
       return null;
     }
 
-    return formatTimeString(secondsRemaining, "s");
+    return formatRemaining(secondsRemaining);
   }, [process?.id, process?.bytesDownloaded, process?.estimatedTotalSizeBytes]);
 
   const estimatedSize = useMemo(() => {
@@ -89,11 +118,6 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
   ]);
 
   const isTranscoding = process?.isTranscoding || false;
-
-  const downloadedAmount = useMemo(() => {
-    if (!process?.bytesDownloaded) return null;
-    return formatBytes(process.bytesDownloaded);
-  }, [process?.bytesDownloaded]);
 
   const base64Image = useMemo(() => {
     try {
@@ -121,100 +145,132 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
     return null;
   }
 
+  const accent = typeAccent(process.item);
+  const badge = typeLabel(process.item);
+  const active = process.status === "downloading";
+  const totalText = estimatedSize
+    ? `${isTranscoding ? "~" : ""}${formatBytes(estimatedSize)}`
+    : null;
+
+  const meta = active
+    ? [
+        process.bytesDownloaded
+          ? totalText
+            ? t("home.downloads.of_total", {
+                downloaded: formatBytes(process.bytesDownloaded),
+                total: totalText,
+              })
+            : formatBytes(process.bytesDownloaded)
+          : `${sanitizedProgress.toFixed(0)}%`,
+        process.speed && process.speed > 0
+          ? `${bytesToMB(process.speed).toFixed(1)} MB/s`
+          : null,
+        eta ? t("home.downloads.time_left", { time: eta }) : null,
+        isTranscoding ? t("home.downloads.transcoding") : null,
+      ]
+    : [t("home.downloads.live_activity.queued"), totalText];
+
+  const poster = (
+    <View
+      style={{
+        width: POSTER.w,
+        height: POSTER.h,
+        backgroundColor: NeonBoard.card2,
+        borderWidth: 1,
+        borderColor: NeonBoard.line,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {base64Image ? (
+        <Image
+          source={{ uri: `data:image/jpeg;base64,${base64Image}` }}
+          style={{ width: "100%", height: "100%" }}
+          contentFit='cover'
+        />
+      ) : (
+        <Feather
+          name={process.item.Type === "Movie" ? "film" : "tv"}
+          size={16}
+          color={NeonBoard.low}
+        />
+      )}
+    </View>
+  );
+
   return (
     <TouchableOpacity
       onPress={() => router.push(`/(auth)/items/page?id=${process.item.Id}`)}
-      className='relative bg-neutral-900 border border-neutral-800 overflow-hidden'
+      activeOpacity={0.7}
+      style={{
+        minHeight: active ? ACTIVE_ROW : QUEUE_ROW,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+      }}
       {...props}
     >
-      {process.status === "downloading" && (
+      {active ? (
         <View
-          className={`bg-volt h-1 absolute bottom-0 left-0 ${isTranscoding ? "animate-pulse" : ""}`}
-          style={{
-            width:
-              sanitizedProgress > 0
-                ? `${Math.max(5, sanitizedProgress)}%`
-                : "5%",
-          }}
+          style={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: Sizes.tally,
+              backgroundColor: accent,
+            },
+            glowRule(accent),
+          ]}
         />
-      )}
-
-      {/* Action buttons in bottom right corner */}
-      <View className='absolute bottom-2 right-2 flex flex-row items-center z-10'>
+      ) : null}
+      {poster}
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text
+            variant='rowTitle'
+            numberOfLines={1}
+            style={{ flexShrink: 1, fontSize: 16 }}
+          >
+            {rowTitle(process)}
+          </Text>
+          {active && badge ? <Badge text={badge} tint={accent} glow /> : null}
+        </View>
+        <Text variant='meta' muted numberOfLines={1} style={{ marginTop: 3 }}>
+          {meta.filter(Boolean).join(" · ")}
+        </Text>
+        {active ? (
+          <NeonProgress
+            progress={sanitizedProgress / 100}
+            color={accent}
+            style={{ width: PROGRESS_WIDTH, maxWidth: "100%", marginTop: 8 }}
+          />
+        ) : null}
+      </View>
+      {active ? (
         <TouchableOpacity
           onPress={() => handleDelete(process.id)}
-          className='p-2 bg-neutral-800 rounded-full'
+          hitSlop={10}
+          accessibilityRole='button'
+          accessibilityLabel={t("common.cancel")}
+          style={{
+            width: Sizes.iconButton,
+            height: Sizes.iconButton,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Ionicons name='close' size={20} color='red' />
+          <Feather name='x' size={22} color={NeonBoard.red} />
         </TouchableOpacity>
-      </View>
-
-      <View className='px-3 py-1.5 flex flex-col w-full'>
-        <View className='flex flex-row items-center w-full'>
-          {base64Image && (
-            <View className='w-14 aspect-[10/15] overflow-hidden mr-4'>
-              <Image
-                source={{
-                  uri: `data:image/jpeg;base64,${base64Image}`,
-                }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                }}
-                contentFit='cover'
-              />
-            </View>
-          )}
-          <View className='shrink mb-1 flex-1 pr-12'>
-            <Text className='text-xs opacity-50'>{process.item.Type}</Text>
-            <Text className='font-semibold shrink'>{process.item.Name}</Text>
-            <Text className='text-xs opacity-50'>
-              {process.item.ProductionYear}
-            </Text>
-
-            {isTranscoding && (
-              <View className='bg-volt/20 px-2 py-0.5 mt-1 self-start'>
-                <Text className='text-xs text-volt'>
-                  {t("home.downloads.transcoding")}
-                </Text>
-              </View>
-            )}
-
-            {/* Row 1: Progress + Downloaded/Total */}
-            <View className='flex flex-row items-center gap-x-2 mt-1.5'>
-              {sanitizedProgress === 0 ? (
-                <ActivityIndicator size={"small"} color={"white"} />
-              ) : (
-                <Text className='text-xs font-semibold'>
-                  {sanitizedProgress.toFixed(0)}%
-                </Text>
-              )}
-              {downloadedAmount && (
-                <Text className='text-xs opacity-75'>
-                  {downloadedAmount}
-                  {estimatedSize
-                    ? ` / ${isTranscoding ? "~" : ""}${formatBytes(estimatedSize)}`
-                    : ""}
-                </Text>
-              )}
-            </View>
-
-            {/* Row 2: Speed + ETA */}
-            <View className='flex flex-row items-center gap-x-2 mt-0.5'>
-              {process.speed && process.speed > 0 && (
-                <Text className='text-xs text-volt'>
-                  {bytesToMB(process.speed).toFixed(2)} MB/s
-                </Text>
-              )}
-              {eta && (
-                <Text className='text-xs text-green-400'>
-                  {t("home.downloads.eta", { eta: eta })}
-                </Text>
-              )}
-            </View>
-          </View>
-        </View>
-      </View>
+      ) : (
+        <Badge text={t("home.downloads.live_activity.queued")} />
+      )}
     </TouchableOpacity>
   );
 };

@@ -1,6 +1,7 @@
 import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
+import { Sizes } from "@/constants/neon";
 
 export default function AppearancePage() {
   const insets = useSafeAreaInsets();
@@ -14,8 +15,10 @@ export default function AppearancePage() {
       }}
     >
       <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+        }}
       >
         <AppearanceSettings />
         <View className='h-24' />

@@ -13,7 +13,16 @@ import { HeaderButton } from "@/components/common/HeaderButton";
 import { Text } from "@/components/common/Text";
 import { FilterButton } from "@/components/filters/FilterButton";
 import { Loader } from "@/components/Loader";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { LogLevel, useLog, writeErrorLog } from "@/utils/log";
+
+const LEVEL_COLORS: Record<LogLevel, string> = {
+  INFO: NeonBoard.volt,
+  ERROR: NeonBoard.red,
+  DEBUG: NeonBoard.mid,
+  WARN: NeonBoard.warn,
+};
 
 // Conditionally import expo-sharing only on non-TV platforms
 const Sharing = Platform.isTV
@@ -30,9 +39,10 @@ export default function Page() {
 
   const defaultLevels: LogLevel[] = ["INFO", "ERROR", "DEBUG", "WARN"];
   const codeBlockStyle = {
-    backgroundColor: "#000",
+    backgroundColor: NeonBoard.inset,
+    borderWidth: 1,
+    borderColor: NeonBoard.line,
     padding: 10,
-    fontFamily: "monospace",
     maxHeight: 300,
   };
 
@@ -104,7 +114,9 @@ export default function Page() {
           <Loader />
         ) : (
           <HeaderButton variant='text' onPress={share}>
-            <Text>{t("home.settings.logs.export_logs")}</Text>
+            <Text variant='button' accent={NeonBoard.volt}>
+              {t("home.settings.logs.export_logs")}
+            </Text>
           </HeaderButton>
         ),
     });
@@ -119,7 +131,15 @@ export default function Page() {
       stickyHeaderIndices={[0]}
       contentContainerStyle={{ paddingBottom: insets.bottom }}
     >
-      <View className='flex flex-row justify-end py-2 px-4 space-x-2 bg-black'>
+      <View
+        className='flex flex-row justify-end py-2 space-x-2'
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          backgroundColor: NeonBoard.stage,
+          borderBottomWidth: 1,
+          borderBottomColor: NeonBoard.line,
+        }}
+      >
         <FilterButton
           id={orderFilterId}
           queryKey='log'
@@ -140,9 +160,16 @@ export default function Page() {
           multiple={true}
         />
       </View>
-      <View className='flex flex-col space-y-2 px-4'>
+      <View
+        className='flex flex-col'
+        style={{ paddingHorizontal: Sizes.gutter }}
+      >
         {filteredLogs?.map((log, index) => (
-          <View className='bg-neutral-900 p-3' key={index}>
+          <View
+            className='py-3'
+            style={{ borderBottomWidth: 1, borderBottomColor: NeonBoard.line }}
+            key={index}
+          >
             <TouchableOpacity
               disabled={!log.data}
               onPress={() =>
@@ -154,24 +181,22 @@ export default function Page() {
             >
               <View className='flex flex-row justify-between'>
                 <Text
-                  className={`mb-1
-                      ${log.level === "INFO" && "text-blue-500"}
-                      ${log.level === "ERROR" && "text-red-500"}
-                      ${log.level === "DEBUG" && "text-volt"}
-                    `}
+                  variant='chip'
+                  className='mb-1'
+                  style={{ color: LEVEL_COLORS[log.level] ?? NeonBoard.mid }}
                 >
                   {log.level}
                 </Text>
 
-                <Text className='text-xs'>
+                <Text variant='caption' muted>
                   {new Date(log.timestamp).toLocaleString()}
                 </Text>
               </View>
-              <Text className='text-xs'>{log.message}</Text>
+              <Text variant='meta'>{log.message}</Text>
               {/* Keep the whole collapsed row tappable: the hint lives inside
                   the toggle so tapping it expands too. */}
               {log.data && !state[log.timestamp] && (
-                <Text className='text-xs mt-0.5'>
+                <Text variant='caption' muted className='mt-0.5'>
                   {t("home.settings.logs.click_for_more_info")}
                 </Text>
               )}
@@ -183,15 +208,29 @@ export default function Page() {
                   <ScrollView style={codeBlockStyle} nestedScrollEnabled>
                     {/* Only the raw payload is selectable (per request); the
                         header/message stay tap-to-toggle. */}
-                    <Text selectable>{JSON.stringify(log.data, null, 2)}</Text>
+                    <Text
+                      selectable
+                      variant='caption'
+                      style={{ fontFamily: "monospace" }}
+                    >
+                      {JSON.stringify(log.data, null, 2)}
+                    </Text>
                   </ScrollView>
                   {!Platform.isTV && (
                     <TouchableOpacity
                       onPress={() => copyLog(log)}
                       className='flex flex-row items-center self-end px-2 py-1'
                     >
-                      <Ionicons name='copy-outline' size={16} color='white' />
-                      <Text className='text-xs ml-1'>
+                      <Ionicons
+                        name='copy-outline'
+                        size={16}
+                        color={NeonBoard.volt}
+                      />
+                      <Text
+                        variant='chip'
+                        accent={NeonBoard.volt}
+                        className='ml-1'
+                      >
                         {t("home.settings.logs.copy")}
                       </Text>
                     </TouchableOpacity>
@@ -202,7 +241,7 @@ export default function Page() {
           </View>
         ))}
         {filteredLogs?.length === 0 && (
-          <Text className='opacity-50'>
+          <Text variant='meta' muted className='py-4'>
             {t("home.settings.logs.no_logs_available")}
           </Text>
         )}

@@ -1,10 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { Feather } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtom } from "jotai";
 import React, {
@@ -15,16 +10,16 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  NeonSheetHead,
+  neonSheetModalProps,
+} from "@/components/common/NeonSheet";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import {
@@ -130,17 +125,6 @@ export const TrackOptionsSheet: React.FC<Props> = ({
     [setOpen],
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   const handlePlayNext = useCallback(() => {
     if (track) {
       playNext(track);
@@ -236,31 +220,41 @@ export const TrackOptionsSheet: React.FC<Props> = ({
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{
-        backgroundColor: "white",
-      }}
-      backgroundStyle={{
-        backgroundColor: Colors.surface,
-      }}
+      {...neonSheetModalProps}
     >
       <BottomSheetView
         style={{
           flex: 1,
-          paddingLeft: Math.max(16, insets.left),
-          paddingRight: Math.max(16, insets.right),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: insets.bottom,
         }}
       >
-        {/* Track Info Header */}
-        <View className='flex-row items-center mb-6 px-2'>
+        <NeonSheetHead
+          eyebrow={track.Artists?.join(", ") || track.AlbumArtist}
+          title={track.Name ?? ""}
+          onClose={() => setOpen(false)}
+        />
+
+        {/* Track art under the head, on the panel. */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: Sizes.rowLead,
+            paddingRight: Sizes.gutter,
+            paddingVertical: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: NeonBoard.line,
+          }}
+        >
           <View
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 6,
+              width: 48,
+              height: 48,
+              borderRadius: 0,
               overflow: "hidden",
-              backgroundColor: "#1a1a1a",
+              backgroundColor: NeonBoard.card2,
               marginRight: 12,
             }}
           >
@@ -272,185 +266,133 @@ export const TrackOptionsSheet: React.FC<Props> = ({
                 cachePolicy='memory-disk'
               />
             ) : (
-              <View className='flex-1 items-center justify-center bg-neutral-800'>
-                <Ionicons name='musical-note' size={24} color='#737373' />
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name='music' size={20} color={NeonBoard.mid} />
               </View>
             )}
           </View>
-          <View className='flex-1'>
-            <Text
-              numberOfLines={1}
-              className='text-white font-semibold text-base'
-            >
+          <View style={{ flex: 1 }}>
+            <Text variant='rowTitle' numberOfLines={1}>
               {track.Name}
             </Text>
-            <Text numberOfLines={1} className='text-neutral-400 text-sm mt-0.5'>
+            <Text
+              variant='meta'
+              muted
+              numberOfLines={1}
+              style={{ marginTop: 2 }}
+            >
               {track.Artists?.join(", ") || track.AlbumArtist}
             </Text>
           </View>
         </View>
 
         {/* Playback Options */}
-        <View className='flex-col overflow-hidden bg-neutral-800'>
-          <TouchableOpacity
+        <View>
+          <OptionRow
+            icon='skip-forward'
+            label={t("music.track_options.play_next")}
             onPress={handlePlayNext}
-            className='flex-row items-center px-4 py-3.5'
-          >
-            <Ionicons name='play-forward' size={22} color='white' />
-            <Text className='text-white ml-4 text-base'>
-              {t("music.track_options.play_next")}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          <TouchableOpacity
+          />
+          <OptionRow
+            icon='list'
+            label={t("music.track_options.add_to_queue")}
             onPress={handleAddToQueue}
-            className='flex-row items-center px-4 py-3.5'
-          >
-            <Ionicons name='list' size={22} color='white' />
-            <Text className='text-white ml-4 text-base'>
-              {t("music.track_options.add_to_queue")}
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {/* Library Options */}
-        <View className='flex-col overflow-hidden bg-neutral-800 mt-3'>
-          <TouchableOpacity
-            onPress={handleToggleFavorite}
-            className='flex-row items-center px-4 py-3.5'
-          >
-            <Ionicons
-              name={isFavorite ? "heart" : "heart-outline"}
-              size={22}
-              color={isFavorite ? "#ec4899" : "white"}
-            />
-            <Text className='text-white ml-4 text-base'>
-              {isFavorite
+        <View>
+          <OptionRow
+            icon='heart'
+            iconColor={isFavorite ? NeonBoard.red : undefined}
+            label={
+              isFavorite
                 ? t("music.track_options.remove_from_favorites")
-                : t("music.track_options.add_to_favorites")}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          <TouchableOpacity
+                : t("music.track_options.add_to_favorites")
+            }
+            onPress={handleToggleFavorite}
+          />
+          <OptionRow
+            icon='folder-plus'
+            label={t("music.track_options.add_to_playlist")}
             onPress={handleAddToPlaylist}
-            className='flex-row items-center px-4 py-3.5'
-          >
-            <Ionicons name='albums-outline' size={22} color='white' />
-            <Text className='text-white ml-4 text-base'>
-              {t("music.track_options.add_to_playlist")}
-            </Text>
-          </TouchableOpacity>
+          />
 
           {playlistId && (
-            <>
-              <View style={styles.separator} />
-              <TouchableOpacity
-                onPress={handleRemoveFromPlaylist}
-                className='flex-row items-center px-4 py-3.5'
-              >
-                <Ionicons name='trash-outline' size={22} color='#ef4444' />
-                <Text className='text-red-500 ml-4 text-base'>
-                  {t("music.track_options.remove_from_playlist")}
-                </Text>
-              </TouchableOpacity>
-            </>
+            <OptionRow
+              icon='trash-2'
+              destructive
+              label={t("music.track_options.remove_from_playlist")}
+              onPress={handleRemoveFromPlaylist}
+            />
           )}
 
-          <View style={styles.separator} />
-
-          <TouchableOpacity
-            onPress={handleDownload}
+          <OptionRow
+            icon={isAlreadyDownloaded ? "check-circle" : "download"}
+            iconColor={isAlreadyDownloaded ? NeonBoard.green : undefined}
+            textColor={isAlreadyDownloaded ? NeonBoard.green : undefined}
+            loading={isCurrentlyDownloading || isDownloadingTrack}
             disabled={
               isAlreadyDownloaded ||
               isCurrentlyDownloading ||
               isDownloadingTrack
             }
-            className='flex-row items-center px-4 py-3.5'
-          >
-            {isCurrentlyDownloading || isDownloadingTrack ? (
-              <ActivityIndicator size={22} color='white' />
-            ) : (
-              <Ionicons
-                name={
-                  isAlreadyDownloaded ? "checkmark-circle" : "download-outline"
-                }
-                size={22}
-                color={isAlreadyDownloaded ? "#22c55e" : "white"}
-              />
-            )}
-            <Text
-              className={`ml-4 text-base ${isAlreadyDownloaded ? "text-green-500" : "text-white"}`}
-            >
-              {isCurrentlyDownloading || isDownloadingTrack
+            label={
+              isCurrentlyDownloading || isDownloadingTrack
                 ? t("music.track_options.downloading")
                 : isAlreadyDownloaded
                   ? t("music.track_options.downloaded")
-                  : t("music.track_options.download")}
-            </Text>
-          </TouchableOpacity>
+                  : t("music.track_options.download")
+            }
+            onPress={handleDownload}
+          />
 
           {isOnlyCached && !isAlreadyDownloaded && (
-            <>
-              <View style={styles.separator} />
-              <View className='flex-row items-center px-4 py-3.5'>
-                <Ionicons name='cloud-done-outline' size={22} color='#737373' />
-                <Text className='text-neutral-500 ml-4 text-base'>
-                  {t("music.track_options.cached")}
-                </Text>
-              </View>
-            </>
+            <OptionRow
+              icon='cloud'
+              iconColor={NeonBoard.mid}
+              textColor={NeonBoard.mid}
+              label={t("music.track_options.cached")}
+            />
           )}
 
           {(isAlreadyDownloaded || isOnlyCached) && (
-            <>
-              <View style={styles.separator} />
-              <TouchableOpacity
-                onPress={handleDelete}
-                className='flex-row items-center px-4 py-3.5'
-              >
-                <Ionicons name='trash-outline' size={22} color='#ef4444' />
-                <Text className='text-red-500 ml-4 text-base'>
-                  {isAlreadyDownloaded
-                    ? t("music.track_options.delete_download")
-                    : t("music.track_options.delete_cache")}
-                </Text>
-              </TouchableOpacity>
-            </>
+            <OptionRow
+              icon='trash-2'
+              destructive
+              label={
+                isAlreadyDownloaded
+                  ? t("music.track_options.delete_download")
+                  : t("music.track_options.delete_cache")
+              }
+              onPress={handleDelete}
+            />
           )}
         </View>
 
         {/* Navigation Options */}
         {(hasArtist || hasAlbum) && (
-          <View className='flex-col overflow-hidden bg-neutral-800 mt-3'>
+          <View>
             {hasArtist && (
-              <>
-                <TouchableOpacity
-                  onPress={handleGoToArtist}
-                  className='flex-row items-center px-4 py-3.5'
-                >
-                  <Ionicons name='person-outline' size={22} color='white' />
-                  <Text className='text-white ml-4 text-base'>
-                    {t("music.track_options.go_to_artist")}
-                  </Text>
-                </TouchableOpacity>
-                {hasAlbum && <View style={styles.separator} />}
-              </>
+              <OptionRow
+                icon='user'
+                label={t("music.track_options.go_to_artist")}
+                onPress={handleGoToArtist}
+              />
             )}
 
             {hasAlbum && (
-              <TouchableOpacity
+              <OptionRow
+                icon='disc'
+                label={t("music.track_options.go_to_album")}
                 onPress={handleGoToAlbum}
-                className='flex-row items-center px-4 py-3.5'
-              >
-                <Ionicons name='disc-outline' size={22} color='white' />
-                <Text className='text-white ml-4 text-base'>
-                  {t("music.track_options.go_to_album")}
-                </Text>
-              </TouchableOpacity>
+              />
             )}
           </View>
         )}
@@ -459,9 +401,52 @@ export const TrackOptionsSheet: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#404040",
-  },
-});
+/** A 52 hairline option row: Feather glyph in `mid`, label in `text`. */
+const OptionRow: React.FC<{
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress?: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  iconColor?: string;
+  textColor?: string;
+  loading?: boolean;
+}> = ({
+  icon,
+  label,
+  onPress,
+  disabled,
+  destructive,
+  iconColor,
+  textColor,
+  loading,
+}) => {
+  const glyph = destructive ? NeonBoard.red : (iconColor ?? NeonBoard.mid);
+  const tone = destructive ? NeonBoard.red : (textColor ?? NeonBoard.text);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      activeOpacity={0.7}
+      style={{
+        minHeight: 52,
+        paddingLeft: Sizes.rowLead,
+        paddingRight: Sizes.gutter,
+        flexDirection: "row",
+        alignItems: "center",
+        borderBottomWidth: 1,
+        borderBottomColor: NeonBoard.line,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator size={18} color={NeonBoard.volt} />
+      ) : (
+        <Feather name={icon} size={18} color={glyph} />
+      )}
+      <Text variant='rowTitle' style={{ marginLeft: 14, color: tone }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};

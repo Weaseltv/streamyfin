@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import type { ServerUrlResolverState } from "@/hooks/useServerUrlResolver";
+import { Loader } from "../Loader";
 import { Text } from "./Text";
 
 /**
  * Compact status line for the server-URL resolver, for screens whose layout
  * (e.g. ListItem rows) doesn't fit the full `ServerUrlField`. Renders nothing
- * while idle.
+ * while idle. 12 `mid` while resolving, green when resolved, red on failure.
  */
 export function ServerUrlStatusText({
   state,
@@ -22,8 +24,8 @@ export function ServerUrlStatusText({
   if (state.status === "resolving") {
     return (
       <View className={`flex-row items-center ${className}`}>
-        <ActivityIndicator size='small' color='#9ca3af' />
-        <Text className='text-xs text-neutral-400 ml-2'>
+        <Loader color={NeonBoard.mid} />
+        <Text variant='meta' muted style={{ marginLeft: 8 }}>
           {t("server_url.resolving")}
         </Text>
       </View>
@@ -32,7 +34,7 @@ export function ServerUrlStatusText({
 
   if (state.status === "ok") {
     return (
-      <Text className={`text-xs text-green-500 ${className}`}>
+      <Text variant='meta' accent={NeonBoard.green} className={className}>
         {t("server_url.resolved", { url: state.resolvedUrl })}
       </Text>
     );
@@ -45,5 +47,9 @@ export function ServerUrlStatusText({
         ? t("server_url.invalid_url")
         : t("server_url.unreachable");
 
-  return <Text className={`text-xs text-red-500 ${className}`}>{message}</Text>;
+  return (
+    <Text variant='meta' accent={NeonBoard.red} className={className}>
+      {message}
+    </Text>
+  );
 }

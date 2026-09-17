@@ -1,22 +1,28 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
+import { View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { Badge } from "@/components/Badge";
 import { TouchableJellyseerrRouter } from "@/components/common/JellyseerrItemRouter";
+import { NeonProgress } from "@/components/common/NeonProgress";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
-import { Tag, Tags } from "@/components/GenreTags";
-import { textShadowStyle } from "@/components/jellyseerr/discover/GenericSlideCard";
 import JellyseerrMediaIcon from "@/components/jellyseerr/JellyseerrMediaIcon";
-import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
-import { Colors } from "@/constants/Colors";
+import JellyseerrStatusIcon, {
+  useJellyseerrStatusBadge,
+} from "@/components/jellyseerr/JellyseerrStatusIcon";
+import { NeonBoard } from "@/constants/Colors";
+import { rgba, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useJellyseerrCanRequest } from "@/utils/_jellyseerr/useJellyseerrCanRequest";
-import { MediaStatus } from "@/utils/jellyseerr/server/constants/media";
+import {
+  MediaStatus,
+  MediaType,
+} from "@/utils/jellyseerr/server/constants/media";
 import type MediaRequest from "@/utils/jellyseerr/server/entity/MediaRequest";
 import type { DownloadingItem } from "@/utils/jellyseerr/server/lib/downloadtracker";
 import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
@@ -27,13 +33,19 @@ import type {
 } from "@/utils/jellyseerr/server/models/Search";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
 
-interface Props extends ViewProps {
+interface Props {
   item?: MovieResult | TvResult | MovieDetails | TvDetails | PersonCreditCast;
   horizontal?: boolean;
   showDownloadInfo?: boolean;
   mediaRequest?: MediaRequest;
 }
 
+/**
+ * A Seerr result card: the 96×140 poster (or 150×84 backdrop) in a 1pt
+ * `line` frame, the status badge top-left (`Request` in volt when the item
+ * can be requested, the type badge when it carries no status), the request
+ * progress as a 3pt bar, then the title and "Movie · 2024" meta.
+ */
 const JellyseerrPoster: React.FC<Props> = ({
   item,
   horizontal,
@@ -41,7 +53,6 @@ const JellyseerrPoster: React.FC<Props> = ({
   mediaRequest,
 }) => {
   const { jellyseerrApi, getTitle, getYear, getMediaType } = useJellyseerr();
-  const loadingOpacity = useSharedValue(1);
   const imageOpacity = useSharedValue(0);
   const { t } = useTranslation();
 
@@ -50,7 +61,6 @@ const JellyseerrPoster: React.FC<Props> = ({
   }));
 
   const handleImageLoad = () => {
-    loadingOpacity.value = withTiming(0, { duration: 200 });
     imageOpacity.value = withTiming(1, { duration: 300 });
   };
 
@@ -60,20 +70,19 @@ const JellyseerrPoster: React.FC<Props> = ({
         item?.backdropPath,
         "w1920_and_h800_multi_faces",
       ),
-    [item, jellyseerrApi, horizontal],
+    [item, jellyseerrApi],
   );
 
   const posterSrc = useMemo(
     () => jellyseerrApi?.imageProxy(item?.posterPath, "w300_and_h450_face"),
-    [item, jellyseerrApi, horizontal],
+    [item, jellyseerrApi],
   );
 
   const title = useMemo(() => getTitle(item), [item]);
   const releaseYear = useMemo(() => getYear(item), [item]);
   const mediaType = useMemo(() => getMediaType(item), [item]);
 
-  const size = useMemo(() => (horizontal ? "h-28" : "w-28"), [horizontal]);
-  const ratio = useMemo(() => (horizontal ? "15/10" : "10/15"), [horizontal]);
+  const box = horizontal ? Sizes.thumbSmall : Sizes.posterSmall;
 
   const [canRequest] = useJellyseerrCanRequest(item);
 
@@ -99,7 +108,7 @@ const JellyseerrPoster: React.FC<Props> = ({
     return ((totalSize - sizeLeft) / totalSize) * 100;
   }, [downloadItems]);
 
-  const requestedSeasons: string[] | undefined = useMemo(() => {
+  const requestedSeasons: string[] = useMemo(() => {
     const seasons =
       mediaRequest?.seasons?.flatMap((s) => s.seasonNumber.toString()) || [];
     if (seasons.length > 4) {
@@ -120,6 +129,21 @@ const JellyseerrPoster: React.FC<Props> = ({
     return status === MediaStatus.AVAILABLE;
   }, [mediaRequest, is4k]);
 
+  const mediaStatus = mediaRequest?.media?.status || item?.mediaInfo?.status;
+  const statusBadge = useJellyseerrStatusBadge(
+    mediaStatus,
+    mediaRequest?.status,
+    canRequest,
+  );
+
+  const typeText =
+    mediaType === MediaType.MOVIE
+      ? t("search.movies")
+      : mediaType === MediaType.TV
+        ? t("search.series")
+        : undefined;
+  const meta = [typeText, releaseYear || undefined].filter(Boolean).join(" · ");
+
   return (
     <TouchableJellyseerrRouter
       result={item}
@@ -128,77 +152,102 @@ const JellyseerrPoster: React.FC<Props> = ({
       canRequest={canRequest}
       posterSrc={posterSrc!}
       mediaType={mediaType}
+      style={{ width: box.w }}
     >
-      <View className={"flex flex-col mr-2 h-auto"}>
-        <View
-          className={`relative  overflow-hidden border border-neutral-900 ${size} aspect-[${ratio}]`}
-        >
-          <Animated.View style={imageAnimatedStyle}>
-            <Image
-              className='w-full'
-              key={item?.id}
-              id={item?.id.toString()}
-              source={{ uri: horizontal ? backdropSrc : posterSrc }}
-              cachePolicy={"memory-disk"}
-              contentFit='cover'
-              style={{
-                aspectRatio: ratio,
-                [horizontal ? "height" : "width"]: "100%",
-              }}
-              onLoad={handleImageLoad}
-            />
-          </Animated.View>
-          {mediaRequest && showDownloadInfo && (
-            <>
-              <View
-                className={`absolute w-full h-full bg-black ${!available ? "opacity-70" : "opacity-0"}`}
-              />
-              {!available && !Number.isNaN(progress) && (
-                <>
-                  <View
-                    className='absolute left-0 h-full opacity-40'
-                    style={{
-                      width: `${progress || 0}%`,
-                      backgroundColor: Colors.primaryRGB,
-                    }}
-                  />
-                  <View className='absolute w-full h-full justify-center items-center'>
-                    <Text className='font-bold' style={textShadowStyle.shadow}>
-                      {progress?.toFixed(0)}%
-                    </Text>
-                  </View>
-                </>
-              )}
-              <Tag
-                className='absolute right-1 top-1 text-right bg-black border border-neutral-800/50'
-                text={mediaRequest?.requestedBy.displayName}
-              />
-              {requestedSeasons.length > 0 && (
-                <Tags
-                  className='absolute bottom-1 left-0.5 w-32'
-                  tagProps={{
-                    className: "bg-black rounded-full px-1",
-                  }}
-                  tags={requestedSeasons}
-                />
-              )}
-            </>
-          )}
-          <JellyseerrStatusIcon
-            className='absolute bottom-1 right-1'
-            showRequestIcon={canRequest}
-            mediaStatus={mediaRequest?.media?.status || item?.mediaInfo?.status}
+      <View
+        style={{
+          width: box.w,
+          height: box.h,
+          borderWidth: 1,
+          borderColor: NeonBoard.line,
+          backgroundColor: NeonBoard.card2,
+          overflow: "hidden",
+        }}
+      >
+        <Animated.View style={[imageAnimatedStyle, { flex: 1 }]}>
+          <Image
+            key={item?.id}
+            id={item?.id.toString()}
+            source={{ uri: horizontal ? backdropSrc : posterSrc }}
+            cachePolicy={"memory-disk"}
+            contentFit='cover'
+            style={{ width: "100%", height: "100%" }}
+            onLoad={handleImageLoad}
           />
+        </Animated.View>
+        {mediaRequest && showDownloadInfo && !available && (
+          <View
+            pointerEvents='none'
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: rgba(NeonBoard.stage, 0.6),
+            }}
+          />
+        )}
+        {statusBadge ? (
+          <JellyseerrStatusIcon
+            style={{ position: "absolute", top: 6, left: 6 }}
+            showRequestIcon={canRequest}
+            requestStatus={mediaRequest?.status}
+            mediaStatus={mediaStatus}
+          />
+        ) : (
           <JellyseerrMediaIcon
-            className='absolute top-1 left-1'
+            style={{ position: "absolute", top: 6, left: 6 }}
             mediaType={mediaType}
           />
-        </View>
+        )}
+        {mediaRequest && showDownloadInfo && (
+          <>
+            {mediaRequest.requestedBy?.displayName ? (
+              <Badge
+                style={{
+                  position: "absolute",
+                  top: 6,
+                  right: 6,
+                  maxWidth: box.w - 12,
+                }}
+                text={mediaRequest.requestedBy.displayName}
+              />
+            ) : null}
+            {requestedSeasons.length > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  left: 6,
+                  right: 6,
+                  bottom: 8,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 4,
+                }}
+              >
+                {requestedSeasons.map((season) => (
+                  <Badge key={season} text={season} tint={NeonBoard.text} />
+                ))}
+              </View>
+            )}
+            {!available && !Number.isNaN(progress) && (
+              <NeonProgress
+                progress={(progress || 0) / 100}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              />
+            )}
+          </>
+        )}
       </View>
-      <View className={`mt-2 flex flex-col ${horizontal ? "w-44" : "w-28"}`}>
-        <Text numberOfLines={2}>{title || ""}</Text>
-        <Text className='text-xs opacity-50 align-bottom'>
-          {releaseYear || ""}
+      <View style={{ marginTop: 6 }}>
+        <Text variant='cardTitle' numberOfLines={1}>
+          {title || ""}
+        </Text>
+        <Text variant='meta' muted numberOfLines={1}>
+          {meta}
         </Text>
       </View>
     </TouchableJellyseerrRouter>

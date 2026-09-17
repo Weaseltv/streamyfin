@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
+import { NeonHeader } from "@/components/common/NeonHeader";
 import {
   neonRootScreenOptions,
   nestedTabPageScreenOptions,
@@ -44,9 +45,13 @@ export default function IndexLayout() {
         name='downloads/index'
         options={{
           headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
           title: t("home.downloads.downloads_title"),
+          header: ({ navigation }) => (
+            <NeonHeader
+              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+              downloads={false}
+            />
+          ),
         }}
       />
       <Stack.Screen
@@ -64,9 +69,15 @@ export default function IndexLayout() {
         options={{
           title: t("home.settings.settings_title"),
           headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
+          // The brand row with a back chevron; the page head below carries
+          // the SETTINGS title.
+          header: ({ navigation }) => (
+            <NeonHeader
+              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+              downloads={false}
+              settings={false}
+            />
+          ),
         }}
       />
       <Stack.Screen

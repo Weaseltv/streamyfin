@@ -1,17 +1,18 @@
-import { Ionicons } from "@expo/vector-icons";
 import { TFunction } from "i18next";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, View } from "react-native";
+import { Linking } from "react-native";
 import { BITRATES } from "@/components/BitrateSelector";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
-import { PlatformDropdown } from "@/components/PlatformDropdown";
+import {
+  DropdownTrigger,
+  PlatformDropdown,
+} from "@/components/PlatformDropdown";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import useRouter from "@/hooks/useAppRouter";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { ScreenOrientationEnum, useSettings } from "@/utils/atoms/settings";
-import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -110,20 +111,15 @@ export const OtherSettings: React.FC = () => {
           <PlatformDropdown
             groups={orientationOptions}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {t(
+              <DropdownTrigger
+                value={
+                  t(
                     orientationTranslations[
                       settings.defaultVideoOrientation as keyof typeof orientationTranslations
                     ],
-                  ) || "Unknown Orientation"}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+                  ) || "Unknown Orientation"
+                }
+              />
             }
             title={t("home.settings.other.orientation")}
           />
@@ -170,18 +166,7 @@ export const OtherSettings: React.FC = () => {
         >
           <PlatformDropdown
             groups={bitrateOptions}
-            trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {settings.defaultBitrate?.key}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
-            }
+            trigger={<DropdownTrigger value={settings.defaultBitrate?.key} />}
             title={t("home.settings.other.default_quality")}
           />
         </ListItem>
@@ -204,16 +189,9 @@ export const OtherSettings: React.FC = () => {
           <PlatformDropdown
             groups={autoPlayEpisodeOptions}
             trigger={
-              <View className='flex flex-row items-center justify-between py-1.5 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {t(settings?.maxAutoPlayEpisodeCount.key)}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </View>
+              <DropdownTrigger
+                value={t(settings?.maxAutoPlayEpisodeCount.key)}
+              />
             }
             title={t("home.settings.other.max_auto_play_episode_count")}
           />

@@ -3,6 +3,7 @@ import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
+import { Sizes } from "@/constants/neon";
 import { useIntroSheet } from "@/providers/IntroSheetProvider";
 import { storage } from "@/utils/mmkv";
 
@@ -20,8 +21,10 @@ export default function IntroPage() {
       }}
     >
       <View
-        className='p-4 flex flex-col'
-        style={{ paddingTop: Platform.OS === "android" ? 10 : 0 }}
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+        }}
       >
         <ListGroup title={t("home.settings.intro.title")}>
           <ListItem
@@ -29,6 +32,8 @@ export default function IntroPage() {
               showIntro();
             }}
             title={t("home.settings.intro.show_intro")}
+            icon='play-circle-outline'
+            showArrow
           />
           <ListItem
             textColor='red'
@@ -36,6 +41,7 @@ export default function IntroPage() {
               storage.set("hasShownIntro", false);
             }}
             title={t("home.settings.intro.reset_intro")}
+            icon='refresh-outline'
           />
         </ListGroup>
         <View className='h-24' />

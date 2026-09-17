@@ -1,11 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, TouchableOpacity, View } from "react-native";
+import { Alert, TouchableOpacity, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useMMKVString } from "react-native-mmkv";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import {
   deleteAccountCredential,
@@ -17,7 +18,11 @@ import {
   updateServerCustomHeaders,
 } from "@/utils/secureCredentials";
 import { AccountsSheet } from "./AccountsSheet";
+import { Badge } from "./Badge";
+import { useConfirmDialog } from "./common/ConfirmDialog";
+import { SectionHeader } from "./common/SectionHeader";
 import { Text } from "./common/Text";
+import { Loader } from "./Loader";
 import { ListGroup } from "./list/ListGroup";
 import { ListItem } from "./list/ListItem";
 import { PasswordEntryModal } from "./PasswordEntryModal";
@@ -61,6 +66,7 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
 
   const { t } = useTranslation();
   const { showModal, hideModal } = useGlobalModal();
+  const { confirm, dialog } = useConfirmDialog();
 
   const refreshServers = () => {
     const servers = getPreviousServers();
@@ -212,12 +218,33 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
   };
 
   const handleRemoveServer = useCallback(
-    async (serverUrl: string) => {
-      await removeServerFromList(serverUrl);
-      refreshServers();
+    (serverUrl: string) => {
+      const server = previousServers.find((s) => s.address === serverUrl);
+      confirm({
+        title: t("server.remove_server"),
+        message: t("server.remove_server_description", {
+          server: server?.name || serverUrl,
+        }),
+        confirmLabel: t("common.remove"),
+        destructive: true,
+        onConfirm: async () => {
+          await removeServerFromList(serverUrl);
+          refreshServers();
+        },
+      });
     },
-    [setPreviousServers],
+    [setPreviousServers, previousServers, confirm, t],
   );
+
+  const handleClearAll = useCallback(() => {
+    confirm({
+      title: t("server.clear_all_confirm_title"),
+      message: t("server.clear_all_confirm_desc"),
+      confirmLabel: t("server.clear_button"),
+      destructive: true,
+      onConfirm: () => setPreviousServers("[]"),
+    });
+  }, [confirm, t, setPreviousServers]);
 
   /**
    * A saved server's proxy headers can only be reached from here: once its
@@ -245,20 +272,30 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
             swipeableRef.current?.close();
             handleEditHeaders(serverUrl);
           }}
-          className='bg-neutral-700 justify-center items-center px-5'
+          style={{
+            backgroundColor: NeonBoard.card2,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 20,
+          }}
           accessibilityLabel={t("custom_headers.title")}
         >
-          <Ionicons name='key' size={20} color='white' />
+          <Feather name='key' size={20} color={NeonBoard.text} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
             swipeableRef.current?.close();
             handleRemoveServer(serverUrl);
           }}
-          className='bg-red-600 justify-center items-center px-5'
+          style={{
+            backgroundColor: NeonBoard.red,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 20,
+          }}
           accessibilityLabel={t("server.remove_server")}
         >
-          <Ionicons name='trash' size={20} color='white' />
+          <Feather name='trash-2' size={20} color={NeonBoard.onAccent} />
         </TouchableOpacity>
       </View>
     ),
@@ -272,7 +309,7 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
       return t("server.accounts_count", { count: accountCount });
     }
     if (accountCount === 1) {
-      return `${server.accounts[0].username} • ${t("server.saved")}`;
+      return server.accounts[0].username;
     }
     return server.name ? server.address : undefined;
   };
@@ -301,8 +338,14 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
   if (!previousServers.length) return null;
 
   return (
-    <View>
-      <ListGroup title={t("server.previous_servers")} className='mt-4'>
+    <View style={{ marginTop: 8 }}>
+      <SectionHeader
+        title={t("server.previous_servers")}
+        accent={NeonBoard.volt}
+        actionLabel={t("server.clear_button")}
+        onPressAction={handleClearAll}
+      />
+      <ListGroup>
         {previousServers.map((s) => (
           <ServerItem
             key={s.address}
@@ -315,17 +358,15 @@ export const PreviousServersList: React.FC<PreviousServersListProps> = ({
             securityIcon={getSecurityIcon(s)}
           />
         ))}
-        <ListItem
-          onPress={() => {
-            setPreviousServers("[]");
-          }}
-          title={t("server.clear_button")}
-          textColor='red'
-        />
       </ListGroup>
-      <Text className='text-xs text-neutral-500 mt-2 ml-4'>
+      <Text
+        variant='caption'
+        muted
+        style={{ marginTop: 8, paddingHorizontal: Sizes.rowLead }}
+      >
         {t("server.swipe_for_options")}
       </Text>
+      {dialog}
 
       {/* Account Selection Sheet */}
       <AccountsSheet
@@ -399,6 +440,7 @@ const ServerItem: React.FC<ServerItemProps> = ({
 }) => {
   const swipeableRef = useRef<Swipeable>(null);
   const hasAccounts = server.accounts?.length > 0;
+  const { t } = useTranslation();
 
   return (
     <Swipeable
@@ -416,17 +458,20 @@ const ServerItem: React.FC<ServerItemProps> = ({
         disabled={loadingServer === server.address}
       >
         {loadingServer === server.address ? (
-          <ActivityIndicator size='small' color={Colors.primary} />
+          <Loader color={NeonBoard.volt} />
         ) : hasAccounts && securityIcon ? (
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation();
               onRemoveCredential();
             }}
-            className='p-1'
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole='button'
+            accessibilityLabel={t("server.remove_saved_login")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
           >
-            <Ionicons name={securityIcon} size={16} color={Colors.primary} />
+            <Badge text={t("server.saved")} tint={NeonBoard.green} />
+            <Ionicons name={securityIcon} size={14} color={NeonBoard.mid} />
           </TouchableOpacity>
         ) : null}
       </ListItem>

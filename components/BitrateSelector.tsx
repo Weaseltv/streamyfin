@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { Text } from "./common/Text";
-import { type OptionGroup, PlatformDropdown } from "./PlatformDropdown";
+import {
+  DropdownTrigger,
+  type OptionGroup,
+  PlatformDropdown,
+} from "./PlatformDropdown";
 
 export type Bitrate = {
   key: string;
@@ -101,14 +105,13 @@ export const BitrateSelector: React.FC<Props> = ({
 
   const trigger = (
     <View className='flex flex-col' {...props}>
-      <Text className='opacity-50 mb-1 text-xs'>{t("item_card.quality")}</Text>
-      <TouchableOpacity
-        className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'
-        onPress={() => setOpen(true)}
-      >
-        <Text numberOfLines={1}>
-          {BITRATES.find((b) => b.value === selected?.value)?.key}
-        </Text>
+      <Text variant='meta' muted style={{ marginBottom: 4 }}>
+        {t("item_card.quality")}
+      </Text>
+      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.7}>
+        <DropdownTrigger
+          value={BITRATES.find((b) => b.value === selected?.value)?.key}
+        />
       </TouchableOpacity>
     </View>
   );

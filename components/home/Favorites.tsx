@@ -1,14 +1,15 @@
 import type { Api } from "@jellyfin/sdk";
 import type { BaseItemKind } from "@jellyfin/sdk/lib/generated-client";
-import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
+import { getItemsApi, getPersonsApi } from "@jellyfin/sdk/lib/utils/api";
+import { useQuery } from "@tanstack/react-query";
 import { t } from "i18next";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { Text, View } from "react-native";
-// PNG ASSET
-import heart from "@/assets/icons/heart.fill.png";
-import { Image } from "@/components/common/ServerImage";
-import { Colors } from "@/constants/Colors";
+import { View } from "react-native";
+import { EmptyState } from "@/components/common/EmptyState";
+import { LoadingLine } from "@/components/common/LoadingLine";
+import { PageHead } from "@/components/common/PageHead";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { InfiniteScrollingCollectionList } from "./InfiniteScrollingCollectionList";
@@ -19,21 +20,60 @@ type FavoriteTypes =
   | "Episode"
   | "Video"
   | "BoxSet"
-  | "Playlist";
-type EmptyState = Record<FavoriteTypes, boolean>;
+  | "Playlist"
+  | "Person";
+type EmptyByType = Record<FavoriteTypes, boolean>;
 
+const FAVORITE_ITEM_TYPES: BaseItemKind[] = [
+  "Series",
+  "Movie",
+  "Episode",
+  "Video",
+  "BoxSet",
+  "Playlist",
+];
+
+const initialEmptyState = (): EmptyByType => ({
+  Series: false,
+  Movie: false,
+  Episode: false,
+  Video: false,
+  BoxSet: false,
+  Playlist: false,
+  Person: false,
+});
+
+/**
+ * The Watchlist page body: page head "WATCHLIST · Favorites across your
+ * libraries · n saved" and one rail per type on its type colour (series and
+ * episodes yellow, movies orange, people and the rest volt).
+ */
 export const Favorites = () => {
   const router = useRouter();
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const pageSize = 20;
-  const [emptyState, setEmptyState] = useState<EmptyState>({
-    Series: false,
-    Movie: false,
-    Episode: false,
-    Video: false,
-    BoxSet: false,
-    Playlist: false,
+  const [emptyState, setEmptyState] = useState<EmptyByType>(initialEmptyState);
+
+  // Total across every favourite type for the page head; the rails only know
+  // the pages they have loaded.
+  const { data: savedCount, isLoading: countLoading } = useQuery({
+    queryKey: ["home", "favorites", "count", user?.Id],
+    queryFn: async () => {
+      const response = await getItemsApi(api as Api).getItems({
+        userId: user?.Id,
+        filters: ["IsFavorite"],
+        recursive: true,
+        collapseBoxSetItems: false,
+        excludeLocationTypes: ["Virtual"],
+        enableTotalRecordCount: true,
+        includeItemTypes: FAVORITE_ITEM_TYPES,
+        limit: 0,
+      });
+      return response.data.TotalRecordCount ?? 0;
+    },
+    enabled: !!api && !!user?.Id,
+    staleTime: 60 * 1000,
   });
 
   const fetchFavoritesByType = useCallback(
@@ -73,14 +113,7 @@ export const Favorites = () => {
 
   // Reset empty state when component mounts or dependencies change
   useEffect(() => {
-    setEmptyState({
-      Series: false,
-      Movie: false,
-      Episode: false,
-      Video: false,
-      BoxSet: false,
-      Playlist: false,
-    });
+    setEmptyState(initialEmptyState());
   }, [api, user]);
 
   // Check if all categories that have been loaded are empty
@@ -121,6 +154,22 @@ export const Favorites = () => {
     ({ pageParam }: { pageParam: number }) =>
       fetchFavoritesByType("Playlist", pageParam, pageSize),
     [fetchFavoritesByType, pageSize],
+  );
+  // The persons endpoint has no start index, so people load as one page.
+  const fetchFavoritePeople = useCallback(
+    async ({ pageParam }: { pageParam: number }) => {
+      if (pageParam > 0) return [];
+      const response = await getPersonsApi(api as Api).getPersons({
+        userId: user?.Id,
+        isFavorite: true,
+        limit: pageSize,
+        fields: ["PrimaryImageAspectRatio"],
+      });
+      const items = response.data.Items || [];
+      setEmptyState((prev) => ({ ...prev, Person: items.length === 0 }));
+      return items;
+    },
+    [api, user, pageSize],
   );
 
   const handleSeeAllSeries = useCallback(() => {
@@ -165,73 +214,93 @@ export const Favorites = () => {
     } as any);
   }, [router]);
 
+  const empty = areAllEmpty();
+
   return (
-    <View className='flex flex-co gap-y-4'>
-      {areAllEmpty() && (
-        <View className='flex-1 items-center justify-center py-12'>
-          <Image
-            className={"w-10 h-10 mb-4"}
-            style={{ tintColor: Colors.primary }}
-            contentFit='contain'
-            source={heart}
-          />
-          <Text className='text-xl font-semibold text-white mb-2'>
-            {t("favorites.noDataTitle")}
-          </Text>
-          <Text className='text-base text-white/70 text-center max-w-xs px-4'>
-            {t("favorites.noData")}
-          </Text>
-        </View>
+    <View style={{ backgroundColor: NeonBoard.stage }}>
+      <LoadingLine active={countLoading} />
+      <PageHead
+        eyebrow={t("favorites.eyebrow")}
+        title={t("tabs.favorites")}
+        trailing={
+          savedCount && savedCount > 0
+            ? t("favorites.saved_count", { count: savedCount })
+            : null
+        }
+      />
+      {empty && (
+        <EmptyState
+          icon='heart'
+          title={t("favorites.noDataTitle")}
+          detail={t("favorites.noData")}
+        />
       )}
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoriteSeries}
-        queryKey={["home", "favorites", "series"]}
-        title={t("favorites.series")}
-        hideIfEmpty
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllSeries}
-      />
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoriteMovies}
-        queryKey={["home", "favorites", "movies"]}
-        title={t("favorites.movies")}
-        hideIfEmpty
-        orientation='vertical'
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllMovies}
-      />
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoriteEpisodes}
-        queryKey={["home", "favorites", "episodes"]}
-        title={t("favorites.episodes")}
-        hideIfEmpty
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllEpisodes}
-      />
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoriteVideos}
-        queryKey={["home", "favorites", "videos"]}
-        title={t("favorites.videos")}
-        hideIfEmpty
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllVideos}
-      />
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoriteBoxsets}
-        queryKey={["home", "favorites", "boxsets"]}
-        title={t("favorites.boxsets")}
-        hideIfEmpty
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllBoxsets}
-      />
-      <InfiniteScrollingCollectionList
-        queryFn={fetchFavoritePlaylists}
-        queryKey={["home", "favorites", "playlists"]}
-        title={t("favorites.playlists")}
-        hideIfEmpty
-        pageSize={pageSize}
-        onPressSeeAll={handleSeeAllPlaylists}
-      />
+      <View style={{ gap: 4, paddingBottom: 8 }}>
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoriteSeries}
+          queryKey={["home", "favorites", "series"]}
+          title={t("favorites.series")}
+          accent={NeonBoard.yellow}
+          hideIfEmpty
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllSeries}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoriteMovies}
+          queryKey={["home", "favorites", "movies"]}
+          title={t("favorites.movies")}
+          accent={NeonBoard.orange}
+          hideIfEmpty
+          orientation='vertical'
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllMovies}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoriteEpisodes}
+          queryKey={["home", "favorites", "episodes"]}
+          title={t("favorites.episodes")}
+          accent={NeonBoard.yellow}
+          orientation='horizontal'
+          hideIfEmpty
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllEpisodes}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoritePeople}
+          queryKey={["home", "favorites", "people"]}
+          title={t("favorites.people")}
+          accent={NeonBoard.volt}
+          hideIfEmpty
+          pageSize={pageSize}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoriteVideos}
+          queryKey={["home", "favorites", "videos"]}
+          title={t("favorites.videos")}
+          accent={NeonBoard.volt}
+          hideIfEmpty
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllVideos}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoriteBoxsets}
+          queryKey={["home", "favorites", "boxsets"]}
+          title={t("favorites.boxsets")}
+          accent={NeonBoard.volt}
+          hideIfEmpty
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllBoxsets}
+        />
+        <InfiniteScrollingCollectionList
+          queryFn={fetchFavoritePlaylists}
+          queryKey={["home", "favorites", "playlists"]}
+          title={t("favorites.playlists")}
+          accent={NeonBoard.volt}
+          hideIfEmpty
+          pageSize={pageSize}
+          onPressSeeAll={handleSeeAllPlaylists}
+        />
+      </View>
     </View>
   );
 };

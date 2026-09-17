@@ -1,7 +1,7 @@
 import { useNavigation } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, ScrollView, TextInput, View } from "react-native";
+import { Linking, Platform, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { HeaderButton } from "@/components/common/HeaderButton";
@@ -11,12 +11,23 @@ import { Text } from "@/components/common/Text";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
 import { CustomHeaderSelector } from "@/components/settings/CustomHeaderSelector";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace, Sizes } from "@/constants/neon";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useIntegrationHeaders } from "@/hooks/useIntegrationHeaders";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { useServerUrlResolver } from "@/hooks/useServerUrlResolver";
 import { useSettings } from "@/utils/atoms/settings";
 import { reachabilityProbe } from "@/utils/serverUrl/probes/reachability";
+
+// The URL is typed straight into the row, right-aligned like a value.
+const urlInputStyle = {
+  flex: 1,
+  textAlign: "right" as const,
+  color: NeonBoard.text,
+  fontSize: 13,
+  ...FontFace.body,
+};
 
 export default function MarlinSearchPage() {
   useDismissKeyboardOnLeave();
@@ -61,7 +72,7 @@ export default function MarlinSearchPage() {
       navigation.setOptions({
         headerRight: () => (
           <HeaderButton variant='text' onPress={() => onSave(value)}>
-            <Text className='text-blue-500'>
+            <Text variant='button' accent={NeonBoard.volt}>
               {t("home.settings.plugins.marlin_search.save_button")}
             </Text>
           </HeaderButton>
@@ -80,7 +91,13 @@ export default function MarlinSearchPage() {
         paddingRight: insets.right,
       }}
     >
-      <View className='px-4 pt-4'>
+      <View
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+          paddingBottom: 16,
+        }}
+      >
         <ListGroup>
           {/* disabledByAdmin renders the "Disabled by admin" notice as the row's
               subtitle (same pattern as the Streamystats settings) — no clipping. */}
@@ -108,14 +125,16 @@ export default function MarlinSearchPage() {
           </ListItem>
         </ListGroup>
 
-        <ListGroup className='mt-2'>
+        <ListGroup className='mt-4'>
           <ListItem
             title={t("home.settings.plugins.marlin_search.url")}
             disabledByAdmin={marlinUrlLocked}
           >
             <TextInput
               editable={!marlinUrlLocked && settings.searchEngine === "Marlin"}
-              className='text-white text-right flex-1'
+              style={urlInputStyle}
+              placeholderTextColor={NeonBoard.low}
+              selectionColor={NeonBoard.volt}
               placeholder={t(
                 "home.settings.plugins.marlin_search.server_url_placeholder",
               )}
@@ -140,16 +159,16 @@ export default function MarlinSearchPage() {
             />
           </ListItem>
         </ListGroup>
-        <ServerUrlStatusText state={urlResolver} className='mt-1 px-4' />
+        <ServerUrlStatusText state={urlResolver} className='mt-2 px-3' />
 
-        <Text className='px-4 text-xs text-neutral-500 mt-1'>
+        <Text variant='meta' muted className='px-3 mt-2'>
           {t("home.settings.plugins.marlin_search.marlin_search_hint")}{" "}
-          <Text className='text-blue-500' onPress={handleOpenLink}>
+          <Text variant='meta' accent={NeonBoard.volt} onPress={handleOpenLink}>
             {t("home.settings.plugins.marlin_search.read_more_about_marlin")}
           </Text>
         </Text>
 
-        <View className='px-4'>
+        <View>
           <CustomHeaderSelector
             integrationKey='marlin'
             title={t("custom_headers.title")}

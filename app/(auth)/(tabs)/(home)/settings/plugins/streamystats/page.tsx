@@ -1,15 +1,10 @@
 import { useNavigation } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Linking,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Linking, Platform, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
+import { Button } from "@/components/Button";
 import { HeaderButton } from "@/components/common/HeaderButton";
 import { ServerUrlStatusText } from "@/components/common/ServerUrlStatusText";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
@@ -17,12 +12,23 @@ import { Text } from "@/components/common/Text";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
 import { CustomHeaderSelector } from "@/components/settings/CustomHeaderSelector";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace, Sizes } from "@/constants/neon";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useIntegrationHeaders } from "@/hooks/useIntegrationHeaders";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { useServerUrlResolver } from "@/hooks/useServerUrlResolver";
 import { useSettings } from "@/utils/atoms/settings";
 import { reachabilityProbe } from "@/utils/serverUrl/probes/reachability";
+
+// The URL is typed straight into the row, right-aligned like a value.
+const urlInputStyle = {
+  flex: 1,
+  textAlign: "right" as const,
+  color: NeonBoard.text,
+  fontSize: 13,
+  ...FontFace.body,
+};
 
 export default function StreamystatsPage() {
   useDismissKeyboardOnLeave();
@@ -112,7 +118,7 @@ export default function StreamystatsPage() {
     navigation.setOptions({
       headerRight: () => (
         <HeaderButton variant='text' onPress={onSave}>
-          <Text className='text-blue-500 font-medium'>
+          <Text variant='button' accent={NeonBoard.volt}>
             {t("home.settings.plugins.streamystats.save")}
           </Text>
         </HeaderButton>
@@ -154,7 +160,13 @@ export default function StreamystatsPage() {
         paddingRight: insets.right,
       }}
     >
-      <View className='px-4 pt-4'>
+      <View
+        style={{
+          paddingHorizontal: Sizes.gutter,
+          paddingTop: Platform.OS === "android" ? 10 : 0,
+          paddingBottom: 16,
+        }}
+      >
         <ListGroup className='flex-1'>
           <ListItem
             title={t("home.settings.plugins.streamystats.url")}
@@ -162,7 +174,9 @@ export default function StreamystatsPage() {
           >
             <TextInput
               editable={!isUrlLocked}
-              className='text-white text-right flex-1'
+              style={urlInputStyle}
+              placeholderTextColor={NeonBoard.low}
+              selectionColor={NeonBoard.volt}
               placeholder={t(
                 "home.settings.plugins.streamystats.server_url_placeholder",
               )}
@@ -187,13 +201,13 @@ export default function StreamystatsPage() {
             />
           </ListItem>
         </ListGroup>
-        <View className='px-4 mt-1'>
+        <View className='px-3 mt-2'>
           <ServerUrlStatusText state={urlResolver} />
         </View>
 
-        <Text className='px-4 text-xs text-neutral-500 mt-1'>
+        <Text variant='meta' muted className='px-3 mt-2'>
           {t("home.settings.plugins.streamystats.streamystats_search_hint")}{" "}
-          <Text className='text-blue-500' onPress={handleOpenLink}>
+          <Text variant='meta' accent={NeonBoard.volt} onPress={handleOpenLink}>
             {t(
               "home.settings.plugins.streamystats.read_more_about_streamystats",
             )}
@@ -290,20 +304,21 @@ export default function StreamystatsPage() {
             />
           </ListItem>
         </ListGroup>
-        <Text className='px-4 text-xs text-neutral-500 mt-1'>
+        <Text variant='meta' muted className='px-3 mt-2'>
           {t("home.settings.plugins.streamystats.home_sections_hint")}
         </Text>
 
         {/* Disable button - only show if URL is not locked and Streamystats is enabled */}
         {!isUrlLocked && isStreamystatsEnabled && (
-          <TouchableOpacity
-            onPress={handleClearStreamystats}
-            className='mt-3 mb-4 py-3 bg-neutral-800'
-          >
-            <Text className='text-center text-red-500'>
+          <View className='mt-4'>
+            <Button
+              color='red'
+              variant='border'
+              onPress={handleClearStreamystats}
+            >
               {t("home.settings.plugins.streamystats.disable_streamystats")}
-            </Text>
-          </TouchableOpacity>
+            </Button>
+          </View>
         )}
       </View>
     </ScrollView>

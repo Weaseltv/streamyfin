@@ -6,13 +6,15 @@ import {
   Linking,
   Platform,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Button } from "@/components/Button";
+import { Input } from "@/components/common/Input";
 import { ServerUrlStatusText } from "@/components/common/ServerUrlStatusText";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
+import { glowRule, Scrims, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useServerUrlResolver } from "@/hooks/useServerUrlResolver";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -183,86 +185,22 @@ export const CompanionLoginScreen: React.FC = () => {
 
   if (screenState === "no-permission") {
     return (
-      <View className='flex-1 bg-black'>
+      <View className='flex-1 bg-stage'>
         <View className='flex-1 items-center justify-center p-8'>
-          <Text className='mb-3 text-center text-3xl font-bold text-white'>
+          <Text variant='pageTitle' className='mb-3 text-center'>
             {t("companion_login.error_permission_denied")}
           </Text>
 
           {Platform.OS === "ios" && (
-            <TouchableOpacity
-              onPress={() => Linking.openSettings()}
-              className='mt-4 bg-volt px-6 py-3'
-            >
-              <Text className='text-base font-semibold text-white'>
+            <View className='mt-4 self-stretch'>
+              <Button onPress={() => Linking.openSettings()}>
                 {t("companion_login.open_settings")}
-              </Text>
-            </TouchableOpacity>
+              </Button>
+            </View>
           )}
 
-          <Button
-            onPress={handleDone}
-            color='white'
-            className='mt-4'
-            textClassName='flex-1 text-center'
-          >
-            {t("companion_login.done")}
-          </Button>
-        </View>
-      </View>
-    );
-  }
-
-  if (screenState === "success") {
-    return (
-      <View className='flex-1 bg-black'>
-        <View className='flex-1 items-center justify-center p-8'>
-          <Text className='mb-3 text-center text-3xl font-bold text-white'>
-            {t("companion_login.success_title")}
-          </Text>
-
-          <Text className='mb-8 text-center text-base text-gray-400'>
-            {t("companion_login.pairing_tv_connecting")}
-          </Text>
-
-          <Button
-            onPress={handleDone}
-            color='primary'
-            textClassName='flex-1 text-center'
-          >
-            {t("companion_login.done")}
-          </Button>
-        </View>
-      </View>
-    );
-  }
-
-  if (screenState === "error") {
-    return (
-      <View className='flex-1 bg-black'>
-        <View className='flex-1 items-center justify-center p-8'>
-          <Text className='mb-3 text-center text-3xl font-bold text-white'>
-            {t("companion_login.error_title")}
-          </Text>
-
-          <Text className='mb-8 text-center text-base text-gray-400'>
-            {errorMessage}
-          </Text>
-
-          <View className='mt-4 flex-row gap-3'>
-            <Button
-              onPress={handleScanAgain}
-              color='primary'
-              textClassName='flex-1 text-center'
-            >
-              {t("companion_login.scan_again")}
-            </Button>
-
-            <Button
-              onPress={handleDone}
-              color='white'
-              textClassName='flex-1 text-center'
-            >
+          <View className='mt-3 self-stretch'>
+            <Button onPress={handleDone} color='white' variant='border'>
               {t("companion_login.done")}
             </Button>
           </View>
@@ -271,11 +209,67 @@ export const CompanionLoginScreen: React.FC = () => {
     );
   }
 
+  if (screenState === "success") {
+    return (
+      <View className='flex-1 bg-stage'>
+        <View className='flex-1 items-center justify-center p-8'>
+          <Text variant='pageTitle' className='mb-3 text-center'>
+            {t("companion_login.success_title")}
+          </Text>
+
+          <Text variant='body' muted className='mb-8 text-center'>
+            {t("companion_login.pairing_tv_connecting")}
+          </Text>
+
+          <View className='self-stretch'>
+            <Button onPress={handleDone} color='primary'>
+              {t("companion_login.done")}
+            </Button>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (screenState === "error") {
+    return (
+      <View className='flex-1 bg-stage'>
+        <View className='flex-1 items-center justify-center p-8'>
+          <Text
+            variant='pageTitle'
+            className='mb-3 text-center'
+            style={{ color: NeonBoard.red }}
+          >
+            {t("companion_login.error_title")}
+          </Text>
+
+          <Text variant='body' muted className='mb-8 text-center'>
+            {errorMessage}
+          </Text>
+
+          <View className='mt-4 flex-row gap-3 self-stretch'>
+            <View className='flex-1'>
+              <Button onPress={handleScanAgain} color='primary'>
+                {t("companion_login.scan_again")}
+              </Button>
+            </View>
+
+            <View className='flex-1'>
+              <Button onPress={handleDone} color='white' variant='border'>
+                {t("companion_login.done")}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (screenState === "sending") {
     return (
-      <View className='flex-1 bg-black'>
+      <View className='flex-1 bg-stage'>
         <View className='flex-1 items-center justify-center p-8'>
-          <Text className='text-xl text-white'>
+          <Text variant='section' style={{ color: NeonBoard.warn }}>
             {t("companion_login.authorizing")}
           </Text>
         </View>
@@ -286,7 +280,7 @@ export const CompanionLoginScreen: React.FC = () => {
   if (screenState === "confirm") {
     return (
       <KeyboardAvoidingView
-        className='flex-1 bg-black'
+        className='flex-1 bg-stage'
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
@@ -297,37 +291,39 @@ export const CompanionLoginScreen: React.FC = () => {
           }}
           keyboardShouldPersistTaps='handled'
         >
-          <Text className='mb-2 text-center text-2xl font-bold text-white'>
+          <Text variant='pageTitle' className='mb-2 text-center'>
             {t("companion_login.login_as", { username })}
           </Text>
 
-          <Text className='mb-8 text-center text-base text-gray-400'>
+          <Text variant='body' muted className='mb-8 text-center'>
             {t("companion_login.on_server", {
               server: serverUrl.replace(/^https?:\/\//, ""),
             })}
           </Text>
 
           <View className='mb-6 items-center'>
-            <Text className='mb-1 text-sm text-gray-400'>
+            <Text variant='eyebrow' accent={NeonBoard.volt} className='mb-1'>
               {t("companion_login.pairing_code_label")}
             </Text>
 
-            <Text className='mb-8 text-center text-4xl font-bold tracking-[6px] text-white'>
+            <Text
+              variant='display'
+              className='mb-8 text-center'
+              style={{ letterSpacing: 6 }}
+            >
               {pairingCode}
             </Text>
           </View>
 
           <View className='mb-5'>
-            <Text className='mb-2 text-sm text-gray-400'>
+            <Text variant='meta' muted className='mb-2'>
               {t("login.password_placeholder")}
             </Text>
 
-            <TextInput
-              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+            <Input
               value={password}
               onChangeText={setPassword}
               placeholder={t("login.password_placeholder")}
-              placeholderTextColor='#6B7280'
               autoCapitalize='none'
               autoCorrect={false}
               secureTextEntry
@@ -342,7 +338,6 @@ export const CompanionLoginScreen: React.FC = () => {
               onPress={handleSendCredentials}
               disabled={!password.trim()}
               color='primary'
-              textClassName='flex-1 text-center'
             >
               {t("companion_login.authorize_button")}
             </Button>
@@ -350,13 +345,13 @@ export const CompanionLoginScreen: React.FC = () => {
 
           <View className='mt-6 items-center'>
             <TouchableOpacity onPress={handleUseDifferentUser} className='py-2'>
-              <Text className='text-base text-gray-400 underline'>
+              <Text variant='chip' accent={NeonBoard.volt}>
                 {t("companion_login.use_different_user")}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleScanAgain} className='py-2'>
-              <Text className='text-sm text-gray-500 underline'>
+              <Text variant='chip' muted>
                 {t("companion_login.scan_again")}
               </Text>
             </TouchableOpacity>
@@ -369,45 +364,43 @@ export const CompanionLoginScreen: React.FC = () => {
   if (screenState === "form") {
     return (
       <KeyboardAvoidingView
-        className='flex-1 bg-black'
+        className='flex-1 bg-stage'
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
-            padding: 14,
+            padding: Sizes.gutter,
           }}
           keyboardShouldPersistTaps='handled'
         >
-          <Text className='mb-2 text-2xl font-bold text-white'>
+          <Text variant='pageTitle' className='mb-4'>
             {t("companion_login.pairing_enter_credentials")}
           </Text>
 
           <View className='mb-5'>
-            <Text className='mb-2 text-sm text-gray-400'>
+            <Text variant='meta' muted className='mb-2'>
               {t("companion_login.pairing_code_label")}
             </Text>
 
-            <TextInput
-              className='border border-neutral-700 bg-neutral-900 p-3 text-center text-2xl font-bold tracking-[6px] text-white'
+            <Input
               value={pairingCode}
               onChangeText={setPairingCode}
               placeholder={t("companion_login.pairing_code_label")}
-              placeholderTextColor='#6B7280'
               autoCapitalize='characters'
               autoCorrect={false}
               returnKeyType='next'
+              style={{ textAlign: "center", fontSize: 22, letterSpacing: 6 }}
             />
           </View>
 
           <View className='mb-5'>
-            <Text className='mb-2 text-sm text-gray-400'>
+            <Text variant='meta' muted className='mb-2'>
               {t("companion_login.server")}
             </Text>
 
-            <TextInput
-              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+            <Input
               value={serverUrl}
               onChangeText={(text) => {
                 setServerUrl(text);
@@ -415,7 +408,6 @@ export const CompanionLoginScreen: React.FC = () => {
                 serverResolver.reset();
               }}
               placeholder={t("server.server_url_placeholder")}
-              placeholderTextColor='#6B7280'
               autoCapitalize='none'
               autoCorrect={false}
               keyboardType='url'
@@ -433,16 +425,14 @@ export const CompanionLoginScreen: React.FC = () => {
           </View>
 
           <View className='mb-5'>
-            <Text className='mb-2 text-sm text-gray-400'>
+            <Text variant='meta' muted className='mb-2'>
               {t("login.username_placeholder")}
             </Text>
 
-            <TextInput
-              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+            <Input
               value={username}
               onChangeText={setUsername}
               placeholder={t("login.username_placeholder")}
-              placeholderTextColor='#6B7280'
               autoCapitalize='none'
               autoCorrect={false}
               returnKeyType='next'
@@ -450,16 +440,14 @@ export const CompanionLoginScreen: React.FC = () => {
           </View>
 
           <View className='mb-5'>
-            <Text className='mb-2 text-sm text-gray-400'>
+            <Text variant='meta' muted className='mb-2'>
               {t("login.password_placeholder")}
             </Text>
 
-            <TextInput
-              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+            <Input
               value={password}
               onChangeText={setPassword}
               placeholder={t("login.password_placeholder")}
-              placeholderTextColor='#6B7280'
               autoCapitalize='none'
               autoCorrect={false}
               secureTextEntry
@@ -468,30 +456,27 @@ export const CompanionLoginScreen: React.FC = () => {
             />
           </View>
 
-          <View className='flex-row justify-center gap-3'>
-            <Button
-              onPress={handleScanAgain}
-              color='black'
-              className='w-40 border border-neutral-700 bg-neutral-800'
-              textClassName='flex-1 text-center'
-            >
-              {t("companion_login.scan_again")}
-            </Button>
+          <View className='flex-row gap-3'>
+            <View className='flex-1'>
+              <Button onPress={handleScanAgain} color='white' variant='border'>
+                {t("companion_login.scan_again")}
+              </Button>
+            </View>
 
-            <Button
-              onPress={handleSendCredentials}
-              disabled={
-                !serverUrl.trim() ||
-                !username.trim() ||
-                !password.trim() ||
-                !pairingCode.trim()
-              }
-              className='w-40'
-              color='primary'
-              textClassName='flex-1 text-center'
-            >
-              {t("companion_login.authorize_button")}
-            </Button>
+            <View className='flex-1'>
+              <Button
+                onPress={handleSendCredentials}
+                disabled={
+                  !serverUrl.trim() ||
+                  !username.trim() ||
+                  !password.trim() ||
+                  !pairingCode.trim()
+                }
+                color='primary'
+              >
+                {t("companion_login.authorize_button")}
+              </Button>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -502,20 +487,18 @@ export const CompanionLoginScreen: React.FC = () => {
 
   if (!CameraView) {
     return (
-      <View className='flex-1 bg-black items-center justify-center p-8'>
-        <Button
-          onPress={handleEnterCodeManually}
-          color='primary'
-          textClassName='flex-1 text-center'
-        >
-          {t("companion_login.enter_code_manually")}
-        </Button>
+      <View className='flex-1 bg-stage items-center justify-center p-8'>
+        <View className='self-stretch'>
+          <Button onPress={handleEnterCodeManually} color='primary'>
+            {t("companion_login.enter_code_manually")}
+          </Button>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className='flex-1 bg-black items-center justify-center'>
+    <View className='flex-1 bg-video items-center justify-center'>
       {/* Camera full screen */}
       <CameraView
         style={{
@@ -531,14 +514,27 @@ export const CompanionLoginScreen: React.FC = () => {
         }}
       />
 
-      {/* Dark overlay */}
-      <View className='absolute inset-0 bg-black/60' />
+      {/* Flat stage scrim over the camera */}
+      <View
+        className='absolute inset-0'
+        style={{ backgroundColor: Scrims.modal }}
+      />
 
-      {/* Center scan area */}
+      {/* Center scan area: a square volt frame with a glow */}
       <View className='items-center'>
-        <View className='h-[250px] w-[250px] border-2 border-white/80' />
+        <View
+          style={[
+            {
+              height: 250,
+              width: 250,
+              borderWidth: 2,
+              borderColor: NeonBoard.volt,
+            },
+            glowRule(NeonBoard.volt),
+          ]}
+        />
 
-        <Text className='mt-6 text-center text-base text-white'>
+        <Text variant='body' className='mt-6 text-center'>
           {t("companion_login.align_qr")}
         </Text>
 
@@ -546,7 +542,7 @@ export const CompanionLoginScreen: React.FC = () => {
           onPress={handleEnterCodeManually}
           className='mt-4 px-5 py-2'
         >
-          <Text className='text-sm text-gray-400 underline'>
+          <Text variant='chip' accent={NeonBoard.volt}>
             {t("companion_login.enter_code_manually")}
           </Text>
         </TouchableOpacity>

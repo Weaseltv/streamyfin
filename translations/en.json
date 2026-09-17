@@ -11,6 +11,8 @@
     "error_title": "Error",
     "login_title": "Log in",
     "login_to_title": "Log in to",
+    "log_in_to_weaselplex": "Log in to WeaselPlex",
+    "account_note": "Use your WeaselPlex account. Your password never leaves this device.",
     "select_user": "Select a user to log in",
     "add_user_to_login": "Add a user to log in",
     "add_user": "Add user",
@@ -18,6 +20,7 @@
     "password_placeholder": "Password",
     "login_button": "Log in",
     "quick_connect": "Quick Connect",
+    "your_code": "Your code",
     "enter_code_to_login": "Enter code {{code}} to log in",
     "quick_connect_instructions": "Enter this code on a signed-in device. You'll be logged in automatically.",
     "tap_code_to_copy": "Tap the code to copy it",
@@ -38,11 +41,13 @@
     "too_old_server_description": "Please update Jellyfin to the latest version"
   },
   "server": {
-    "enter_url_to_jellyfin_server": "Enter the URL to your Jellyfin server",
+    "enter_url_to_jellyfin_server": "Enter the URL to your WeaselPlex server",
     "server_url_placeholder": "http(s)://your-server.com",
     "connect_button": "Connect",
     "previous_servers": "Previous servers",
     "clear_button": "Clear all",
+    "clear_all_confirm_title": "Clear previous servers?",
+    "clear_all_confirm_desc": "This removes every saved server and account from this device.",
     "server_url": "Server URL",
     "swipe_to_remove": "Swipe to remove",
     "search_for_local_servers": "Search for local servers",
@@ -133,6 +138,8 @@
       "settings_title": "Settings",
       "disabled_by_admin": "Disabled by admin",
       "log_out_button": "Log out",
+      "log_out_confirm_title": "Log out?",
+      "log_out_confirm_desc": "You'll need to sign in to this server again.",
       "switch_user": {
         "title": "Switch user",
         "account": "Account",
@@ -203,19 +210,19 @@
         "user_info_title": "User info",
         "user": "User",
         "server": "Server",
-        "token": "Token",
         "app_version": "App version"
       },
       "quick_connect": {
         "quick_connect_title": "Quick Connect",
-        "authorize_button": "Authorize Quick Connect",
-        "enter_the_quick_connect_code": "Enter the Quick Connect code...",
+        "enter_a_code": "Enter a code",
+        "enter_the_code": "Enter the code",
+        "enter_the_quick_connect_code": "Type the code shown on the TV. It signs the TV in with this account.",
         "success": "Success",
         "quick_connect_authorized": "Quick Connect authorized",
         "error": "Error",
         "invalid_code": "Invalid code",
         "authorize": "Authorize",
-        "paste_code": "Paste code"
+        "paste_code": "Paste from clipboard"
       },
       "media_controls": {
         "media_controls_title": "Media controls",
@@ -470,6 +477,10 @@
         "copy": "Copy",
         "copied": "Copied to clipboard"
       },
+      "chromecast": {
+        "title": "Chromecast",
+        "enable_h265": "Enable H265 for Chromecast"
+      },
       "languages": {
         "title": "Languages",
         "app_language": "App language",
@@ -511,8 +522,6 @@
       "delete_all_button": "Delete all",
       "delete_all_other_media_button": "Delete other media",
       "active_download": "Active download",
-      "no_active_downloads": "No active downloads",
-      "active_downloads": "Active downloads",
       "new_app_version_requires_re_download": "New app version requires re-download",
       "new_app_version_requires_re_download_description": "The new update requires content to be downloaded again. Please remove all downloaded content and try again.",
       "back": "Back",
@@ -520,7 +529,6 @@
       "delete_download": "Delete download",
       "something_went_wrong": "Something went wrong",
       "could_not_get_stream_url_from_jellyfin": "Could not get the stream URL from Jellyfin",
-      "eta": "ETA {{eta}}",
       "live_activity": {
         "downloading": "Downloading",
         "completed": "Downloaded",
@@ -548,7 +556,13 @@
         "files_deleted_by_type": "{{count}} {{type}} deleted",
         "could_not_get_download_url_for_item": "Could not get download URL for {{itemName}}",
         "file_deleted": "{{item}} deleted"
-      }
+      },
+      "offline_library": "Offline library",
+      "queue": "Queue",
+      "of_total": "{{downloaded}} of {{total}}",
+      "time_left": "{{time}} left",
+      "no_downloaded_items_detail": "Movies and episodes you download show up here.",
+      "manage_title": "Manage downloads"
     },
     "featured": "Featured"
   },
@@ -583,6 +597,7 @@
   "search": {
     "search": "Search...",
     "x_items": "{{count}} items",
+    "n_results": "{{count}} results",
     "library": "Library",
     "discover": "Requests",
     "requests_hint": "Type the name of a movie or show to request it.",
@@ -666,7 +681,10 @@
     "boxsets": "Box sets",
     "playlists": "Playlists",
     "noDataTitle": "Nothing on your watchlist yet",
-    "noData": "Items you add to your watchlist show up here."
+    "noData": "Items you add to your watchlist show up here.",
+    "eyebrow": "Favorites across your libraries",
+    "saved_count": "{{count}} saved",
+    "people": "People"
   },
   "custom_links": {
     "no_links": "No links"
@@ -773,7 +791,6 @@
     "similar_items": "Similar items",
     "no_similar_items_found": "No similar items found",
     "video": "Video",
-    "more_details": "More details",
     "media_options": "Media options",
     "quality": "Quality",
     "audio": "Audio",
@@ -831,7 +848,9 @@
       "recordings": "Recordings",
       "schedule": "Schedule",
       "series": "Series"
-    }
+    },
+    "today": "Today",
+    "page": "Page {{page}}"
   },
   "jellyseerr": {
     "confirm": "Confirm",
@@ -845,11 +864,21 @@
     "submit_button": "Submit",
     "report_issue_button": "Report issue",
     "request_button": "Request",
+    "status": "Status",
+    "media_status": {
+      "available": "Available",
+      "partial": "Partial",
+      "processing": "Processing",
+      "pending": "Pending",
+      "approved": "Approved",
+      "declined": "Declined",
+      "failed": "Failed",
+      "blacklisted": "Blacklisted"
+    },
     "are_you_sure_you_want_to_request_all_seasons": "Are you sure you want to request all seasons?",
     "failed_to_login": "Failed to log in",
     "cast": "Cast",
     "details": "Details",
-    "status": "Status",
     "original_title": "Original title",
     "series_type": "Series type",
     "release_dates": "Release dates",
@@ -895,6 +924,9 @@
       "failed_to_approve_request": "Failed to approve request",
       "failed_to_decline_request": "Failed to decline request"
     }
+  },
+  "request": {
+    "button_seasons": "Request {{count}} seasons"
   },
   "awards": {
     "won_oscar": "Won {{count}} Oscar",
@@ -1039,7 +1071,9 @@
     "remove_item_message": "Remove \"{{name}}\" from this watchlist?",
     "loading": "Loading watchlists...",
     "no_compatible_watchlists": "No compatible watchlists",
-    "create_one_first": "Create a watchlist that accepts this content type"
+    "create_one_first": "Create a watchlist that accepts this content type",
+    "watchlists_count": "{{count}} watchlists",
+    "items_count": "{{count}} items"
   },
   "playback_speed": {
     "title": "Playback speed",
@@ -1122,5 +1156,11 @@
     "downloaded": "Downloaded",
     "episodes_count": "{{count}} episodes",
     "seasons_count": "{{count}} seasons"
+  },
+  "states": {
+    "retry": "Retry",
+    "offline_title": "Offline mode",
+    "offline_detail": "{{host}} is unreachable. Showing your downloads.",
+    "downloads_title": "Your downloads"
   }
 }
