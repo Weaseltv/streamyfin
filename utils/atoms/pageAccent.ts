@@ -1,4 +1,4 @@
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { NeonBoard } from "@/constants/Colors";
