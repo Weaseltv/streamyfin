@@ -6,6 +6,7 @@ import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScrollingCollectionList } from "@/components/home/ScrollingCollectionList";
 import { TVLiveTVPage } from "@/components/livetv/TVLiveTVPage";
+import { NeonBoard } from "@/constants/Colors";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 export default function page() {
@@ -53,6 +54,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
         <ScrollingCollectionList
           queryKey={["livetv", "shows"]}
@@ -75,6 +77,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
         <ScrollingCollectionList
           queryKey={["livetv", "movies"]}
@@ -93,6 +96,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
         <ScrollingCollectionList
           queryKey={["livetv", "sports"]}
@@ -111,6 +115,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
         <ScrollingCollectionList
           queryKey={["livetv", "kids"]}
@@ -129,6 +134,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
         <ScrollingCollectionList
           queryKey={["livetv", "news"]}
@@ -147,6 +153,7 @@ function MobileLiveTVPrograms() {
             return res.data.Items || [];
           }}
           orientation='horizontal'
+          accent={NeonBoard.green}
         />
       </View>
     </ScrollView>

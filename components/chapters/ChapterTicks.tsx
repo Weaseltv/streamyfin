@@ -24,8 +24,8 @@ function ChapterTicksComponent({
   // Semi-transparent black contrasts against both the filled progress
   // (#fff) and the unfilled track (rgba(255,255,255,0.2)) so the ticks
   // stay visible across the whole bar as playback advances.
-  color = "rgba(0,0,0,0.55)",
-  height = 14,
+  color = "rgba(242,245,249,0.55)",
+  height = 10,
   width = 2,
 }: ChapterTicksProps) {
   // Hooks must run unconditionally — keep them before any early return.

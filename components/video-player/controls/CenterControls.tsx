@@ -1,13 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { FC } from "react";
-import { Platform, TouchableOpacity, View } from "react-native";
+import { Platform, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
+import { NeonBoard } from "@/constants/Colors";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
+import { usePlayerAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import AudioSlider from "./AudioSlider";
 import BrightnessSlider from "./BrightnessSlider";
-import { ICON_SIZES } from "./constants";
+import { GlassSquare } from "./GlassSquare";
 
 interface CenterControlsProps {
   showControls: boolean;
@@ -43,6 +45,7 @@ export const CenterControls: FC<CenterControlsProps> = ({
 }) => {
   const { settings } = useSettings();
   const insets = useControlsSafeAreaInsets();
+  const accent = usePlayerAccent();
 
   return (
     <View
@@ -52,10 +55,10 @@ export const CenterControls: FC<CenterControlsProps> = ({
         left: insets.left,
         right: insets.right,
         flexDirection: "row",
-        justifyContent: "space-between",
+        justifyContent: "center",
         alignItems: "center",
-        transform: [{ translateY: -22.5 }],
-        paddingHorizontal: hasChapters ? "18%" : "28%",
+        gap: hasChapters ? 16 : 28,
+        transform: [{ translateY: -32 }],
       }}
       pointerEvents={showControls ? "box-none" : "none"}
     >
@@ -73,107 +76,73 @@ export const CenterControls: FC<CenterControlsProps> = ({
         </View>
       )}
 
+      {!Platform.isTV && hasChapters && (
+        <GlassSquare
+          size={48}
+          onPress={goToPreviousChapter}
+          disabled={!hasPreviousChapter}
+        >
+          <Ionicons name='play-back' size={20} color={NeonBoard.text} />
+        </GlassSquare>
+      )}
+
       {!Platform.isTV && (
-        <TouchableOpacity onPress={handleSkipBackward}>
-          <View
-            style={{
-              position: "relative",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
+        <GlassSquare size={48} onPress={handleSkipBackward}>
+          <View style={{ alignItems: "center", justifyContent: "center" }}>
             <Ionicons
               name='refresh-outline'
-              size={ICON_SIZES.CENTER}
-              color='white'
-              style={{
-                transform: [{ scaleY: -1 }, { rotate: "180deg" }],
-              }}
+              size={30}
+              color={NeonBoard.text}
+              style={{ transform: [{ scaleY: -1 }, { rotate: "180deg" }] }}
             />
             <Text
-              style={{
-                position: "absolute",
-                color: "white",
-                fontSize: 16,
-                fontWeight: "bold",
-                bottom: 10,
-              }}
+              variant='timecode'
+              allowFontScaling={false}
+              style={{ position: "absolute", fontSize: 10, lineHeight: 12 }}
             >
               {settings?.rewindSkipTime}
             </Text>
           </View>
-        </TouchableOpacity>
-      )}
-
-      {!Platform.isTV && hasChapters && (
-        <TouchableOpacity
-          onPress={goToPreviousChapter}
-          disabled={!hasPreviousChapter}
-          style={{ opacity: hasPreviousChapter ? 1 : 0.3 }}
-        >
-          <Ionicons
-            name='play-back'
-            size={ICON_SIZES.CENTER - 10}
-            color='white'
-          />
-        </TouchableOpacity>
+        </GlassSquare>
       )}
 
       <View style={Platform.isTV ? { flex: 1, alignItems: "center" } : {}}>
-        <TouchableOpacity onPress={togglePlay}>
+        <GlassSquare size={64} accent={accent} onPress={togglePlay}>
           {!isBuffering ? (
             <Ionicons
               name={isPlaying ? "pause" : "play"}
-              size={ICON_SIZES.CENTER}
-              color='white'
+              size={30}
+              color={NeonBoard.text}
             />
           ) : (
-            <Loader size={"large"} />
+            <Loader size={"large"} color={accent} />
           )}
-        </TouchableOpacity>
+        </GlassSquare>
       </View>
 
-      {!Platform.isTV && hasChapters && (
-        <TouchableOpacity
-          onPress={goToNextChapter}
-          disabled={!hasNextChapter}
-          style={{ opacity: hasNextChapter ? 1 : 0.3 }}
-        >
-          <Ionicons
-            name='play-forward'
-            size={ICON_SIZES.CENTER - 10}
-            color='white'
-          />
-        </TouchableOpacity>
-      )}
-
       {!Platform.isTV && (
-        <TouchableOpacity onPress={handleSkipForward}>
-          <View
-            style={{
-              position: "relative",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Ionicons
-              name='refresh-outline'
-              size={ICON_SIZES.CENTER}
-              color='white'
-            />
+        <GlassSquare size={48} onPress={handleSkipForward}>
+          <View style={{ alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name='refresh-outline' size={30} color={NeonBoard.text} />
             <Text
-              style={{
-                position: "absolute",
-                color: "white",
-                fontSize: 16,
-                fontWeight: "bold",
-                bottom: 10,
-              }}
+              variant='timecode'
+              allowFontScaling={false}
+              style={{ position: "absolute", fontSize: 10, lineHeight: 12 }}
             >
               {settings?.forwardSkipTime}
             </Text>
           </View>
-        </TouchableOpacity>
+        </GlassSquare>
+      )}
+
+      {!Platform.isTV && hasChapters && (
+        <GlassSquare
+          size={48}
+          onPress={goToNextChapter}
+          disabled={!hasNextChapter}
+        >
+          <Ionicons name='play-forward' size={20} color={NeonBoard.text} />
+        </GlassSquare>
       )}
 
       {!settings?.hideVolumeSlider && (

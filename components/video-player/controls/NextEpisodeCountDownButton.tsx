@@ -1,11 +1,7 @@
 import type React from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TouchableOpacity,
-  type TouchableOpacityProps,
-  View,
-} from "react-native";
+import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -15,7 +11,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Text } from "@/components/common/Text";
-import { Colors } from "@/constants/Colors";
+import { Scrims } from "@/constants/neon";
+import { usePlayerAccent } from "@/utils/atoms/pageAccent";
 
 interface NextEpisodeCountDownButtonProps extends TouchableOpacityProps {
   onFinish?: () => void;
@@ -30,6 +27,7 @@ const NextEpisodeCountDownButton: React.FC<NextEpisodeCountDownButtonProps> = ({
   ...props
 }) => {
   const progress = useSharedValue(0);
+  const accent = usePlayerAccent();
 
   useEffect(() => {
     if (show) {
@@ -58,10 +56,10 @@ const NextEpisodeCountDownButton: React.FC<NextEpisodeCountDownButtonProps> = ({
     return {
       position: "absolute",
       left: 0,
-      top: 0,
       bottom: 0,
+      height: 3,
       width: `${progress.value * 100}%`,
-      backgroundColor: Colors.primary,
+      backgroundColor: accent,
     };
   });
 
@@ -79,16 +77,29 @@ const NextEpisodeCountDownButton: React.FC<NextEpisodeCountDownButtonProps> = ({
 
   return (
     <TouchableOpacity
-      className='w-32 overflow-hidden bg-black/60 border border-neutral-900'
+      style={{
+        minWidth: 128,
+        height: 40,
+        overflow: "hidden",
+        backgroundColor: Scrims.glass,
+        borderWidth: 1,
+        borderColor: accent,
+        justifyContent: "center",
+        paddingHorizontal: 14,
+      }}
       {...props}
       onPress={handlePress}
     >
+      <Text
+        variant='button'
+        allowFontScaling={false}
+        numberOfLines={1}
+        accent={accent}
+        style={{ textAlign: "center" }}
+      >
+        {t("player.next_episode")}
+      </Text>
       <Animated.View style={animatedStyle} />
-      <View className='px-3 py-2'>
-        <Text numberOfLines={1} className='text-center text-sm font-bold'>
-          {t("player.next_episode")}
-        </Text>
-      </View>
     </TouchableOpacity>
   );
 };

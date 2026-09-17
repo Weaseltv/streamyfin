@@ -7,6 +7,7 @@ import { useSharedValue } from "react-native-reanimated";
 const Brightness = !Platform.isTV ? require("expo-brightness") : null;
 
 import { Ionicons } from "@expo/vector-icons";
+import { NeonBoard } from "@/constants/Colors";
 
 const BrightnessSlider = () => {
   const isTv = Platform.isTV;
@@ -90,18 +91,19 @@ const BrightnessSlider = () => {
         onValueChange={handleValueChange}
         renderBubble={() => null}
         renderThumb={() => null}
+        sliderHeight={3}
         containerStyle={{
-          borderRadius: 50,
+          borderRadius: 0,
         }}
         theme={{
-          minimumTrackTintColor: "#FDFDFD",
-          maximumTrackTintColor: "#5A5A5A",
+          minimumTrackTintColor: NeonBoard.text,
+          maximumTrackTintColor: NeonBoard.line2,
         }}
       />
       <Ionicons
         name='sunny'
-        size={20}
-        color='#FDFDFD'
+        size={18}
+        color={NeonBoard.mid}
         style={{
           marginLeft: 8,
         }}
@@ -112,7 +114,7 @@ const BrightnessSlider = () => {
 
 const styles = StyleSheet.create({
   sliderContainer: {
-    width: 130,
+    width: 110,
     display: "flex",
     flexDirection: "row",
     justifyContent: "center",

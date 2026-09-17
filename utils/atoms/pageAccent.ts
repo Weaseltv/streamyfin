@@ -20,3 +20,13 @@ export const useSetPageAccent = (accent: string | undefined, active = true) => {
     return () => set(NeonBoard.volt);
   }, [accent, active, set]);
 };
+
+/** The accent of the item playing in the OSD (the item's type colour). */
+export const playerAccentAtom = atom<string>(NeonBoard.volt);
+export const usePlayerAccent = () => useAtomValue(playerAccentAtom);
+export const useSetPlayerAccent = (accent: string | undefined) => {
+  const set = useSetAtom(playerAccentAtom);
+  useEffect(() => {
+    if (accent) set(accent);
+  }, [accent, set]);
+};

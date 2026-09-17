@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { View } from "react-native";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
 import { CONTROLS_CONSTANTS } from "./constants";
 
 // Slightly larger preview (scale 1.6 vs old 1.4) to give the overlay text
@@ -78,9 +79,12 @@ export const TrickplayBubble: FC<TrickplayBubbleProps> = ({
           height: tileHeight,
           alignSelf: "center",
           transform: [{ scale: finalScale }],
-          borderRadius: 5,
+          borderRadius: 0,
+          borderWidth: 1,
+          borderColor: NeonBoard.line2,
+          backgroundColor: NeonBoard.card,
+          overflow: "hidden",
         }}
-        className='bg-neutral-800 overflow-hidden'
       >
         <Image
           cachePolicy='memory-disk'
@@ -112,8 +116,8 @@ export const TrickplayBubble: FC<TrickplayBubbleProps> = ({
             alignItems: "flex-start",
             paddingHorizontal: 3,
             paddingVertical: 1,
-            borderRadius: 3,
-            backgroundColor: "rgba(0,0,0,0.55)",
+            borderRadius: 0,
+            backgroundColor: "rgba(5,6,8,0.7)",
             maxWidth: tileWidth - 8,
           }}
         >

@@ -330,11 +330,11 @@ const styles = StyleSheet.create({
     right: 10,
     height: 3,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 1.5,
+    borderRadius: 0,
   },
   progressFill: {
     height: "100%",
     backgroundColor: "white",
-    borderRadius: 1.5,
+    borderRadius: 0,
   },
 });

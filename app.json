@@ -2,7 +2,7 @@
   "expo": {
     "name": "WeaselPlex",
     "slug": "weaselfin",
-    "version": "1.0",
+    "version": "1.1",
     "orientation": "default",
     "icon": "./assets/images/weaselplex-icon-1024.png",
     "scheme": "weaselfin",
@@ -40,7 +40,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/weaselplex-adaptive-foreground.png",
         "monochromeImage": "./assets/images/weaselplex-adaptive-monochrome.png",
-        "backgroundColor": "#070A10"
+        "backgroundColor": "#050608"
       },
       "package": "tv.theweasel.weaselplex.phone",
       "permissions": [
@@ -49,7 +49,8 @@
         "android.permission.WRITE_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"]
+      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
+      "versionCode": 2
     },
     "plugins": [
       [
@@ -171,16 +172,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#070A10",
+          "backgroundColor": "#050608",
           "image": "./assets/images/weaselplex-launch-logo.png",
-          "imageWidth": 100
+          "imageWidth": 200
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/images/weaselplex-notification.png",
-          "color": "#00C0FF"
+          "color": "#D4F63F"
         }
       ],
       "expo-web-browser",
@@ -190,6 +191,7 @@
       ["./plugins/withAndroidManifest.ts"],
       ["./plugins/withTrustLocalCerts.ts"],
       ["./plugins/withGradleProperties.ts"],
+      ["./plugins/withWeaselfinSigning.ts"],
       ["./plugins/withTVOSAppIcon.ts"],
       ["./plugins/withTVOSTopShelf.ts"],
       ["./plugins/withDownloadLiveActivity.ts"],

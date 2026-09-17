@@ -193,7 +193,7 @@ export default function ArtistDetailScreen() {
                 cachePolicy='memory-disk'
               />
             ) : (
-              <View className='flex-1 items-center justify-center bg-neutral-800'>
+              <View className='flex-1 items-center justify-center bg-card2 border border-line2'>
                 <Ionicons name='person' size={60} color='#666' />
               </View>
             )}
@@ -211,7 +211,7 @@ export default function ArtistDetailScreen() {
           {topTracks && topTracks.length > 0 && (
             <TouchableOpacity
               onPress={handlePlayAllTracks}
-              className='flex flex-row items-center bg-volt px-6 py-3 rounded-full mt-4'
+              className='flex flex-row items-center bg-volt px-6 py-3 mt-4'
             >
               <Ionicons name='play' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>

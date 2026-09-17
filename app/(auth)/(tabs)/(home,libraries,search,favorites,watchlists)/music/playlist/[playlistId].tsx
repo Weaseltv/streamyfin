@@ -200,7 +200,7 @@ export default function PlaylistDetailScreen() {
             style={{
               width: ARTWORK_SIZE,
               height: ARTWORK_SIZE,
-              borderRadius: 8,
+              borderRadius: 0,
               overflow: "hidden",
               backgroundColor: "#1a1a1a",
               shadowColor: "#000",
@@ -218,7 +218,7 @@ export default function PlaylistDetailScreen() {
                 cachePolicy='memory-disk'
               />
             ) : (
-              <View className='flex-1 items-center justify-center bg-neutral-800'>
+              <View className='flex-1 items-center justify-center bg-card2 border border-line2'>
                 <Ionicons name='list' size={60} color='#666' />
               </View>
             )}
@@ -236,7 +236,7 @@ export default function PlaylistDetailScreen() {
           <View className='flex flex-row mt-4 items-center'>
             <TouchableOpacity
               onPress={handlePlayAll}
-              className='flex flex-row items-center bg-volt px-6 py-3 rounded-full mr-3'
+              className='flex flex-row items-center bg-volt px-6 py-3 mr-3'
             >
               <Ionicons name='play' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>
@@ -245,7 +245,7 @@ export default function PlaylistDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleShuffle}
-              className='flex flex-row items-center bg-neutral-800 px-6 py-3 rounded-full mr-3'
+              className='flex flex-row items-center bg-card2 border border-line2 px-6 py-3 mr-3'
             >
               <Ionicons name='shuffle' size={20} color='white' />
               <Text className='text-white font-medium ml-2'>
@@ -255,7 +255,7 @@ export default function PlaylistDetailScreen() {
             <TouchableOpacity
               onPress={handleDownloadPlaylist}
               disabled={allTracksDownloaded || isDownloading}
-              className='flex items-center justify-center bg-neutral-800 p-3 rounded-full'
+              className='flex items-center justify-center bg-card2 border border-line2 p-3'
             >
               {isDownloading ? (
                 <ActivityIndicator size={20} color='white' />

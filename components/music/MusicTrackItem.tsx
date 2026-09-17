@@ -139,7 +139,7 @@ export const MusicTrackItem: React.FC<Props> = ({
           style={{
             width: 44,
             height: 44,
-            borderRadius: 4,
+            borderRadius: 0,
             overflow: "hidden",
             backgroundColor: "#1a1a1a",
             marginRight: 12,

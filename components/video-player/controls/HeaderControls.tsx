@@ -5,14 +5,16 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { type FC, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, TouchableOpacity, View } from "react-native";
+import { Platform, View } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useOrientation } from "@/hooks/useOrientation";
 import { OrientationLock } from "@/packages/expo-screen-orientation";
-import { HEADER_LAYOUT, ICON_SIZES } from "./constants";
+import { HEADER_LAYOUT } from "./constants";
 import DropdownView from "./dropdown/DropdownView";
+import { GlassSquare } from "./GlassSquare";
 import { PlaybackSpeedScope } from "./utils/playback-speed-settings";
 import { type AspectRatio } from "./VideoScalingModeSelector";
 import { ZoomToggle } from "./ZoomToggle";
@@ -108,7 +110,14 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
       pointerEvents={showControls ? "auto" : "none"}
       className='flex flex-row justify-between'
     >
-      <View className='mr-auto' pointerEvents='box-none'>
+      <View
+        className='mr-auto flex flex-row items-center'
+        style={{ gap: 8 }}
+        pointerEvents='box-none'
+      >
+        <GlassSquare onPress={onClose} accessibilityLabel={t("common.close")}>
+          <Ionicons name='close' size={22} color={NeonBoard.text} />
+        </GlassSquare>
         {!Platform.isTV && (!offline || !mediaSource?.TranscodingUrl) && (
           <View pointerEvents='auto'>
             <DropdownView
@@ -121,68 +130,50 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         )}
       </View>
 
-      <View className='flex flex-row items-center space-x-2'>
+      <View className='flex flex-row items-center' style={{ gap: 8 }}>
         {/* Rotate toggle is Android-only: iOS does not reliably rotate the
             player back to portrait programmatically. */}
         {Platform.OS === "android" && (
-          <TouchableOpacity
+          <GlassSquare
             onPress={toggleOrientation}
             disabled={isTogglingOrientation}
-            className='aspect-square flex flex-col items-center justify-center p-2'
             accessibilityLabel={t("accessibility.toggle_orientation")}
             accessibilityHint={t("accessibility.toggle_orientation_hint")}
           >
             <MaterialIcons
               name='screen-rotation'
-              size={ICON_SIZES.HEADER}
-              color='white'
-              style={{ opacity: isTogglingOrientation ? 0.5 : 1 }}
+              size={20}
+              color={NeonBoard.text}
             />
-          </TouchableOpacity>
+          </GlassSquare>
         )}
         {!Platform.isTV && startPictureInPicture && (
-          <TouchableOpacity
-            onPress={startPictureInPicture}
-            className='aspect-square flex flex-col items-center justify-center p-2'
-          >
+          <GlassSquare onPress={startPictureInPicture}>
             <MaterialIcons
               name='picture-in-picture'
-              size={ICON_SIZES.HEADER}
-              color='white'
+              size={20}
+              color={NeonBoard.text}
             />
-          </TouchableOpacity>
+          </GlassSquare>
         )}
         {item?.Type === "Episode" && (
-          <TouchableOpacity
-            onPress={switchOnEpisodeMode}
-            className='aspect-square flex flex-col items-center justify-center p-2'
-          >
-            <Ionicons name='list' size={ICON_SIZES.HEADER} color='white' />
-          </TouchableOpacity>
+          <GlassSquare onPress={switchOnEpisodeMode}>
+            <Ionicons name='list' size={20} color={NeonBoard.text} />
+          </GlassSquare>
         )}
         {previousItem && (
-          <TouchableOpacity
-            onPress={goToPreviousItem}
-            className='aspect-square flex flex-col items-center justify-center p-2'
-          >
-            <Ionicons
-              name='play-skip-back'
-              size={ICON_SIZES.HEADER}
-              color='white'
-            />
-          </TouchableOpacity>
+          <GlassSquare onPress={goToPreviousItem}>
+            <Ionicons name='play-skip-back' size={20} color={NeonBoard.text} />
+          </GlassSquare>
         )}
         {nextItem && (
-          <TouchableOpacity
-            onPress={() => goToNextItem({ isAutoPlay: false })}
-            className='aspect-square flex flex-col items-center justify-center p-2'
-          >
+          <GlassSquare onPress={() => goToNextItem({ isAutoPlay: false })}>
             <Ionicons
               name='play-skip-forward'
-              size={ICON_SIZES.HEADER}
-              color='white'
+              size={20}
+              color={NeonBoard.text}
             />
-          </TouchableOpacity>
+          </GlassSquare>
         )}
         {/* MPV Zoom Toggle */}
         <ZoomToggle
@@ -190,12 +181,6 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
           onToggle={onZoomToggle ?? (() => {})}
           disabled={!onZoomToggle}
         />
-        <TouchableOpacity
-          onPress={onClose}
-          className='aspect-square flex flex-col items-center justify-center p-2'
-        >
-          <Ionicons name='close' size={ICON_SIZES.HEADER} color='white' />
-        </TouchableOpacity>
       </View>
     </View>
   );

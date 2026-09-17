@@ -10,7 +10,8 @@ interface TimeDisplayProps {
 }
 
 /**
- * Displays current time and remaining time.
+ * Elapsed in `text`, "Ends at" in `mid`, remaining in `mid`: Condensed 700
+ * 12 tabular timecodes (no font scaling; the frame is fixed).
  * MPV player uses milliseconds for time values.
  */
 export const TimeDisplay: FC<TimeDisplayProps> = ({
@@ -25,25 +26,22 @@ export const TimeDisplay: FC<TimeDisplayProps> = ({
     // remainingTime is in ms
     const finishTime = new Date(now.getTime() + remainingTime);
     return finishTime.toLocaleTimeString([], {
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
-      hour12: false,
     });
   };
 
   return (
     <View className='flex flex-row items-center justify-between mt-2'>
-      <Text className='text-[12px] text-neutral-400'>
+      <Text variant='timecode' allowFontScaling={false}>
         {formatTimeString(currentTime, "ms")}
       </Text>
-      <View className='flex flex-col items-end'>
-        <Text className='text-[12px] text-neutral-400'>
-          -{formatTimeString(remainingTime, "ms")}
-        </Text>
-        <Text className='text-[10px] text-neutral-500 opacity-70'>
-          {t("player.ends_at", { time: getFinishTime() })}
-        </Text>
-      </View>
+      <Text variant='timecode' allowFontScaling={false} muted>
+        {t("player.ends_at", { time: getFinishTime() })}
+      </Text>
+      <Text variant='timecode' allowFontScaling={false} muted>
+        -{formatTimeString(remainingTime, "ms")}
+      </Text>
     </View>
   );
 };

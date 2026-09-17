@@ -20,14 +20,20 @@ import { Platform, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { LoadingLine } from "@/components/common/LoadingLine";
+import { OfflineNotice } from "@/components/common/OfflineNotice";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
+import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { HeroBand } from "@/components/home/HeroBand";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
+import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
 import { StreamystatsPromotedWatchlists } from "@/components/home/StreamystatsPromotedWatchlists";
 import { StreamystatsRecommendations } from "@/components/home/StreamystatsRecommendations";
+import { ItemCardText } from "@/components/ItemCardText";
 import { MediaListSection } from "@/components/medialists/MediaListSection";
 import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
@@ -39,10 +45,12 @@ import {
   pendingAccountSaveAtom,
   userAtom,
 } from "@/providers/JellyfinProvider";
+import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
 import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
+import { serverHost } from "@/utils/serverHost";
 import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 // Conditionally load TV version
@@ -534,6 +542,48 @@ const HomeMobile = () => {
     },
     [],
   );
+
+  // Server unreachable with downloads on the phone: the offline notice row
+  // and the downloaded items, instead of a dead end.
+  if (serverConnected === false && hasDownloads && !Platform.isTV) {
+    return (
+      <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+          <OfflineNotice
+            host={serverHost(api?.basePath)}
+            onRetry={retryCheck}
+            loading={retryLoading}
+          />
+          <OfflineModeProvider isOffline>
+            <SectionHeader
+              title={t("states.downloads_title")}
+              count={downloadedItems.length}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View
+                style={{
+                  paddingHorizontal: Sizes.gutter,
+                  flexDirection: "row",
+                  gap: RAIL_GAP,
+                }}
+              >
+                {downloadedItems.map((d) => (
+                  <TouchableItemRouter
+                    key={d.item.Id}
+                    item={d.item}
+                    style={{ width: railCardWidth("vertical") }}
+                  >
+                    <ItemCard item={d.item} orientation='vertical' />
+                    <ItemCardText item={d.item} />
+                  </TouchableItemRouter>
+                ))}
+              </View>
+            </ScrollView>
+          </OfflineModeProvider>
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (!isConnected || serverConnected !== true) {
     let title = "";
