@@ -7,10 +7,11 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
 import { HorizontalScroll } from "@/components/common/HorizontalScroll";
-import { Text } from "@/components/common/Text";
+import { SectionHeader } from "@/components/common/SectionHeader";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
+import { ItemCard } from "@/components/home/ItemCard";
 import { ItemCardText } from "@/components/ItemCardText";
-import MoviePoster from "@/components/posters/MoviePoster";
+import { typeAccent } from "@/constants/Colors";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
@@ -67,10 +68,10 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
       <TouchableItemRouter
         key={item.Id ?? idx}
         item={item}
-        className='flex flex-col w-28'
+        style={{ width: 110 }}
       >
         <View>
-          <MoviePoster item={item} />
+          <ItemCard item={item} orientation='vertical' />
           <ItemCardText item={item} />
         </View>
       </TouchableItemRouter>
@@ -82,9 +83,11 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
 
   return (
     <View {...props}>
-      <Text className='text-lg font-bold mb-2 px-4'>
-        {t("item_card.more_with", { name: actorName ?? "" })}
-      </Text>
+      <SectionHeader
+        title={t("item_card.more_with", { name: actorName ?? "" })}
+        accent={typeAccent(currentItem)}
+        count={isLoading ? undefined : items?.length}
+      />
       <HorizontalScroll
         data={items}
         loading={isLoading}

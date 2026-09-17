@@ -54,7 +54,9 @@ export const SquareButton: React.FC<PropsWithChildren<Props>> = ({
   // responder restores the "innermost touchable wins" behavior.
   const claimResponder = () => true;
 
-  const box = isLarge ? 24 : glass ? Sizes.glass : Sizes.iconButton;
+  // `large` lives in item-page headers over a backdrop: the 36 glass square.
+  const box = isLarge ? 36 : glass ? Sizes.glass : Sizes.iconButton;
+  const drawGlass = glass || isLarge;
 
   return (
     <Pressable
@@ -68,7 +70,7 @@ export const SquareButton: React.FC<PropsWithChildren<Props>> = ({
           alignItems: "center",
           justifyContent: "center",
         },
-        glass && !isLarge
+        drawGlass
           ? {
               backgroundColor: Scrims.glass,
               borderWidth: 1,

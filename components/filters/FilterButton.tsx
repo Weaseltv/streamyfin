@@ -1,7 +1,6 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
-import { Text } from "@/components/common/Text";
+import type { ViewProps } from "react-native";
+import { Chip } from "@/components/common/Chip";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { FilterSheetContent } from "./FilterSheetContent";
 
@@ -15,8 +14,13 @@ interface FilterButtonProps<T> extends ViewProps {
   renderItemLabel: (item: T) => string;
   multiple?: boolean;
   icon?: "filter" | "sort";
+  /** Chip accent when a value is selected: the library's colour. */
+  accent?: string;
+  /** Show the selected value in the label ("Sort by: Name"). */
+  showValue?: boolean;
 }
 
+/** A filter chip: caret picker; selected = filled in the page accent. */
 export const FilterButton = <T,>({
   id,
   queryFn,
@@ -26,8 +30,9 @@ export const FilterButton = <T,>({
   title,
   renderItemLabel,
   multiple = false,
-  icon = "filter",
-  ...props
+  accent,
+  showValue = false,
+  style,
 }: FilterButtonProps<T>) => {
   const { showModal, hideModal } = useGlobalModal();
 
@@ -55,43 +60,25 @@ export const FilterButton = <T,>({
     );
   };
 
+  const selected = values.length > 0;
+  const label =
+    showValue && selected
+      ? `${title}: ${renderItemLabel(values[0])}`
+      : selected && values.length > 1
+        ? `${title} · ${values.length}`
+        : selected
+          ? `${title}: ${renderItemLabel(values[0])}`
+          : title;
+
   return (
-    <TouchableOpacity onPress={openSheet}>
-      <View
-        className={`
-          px-3 py-1.5 rounded-full flex flex-row items-center space-x-1
-          ${
-            values.length > 0
-              ? "bg-volt  border border-volt"
-              : "bg-neutral-900 border border-neutral-900"
-          }
-          ${filters?.length === 0 ? "opacity-50" : ""}
-        `}
-        {...props}
-      >
-        <Text
-          className={`
-            ${values.length > 0 ? "text-volt" : "text-neutral-100"}
-            text-xs font-semibold`}
-        >
-          {title}
-        </Text>
-        {icon === "filter" ? (
-          <Ionicons
-            name='filter'
-            size={14}
-            color='white'
-            style={{ opacity: 0.5 }}
-          />
-        ) : (
-          <FontAwesome
-            name='sort'
-            size={14}
-            color='white'
-            style={{ opacity: 0.5 }}
-          />
-        )}
-      </View>
-    </TouchableOpacity>
+    <Chip
+      label={label}
+      caret
+      selected={selected && !showValue}
+      accent={accent}
+      disabled={filters?.length === 0}
+      onPress={openSheet}
+      style={style}
+    />
   );
 };

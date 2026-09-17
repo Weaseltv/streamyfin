@@ -3,7 +3,11 @@ import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
-import { TouchableOpacity, type ViewStyle } from "react-native";
+import { useTranslation } from "react-i18next";
+import { TouchableOpacity, View, type ViewStyle } from "react-native";
+import { RAIL_GAP } from "@/components/home/ItemCard";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -14,6 +18,7 @@ import {
   HorizontalScroll,
   type HorizontalScrollRef,
 } from "../common/HorizontalScroll";
+import { SectionHeader } from "../common/SectionHeader";
 import { ItemCardText } from "../ItemCardText";
 
 interface Props {
@@ -86,34 +91,47 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
   }, [episodes, item]);
 
   const snapOffsets = useMemo(() => {
-    const itemWidth = 184; // w-44 (176px) + mr-2 (8px)
+    const itemWidth = Sizes.thumb.w + RAIL_GAP;
     return episodes?.map((_, index) => index * itemWidth) || [];
   }, [episodes]);
+  const { t } = useTranslation();
 
   return (
-    <HorizontalScroll
-      ref={scrollRef}
-      data={episodes}
-      extraData={item}
-      loading={loading || isPending}
-      style={style}
-      containerStyle={containerStyle}
-      renderItem={(_item, _idx) => (
-        <TouchableOpacity
-          key={_item.Id}
-          onPress={() => {
-            router.setParams({ id: _item.Id });
-          }}
-          className={`flex flex-col w-44
-                  ${item?.Id === _item.Id ? "" : "opacity-50"}
-                `}
-        >
-          <ContinueWatchingPoster item={_item} useEpisodePoster />
-          <ItemCardText item={_item} />
-        </TouchableOpacity>
-      )}
-      snapToOffsets={snapOffsets}
-      decelerationRate='fast'
-    />
+    <View>
+      <SectionHeader
+        title={item?.SeasonName ?? t("item_card.season")}
+        accent={NeonBoard.yellow}
+        count={episodes?.length}
+      />
+      <HorizontalScroll
+        ref={scrollRef}
+        data={episodes}
+        extraData={item}
+        loading={loading || isPending}
+        style={style}
+        containerStyle={containerStyle}
+        renderItem={(_item, _idx) => (
+          <TouchableOpacity
+            key={_item.Id}
+            onPress={() => {
+              router.setParams({ id: _item.Id });
+            }}
+            style={{
+              width: Sizes.thumb.w,
+              opacity: item?.Id === _item.Id ? 1 : 0.5,
+            }}
+          >
+            <ContinueWatchingPoster
+              item={_item}
+              useEpisodePoster
+              badge={null}
+            />
+            <ItemCardText item={_item} />
+          </TouchableOpacity>
+        )}
+        snapToOffsets={snapOffsets}
+        decelerationRate='fast'
+      />
+    </View>
   );
 };

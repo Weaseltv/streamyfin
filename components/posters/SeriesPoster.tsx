@@ -1,18 +1,26 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtom } from "jotai";
 import { useMemo } from "react";
-import { View } from "react-native";
 import { Image } from "@/components/common/ServerImage";
-import { WatchedIndicator } from "@/components/WatchedIndicator";
+import { PosterFrame } from "@/components/posters/PosterFrame";
+import { Sizes } from "@/constants/neon";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 
-type MoviePosterProps = {
+type SeriesPosterProps = {
   item: BaseItemDto;
   showProgress?: boolean;
+  size?: "normal" | "small";
+  badge?: string | null;
 };
 
-const SeriesPoster: React.FC<MoviePosterProps> = ({ item }) => {
+/** 110×160 series poster in yellow: badge, unplayed count or played square. */
+const SeriesPoster: React.FC<SeriesPosterProps> = ({
+  item,
+  showProgress = false,
+  size = "normal",
+  badge,
+}) => {
   const [api] = useAtom(apiAtom);
 
   const url = useMemo(() => {
@@ -31,30 +39,26 @@ const SeriesPoster: React.FC<MoviePosterProps> = ({ item }) => {
     return item.ImageBlurHashes?.Primary?.[key];
   }, [item]);
 
+  const box = size === "small" ? Sizes.posterSmall : Sizes.poster;
+
   return (
-    <View className='w-28 aspect-[10/15] relative overflow-hidden border border-neutral-900'>
+    <PosterFrame
+      item={item}
+      width={box.w}
+      height={box.h}
+      badge={badge}
+      progress={showProgress}
+    >
       <Image
-        placeholder={{
-          blurhash,
-        }}
+        placeholder={{ blurhash }}
         key={item.Id}
         id={item.Id}
-        source={
-          url
-            ? {
-                uri: url,
-              }
-            : null
-        }
+        source={url ? { uri: url } : null}
         cachePolicy={"memory-disk"}
         contentFit='cover'
-        style={{
-          height: "100%",
-          width: "100%",
-        }}
+        style={{ height: "100%", width: "100%" }}
       />
-      <WatchedIndicator item={item} />
-    </View>
+    </PosterFrame>
   );
 };
 

@@ -5,20 +5,22 @@ import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
-import MoviePoster from "@/components/posters/MoviePoster";
+import { ItemCard } from "@/components/home/ItemCard";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { HorizontalScroll } from "./common/HorizontalScroll";
-import { Text } from "./common/Text";
+import { SectionHeader } from "./common/SectionHeader";
 import { TouchableItemRouter } from "./common/TouchableItemRouter";
 import { ItemCardText } from "./ItemCardText";
 
 interface SimilarItemsProps extends ViewProps {
   itemId?: string | null;
+  accent?: string;
 }
 
 export const SimilarItems: React.FC<SimilarItemsProps> = ({
   itemId,
+  accent,
   ...props
 }) => {
   const [api] = useAtom(apiAtom);
@@ -48,22 +50,20 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
 
   return (
     <View {...props}>
-      <Text className='px-4 text-lg font-bold mb-2'>
-        {t("item_card.similar_items")}
-      </Text>
+      <SectionHeader
+        title={t("item_card.similar_items")}
+        accent={accent}
+        count={isLoading ? undefined : movies.length}
+      />
       <HorizontalScroll
         data={movies}
         loading={isLoading}
         height={POSTER_CAROUSEL_HEIGHT}
         noItemsText={t("item_card.no_similar_items_found")}
         renderItem={(item: BaseItemDto, idx: number) => (
-          <TouchableItemRouter
-            key={idx}
-            item={item}
-            className='flex flex-col w-28'
-          >
+          <TouchableItemRouter key={idx} item={item} style={{ width: 110 }}>
             <View>
-              <MoviePoster item={item} />
+              <ItemCard item={item} orientation='vertical' badge={null} />
               <ItemCardText item={item} />
             </View>
           </TouchableItemRouter>

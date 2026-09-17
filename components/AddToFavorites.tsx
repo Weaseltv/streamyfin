@@ -3,7 +3,7 @@ import type { FC } from "react";
 import { View, type ViewProps } from "react-native";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { SquareButton } from "@/components/SquareButton";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useFavorite } from "@/hooks/useFavorite";
 
 interface Props extends ViewProps {
@@ -18,7 +18,7 @@ export const AddToFavorites: FC<Props> = ({ item, ...props }) => {
       <SquareButton size='large' onPress={toggleFavorite}>
         <HeaderIcon
           name={isFavorite ? "favorited" : "favorite"}
-          tintColor={isFavorite ? Colors.primary : "white"}
+          tintColor={isFavorite ? NeonBoard.volt : NeonBoard.text}
         />
       </SquareButton>
     </View>

@@ -27,6 +27,8 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Pressable, type PressableProps } from "react-native-gesture-handler";
+import { NeonBoard } from "@/constants/Colors";
+import { Scrims } from "@/constants/neon";
 
 /**
  * Render every header icon at this size. Icon fonts share a common em square,
@@ -50,6 +52,9 @@ const HEADER_BUTTON_GAP = 16;
 
 /** Grows the icon box to the 44pt minimum touch target from Apple's HIG. */
 const HEADER_HIT_SLOP = 10;
+
+/** The glass square over a backdrop (item pages). */
+const GLASS_SIZE = 36;
 
 /**
  * Gap between a `headerLeft` button and the title on Android.
@@ -75,7 +80,7 @@ export interface HeaderButtonProps extends Omit<PressableProps, "style"> {
    * inside a `HeaderButtonGroup` the group's end padding already covers both
    * ends. Defaults to `"icon"`, which sits flush.
    */
-  variant?: "icon" | "text";
+  variant?: "icon" | "text" | "glass";
   /**
    * Layout tweaks for buttons that hold more than one glyph. Do not add padding
    * or margins here — that is what knocks the button off the header grid.
@@ -94,9 +99,9 @@ export const HeaderButton: React.FC<PropsWithChildren<HeaderButtonProps>> = ({
     hitSlop={HEADER_HIT_SLOP}
     style={[
       {
-        height: HEADER_ICON_SIZE,
+        height: variant === "glass" ? GLASS_SIZE : HEADER_ICON_SIZE,
         // Icons stay square; text buttons ("Save", "Log out") grow past it.
-        minWidth: HEADER_ICON_SIZE,
+        minWidth: variant === "glass" ? GLASS_SIZE : HEADER_ICON_SIZE,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: variant === "text" ? HEADER_INSET : 0,
@@ -105,6 +110,13 @@ export const HeaderButton: React.FC<PropsWithChildren<HeaderButtonProps>> = ({
             ? ANDROID_TITLE_GAP
             : 0,
       },
+      variant === "glass"
+        ? {
+            backgroundColor: Scrims.glass,
+            borderWidth: 1,
+            borderColor: NeonBoard.line2,
+          }
+        : null,
       style,
     ]}
     {...props}

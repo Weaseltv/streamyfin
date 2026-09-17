@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import { Image } from "@/components/common/ServerImage";
+import { NeonBoard } from "@/constants/Colors";
 
 type PosterProps = {
   id?: string | null;
@@ -12,15 +13,23 @@ const Poster: React.FC<PosterProps> = ({ id, url, blurhash }) => {
   if (!id && !url)
     return (
       <View
-        className='border border-neutral-900'
         style={{
           aspectRatio: "10/15",
+          borderWidth: 1,
+          borderColor: NeonBoard.line,
+          backgroundColor: NeonBoard.card2,
         }}
       />
     );
 
   return (
-    <View className='overflow-hidden border border-neutral-900'>
+    <View
+      style={{
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: NeonBoard.line,
+      }}
+    >
       <Image
         placeholder={
           blurhash
