@@ -6,6 +6,8 @@ import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ItemImage } from "@/components/common/ItemImage";
 import { Text } from "@/components/common/Text";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 export default function LiveTvChannelsPage() {
@@ -34,18 +36,44 @@ export default function LiveTvChannelsPage() {
       <FlashList
         data={channels?.Items}
         renderItem={({ item }) => (
-          <View className='flex flex-row items-center px-4 mb-2'>
-            <View className='w-22 mr-4 overflow-hidden'>
+          <View
+            style={{
+              minHeight: 56,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingLeft: Sizes.rowLead,
+              paddingRight: Sizes.gutter,
+              gap: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: NeonBoard.line,
+            }}
+          >
+            <Text
+              variant='numeral'
+              allowFontScaling={false}
+              style={{ width: 32 }}
+            >
+              {item.ChannelNumber ?? ""}
+            </Text>
+            <View
+              style={{
+                width: 44,
+                height: 30,
+                borderWidth: 1,
+                borderColor: NeonBoard.green,
+                backgroundColor: NeonBoard.inset,
+                overflow: "hidden",
+              }}
+            >
               <ItemImage
-                style={{
-                  aspectRatio: "1/1",
-                  width: 60,
-                  borderRadius: 8,
-                }}
+                style={{ width: "100%", height: "100%" }}
+                contentFit='contain'
                 item={item}
               />
             </View>
-            <Text className='font-bold'>{item.Name}</Text>
+            <Text variant='rowTitle' numberOfLines={1} style={{ flex: 1 }}>
+              {item.Name}
+            </Text>
           </View>
         )}
       />

@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, TouchableOpacity, View } from "react-native";
+import { Platform } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
-import { ICON_SIZES } from "./constants";
+import { GlassSquare } from "./GlassSquare";
 
 interface ZoomToggleProps {
   isZoomedToFill: boolean;
@@ -27,18 +28,12 @@ export const ZoomToggle: React.FC<ZoomToggleProps> = ({
   if (Platform.isTV) return null;
 
   return (
-    <TouchableOpacity
-      onPress={handlePress}
-      disabled={disabled}
-      className='aspect-square flex flex-col items-center justify-center p-2'
-    >
-      <View style={{ opacity: disabled ? 0.5 : 1 }}>
-        <Ionicons
-          name={isZoomedToFill ? "contract-outline" : "expand-outline"}
-          size={ICON_SIZES.HEADER}
-          color='white'
-        />
-      </View>
-    </TouchableOpacity>
+    <GlassSquare onPress={handlePress} disabled={disabled}>
+      <Ionicons
+        name={isZoomedToFill ? "contract-outline" : "expand-outline"}
+        size={20}
+        color={NeonBoard.text}
+      />
+    </GlassSquare>
   );
 };

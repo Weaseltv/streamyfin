@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { Slider } from "react-native-awesome-slider";
 import { useSharedValue } from "react-native-reanimated";
 import type { VolumeResult } from "react-native-volume-manager";
+import { NeonBoard } from "@/constants/Colors";
 
 const VolumeManager = Platform.isTV
   ? null
@@ -107,18 +108,19 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
         onValueChange={handleValueChange}
         renderBubble={() => null}
         renderThumb={() => null}
+        sliderHeight={3}
         containerStyle={{
-          borderRadius: 50,
+          borderRadius: 0,
         }}
         theme={{
-          minimumTrackTintColor: "#FDFDFD",
-          maximumTrackTintColor: "#5A5A5A",
+          minimumTrackTintColor: NeonBoard.text,
+          maximumTrackTintColor: NeonBoard.line2,
         }}
       />
       <Ionicons
         name='volume-high'
-        size={20}
-        color='#FDFDFD'
+        size={18}
+        color={NeonBoard.mid}
         style={{
           marginLeft: 8,
         }}
@@ -129,7 +131,7 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
 
 const styles = StyleSheet.create({
   sliderContainer: {
-    width: 130,
+    width: 110,
     display: "flex",
     flexDirection: "row",
     justifyContent: "center",

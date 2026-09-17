@@ -20,7 +20,7 @@ export const ChapterMarkers: React.FC<ChapterMarkersProps> = React.memo(
   ({
     chapterPositions,
     style,
-    markerHeight = 15,
+    markerHeight = 10,
     markerColor = "rgba(255, 255, 255, 0.6)",
   }) => {
     if (!chapterPositions.length) {
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   marker: {
     position: "absolute",
     width: 2,
-    borderRadius: 1,
+    borderRadius: 0,
     transform: [{ translateX: -1 }], // Center the marker on its position
   },
 });

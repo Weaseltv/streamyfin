@@ -2,17 +2,29 @@ import { Ionicons } from "@expo/vector-icons";
 import { getLiveTvApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Dimensions, ScrollView, TouchableOpacity, View } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Chip } from "@/components/common/Chip";
 import { ItemImage } from "@/components/common/ItemImage";
+import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
-import { HourHeader } from "@/components/livetv/HourHeader";
-import { LiveTVGuideRow } from "@/components/livetv/LiveTVGuideRow";
+import {
+  GUIDE_HOUR_WIDTH,
+  guideGridStart,
+  HourHeader,
+} from "@/components/livetv/HourHeader";
+import {
+  GUIDE_ROW_HEIGHT,
+  LiveTVGuideRow,
+} from "@/components/livetv/LiveTVGuideRow";
+import { NeonBoard } from "@/constants/Colors";
+import { glowOverline, Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 const HOUR_HEIGHT = 30;
+const CHANNEL_COLUMN = 64;
 const ITEMS_PER_PAGE = 20;
 
 const MemoizedLiveTVGuideRow = React.memo(LiveTVGuideRow);
@@ -73,6 +85,15 @@ export default function LiveTvGuidePage() {
   const screenWidth = Dimensions.get("window").width;
 
   const [scrollX, setScrollX] = useState(0);
+  const [gridStart] = useState(() => guideGridStart());
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const nowX =
+    ((now.getTime() - gridStart.getTime()) / 3600000) * GUIDE_HOUR_WIDTH;
+  const { t } = useTranslation();
 
   const handleNextPage = useCallback(() => {
     setCurrentPage((prev) => prev + 1);
@@ -83,70 +104,135 @@ export default function LiveTvGuidePage() {
   }, []);
 
   return (
-    <ScrollView
-      nestedScrollEnabled
-      contentInsetAdjustmentBehavior='automatic'
-      key={"home"}
-      contentContainerStyle={{
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-        paddingBottom: 16,
-      }}
-    >
-      <PageButtons
-        currentPage={currentPage}
-        onPrevPage={handlePrevPage}
-        onNextPage={handleNextPage}
-        isNextDisabled={
-          !channels || (channels?.Items?.length || 0) < ITEMS_PER_PAGE
-        }
-      />
+    <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+      <LoadingLine accent={NeonBoard.cyan} active={!channels || !programs} />
+      <ScrollView
+        nestedScrollEnabled
+        key={"home"}
+        contentContainerStyle={{
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingBottom: 16,
+        }}
+      >
+        <PageButtons
+          currentPage={currentPage}
+          onPrevPage={handlePrevPage}
+          onNextPage={handleNextPage}
+          isNextDisabled={
+            !channels || (channels?.Items?.length || 0) < ITEMS_PER_PAGE
+          }
+        />
 
-      <View className='flex flex-row'>
-        <View className='flex flex-col w-[64px]'>
-          <View
-            style={{
-              height: HOUR_HEIGHT,
-            }}
-            className='bg-neutral-800'
-          />
-          {channels?.Items?.map((c, i) => (
-            <View className='h-16 w-16 mr-4 overflow-hidden' key={i}>
-              <ItemImage
-                style={{
-                  width: "100%",
-                  height: "100%",
-                }}
-                contentFit='contain'
-                item={c}
-              />
+        <View className='flex flex-row'>
+          <View style={{ width: CHANNEL_COLUMN }}>
+            <View
+              style={{
+                height: HOUR_HEIGHT,
+                justifyContent: "center",
+                paddingLeft: Sizes.gutter,
+                borderBottomWidth: 1,
+                borderBottomColor: NeonBoard.line,
+              }}
+            >
+              <Text variant='overline' muted allowFontScaling={false}>
+                {t("live_tv.tabs.channels")}
+              </Text>
             </View>
-          ))}
-        </View>
-        <ScrollView
-          style={{
-            width: screenWidth - 64,
-          }}
-          horizontal
-          scrollEnabled
-          onScroll={(e) => {
-            setScrollX(e.nativeEvent.contentOffset.x);
-          }}
-        >
-          <View className='flex flex-col'>
-            <HourHeader height={HOUR_HEIGHT} />
-            {channels?.Items?.map((c, _i) => (
-              <MemoizedLiveTVGuideRow
-                channel={c}
-                programs={programs?.Items}
-                key={c.Id}
-                scrollX={scrollX}
-              />
+            {channels?.Items?.map((c, i) => (
+              <View
+                key={i}
+                style={{
+                  height: GUIDE_ROW_HEIGHT,
+                  paddingLeft: Sizes.gutter,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  borderBottomWidth: 1,
+                  borderBottomColor: NeonBoard.line,
+                }}
+              >
+                <Text
+                  variant='numeral'
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                >
+                  {c.ChannelNumber ?? i + 1}
+                </Text>
+                <View
+                  style={{
+                    width: 34,
+                    height: 22,
+                    borderWidth: 1,
+                    borderColor: NeonBoard.line2,
+                    backgroundColor: NeonBoard.inset,
+                    overflow: "hidden",
+                  }}
+                >
+                  <ItemImage
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit='contain'
+                    item={c}
+                  />
+                </View>
+              </View>
             ))}
           </View>
-        </ScrollView>
-      </View>
-    </ScrollView>
+          <ScrollView
+            style={{
+              width: screenWidth - CHANNEL_COLUMN,
+            }}
+            horizontal
+            scrollEnabled
+            scrollEventThrottle={32}
+            onScroll={(e) => {
+              setScrollX(e.nativeEvent.contentOffset.x);
+            }}
+          >
+            <View className='flex flex-col'>
+              <HourHeader height={HOUR_HEIGHT} gridStart={gridStart} />
+              {channels?.Items?.map((c, _i) => (
+                <MemoizedLiveTVGuideRow
+                  channel={c}
+                  programs={programs?.Items}
+                  gridStart={gridStart}
+                  key={c.Id}
+                  scrollX={scrollX}
+                />
+              ))}
+              {/* The now-line: 2pt cyan with a 12 dot, from the header down. */}
+              {nowX >= 0 ? (
+                <View
+                  pointerEvents='none'
+                  style={[
+                    {
+                      position: "absolute",
+                      left: nowX - 1,
+                      top: HOUR_HEIGHT - 6,
+                      bottom: 0,
+                      width: 2,
+                      backgroundColor: NeonBoard.cyan,
+                    },
+                    glowOverline(NeonBoard.cyan),
+                  ]}
+                >
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: -5,
+                      width: 12,
+                      height: 12,
+                      backgroundColor: NeonBoard.cyan,
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+          </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -165,42 +251,30 @@ const PageButtons: React.FC<PageButtonsProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <View className='flex flex-row justify-between items-center bg-neutral-800 w-full px-4 py-2'>
-      <TouchableOpacity
-        onPress={onPrevPage}
+    <View
+      className='flex flex-row justify-between items-center w-full'
+      style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 10 }}
+    >
+      <Chip
+        label={t("live_tv.previous")}
+        accent={NeonBoard.cyan}
         disabled={currentPage === 1}
-        className='flex flex-row items-center'
-      >
-        <Ionicons
-          name='chevron-back'
-          size={24}
-          color={currentPage === 1 ? "gray" : "white"}
-        />
-        <Text
-          className={`ml-1 ${
-            currentPage === 1 ? "text-gray-500" : "text-white"
-          }`}
-        >
-          {t("live_tv.previous")}
-        </Text>
-      </TouchableOpacity>
-      <Text className='text-white'>Page {currentPage}</Text>
-      <TouchableOpacity
-        onPress={onNextPage}
+        onPress={onPrevPage}
+        icon={<Ionicons name='chevron-back' size={12} color={NeonBoard.text} />}
+      />
+      <Text variant='tally' accent={NeonBoard.cyan}>
+        {t("live_tv.page", { page: currentPage })}
+      </Text>
+      <Chip
+        label={t("live_tv.next")}
+        accent={NeonBoard.cyan}
         disabled={isNextDisabled}
-        className='flex flex-row items-center'
-      >
-        <Text
-          className={`mr-1 ${isNextDisabled ? "text-gray-500" : "text-white"}`}
-        >
-          {t("live_tv.next")}
-        </Text>
-        <Ionicons
-          name='chevron-forward'
-          size={24}
-          color={isNextDisabled ? "gray" : "white"}
-        />
-      </TouchableOpacity>
+        onPress={onNextPage}
+        caret={false}
+        icon={
+          <Ionicons name='chevron-forward' size={12} color={NeonBoard.text} />
+        }
+      />
     </View>
   );
 };

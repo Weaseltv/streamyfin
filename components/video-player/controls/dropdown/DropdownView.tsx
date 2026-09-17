@@ -9,6 +9,8 @@ import {
   PlatformDropdown,
 } from "@/components/PlatformDropdown";
 import { PLAYBACK_SPEEDS } from "@/components/PlaybackSpeedSelector";
+import { NeonBoard } from "@/constants/Colors";
+import { Scrims } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSettings } from "@/utils/atoms/settings";
@@ -208,8 +210,18 @@ const DropdownView = ({
   // Memoize the trigger to prevent re-renders
   const trigger = useMemo(
     () => (
-      <View className='aspect-square flex flex-col items-center justify-center p-2'>
-        <Ionicons name='ellipsis-horizontal' size={24} color={"white"} />
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: Scrims.glass,
+          borderWidth: 1,
+          borderColor: NeonBoard.line2,
+        }}
+      >
+        <Ionicons name='ellipsis-horizontal' size={20} color={NeonBoard.text} />
       </View>
     ),
     [],

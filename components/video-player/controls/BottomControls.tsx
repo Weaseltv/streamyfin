@@ -5,19 +5,21 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { type FC, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { Slider } from "react-native-awesome-slider";
 import { type SharedValue } from "react-native-reanimated";
 import { ChapterList } from "@/components/chapters/ChapterList";
 import { ChapterTicks } from "@/components/chapters/ChapterTicks";
 import { Text } from "@/components/common/Text";
 import { NeonSeekTrack } from "@/components/video-player/controls/NeonSeekTrack";
+import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
 import {
   chapterMarkers,
   chapterNameAt,
   hasChapterMarkers,
 } from "@/utils/chapters";
+import { GlassSquare } from "./GlassSquare";
 import { TimeDisplay } from "./TimeDisplay";
 import { TrickplayBubble } from "./TrickplayBubble";
 
@@ -98,6 +100,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
   const { t } = useTranslation();
   const insets = useControlsSafeAreaInsets();
   const [chapterListVisible, setChapterListVisible] = useState(false);
+  const accent = typeAccent(item);
 
   const chapterMarkerList = useMemo(
     () => chapterMarkers(chapters, durationMs),
@@ -148,36 +151,44 @@ export const BottomControls: FC<BottomControlsProps> = ({
           className='flex flex-col items-start shrink'
           pointerEvents={showControls ? "box-none" : "none"}
         >
-          {item?.Type === "Episode" && (
-            <Text className='opacity-50'>
-              {`${item.SeriesName} - ${item.SeasonName} Episode ${item.IndexNumber}`}
-            </Text>
-          )}
-          <Text className='font-bold text-xl'>{item?.Name}</Text>
-          {item?.Type === "Movie" && (
-            <Text className='text-xs opacity-50'>{item?.ProductionYear}</Text>
-          )}
-          {item?.Type === "Audio" && (
-            <Text className='text-xs opacity-50'>{item?.Album}</Text>
-          )}
-          {currentChapterName ? (
-            <Text className='text-xs opacity-70 mt-1' numberOfLines={1}>
-              {currentChapterName}
-            </Text>
-          ) : null}
+          <Text
+            variant='eyebrow'
+            accent={accent}
+            numberOfLines={1}
+            allowFontScaling={false}
+          >
+            {[
+              item?.Type === "Episode"
+                ? `${typeLabel(item)} · S${item.ParentIndexNumber}:E${item.IndexNumber}`
+                : (typeLabel(item) ?? item?.Type?.toUpperCase()),
+              item?.Type === "Movie" ? item?.ProductionYear : null,
+              item?.Type === "Episode" ? item?.SeriesName : null,
+              item?.Type === "Audio" ? item?.Album : null,
+              currentChapterName,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+          <Text
+            variant='pageTitle'
+            numberOfLines={1}
+            allowFontScaling={false}
+            style={{ fontSize: 22, lineHeight: 24, marginTop: 2 }}
+          >
+            {item?.Name}
+          </Text>
         </View>
-        <View className='flex flex-row items-end space-x-2 shrink-0 pr-2 pb-1'>
+        <View
+          className='flex flex-row items-end shrink-0 pb-1'
+          style={{ gap: 8 }}
+        >
           {hasChapters && (
-            <Pressable
+            <GlassSquare
               onPress={() => setChapterListVisible(true)}
-              hitSlop={10}
-              // mb centers the bare 24px icon on the taller skip/next buttons
-              className='justify-center ml-4 mb-1'
-              accessibilityRole='button'
               accessibilityLabel={t("chapters.open")}
             >
-              <Ionicons name='bookmarks' size={24} color='white' />
-            </Pressable>
+              <Ionicons name='bookmarks' size={18} color={NeonBoard.text} />
+            </GlassSquare>
           )}
         </View>
       </View>
@@ -200,19 +211,30 @@ export const BottomControls: FC<BottomControlsProps> = ({
           >
             <Slider
               theme={{
-                maximumTrackTintColor: "rgba(255,255,255,0.2)",
-                minimumTrackTintColor: "#fff",
-                cacheTrackTintColor: "rgba(255,255,255,0.3)",
-                bubbleBackgroundColor: "#fff",
-                bubbleTextColor: "#666",
-                heartbeatColor: "#999",
+                maximumTrackTintColor: NeonBoard.line2,
+                minimumTrackTintColor: accent,
+                cacheTrackTintColor: NeonBoard.low,
+                bubbleBackgroundColor: NeonBoard.card,
+                bubbleTextColor: NeonBoard.text,
+                heartbeatColor: NeonBoard.mid,
               }}
-              renderThumb={() => null}
+              renderThumb={() => (
+                <View
+                  style={{
+                    width: 12,
+                    height: 12,
+                    backgroundColor: accent,
+                    borderWidth: 2,
+                    borderColor: NeonBoard.text,
+                  }}
+                />
+              )}
               renderContainer={({ style, seekStyle, cacheXStyle }) => (
                 <NeonSeekTrack
                   style={style}
                   seekStyle={seekStyle}
                   cacheXStyle={cacheXStyle}
+                  color={accent}
                 />
               )}
               cache={cacheProgress}
@@ -232,8 +254,8 @@ export const BottomControls: FC<BottomControlsProps> = ({
                   />
                 )
               }
-              sliderHeight={10}
-              thumbWidth={0}
+              sliderHeight={4}
+              thumbWidth={12}
               progress={effectiveProgress}
               minimumValue={min}
               maximumValue={max}

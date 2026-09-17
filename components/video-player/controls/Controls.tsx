@@ -23,6 +23,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import ContinueWatchingOverlay from "@/components/video-player/controls/ContinueWatchingOverlay";
+import { typeAccent } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useCreditSkipper } from "@/hooks/useCreditSkipper";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -32,6 +33,7 @@ import { useTrickplay } from "@/hooks/useTrickplay";
 import type { TechnicalInfo } from "@/modules/mpv-player";
 import { DownloadedItem } from "@/providers/Downloads/types";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { useSetPlayerAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { hasChapterMarkers } from "@/utils/chapters";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
@@ -131,6 +133,7 @@ export const Controls: FC<Props> = ({
 }) => {
   const offline = useOfflineMode();
   const { settings, updateSettings } = useSettings();
+  useSetPlayerAccent(item ? typeAccent(item) : undefined);
   const router = useRouter();
   const lightHapticFeedback = useHaptic("light");
 
