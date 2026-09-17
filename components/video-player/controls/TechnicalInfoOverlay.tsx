@@ -461,14 +461,14 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: 8,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
     minWidth: 150,
   },
   infoBoxTV: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 12,
+    borderRadius: 0,
     paddingHorizontal: 20,
     paddingVertical: 16,
     minWidth: 250,

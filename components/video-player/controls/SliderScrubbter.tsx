@@ -62,7 +62,7 @@ const SliderScrubber: React.FC<SliderScrubberProps> = ({
         onSlidingComplete={handleSliderComplete}
         onValueChange={handleSliderChange}
         containerStyle={{
-          borderRadius: 100,
+          borderRadius: 0,
         }}
         renderBubble={() => {
           if (!trickPlayUrl || !trickplayInfo) {
@@ -84,7 +84,7 @@ const SliderScrubber: React.FC<SliderScrubberProps> = ({
                 marginTop: -tileHeight / 4 - 60,
                 zIndex: 10,
               }}
-              className=' bg-neutral-800 overflow-hidden'
+              className='bg-neutral-800 overflow-hidden'
             >
               <Image
                 cachePolicy={"memory-disk"}
@@ -109,7 +109,7 @@ const SliderScrubber: React.FC<SliderScrubberProps> = ({
                   color: "white",
                   backgroundColor: "rgba(0, 0, 0, 0.5)",
                   padding: 5,
-                  borderRadius: 5,
+                  borderRadius: 0,
                 }}
               >
                 {`${time.hours > 0 ? `${time.hours}:` : ""}${

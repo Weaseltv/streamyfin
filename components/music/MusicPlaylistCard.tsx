@@ -76,7 +76,7 @@ export const MusicPlaylistCard: React.FC<Props> = ({ playlist }) => {
         style={{
           width: IMAGE_SIZE,
           height: IMAGE_SIZE,
-          borderRadius: 8,
+          borderRadius: 0,
           overflow: "hidden",
           backgroundColor: "#1a1a1a",
         }}

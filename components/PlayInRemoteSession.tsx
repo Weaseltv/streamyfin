@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     width: "90%",
     maxHeight: "80%",
     backgroundColor: "#1c1c1c",
-    borderRadius: 20,
+    borderRadius: 0,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",

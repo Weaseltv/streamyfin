@@ -59,7 +59,7 @@ const Bar: React.FC<{
           width: barWidth,
           height,
           backgroundColor: color,
-          borderRadius: 1,
+          borderRadius: 0,
         },
         animatedStyle,
       ]}

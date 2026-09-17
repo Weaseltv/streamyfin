@@ -460,7 +460,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
         style={{
           width: ARTWORK_SIZE,
           height: ARTWORK_SIZE,
-          borderRadius: 12,
+          borderRadius: 0,
           overflow: "hidden",
           backgroundColor: "#1a1a1a",
           shadowColor: "#000",
@@ -578,7 +578,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           onSlidingComplete={onSliderComplete}
           renderThumb={() => null}
           sliderHeight={8}
-          containerStyle={{ borderRadius: 100 }}
+          containerStyle={{ borderRadius: 0 }}
           renderBubble={() => null}
         />
         <View className='flex flex-row justify-between mt-2'>
@@ -609,7 +609,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
         <TouchableOpacity
           onPress={onTogglePlayPause}
           disabled={isLoading}
-          className='mx-4 bg-white rounded-full p-4'
+          className='mx-4 bg-white p-4'
         >
           {isLoading ? (
             <ActivityIndicator size={36} color={Colors.background} />
@@ -639,7 +639,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
             color={repeatMode !== "off" ? Colors.primary : "#666"}
           />
           {repeatMode === "one" && (
-            <View className='absolute right-0 top-1 bg-volt rounded-full w-4 h-4 items-center justify-center'>
+            <View className='absolute right-0 top-1 bg-volt w-4 h-4 items-center justify-center'>
               <Text className='text-white text-[10px] font-bold'>1</Text>
             </View>
           )}
@@ -662,7 +662,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
               onSlidingComplete={handleVolumeChange}
               renderThumb={() => null}
               sliderHeight={8}
-              containerStyle={{ borderRadius: 100 }}
+              containerStyle={{ borderRadius: 0 }}
               renderBubble={() => null}
             />
           </View>

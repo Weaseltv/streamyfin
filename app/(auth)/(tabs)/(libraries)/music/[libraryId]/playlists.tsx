@@ -155,7 +155,7 @@ export default function PlaylistsScreen() {
         <Text className='text-neutral-500 mb-4'>{t("music.no_playlists")}</Text>
         <TouchableOpacity
           onPress={() => setCreateModalOpen(true)}
-          className='flex-row items-center bg-volt px-6 py-3 rounded-full'
+          className='flex-row items-center bg-volt px-6 py-3'
         >
           <Ionicons name='add' size={20} color='white' />
           <Text className='text-white font-semibold ml-2'>

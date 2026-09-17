@@ -400,7 +400,7 @@ export const GestureOverlay = ({
               : "rgba(0, 0, 0, 0.8)",
             paddingHorizontal: isTopFeedback ? 10 : 16,
             paddingVertical: isTopFeedback ? 5 : 12,
-            borderRadius: isTopFeedback ? 6 : 8,
+            borderRadius: 0,
             flexDirection: "row",
             alignItems: "center",
             opacity: fadeAnim,

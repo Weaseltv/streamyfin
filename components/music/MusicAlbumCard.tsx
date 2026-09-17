@@ -39,7 +39,7 @@ export const MusicAlbumCard: React.FC<Props> = ({ album, width = 130 }) => {
         style={{
           width,
           height: width,
-          borderRadius: 8,
+          borderRadius: 0,
           overflow: "hidden",
           backgroundColor: "#1a1a1a",
         }}
