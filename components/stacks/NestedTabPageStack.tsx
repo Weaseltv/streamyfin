@@ -1,7 +1,9 @@
 import { Stack } from "expo-router";
 import type { ComponentProps } from "react";
 import { Platform } from "react-native";
-import { HeaderGradient } from "@/components/common/HeaderGradient";
+import { NeonHeader } from "@/components/common/NeonHeader";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace } from "@/constants/neon";
 
 type ICommonScreenOptions = ComponentProps<typeof Stack.Screen>["options"];
 
@@ -10,28 +12,36 @@ type ICommonScreenOptions = ComponentProps<typeof Stack.Screen>["options"];
  *
  * The native stack renders its own back button, aligned by UIKit / the Android
  * Toolbar, so screens must never supply a custom `headerLeft` just to go back —
- * that is what knocked every header out of alignment. These two options are all
- * it takes to match the app's look: a white chevron with no back title.
- *
- * `scrollEdgeEffects.top` is hidden because on iOS 26 UIKit paints a soft blur
- * under the navigation bar of any inset-adjusted scroll view, which defeats the
- * fully transparent headers this app uses. Readability over content comes from
- * `headerBackground` instead: a dark-to-transparent scrim behind every header.
+ * that is what knocked every header out of alignment. Headers sit on the flat
+ * stage with a Condensed title; nothing is translucent or blurred.
  */
 export const stackScreenOptions: ICommonScreenOptions = {
-  headerTintColor: "white",
+  headerTintColor: NeonBoard.text,
   headerBackButtonDisplayMode: "minimal",
+  headerStyle: { backgroundColor: NeonBoard.stage },
+  headerTitleStyle: {
+    ...FontFace.display,
+    fontSize: 20,
+    color: NeonBoard.text,
+  },
+  headerShadowVisible: false,
+  contentStyle: { backgroundColor: NeonBoard.stage },
   scrollEdgeEffects: { top: "hidden" },
-  headerBackground:
-    Platform.OS === "ios" ? () => <HeaderGradient /> : undefined,
+};
+
+/** Tab roots: the brand row instead of a native title. */
+export const neonRootScreenOptions: ICommonScreenOptions = {
+  headerShown: !Platform.isTV,
+  header: () => <NeonHeader />,
 };
 
 export const commonScreenOptions: ICommonScreenOptions = {
   title: "",
   headerShown: !Platform.isTV,
-  headerTransparent: Platform.OS === "ios",
+  headerTransparent: true,
   headerShadowVisible: false,
   headerBlurEffect: "none",
+  headerStyle: { backgroundColor: "transparent" },
 };
 
 const routes = [

@@ -48,7 +48,7 @@ const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
         renderItem={(item, _index) => (
           <TouchableOpacity className='mr-2' onPress={() => navigate(item)}>
             <GenericSlideCard
-              className='w-28 rounded-lg overflow-hidden border border-neutral-900'
+              className='w-28 overflow-hidden border border-neutral-900'
               id={item.id.toString()}
               title={item.name}
               colors={["transparent", "transparent"]}

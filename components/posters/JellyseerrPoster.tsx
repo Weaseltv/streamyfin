@@ -131,7 +131,7 @@ const JellyseerrPoster: React.FC<Props> = ({
     >
       <View className={"flex flex-col mr-2 h-auto"}>
         <View
-          className={`relative rounded-lg overflow-hidden border border-neutral-900 ${size} aspect-[${ratio}]`}
+          className={`relative  overflow-hidden border border-neutral-900 ${size} aspect-[${ratio}]`}
         >
           <Animated.View style={imageAnimatedStyle}>
             <Image

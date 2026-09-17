@@ -69,7 +69,7 @@ const WatchlistRow: React.FC<WatchlistRowProps> = ({
             {watchlist.name}
           </Text>
           {watchlist.allowedItemType && (
-            <View className='bg-neutral-700 px-1.5 py-0.5 rounded'>
+            <View className='bg-neutral-700 px-1.5 py-0.5'>
               <Text className='text-xs text-neutral-400'>
                 {watchlist.allowedItemType}
               </Text>
@@ -222,7 +222,7 @@ const WatchlistSheetContent: React.FC<WatchlistSheetContentProps> = ({
           </Text>
         </View>
       ) : (
-        <View className='rounded-xl overflow-hidden mb-4'>
+        <View className='overflow-hidden mb-4'>
           {sortedWatchlists.map((watchlist, index) => (
             <React.Fragment key={watchlist.id}>
               <WatchlistRow
@@ -250,11 +250,11 @@ const WatchlistSheetContent: React.FC<WatchlistSheetContentProps> = ({
       {/* Create New Button */}
       <TouchableOpacity
         onPress={handleCreateNew}
-        className='flex-row items-center justify-center py-4 bg-neutral-800 rounded-xl'
+        className='flex-row items-center justify-center py-4 bg-neutral-800'
         activeOpacity={0.7}
       >
         <Ionicons name='add' size={20} color='#a78bfa' />
-        <Text className='text-prism-cyan font-medium'>
+        <Text className='text-volt font-medium'>
           {t("watchlists.create_new")}
         </Text>
       </TouchableOpacity>

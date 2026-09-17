@@ -64,7 +64,7 @@ export const StorageSettings = () => {
     <View>
       <View className='flex flex-col gap-y-1'>
         <View className='flex flex-row items-center justify-between'>
-          <Text className=''>{t("home.settings.storage.storage_title")}</Text>
+          <Text>{t("home.settings.storage.storage_title")}</Text>
           {size && (
             <Text className='text-neutral-500'>
               {t("home.settings.storage.size_used", {
@@ -74,7 +74,7 @@ export const StorageSettings = () => {
             </Text>
           )}
         </View>
-        <View className='h-3 w-full bg-gray-100/10 rounded-md overflow-hidden flex flex-row'>
+        <View className='h-3 w-full bg-gray-100/10 overflow-hidden flex flex-row'>
           {size && (
             <View className='flex flex-row'>
               <View
@@ -96,7 +96,7 @@ export const StorageSettings = () => {
           {size && (
             <View className='flex flex-row gap-x-2'>
               <View className='flex flex-row items-center'>
-                <View className='w-3 h-3 rounded-full bg-prism-cyan mr-1' />
+                <View className='w-3 h-3 rounded-full bg-volt mr-1' />
                 <Text className='text-white text-xs'>
                   {t("home.settings.storage.app_usage", {
                     usedSpace: calculatePercentage(size.appSize, size.total),
@@ -104,7 +104,7 @@ export const StorageSettings = () => {
                 </Text>
               </View>
               <View className='flex flex-row items-center'>
-                <View className='w-3 h-3 rounded-full bg-tint-cyan mr-1' />
+                <View className='w-3 h-3 rounded-full bg-volt mr-1' />
                 <Text className='text-white text-xs'>
                   {t("home.settings.storage.device_usage", {
                     availableSpace: calculatePercentage(

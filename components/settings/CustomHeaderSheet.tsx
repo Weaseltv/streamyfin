@@ -120,7 +120,7 @@ export function CustomHeaderSheet({
             <TouchableOpacity
               key={preset.id}
               onPress={() => applyPreset(preset)}
-              className='bg-neutral-900 border border-neutral-700 rounded-xl p-4 flex-row items-center justify-between'
+              className='bg-neutral-900 border border-neutral-700 p-4 flex-row items-center justify-between'
             >
               <View className='flex-1 pr-3'>
                 <Text className='font-semibold'>{preset.label}</Text>

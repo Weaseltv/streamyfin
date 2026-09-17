@@ -107,7 +107,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
   if (settings?.libraryOptions?.display === "row") {
     return (
       <TouchableItemRouter item={library} className='w-full px-4'>
-        <View className='flex flex-row items-center w-full relative '>
+        <View className='flex flex-row items-center w-full relative'>
           <Ionicons
             name={icons[library.CollectionType!] || "folder"}
             size={22}
@@ -129,7 +129,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
   if (settings?.libraryOptions?.imageStyle === "cover") {
     return (
       <TouchableItemRouter item={library} className='w-full'>
-        <View className='flex justify-center rounded-xl w-full relative border border-neutral-900 h-20 '>
+        <View className='flex justify-center w-full relative border border-neutral-900 h-20'>
           <View
             style={{
               width: "100%",
@@ -166,7 +166,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
             </Text>
           )}
           {settings?.libraryOptions?.showStats && (
-            <Text className='font-bold text-xs  text-start px-4'>
+            <Text className='font-bold text-xs text-start px-4'>
               {itemsCount} {itemTypeName}
             </Text>
           )}
@@ -177,7 +177,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
 
   return (
     <TouchableItemRouter item={library} {...props}>
-      <View className='flex flex-row items-center justify-between rounded-xl w-full relative border bg-neutral-900 border-neutral-900 h-20'>
+      <View className='flex flex-row items-center justify-between w-full relative border bg-neutral-900 border-neutral-900 h-20'>
         <View className='flex flex-col'>
           <Text className='font-bold text-lg text-start px-4'>
             {library.Name}
@@ -191,7 +191,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
         <View className='p-2'>
           <Image
             source={{ uri: url }}
-            className='h-full aspect-[2/1] object-cover rounded-lg overflow-hidden'
+            className='h-full aspect-[2/1] object-cover overflow-hidden'
           />
         </View>
       </View>

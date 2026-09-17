@@ -30,9 +30,7 @@ const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
         setBadgeIcon("clock");
         break;
       case MediaStatus.AVAILABLE:
-        setBadgeStyle(
-          "bg-tint-cyan border-green-400 ring-green-400 text-green-100",
-        );
+        setBadgeStyle("bg-volt border-green-400 ring-green-400 text-green-100");
         setBadgeIcon("check");
         break;
       case MediaStatus.PENDING:
@@ -64,7 +62,7 @@ const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
     badgeIcon && (
       <TouchableOpacity onPress={onPress} disabled={onPress === undefined}>
         <View
-          className={`${badgeStyle ?? "bg-prism-cyan"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
+          className={`${badgeStyle ?? "bg-volt"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
           {...props}
         >
           <MaterialCommunityIcons name={badgeIcon} size={18} color='white' />

@@ -227,7 +227,7 @@ export default function NowPlayingScreen() {
     return (
       <BottomSheetModalProvider>
         <View
-          className='flex-1 bg-brand-bg items-center justify-center'
+          className='flex-1 bg-stage items-center justify-center'
           style={{
             paddingTop: Platform.OS === "android" ? insets.top : 0,
             paddingBottom: Platform.OS === "android" ? insets.bottom : 0,
@@ -244,7 +244,7 @@ export default function NowPlayingScreen() {
   return (
     <BottomSheetModalProvider>
       <View
-        className='flex-1 bg-brand-bg'
+        className='flex-1 bg-stage'
         style={{
           paddingTop: Platform.OS === "android" ? insets.top : 0,
           paddingBottom: Platform.OS === "android" ? insets.bottom : 0,
@@ -639,7 +639,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
             color={repeatMode !== "off" ? Colors.primary : "#666"}
           />
           {repeatMode === "one" && (
-            <View className='absolute right-0 top-1 bg-prism-cyan rounded-full w-4 h-4 items-center justify-center'>
+            <View className='absolute right-0 top-1 bg-volt rounded-full w-4 h-4 items-center justify-center'>
               <Text className='text-white text-[10px] font-bold'>1</Text>
             </View>
           )}
@@ -768,7 +768,7 @@ const QueueView: React.FC<QueueViewProps> = ({
             </TouchableOpacity>
 
             {/* Album art */}
-            <View className='w-12 h-12 rounded overflow-hidden bg-neutral-800 mr-3'>
+            <View className='w-12 h-12 overflow-hidden bg-neutral-800 mr-3'>
               {imageUrl ? (
                 <Image
                   source={{ uri: imageUrl }}
@@ -787,7 +787,7 @@ const QueueView: React.FC<QueueViewProps> = ({
             <View className='flex-1 mr-2'>
               <Text
                 numberOfLines={1}
-                className={`text-base ${isCurrentTrack ? "text-prism-cyan font-semibold" : "text-white"}`}
+                className={`text-base ${isCurrentTrack ? "text-volt font-semibold" : "text-white"}`}
               >
                 {item.Name}
               </Text>

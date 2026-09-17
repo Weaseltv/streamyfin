@@ -124,12 +124,12 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
   return (
     <TouchableOpacity
       onPress={() => router.push(`/(auth)/items/page?id=${process.item.Id}`)}
-      className='relative bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden'
+      className='relative bg-neutral-900 border border-neutral-800 overflow-hidden'
       {...props}
     >
       {process.status === "downloading" && (
         <View
-          className={`bg-prism-cyan h-1 absolute bottom-0 left-0 ${isTranscoding ? "animate-pulse" : ""}`}
+          className={`bg-volt h-1 absolute bottom-0 left-0 ${isTranscoding ? "animate-pulse" : ""}`}
           style={{
             width:
               sanitizedProgress > 0
@@ -152,7 +152,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
       <View className='px-3 py-1.5 flex flex-col w-full'>
         <View className='flex flex-row items-center w-full'>
           {base64Image && (
-            <View className='w-14 aspect-[10/15] rounded-lg overflow-hidden mr-4'>
+            <View className='w-14 aspect-[10/15] overflow-hidden mr-4'>
               <Image
                 source={{
                   uri: `data:image/jpeg;base64,${base64Image}`,
@@ -173,8 +173,8 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
             </Text>
 
             {isTranscoding && (
-              <View className='bg-prism-cyan/20 px-2 py-0.5 rounded-md mt-1 self-start'>
-                <Text className='text-xs text-prism-cyan'>
+              <View className='bg-volt/20 px-2 py-0.5 mt-1 self-start'>
+                <Text className='text-xs text-volt'>
                   {t("home.downloads.transcoding")}
                 </Text>
               </View>
@@ -202,7 +202,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
             {/* Row 2: Speed + ETA */}
             <View className='flex flex-row items-center gap-x-2 mt-0.5'>
               {process.speed && process.speed > 0 && (
-                <Text className='text-xs text-prism-cyan'>
+                <Text className='text-xs text-volt'>
                   {bytesToMB(process.speed).toFixed(2)} MB/s
                 </Text>
               )}

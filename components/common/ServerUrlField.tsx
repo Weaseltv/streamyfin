@@ -132,8 +132,16 @@ export function ServerUrlField({
 
   return (
     <View>
-      {label ? <Text className='font-bold mb-1'>{label}</Text> : null}
-      {hint ? <Text className='text-xs text-gray-500 mb-2'>{hint}</Text> : null}
+      {label ? (
+        <Text variant='meta' muted className='mb-1'>
+          {label}
+        </Text>
+      ) : null}
+      {hint ? (
+        <Text variant='caption' muted className='mb-2'>
+          {hint}
+        </Text>
+      ) : null}
 
       <Input
         value={value}
@@ -142,7 +150,6 @@ export function ServerUrlField({
         onSubmitEditing={runResolve}
         placeholder={placeholder}
         editable={editable}
-        extraClassName='border border-neutral-800'
         keyboardType='url'
         autoCapitalize='none'
         autoCorrect={false}

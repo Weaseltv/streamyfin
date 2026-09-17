@@ -12,7 +12,7 @@ export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
     <View className='mt-2 flex flex-col'>
       {item.Type === "Episode" ? (
         <>
-          <Text numberOfLines={1} ellipsizeMode='tail' className=''>
+          <Text numberOfLines={1} ellipsizeMode='tail'>
             {item.Name}
           </Text>
           <Text numberOfLines={1} className='text-xs opacity-50'>

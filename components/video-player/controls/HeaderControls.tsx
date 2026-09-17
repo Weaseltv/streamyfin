@@ -128,7 +128,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
           <TouchableOpacity
             onPress={toggleOrientation}
             disabled={isTogglingOrientation}
-            className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+            className='aspect-square flex flex-col items-center justify-center p-2'
             accessibilityLabel={t("accessibility.toggle_orientation")}
             accessibilityHint={t("accessibility.toggle_orientation_hint")}
           >
@@ -143,7 +143,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         {!Platform.isTV && startPictureInPicture && (
           <TouchableOpacity
             onPress={startPictureInPicture}
-            className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+            className='aspect-square flex flex-col items-center justify-center p-2'
           >
             <MaterialIcons
               name='picture-in-picture'
@@ -155,7 +155,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         {item?.Type === "Episode" && (
           <TouchableOpacity
             onPress={switchOnEpisodeMode}
-            className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+            className='aspect-square flex flex-col items-center justify-center p-2'
           >
             <Ionicons name='list' size={ICON_SIZES.HEADER} color='white' />
           </TouchableOpacity>
@@ -163,7 +163,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         {previousItem && (
           <TouchableOpacity
             onPress={goToPreviousItem}
-            className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+            className='aspect-square flex flex-col items-center justify-center p-2'
           >
             <Ionicons
               name='play-skip-back'
@@ -175,7 +175,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         {nextItem && (
           <TouchableOpacity
             onPress={() => goToNextItem({ isAutoPlay: false })}
-            className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+            className='aspect-square flex flex-col items-center justify-center p-2'
           >
             <Ionicons
               name='play-skip-forward'
@@ -192,7 +192,7 @@ export const HeaderControls: FC<HeaderControlsProps> = ({
         />
         <TouchableOpacity
           onPress={onClose}
-          className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+          className='aspect-square flex flex-col items-center justify-center p-2'
         >
           <Ionicons name='close' size={ICON_SIZES.HEADER} color='white' />
         </TouchableOpacity>

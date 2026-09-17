@@ -19,7 +19,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { HeaderIcon } from "./common/HeaderIcon";
 import { Text } from "./common/Text";
 import { Loader } from "./Loader";
-import { RoundButton } from "./RoundButton";
+import { SquareButton } from "./SquareButton";
 
 interface Props extends React.ComponentProps<typeof View> {
   item: BaseItemDto;
@@ -53,12 +53,12 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
 
   return (
     <View {...props}>
-      <RoundButton onPress={() => setModalVisible(true)} size={props.size}>
+      <SquareButton onPress={() => setModalVisible(true)} size={props.size}>
         <HeaderIcon
           name='remoteSession'
           size={props.size === "large" ? undefined : 18}
         />
-      </RoundButton>
+      </SquareButton>
 
       <Modal
         animationType='slide'

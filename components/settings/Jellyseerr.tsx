@@ -102,7 +102,7 @@ export const JellyseerrSettings = () => {
   };
 
   return (
-    <View className=''>
+    <View>
       <View>
         {jellyseerrUser ? (
           <>
@@ -152,7 +152,7 @@ export const JellyseerrSettings = () => {
             </View>
           </>
         ) : (
-          <View className='flex flex-col rounded-xl overflow-hidden p-4 bg-neutral-900'>
+          <View className='flex flex-col overflow-hidden p-4 bg-neutral-900'>
             <View style={{ opacity: urlLocked ? 0.5 : 1 }}>
               <View className='mb-2'>
                 <ServerUrlField

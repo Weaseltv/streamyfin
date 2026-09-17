@@ -211,7 +211,7 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
           onPress={async () => {
             close();
           }}
-          className='aspect-square flex flex-col rounded-xl items-center justify-center p-2 ml-auto'
+          className='aspect-square flex flex-col items-center justify-center p-2 ml-auto'
         >
           <Ionicons name='close' size={ICON_SIZES.HEADER} color='white' />
         </TouchableOpacity>

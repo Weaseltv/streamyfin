@@ -2,13 +2,15 @@ import { Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
-import { HEADER_ICON_SIZE } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
+import { NeonHeader } from "@/components/common/NeonHeader";
 import { PlatformDropdown } from "@/components/PlatformDropdown";
 import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { NeonBoard } from "@/constants/Colors";
+import { Sizes } from "@/constants/neon";
 import { useSettings } from "@/utils/atoms/settings";
 
 // Deep entries into this tab — the home "See All" button, or tapping a library /
@@ -170,31 +172,38 @@ export default function IndexLayout() {
       <Stack.Screen
         name='index'
         options={{
+          title: t("tabs.library"),
           headerShown: !Platform.isTV,
-          headerTitle: t("tabs.library"),
-          headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
-          headerShadowVisible: false,
-          headerRight: () =>
-            !pluginSettings?.libraryOptions?.locked &&
-            !Platform.isTV && (
-              <PlatformDropdown
-                open={dropdownOpen}
-                onOpenChange={setDropdownOpen}
-                trigger={
-                  <View
-                    style={{
-                      height: HEADER_ICON_SIZE,
-                      width: HEADER_ICON_SIZE,
-                    }}
-                  >
-                    <HeaderIcon name='more' />
-                  </View>
-                }
-                title={t("library.options.display")}
-                groups={dropdownGroups}
-              />
-            ),
+          header: () => (
+            <NeonHeader
+              right={
+                !pluginSettings?.libraryOptions?.locked ? (
+                  <PlatformDropdown
+                    open={dropdownOpen}
+                    onOpenChange={setDropdownOpen}
+                    trigger={
+                      <View
+                        style={{
+                          height: Sizes.iconButton,
+                          width: Sizes.iconButton,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <HeaderIcon
+                          name='more'
+                          size={22}
+                          tintColor={NeonBoard.mid}
+                        />
+                      </View>
+                    }
+                    title={t("library.options.display")}
+                    groups={dropdownGroups}
+                  />
+                ) : null
+              }
+            />
+          ),
         }}
       />
       <Stack.Screen
@@ -203,7 +212,7 @@ export default function IndexLayout() {
           title: "",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -216,7 +225,7 @@ export default function IndexLayout() {
           title: "",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />

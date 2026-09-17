@@ -10,6 +10,8 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { FontFace, MAX_FONT_SCALE } from "@/constants/neon";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 
 interface InputProps extends TextInputProps {
@@ -136,16 +138,41 @@ export function Input(props: InputProps) {
     );
   }
 
-  // Mobile version unchanged
+  // Phone: a `card2` field with a 1pt `line2` border, volt when focused,
+  // Barlow 15/600, radius 0. Text scaling on, capped by the app.
   return (
     <TextInput
       ref={inputRef}
-      className={`p-4 rounded-xl bg-neutral-900 ${extraClassName}`}
-      allowFontScaling={false}
-      style={[{ color: "white" }, style]}
-      placeholderTextColor={"#9CA3AF"}
+      className={extraClassName}
+      allowFontScaling
+      maxFontSizeMultiplier={MAX_FONT_SCALE}
+      style={[
+        {
+          minHeight: 48,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          backgroundColor: NeonBoard.card2,
+          borderWidth: 1,
+          borderColor: isFocused ? NeonBoard.volt : NeonBoard.line2,
+          borderRadius: 0,
+          color: NeonBoard.text,
+          ...FontFace.bodySemi,
+          fontSize: 15,
+        },
+        style,
+      ]}
+      placeholderTextColor={NeonBoard.low}
+      selectionColor={NeonBoard.volt}
       clearButtonMode='while-editing'
       {...otherProps}
+      onFocus={(e) => {
+        setIsFocused(true);
+        otherProps.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setIsFocused(false);
+        otherProps.onBlur?.(e);
+      }}
     />
   );
 }

@@ -2,22 +2,10 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import {
-  HeaderButton,
-  HeaderButtonGroup,
-} from "@/components/common/HeaderButton";
-import { HeaderIcon } from "@/components/common/HeaderIcon";
-import {
+  neonRootScreenOptions,
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
-import { Colors } from "@/constants/Colors";
-import useRouter from "@/hooks/useAppRouter";
-
-const Chromecast = Platform.isTV ? null : require("@/components/Chromecast");
-
-import { useAtom } from "jotai";
-import { useSessions, type useSessionsProps } from "@/hooks/useSessions";
-import { userAtom } from "@/providers/JellyfinProvider";
 
 // Keeps cold boot on the Home tab.
 //
@@ -44,35 +32,20 @@ import { userAtom } from "@/providers/JellyfinProvider";
 export const unstable_settings = { anchor: "index" };
 
 export default function IndexLayout() {
-  const [user] = useAtom(userAtom);
   const { t } = useTranslation();
 
   return (
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen
         name='index'
-        options={{
-          headerShown: !Platform.isTV,
-          headerTitle: t("tabs.home"),
-          headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
-          headerShadowVisible: false,
-          headerRight: () =>
-            Platform.isTV ? null : (
-              <HeaderButtonGroup>
-                <Chromecast.Chromecast />
-                {user?.Policy?.IsAdministrator && <SessionsButton />}
-                <SettingsButton />
-              </HeaderButtonGroup>
-            ),
-        }}
+        options={{ ...neonRootScreenOptions, title: t("tabs.home") }}
       />
       <Stack.Screen
         name='downloads/index'
         options={{
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           title: t("home.downloads.downloads_title"),
         }}
       />
@@ -82,7 +55,7 @@ export default function IndexLayout() {
           title: t("home.sessions.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -92,7 +65,7 @@ export default function IndexLayout() {
           title: t("home.settings.settings_title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -102,7 +75,7 @@ export default function IndexLayout() {
           title: t("companion_login.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -112,7 +85,7 @@ export default function IndexLayout() {
           title: t("home.settings.playback_controls.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -122,7 +95,7 @@ export default function IndexLayout() {
           title: t("home.settings.audio_subtitles.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -132,7 +105,7 @@ export default function IndexLayout() {
           title: t("home.settings.appearance.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -142,7 +115,7 @@ export default function IndexLayout() {
           title: t("home.settings.music.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -152,7 +125,7 @@ export default function IndexLayout() {
           title: t("home.settings.other.hide_libraries"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -162,7 +135,7 @@ export default function IndexLayout() {
           title: t("home.settings.plugins.plugins_title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -172,7 +145,7 @@ export default function IndexLayout() {
           title: "Marlin Search",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -182,7 +155,7 @@ export default function IndexLayout() {
           title: "Jellyseerr",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -192,7 +165,7 @@ export default function IndexLayout() {
           title: "Streamystats",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -202,7 +175,7 @@ export default function IndexLayout() {
           title: "KefinTweaks",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -212,7 +185,7 @@ export default function IndexLayout() {
           title: t("home.settings.intro.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -222,7 +195,7 @@ export default function IndexLayout() {
           title: t("home.settings.logs.logs_title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -232,7 +205,7 @@ export default function IndexLayout() {
           title: t("home.settings.network.title"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -244,35 +217,11 @@ export default function IndexLayout() {
         options={{
           title: "",
           headerShown: !Platform.isTV,
-          headerBlurEffect: "prominent",
-          headerTransparent: Platform.OS === "ios",
+          headerBlurEffect: "none",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
     </Stack>
   );
 }
-
-const SettingsButton = () => {
-  const router = useRouter();
-
-  return (
-    <HeaderButton onPress={() => router.push("/(auth)/settings")}>
-      <HeaderIcon name='settings' />
-    </HeaderButton>
-  );
-};
-
-const SessionsButton = () => {
-  const router = useRouter();
-  const { sessions = [] } = useSessions({} as useSessionsProps);
-
-  return (
-    <HeaderButton onPress={() => router.push("/(auth)/sessions")}>
-      <HeaderIcon
-        name='sessions'
-        tintColor={sessions.length === 0 ? "white" : Colors.primary}
-      />
-    </HeaderButton>
-  );
-};

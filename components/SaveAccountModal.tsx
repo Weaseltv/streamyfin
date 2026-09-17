@@ -175,7 +175,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
           {/* PIN Entry Step */}
           {selectedType === "pin" ? (
             <View className='flex-1'>
-              <View className='p-4 border border-neutral-800 rounded-xl bg-neutral-900 mb-4'>
+              <View className='p-4 border border-neutral-800 bg-neutral-900 mb-4'>
                 <Text className='text-neutral-100 text-center text-lg mb-4'>
                   {t("pin.setup_pin")}
                 </Text>
@@ -199,7 +199,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
               <Text className='text-neutral-400 mb-3'>
                 {t("save_account.security_option")}
               </Text>
-              <View className='bg-neutral-800 rounded-xl overflow-hidden'>
+              <View className='bg-neutral-800 overflow-hidden'>
                 {SECURITY_OPTIONS.map((option, index) => (
                   <TouchableOpacity
                     key={option.type}
@@ -224,7 +224,7 @@ export const SaveAccountModal: React.FC<SaveAccountModalProps> = ({
                     <View
                       className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
                         selectedType === option.type
-                          ? "border-prism-violet bg-tint-cyan"
+                          ? "border-volt bg-volt"
                           : "border-neutral-500"
                       }`}
                     >

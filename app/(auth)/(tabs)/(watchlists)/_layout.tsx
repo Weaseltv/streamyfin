@@ -1,13 +1,12 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
-import { HeaderButton } from "@/components/common/HeaderButton";
-import { HeaderIcon } from "@/components/common/HeaderIcon";
+import { HeaderIconButton, NeonHeader } from "@/components/common/NeonHeader";
 import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
-import { Colors } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useStreamystatsEnabled } from "@/hooks/useWatchlists";
 
@@ -27,22 +26,23 @@ export default function WatchlistsLayout() {
       <Stack.Screen
         name='index'
         options={{
+          title: t("watchlists.title"),
           headerShown: !Platform.isTV,
-          headerTitle: t("watchlists.title"),
-          headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
-          headerShadowVisible: false,
-          headerRight: streamystatsEnabled
-            ? () => (
-                <HeaderButton
-                  onPress={() =>
-                    router.push("/(auth)/(tabs)/(watchlists)/create")
-                  }
-                >
-                  <HeaderIcon name='add' />
-                </HeaderButton>
-              )
-            : undefined,
+          header: () => (
+            <NeonHeader
+              right={
+                streamystatsEnabled ? (
+                  <HeaderIconButton
+                    name='add'
+                    accessibilityLabel={t("watchlists.create_title")}
+                    onPress={() =>
+                      router.push("/(auth)/(tabs)/(watchlists)/create")
+                    }
+                  />
+                ) : null
+              }
+            />
+          ),
         }}
       />
       <Stack.Screen
@@ -51,7 +51,7 @@ export default function WatchlistsLayout() {
           title: "",
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
-          headerTransparent: Platform.OS === "ios",
+          headerTransparent: false,
           headerShadowVisible: false,
         }}
       />
@@ -61,9 +61,9 @@ export default function WatchlistsLayout() {
           title: t("watchlists.create_title"),
           presentation: "modal",
           headerShown: !Platform.isTV,
-          headerStyle: { backgroundColor: Colors.surface },
-          headerTintColor: "white",
-          contentStyle: { backgroundColor: Colors.surface },
+          headerStyle: { backgroundColor: NeonBoard.card },
+          headerTintColor: NeonBoard.text,
+          contentStyle: { backgroundColor: NeonBoard.card },
         }}
       />
       <Stack.Screen
@@ -72,9 +72,9 @@ export default function WatchlistsLayout() {
           title: t("watchlists.edit_title"),
           presentation: "modal",
           headerShown: !Platform.isTV,
-          headerStyle: { backgroundColor: Colors.surface },
-          headerTintColor: "white",
-          contentStyle: { backgroundColor: Colors.surface },
+          headerStyle: { backgroundColor: NeonBoard.card },
+          headerTintColor: NeonBoard.text,
+          contentStyle: { backgroundColor: NeonBoard.card },
         }}
       />
       {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (

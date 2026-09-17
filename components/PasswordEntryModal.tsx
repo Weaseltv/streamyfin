@@ -127,7 +127,7 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
           </View>
 
           {/* Password Input */}
-          <View className='p-4 border border-neutral-800 rounded-xl bg-neutral-900 mb-4'>
+          <View className='p-4 border border-neutral-800 bg-neutral-900 mb-4'>
             <Text className='text-neutral-400 text-sm mb-2'>
               {t("login.password_placeholder")}
             </Text>

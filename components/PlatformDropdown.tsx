@@ -75,7 +75,7 @@ interface PlatformDropdownProps {
 
 const ToggleSwitch: React.FC<{ value: boolean }> = ({ value }) => (
   <View
-    className={`w-12 h-7 rounded-full ${value ? "bg-prism-cyan" : "bg-neutral-600"} flex-row items-center`}
+    className={`w-12 h-7 rounded-full ${value ? "bg-volt" : "bg-neutral-600"} flex-row items-center`}
   >
     <View
       className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${value ? "translate-x-6" : "translate-x-1"}`}
@@ -133,7 +133,7 @@ const OptionGroupComponent: React.FC<{ group: OptionGroup }> = ({ group }) => (
         borderRadius: 12,
         overflow: "hidden",
       }}
-      className='bg-neutral-800 rounded-xl overflow-hidden'
+      className='bg-neutral-800 overflow-hidden'
     >
       {group.options.map((option, index) => (
         <OptionItem

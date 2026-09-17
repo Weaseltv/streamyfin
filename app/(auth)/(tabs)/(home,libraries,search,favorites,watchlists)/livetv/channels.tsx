@@ -35,7 +35,7 @@ export default function LiveTvChannelsPage() {
         data={channels?.Items}
         renderItem={({ item }) => (
           <View className='flex flex-row items-center px-4 mb-2'>
-            <View className='w-22 mr-4 rounded-lg overflow-hidden'>
+            <View className='w-22 mr-4 overflow-hidden'>
               <ItemImage
                 style={{
                   aspectRatio: "1/1",

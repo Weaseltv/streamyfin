@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { Colors, Prismatic } from "@/constants/Colors";
+import { Colors, NeonBoard } from "@/constants/Colors";
 
 interface ThemeColors {
   primary: string;
@@ -60,11 +60,15 @@ export const adjustToNearBlack = (_color: string): string => {
   return "#313131"; // A very dark gray, almost black
 };
 
-/**
- * Accent swatches offered to the user. These are the eight canonical
- * prismatic stops, in order.
- */
-export const ACCENT_SWATCHES = Prismatic;
+/** Accent swatches offered to the user: the Neon Board neons. */
+export const ACCENT_SWATCHES = [
+  NeonBoard.volt,
+  NeonBoard.green,
+  NeonBoard.cyan,
+  NeonBoard.orange,
+  NeonBoard.yellow,
+  NeonBoard.red,
+] as const;
 
 export const itemThemeColorAtom = atom<ThemeColors>({
   primary: Colors.primary,

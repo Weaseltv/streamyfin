@@ -34,7 +34,7 @@ import { Text } from "./common/Text";
 import { Loader } from "./Loader";
 import { MediaSourceSelector } from "./MediaSourceSelector";
 import ProgressCircle from "./ProgressCircle";
-import { RoundButton } from "./RoundButton";
+import { SquareButton } from "./SquareButton";
 import { SubtitleTrackSelector } from "./SubtitleTrackSelector";
 
 /**
@@ -394,9 +394,9 @@ export const DownloadItems: React.FC<DownloadProps> = ({
 
   return (
     <View {...props}>
-      <RoundButton size={size} onPress={onButtonPress}>
+      <SquareButton size={size} onPress={onButtonPress}>
         {renderButtonContent()}
-      </RoundButton>
+      </SquareButton>
       <BottomSheetModal
         ref={bottomSheetModalRef}
         enableDynamicSizing

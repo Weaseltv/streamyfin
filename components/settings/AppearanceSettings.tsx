@@ -25,7 +25,7 @@ export const AppearanceSettings: React.FC = () => {
 
   return (
     <DisabledSetting disabled={disabled}>
-      <ListGroup title={t("home.settings.appearance.title")} className=''>
+      <ListGroup title={t("home.settings.appearance.title")}>
         <ListItem
           title={t("home.settings.other.show_custom_menu_links")}
           subtitle={t("home.settings.other.show_custom_menu_links_hint")}

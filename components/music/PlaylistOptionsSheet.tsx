@@ -105,7 +105,7 @@ export const PlaylistOptionsSheet: React.FC<Props> = ({
           paddingBottom: insets.bottom,
         }}
       >
-        <View className='flex-col rounded-xl overflow-hidden bg-neutral-800'>
+        <View className='flex-col overflow-hidden bg-neutral-800'>
           <TouchableOpacity
             onPress={handleDeletePlaylist}
             className='flex-row items-center px-4 py-3.5'

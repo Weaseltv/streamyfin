@@ -18,8 +18,7 @@ import ActiveDownloads from "@/components/downloads/ActiveDownloads";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
 import { MovieCard } from "@/components/downloads/MovieCard";
 import { SeriesCard } from "@/components/downloads/SeriesCard";
-import { CountBadge } from "@/components/prismatic/CountBadge";
-import { Colors } from "@/constants/Colors";
+import { Colors, NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
@@ -196,7 +195,9 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.movies")}
                 </Text>
-                <CountBadge count={movies?.length} variant='movies' />
+                <Text variant='tally' accent={NeonBoard.orange}>
+                  {movies?.length}
+                </Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>
@@ -213,7 +214,9 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.series")}
                 </Text>
-                <CountBadge count={groupedBySeries?.length} variant='series' />
+                <Text variant='tally' accent={NeonBoard.yellow}>
+                  {groupedBySeries?.length}
+                </Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>
@@ -239,7 +242,9 @@ export default function DownloadsPage() {
                 <Text className='text-lg font-bold'>
                   {t("home.downloads.other_media")}
                 </Text>
-                <CountBadge count={otherMedia?.length} variant='movies' />
+                <Text variant='tally' accent={NeonBoard.volt}>
+                  {otherMedia?.length}
+                </Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className='px-4 flex flex-row'>

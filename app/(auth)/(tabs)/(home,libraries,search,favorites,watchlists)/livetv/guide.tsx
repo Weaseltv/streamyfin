@@ -111,7 +111,7 @@ export default function LiveTvGuidePage() {
             className='bg-neutral-800'
           />
           {channels?.Items?.map((c, i) => (
-            <View className='h-16 w-16 mr-4 rounded-lg overflow-hidden' key={i}>
+            <View className='h-16 w-16 mr-4 overflow-hidden' key={i}>
               <ItemImage
                 style={{
                   width: "100%",

@@ -119,7 +119,7 @@ export const PlaylistSortSheet: React.FC<Props> = ({
         <Text className='text-white text-lg font-semibold mb-4'>
           {t("music.sort.title")}
         </Text>
-        <View className='flex-col rounded-xl overflow-hidden bg-neutral-800'>
+        <View className='flex-col overflow-hidden bg-neutral-800'>
           {SORT_OPTIONS.map((option, index) => {
             const isSelected = sortBy === option.key;
             return (
@@ -135,7 +135,7 @@ export const PlaylistSortSheet: React.FC<Props> = ({
                     color={isSelected ? Colors.primary : "#fff"}
                   />
                   <Text
-                    className={`ml-4 text-base flex-1 ${isSelected ? "text-tint-violet font-medium" : "text-white"}`}
+                    className={`ml-4 text-base flex-1 ${isSelected ? "text-volt font-medium" : "text-white"}`}
                   >
                     {t(option.label)}
                   </Text>

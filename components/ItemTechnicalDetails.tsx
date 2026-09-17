@@ -33,7 +33,7 @@ export const ItemTechnicalDetails: React.FC<Props> = ({ source }) => {
         <View className='flex flex-row space-x-2'>
           <VideoStreamInfo source={source} />
         </View>
-        <Text className='text-tint-violet'>{t("item_card.more_details")}</Text>
+        <Text className='text-volt'>{t("item_card.more_details")}</Text>
       </TouchableOpacity>
       <BottomSheetModal
         ref={bottomSheetModalRef}

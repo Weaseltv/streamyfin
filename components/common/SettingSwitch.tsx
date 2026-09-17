@@ -1,40 +1,92 @@
 import type React from "react";
-import { Platform, Switch, type SwitchProps, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  Switch,
+  type SwitchProps,
+  View,
+} from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip } from "@/constants/neon";
+
+const TRACK_W = 44;
+const TRACK_H = 26;
+const KNOB = 18;
+const PAD = 3;
 
 /**
- * Settings toggle. Android's native Switch lays out ~40px tall / ~56px wide and
- * inflates list rows (iOS renders it ~31px). A plain `transform: scale` is
- * visual-only and does NOT shrink the layout box, so we pin the Switch inside a
- * FIXED-SIZE box (overflow hidden) and center it:
- *  - the fixed height caps the row height (compact, uniform rows),
- *  - the fixed width + centering keep the switch in the exact same spot in the
- *    on/off states (a non-fixed wrapper let its width fluctuate between states,
- *    which shifted the switch sideways on toggle).
- * iOS renders the switch untouched.
- *
- * Tunables: BOX_H drives the row height; SCALE shrinks the visual to fit the
- * box; keep BOX_W >= scaled visual width to avoid clipping the switch sideways.
+ * The Neon Board switch: a 44×26 square track (`line2`, `text` knob); on =
+ * volt track with a glow and an `onAccent` knob. The knob is the one square
+ * exception, drawn round. TV keeps the native Switch.
  */
-const BOX_W = 40;
-const BOX_H = 30;
-const SCALE = 0.9;
+export const SettingSwitch: React.FC<SwitchProps> = ({
+  value,
+  onValueChange,
+  disabled,
+  style,
+  ...props
+}) => {
+  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
-export const SettingSwitch: React.FC<SwitchProps> = (props) => {
-  if (Platform.OS !== "android") return <Switch {...props} />;
-  return (
-    <View
-      style={{
-        width: BOX_W,
-        height: BOX_H,
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      }}
-    >
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: value ? 1 : 0,
+      duration: 120,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [value, anim]);
+
+  if (Platform.isTV)
+    return (
       <Switch
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+        style={style}
         {...props}
-        style={[props.style, { transform: [{ scale: SCALE }] }]}
       />
-    </View>
+    );
+
+  const translateX = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [PAD, TRACK_W - KNOB - PAD],
+  });
+  const accent = props.trackColor?.true ?? NeonBoard.volt;
+
+  return (
+    <Pressable
+      accessibilityRole='switch'
+      accessibilityState={{ checked: !!value, disabled: !!disabled }}
+      disabled={disabled}
+      hitSlop={8}
+      onPress={() => onValueChange?.(!value)}
+      style={[{ opacity: disabled ? 0.5 : 1 }, style as any]}
+    >
+      <View
+        style={[
+          {
+            width: TRACK_W,
+            height: TRACK_H,
+            justifyContent: "center",
+            backgroundColor: value ? (accent as string) : NeonBoard.line2,
+          },
+          value ? glowChip(accent as string) : null,
+        ]}
+      >
+        <Animated.View
+          style={{
+            width: KNOB,
+            height: KNOB,
+            borderRadius: KNOB / 2,
+            backgroundColor: value ? NeonBoard.onAccent : NeonBoard.text,
+            transform: [{ translateX }],
+          }}
+        />
+      </View>
+    </Pressable>
   );
 };

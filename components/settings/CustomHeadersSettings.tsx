@@ -56,7 +56,7 @@ export function CustomHeadersSettings(): React.ReactElement | null {
         </View>
       </ListGroup>
 
-      <View className='px-4 py-2 bg-neutral-900 rounded-xl mt-2'>
+      <View className='px-4 py-2 bg-neutral-900 mt-2'>
         <Text className='text-neutral-400 text-xs'>
           {t("custom_headers.security_note")}
         </Text>

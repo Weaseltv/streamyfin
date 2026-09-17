@@ -142,7 +142,7 @@ export default function Page() {
       </View>
       <View className='flex flex-col space-y-2 px-4'>
         {filteredLogs?.map((log, index) => (
-          <View className='bg-neutral-900 rounded-xl p-3' key={index}>
+          <View className='bg-neutral-900 p-3' key={index}>
             <TouchableOpacity
               disabled={!log.data}
               onPress={() =>
@@ -157,7 +157,7 @@ export default function Page() {
                   className={`mb-1
                       ${log.level === "INFO" && "text-blue-500"}
                       ${log.level === "ERROR" && "text-red-500"}
-                      ${log.level === "DEBUG" && "text-tint-violet"}
+                      ${log.level === "DEBUG" && "text-volt"}
                     `}
                 >
                   {log.level}
@@ -180,11 +180,7 @@ export default function Page() {
             {log.data && (
               <Collapsible collapsed={!state[log.timestamp]}>
                 <View className='mt-2 flex flex-col space-y-2'>
-                  <ScrollView
-                    className='rounded-xl'
-                    style={codeBlockStyle}
-                    nestedScrollEnabled
-                  >
+                  <ScrollView style={codeBlockStyle} nestedScrollEnabled>
                     {/* Only the raw payload is selectable (per request); the
                         header/message stay tap-to-toggle. */}
                     <Text selectable>{JSON.stringify(log.data, null, 2)}</Text>

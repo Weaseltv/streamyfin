@@ -1,53 +1,35 @@
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, View, type ViewProps } from "react-native";
-import { Colors } from "@/constants/Colors";
+import { Platform, View, type ViewProps } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
+import { glowChip, Sizes } from "@/constants/neon";
 import { useScaledTVTypography } from "@/constants/TVTypography";
-import { GlassSurface } from "./common/GlassSurface";
 import { Text } from "./common/Text";
 
 interface Props extends ViewProps {
   text?: string | number | null;
-  variant?: "gray" | "primary";
   /**
-   * Neon hue for a media badge (4K, Dolby Vision, audio format). When set the
-   * badge draws a 1px hairline and matching text in that hue instead of a fill.
+   * `primary` and `filled` are the filled badge (`onAccent` text, used for
+   * Available / Approved); `gray` and `outline` the 1pt accent hairline on the
+   * stage. Defaults to the hairline.
    */
+  variant?: "gray" | "primary" | "outline" | "filled";
+  /** Hex accent: the item's type colour or a status colour. Defaults to `mid`. */
   tint?: string;
+  /** Neon glow on the badge (type badges on cards carry one). */
+  glow?: boolean;
   iconLeft?: React.ReactNode;
 }
 
+/** 18 high, 9/700 upper, 1pt accent border on `stage`; filled variant for Available / Approved. */
 export const Badge: React.FC<Props> = ({
   iconLeft,
   text,
-  variant = "primary",
+  variant = "outline",
   tint,
+  glow = false,
   ...props
 }) => {
   const typography = useScaledTVTypography();
-
-  const content = (
-    <View style={styles.content}>
-      {iconLeft && <View style={styles.iconLeft}>{iconLeft}</View>}
-      <Text className='text-xs' style={tint ? { color: tint } : undefined}>
-        {text}
-      </Text>
-    </View>
-  );
-
-  if (Platform.OS === "ios" && !Platform.isTV) {
-    return (
-      <View {...props} style={[styles.container, props.style]}>
-        <GlassSurface
-          style={[
-            { borderRadius: 100 },
-            tint ? { borderWidth: 1, borderColor: tint } : null,
-          ]}
-        >
-          {content}
-        </GlassSurface>
-      </View>
-    );
-  }
 
   // On TV, use BlurView for consistent styling
   if (Platform.isTV) {
@@ -89,59 +71,38 @@ export const Badge: React.FC<Props> = ({
     );
   }
 
+  const accent = tint ?? NeonBoard.mid;
+  const filled = variant === "primary" || variant === "filled";
+
   return (
     <View
       {...props}
       style={[
         {
-          borderRadius: 4,
-          padding: 4,
+          height: Sizes.badge,
           paddingHorizontal: 6,
           flexShrink: 1,
           flexGrow: 0,
           alignSelf: "flex-start",
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: tint
-            ? "transparent"
-            : variant === "primary"
-              ? Colors.primary
-              : "#262626",
-          borderWidth: tint ? 1 : 0,
-          borderColor: tint ?? "transparent",
+          backgroundColor: filled ? accent : NeonBoard.stage,
+          borderWidth: 1,
+          borderColor: accent,
         },
+        glow ? glowChip(accent) : null,
         props.style,
       ]}
     >
       {iconLeft && <View style={{ marginRight: 4 }}>{iconLeft}</View>}
       <Text
-        style={{
-          fontSize: 12,
-          color: tint ?? (variant === "primary" ? Colors.background : "#fff"),
-        }}
+        variant='badge'
+        allowFontScaling={false}
+        numberOfLines={1}
+        style={{ color: filled ? NeonBoard.onAccent : accent }}
       >
         {text}
       </Text>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    overflow: "hidden",
-    alignSelf: "flex-start",
-    flexShrink: 1,
-    flexGrow: 0,
-  },
-  content: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 50,
-    backgroundColor: "transparent",
-  },
-  iconLeft: {
-    marginRight: 4,
-  },
-});

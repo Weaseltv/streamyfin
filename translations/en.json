@@ -1106,5 +1106,9 @@
     "header_count_one": "{{count}} header",
     "header_count_other": "{{count}} headers",
     "header_count": "{{count}} headers"
+  },
+  "item": {
+    "play_runtime": "Play · {{time}}",
+    "resume_left": "Resume · {{time}} left"
   }
 }

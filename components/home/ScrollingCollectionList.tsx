@@ -77,18 +77,18 @@ export const ScrollingCollectionList: React.FC<Props> = ({
         >
           {[1, 2, 3].map((i) => (
             <View className='w-44' key={i}>
-              <View className='bg-neutral-900 h-24 w-full rounded-md mb-1' />
-              <View className='rounded-md overflow-hidden mb-1 self-start'>
+              <View className='bg-neutral-900 h-24 w-full mb-1' />
+              <View className='overflow-hidden mb-1 self-start'>
                 <Text
-                  className='text-neutral-900 bg-neutral-900 rounded-md'
+                  className='text-neutral-900 bg-neutral-900'
                   numberOfLines={1}
                 >
                   Nisi mollit voluptate amet.
                 </Text>
               </View>
-              <View className='rounded-md overflow-hidden self-start mb-1'>
+              <View className='overflow-hidden self-start mb-1'>
                 <Text
-                  className='text-neutral-900 bg-neutral-900 text-xs rounded-md '
+                  className='text-neutral-900 bg-neutral-900 text-xs'
                   numberOfLines={1}
                 >
                   Lorem ipsum

@@ -106,7 +106,7 @@ export const QuickConnectCodeModal: React.FC<Props> = ({ code, onClose }) => {
             {t("login.quick_connect")}
           </Text>
           <TouchableOpacity
-            className='mt-6 p-6 border border-neutral-800 rounded-xl bg-neutral-900 flex flex-row items-center justify-center'
+            className='mt-6 p-6 border border-neutral-800 bg-neutral-900 flex flex-row items-center justify-center'
             onPress={copyCode}
           >
             <Text

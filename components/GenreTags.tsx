@@ -4,14 +4,12 @@ import type React from "react";
 import {
   Platform,
   type StyleProp,
-  StyleSheet,
   type TextStyle,
   View,
   type ViewProps,
 } from "react-native";
-import { Prism } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useScaledTVTypography } from "@/constants/TVTypography";
-import { GlassSurface } from "./common/GlassSurface";
 import { Text } from "./common/Text";
 
 interface TagProps {
@@ -24,36 +22,12 @@ export const Tag: React.FC<
     text: string;
     textClass?: ViewProps["className"];
     textStyle?: StyleProp<TextStyle>;
-    /** Neon hairline colour. Tags rotates these so a row reads as a set. */
+    /** Hairline and label colour. Defaults to `mid`. */
     borderTint?: string;
   } & ViewProps
 > = ({ text, textClass, textStyle, borderTint, ...props }) => {
   // Hook must be called at the top level, before any conditional returns
   const typography = useScaledTVTypography();
-
-  if (Platform.OS === "ios" && !Platform.isTV) {
-    return (
-      <View>
-        <GlassSurface
-          style={[
-            styles.glass,
-            borderTint ? { borderWidth: 1, borderColor: borderTint } : null,
-          ]}
-        >
-          <View
-            style={{
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-            }}
-          >
-            <Text style={borderTint ? { color: borderTint } : undefined}>
-              {text}
-            </Text>
-          </View>
-        </GlassSurface>
-      </View>
-    );
-  }
 
   // TV-specific styling with blur background
   if (Platform.isTV) {
@@ -81,19 +55,23 @@ export const Tag: React.FC<
     );
   }
 
+  const tone = borderTint ?? NeonBoard.mid;
   return (
     <View
-      className='rounded-full px-2 py-1'
       style={{
-        backgroundColor: borderTint ? "transparent" : "#262626",
-        borderWidth: borderTint ? 1 : 0,
-        borderColor: borderTint ?? "transparent",
+        height: 18,
+        paddingHorizontal: 6,
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: tone,
       }}
       {...props}
     >
       <Text
+        variant='badge'
+        allowFontScaling={false}
         className={textClass}
-        style={[textStyle, borderTint ? { color: borderTint } : null]}
+        style={[{ color: tone }, textStyle]}
       >
         {text}
       </Text>
@@ -101,25 +79,15 @@ export const Tag: React.FC<
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    overflow: "hidden",
-    borderRadius: 50,
-  },
-  glass: {
-    borderRadius: 50,
-  },
-});
-
 export const Tags: React.FC<
-  TagProps & { tagProps?: ViewProps } & ViewProps
-> = ({ tags, textClass = "text-xs", tagProps, ...props }) => {
+  TagProps & { tagProps?: ViewProps; accent?: string } & ViewProps
+> = ({ tags, textClass, tagProps, accent, ...props }) => {
   if (!tags || tags.length === 0) return null;
 
   return (
     <View
       className={`flex flex-row flex-wrap ${props.className}`}
-      style={{ gap: Platform.isTV ? 12 : 4 }}
+      style={{ gap: Platform.isTV ? 12 : 6 }}
       {...props}
     >
       {tags.map((tag, idx) => (
@@ -128,9 +96,7 @@ export const Tags: React.FC<
             key={idx}
             textClass={textClass}
             text={tag}
-            borderTint={
-              Prism.genreChipBorders[idx % Prism.genreChipBorders.length]
-            }
+            borderTint={accent}
             {...tagProps}
           />
         </View>
@@ -139,10 +105,13 @@ export const Tags: React.FC<
   );
 };
 
-export const GenreTags: React.FC<{ genres?: string[] }> = ({ genres }) => {
+export const GenreTags: React.FC<{ genres?: string[]; accent?: string }> = ({
+  genres,
+  accent,
+}) => {
   return (
     <View className='mt-2'>
-      <Tags tags={genres} />
+      <Tags tags={genres} accent={accent} />
     </View>
   );
 };

@@ -103,7 +103,7 @@ export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
     <>
       {/* Strict === false: items without UserData (unknown state) get no ribbon */}
       {isMovieOrEpisode && item.UserData?.Played === false && (
-        <View className='bg-prism-cyan w-8 h-8 absolute -top-4 -right-4 rotate-45' />
+        <View className='bg-volt w-8 h-8 absolute -top-4 -right-4 rotate-45' />
       )}
 
       {/* Fully watched Series/BoxSet → small accent checkmark */}

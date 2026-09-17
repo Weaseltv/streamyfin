@@ -325,7 +325,7 @@ const RequestModal = forwardRef<
                     <PlatformDropdown
                       groups={qualityProfileOptions}
                       trigger={
-                        <View className='bg-neutral-900 h-10 rounded-xl border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
+                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
                           <Text numberOfLines={1}>
                             {defaultServiceDetails.profiles.find(
                               (p) =>
@@ -349,7 +349,7 @@ const RequestModal = forwardRef<
                     <PlatformDropdown
                       groups={rootFolderOptions}
                       trigger={
-                        <View className='bg-neutral-900 h-10 rounded-xl border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
+                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
                           <Text numberOfLines={1}>
                             {defaultServiceDetails.rootFolders.find(
                               (f) =>
@@ -382,7 +382,7 @@ const RequestModal = forwardRef<
                     <PlatformDropdown
                       groups={tagsOptions}
                       trigger={
-                        <View className='bg-neutral-900 h-10 rounded-xl border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
+                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
                           <Text numberOfLines={1}>
                             {requestOverrides.tags
                               ? defaultServiceDetails.tags
@@ -409,7 +409,7 @@ const RequestModal = forwardRef<
                     <PlatformDropdown
                       groups={usersOptions}
                       trigger={
-                        <View className='bg-neutral-900 h-10 rounded-xl border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
+                        <View className='bg-neutral-900 h-10 border-neutral-800 border px-3 py-2 flex flex-row items-center justify-between'>
                           <Text numberOfLines={1}>
                             {users.find(
                               (u) =>

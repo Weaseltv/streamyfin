@@ -2,7 +2,7 @@
  * The icon vocabulary for native headers.
  *
  * Headers used to mix Feather (thin, geometric, uniform stroke) with Ionicons
- * (rounded, heavier, optical-size tuned), sometimes in the same row — which is
+ * (, heavier, optical-size tuned), sometimes in the same row — which is
  * why six icons side by side never looked like a set.
  *
  * `SymbolView` resolves one name per platform to that platform's own icon

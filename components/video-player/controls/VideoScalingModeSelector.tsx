@@ -85,7 +85,7 @@ export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
   const trigger = useMemo(
     () => (
       <View
-        className='aspect-square flex flex-col rounded-xl items-center justify-center p-2'
+        className='aspect-square flex flex-col items-center justify-center p-2'
         style={{ opacity: disabled ? 0.5 : 1 }}
       >
         <Ionicons name='crop-outline' size={24} color='white' />

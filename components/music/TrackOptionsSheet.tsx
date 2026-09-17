@@ -291,7 +291,7 @@ export const TrackOptionsSheet: React.FC<Props> = ({
         </View>
 
         {/* Playback Options */}
-        <View className='flex-col rounded-xl overflow-hidden bg-neutral-800'>
+        <View className='flex-col overflow-hidden bg-neutral-800'>
           <TouchableOpacity
             onPress={handlePlayNext}
             className='flex-row items-center px-4 py-3.5'
@@ -316,7 +316,7 @@ export const TrackOptionsSheet: React.FC<Props> = ({
         </View>
 
         {/* Library Options */}
-        <View className='flex-col rounded-xl overflow-hidden bg-neutral-800 mt-3'>
+        <View className='flex-col overflow-hidden bg-neutral-800 mt-3'>
           <TouchableOpacity
             onPress={handleToggleFavorite}
             className='flex-row items-center px-4 py-3.5'
@@ -425,7 +425,7 @@ export const TrackOptionsSheet: React.FC<Props> = ({
 
         {/* Navigation Options */}
         {(hasArtist || hasAlbum) && (
-          <View className='flex-col rounded-xl overflow-hidden bg-neutral-800 mt-3'>
+          <View className='flex-col overflow-hidden bg-neutral-800 mt-3'>
             {hasArtist && (
               <>
                 <TouchableOpacity

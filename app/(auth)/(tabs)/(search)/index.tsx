@@ -941,7 +941,7 @@ export default function SearchPage() {
               <Text className='text-center text-lg font-bold mt-4'>
                 {t("search.no_results_found_for")}
               </Text>
-              <Text className='text-xs text-tint-violet text-center'>
+              <Text className='text-xs text-volt text-center'>
                 "{debouncedSearch}"
               </Text>
             </View>
@@ -956,7 +956,7 @@ export default function SearchPage() {
                   key={e}
                   className='mb-2'
                 >
-                  <Text className='text-tint-violet'>{e}</Text>
+                  <Text className='text-volt'>{e}</Text>
                 </TouchableOpacity>
               ))}
             </View>

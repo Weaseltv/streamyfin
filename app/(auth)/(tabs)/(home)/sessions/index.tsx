@@ -185,7 +185,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
   useInterval(tick, 1000);
 
   return (
-    <View className='flex flex-col shadow-md bg-neutral-900 rounded-2xl mb-4'>
+    <View className='flex flex-col shadow-md bg-neutral-900 mb-4'>
       <View className='flex flex-row p-4'>
         <View className='w-20 pr-4'>
           <Poster
@@ -247,7 +247,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
             </View>
             <View className='align-bottom bg-gray-800 h-1'>
               <View
-                className={"bg-prism-cyan h-full"}
+                className={"bg-volt h-full"}
                 style={{
                   width: `${getProgressPercentage()}%`,
                 }}

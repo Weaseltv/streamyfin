@@ -192,7 +192,7 @@ export const CompanionLoginScreen: React.FC = () => {
           {Platform.OS === "ios" && (
             <TouchableOpacity
               onPress={() => Linking.openSettings()}
-              className='mt-4 rounded-lg bg-prism-cyan px-6 py-3'
+              className='mt-4 bg-volt px-6 py-3'
             >
               <Text className='text-base font-semibold text-white'>
                 {t("companion_login.open_settings")}
@@ -323,7 +323,7 @@ export const CompanionLoginScreen: React.FC = () => {
             </Text>
 
             <TextInput
-              className='rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
               value={password}
               onChangeText={setPassword}
               placeholder={t("login.password_placeholder")}
@@ -390,7 +390,7 @@ export const CompanionLoginScreen: React.FC = () => {
             </Text>
 
             <TextInput
-              className='rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-center text-2xl font-bold tracking-[6px] text-white'
+              className='border border-neutral-700 bg-neutral-900 p-3 text-center text-2xl font-bold tracking-[6px] text-white'
               value={pairingCode}
               onChangeText={setPairingCode}
               placeholder={t("companion_login.pairing_code_label")}
@@ -407,7 +407,7 @@ export const CompanionLoginScreen: React.FC = () => {
             </Text>
 
             <TextInput
-              className='rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
               value={serverUrl}
               onChangeText={(text) => {
                 setServerUrl(text);
@@ -438,7 +438,7 @@ export const CompanionLoginScreen: React.FC = () => {
             </Text>
 
             <TextInput
-              className='rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
               value={username}
               onChangeText={setUsername}
               placeholder={t("login.username_placeholder")}
@@ -455,7 +455,7 @@ export const CompanionLoginScreen: React.FC = () => {
             </Text>
 
             <TextInput
-              className='rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
+              className='border border-neutral-700 bg-neutral-900 p-3 text-base text-white'
               value={password}
               onChangeText={setPassword}
               placeholder={t("login.password_placeholder")}
@@ -536,7 +536,7 @@ export const CompanionLoginScreen: React.FC = () => {
 
       {/* Center scan area */}
       <View className='items-center'>
-        <View className='h-[250px] w-[250px] rounded-2xl border-2 border-white/80' />
+        <View className='h-[250px] w-[250px] border-2 border-white/80' />
 
         <Text className='mt-6 text-center text-base text-white'>
           {t("companion_login.align_qr")}

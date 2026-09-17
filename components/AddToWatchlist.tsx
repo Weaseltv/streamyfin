@@ -3,7 +3,7 @@ import type { FC } from "react";
 import { useCallback, useRef } from "react";
 import { View, type ViewProps } from "react-native";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
-import { RoundButton } from "@/components/RoundButton";
+import { SquareButton } from "@/components/SquareButton";
 import {
   WatchlistSheet,
   type WatchlistSheetRef,
@@ -33,9 +33,9 @@ export const AddToWatchlist: FC<Props> = ({ item, ...props }) => {
 
   return (
     <View {...props}>
-      <RoundButton size='large' onPress={handlePress}>
+      <SquareButton size='large' onPress={handlePress}>
         <HeaderIcon name={isInAnyWatchlist ? "watchlisted" : "watchlist"} />
-      </RoundButton>
+      </SquareButton>
       <WatchlistSheet ref={sheetRef} />
     </View>
   );

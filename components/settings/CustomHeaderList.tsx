@@ -185,7 +185,7 @@ export function CustomHeaderList({
   return (
     <View className='gap-y-2'>
       {headers.length === 0 ? (
-        <View className='bg-neutral-900 border border-neutral-800 rounded-xl p-4'>
+        <View className='bg-neutral-900 border border-neutral-800 p-4'>
           <Text className='text-neutral-400 text-sm text-center'>
             {t("custom_headers.no_headers")}
           </Text>
@@ -197,7 +197,7 @@ export function CustomHeaderList({
             // Spacing is explicit rather than `gap-y-*`: that utility lands as
             // a leading margin on every child here, so a nested one indents the
             // whole card away from its own top padding.
-            className='bg-neutral-900 border border-neutral-800 rounded-xl p-4'
+            className='bg-neutral-900 border border-neutral-800 p-4'
           >
             {group.preset ? (
               <>
