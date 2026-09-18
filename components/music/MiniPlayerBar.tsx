@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NEON_TAB_BAR_HEIGHT } from "@/components/common/NeonTabBar";
+import { useNeonTabBarLayout } from "@/components/common/NeonTabBar";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
@@ -28,8 +28,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useMusicPlayer } from "@/providers/MusicPlayerProvider";
 
 const HORIZONTAL_MARGIN = Platform.OS === "android" ? 12 : 20;
-// The custom tab bar is NEON_TAB_BAR_HEIGHT plus the safe-area bottom inset
-// on both platforms; the bar floats 8 above it.
+// Float 8 points above the platform-sized dock and its safe-area inset.
 const BAR_OFFSET = 8;
 const BAR_HEIGHT = Platform.OS === "android" ? 58 : 50;
 
@@ -48,6 +47,7 @@ const rubberBand = (distance: number, scale: number = 8): number => {
 export const MiniPlayerBar: React.FC = () => {
   const [api] = useAtom(apiAtom);
   const insets = useSafeAreaInsets();
+  const tabBarLayout = useNeonTabBarLayout();
   const router = useRouter();
   const {
     currentTrack,
@@ -237,7 +237,7 @@ export const MiniPlayerBar: React.FC = () => {
         style={[
           styles.container,
           {
-            bottom: NEON_TAB_BAR_HEIGHT + insets.bottom + BAR_OFFSET,
+            bottom: tabBarLayout.height + insets.bottom + BAR_OFFSET,
           },
           animatedContainerStyle,
         ]}
