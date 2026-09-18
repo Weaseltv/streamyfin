@@ -27,7 +27,7 @@ import { PlatformDropdown } from "@/components/PlatformDropdown";
 import { JellyserrRatings } from "@/components/Ratings";
 import JellyseerrSeasons from "@/components/series/JellyseerrSeasons";
 import { ItemActions } from "@/components/series/SeriesActions";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { FontFace, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
@@ -377,12 +377,12 @@ const MobilePage: React.FC = () => {
                 <Button
                   loading={true}
                   disabled={true}
-                  accent={NeonBoard.volt}
+                  accent={sectionAccent("requests")}
                   style={{ marginTop: 16 }}
                 />
               ) : canRequest ? (
                 <Button
-                  accent={NeonBoard.volt}
+                  accent={sectionAccent("requests")}
                   onPress={request}
                   style={{ marginTop: 16 }}
                   iconLeft={
@@ -610,7 +610,7 @@ const MobilePage: React.FC = () => {
                 style={{
                   color: NeonBoard.text,
                   ...FontFace.body,
-                  fontSize: 15,
+                  fontSize: 18,
                   minHeight: 72,
                   textAlignVertical: "top",
                 }}

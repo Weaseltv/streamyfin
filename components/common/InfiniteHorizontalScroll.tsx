@@ -128,7 +128,7 @@ export function InfiniteHorizontalScroll({
         }}
         onEndReachedThreshold={0.5}
         contentContainerStyle={{
-          paddingHorizontal: 12,
+          paddingHorizontal: 16,
           ...contentContainerStyle,
         }}
         showsHorizontalScrollIndicator={false}

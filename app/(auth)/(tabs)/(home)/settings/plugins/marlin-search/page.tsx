@@ -25,7 +25,7 @@ const urlInputStyle = {
   flex: 1,
   textAlign: "right" as const,
   color: NeonBoard.text,
-  fontSize: 13,
+  fontSize: 16,
   ...FontFace.body,
 };
 
@@ -159,9 +159,9 @@ export default function MarlinSearchPage() {
             />
           </ListItem>
         </ListGroup>
-        <ServerUrlStatusText state={urlResolver} className='mt-2 px-3' />
+        <ServerUrlStatusText state={urlResolver} className='mt-2 px-4' />
 
-        <Text variant='meta' muted className='px-3 mt-2'>
+        <Text variant='meta' muted className='px-4 mt-2'>
           {t("home.settings.plugins.marlin_search.marlin_search_hint")}{" "}
           <Text variant='meta' accent={NeonBoard.volt} onPress={handleOpenLink}>
             {t("home.settings.plugins.marlin_search.read_more_about_marlin")}

@@ -3,8 +3,10 @@ import { Platform, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Favorites } from "@/components/home/Favorites";
 import { Favorites as TVFavorites } from "@/components/home/Favorites.tv";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
+
+const ACCENT = sectionAccent("watchlist");
 
 export default function FavoritesPage() {
   const invalidateCache = useInvalidatePlaybackProgressCache();
@@ -30,8 +32,8 @@ export default function FavoritesPage() {
         <RefreshControl
           refreshing={loading}
           onRefresh={refetch}
-          tintColor={NeonBoard.volt}
-          colors={[NeonBoard.volt]}
+          tintColor={ACCENT}
+          colors={[ACCENT]}
           progressBackgroundColor={NeonBoard.card}
         />
       }

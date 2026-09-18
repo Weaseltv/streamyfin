@@ -19,6 +19,7 @@ import {
 import { NeonBoard } from "@/constants/Colors";
 import { glowButton, Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { scaleSize } from "@/utils/scaleSize";
 import { Text } from "./common/Text";
 import { Loader } from "./Loader";
@@ -123,6 +124,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   style,
   ...props
 }) => {
+  const pageAccent = usePageAccent();
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -198,7 +200,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
         ? NeonBoard.text
         : color === "black" || color === "transparent"
           ? NeonBoard.line2
-          : NeonBoard.volt);
+          : pageAccent);
   const isOutline =
     variant === "border" || color === "black" || color === "transparent";
   const quiet = color === "black" || color === "transparent";
@@ -228,7 +230,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
       activeOpacity={0.85}
       className={`items-center justify-center ${className}`}
       style={[
-        { paddingHorizontal: 16, justifyContent: "center" },
+        { paddingHorizontal: 20, justifyContent: "center" },
         box,
         style as StyleProp<ViewStyle>,
       ]}

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Modal, Pressable, TouchableOpacity, View } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Scrims, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Loader } from "../Loader";
 import { Text } from "./Text";
 
@@ -37,11 +38,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel,
   cancelLabel,
   destructive = false,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   loading = false,
   onConfirm,
   onCancel,
 }) => {
+  const accent = useAccent(accentProp);
   const { t } = useTranslation();
   const tone = destructive ? NeonBoard.red : accent;
 

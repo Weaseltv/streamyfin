@@ -41,12 +41,13 @@ import { SearchItemWrapper } from "@/components/search/SearchItemWrapper";
 import { SearchTabButtons } from "@/components/search/SearchTabButtons";
 import { TVSearchPage } from "@/components/search/TVSearchPage";
 import { PersonAvatar } from "@/components/series/CastAndCrew";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { usePageAccent, useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { eventBus } from "@/utils/eventBus";
@@ -57,7 +58,6 @@ import type {
   PersonResult,
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
-import { serverHost } from "@/utils/serverHost";
 import { createStreamystatsApi } from "@/utils/streamystats";
 
 type SearchType = "Library" | "Discover";
@@ -89,6 +89,12 @@ export default function SearchPage() {
   const [search, setSearch] = useState<string>("");
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Library search is cyan, the Requests side mint.
+  const accent = sectionAccent(
+    searchType === "Discover" ? "requests" : "search",
+  );
+  useSetPageAccent(Platform.isTV ? undefined : accent);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search), 200);
@@ -635,12 +641,15 @@ export default function SearchPage() {
 
   const eyebrow =
     searchType === "Discover"
-      ? `${t("search.discover")} · Seerr`
-      : `${t("search.library")} · ${serverHost(api?.basePath)}`;
+      ? t("search.discover_eyebrow")
+      : t("search.library_eyebrow");
 
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
-      <LoadingLine active={searchType === "Library" && loading} />
+      <LoadingLine
+        accent={accent}
+        active={searchType === "Library" && loading}
+      />
       <ScrollView
         keyboardDismissMode='on-drag'
         keyboardShouldPersistTaps='handled'
@@ -655,6 +664,7 @@ export default function SearchPage() {
         <PageHead
           eyebrow={eyebrow}
           title={t("tabs.search")}
+          accent={accent}
           trailing={
             showCount
               ? t("search.n_results", { count: resultCount })
@@ -666,6 +676,7 @@ export default function SearchPage() {
           value={search}
           onChangeText={onChangeSearch}
           placeholder={t("search.search")}
+          accent={accent}
         />
 
         {jellyseerrApi && (
@@ -756,7 +767,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={collections}
               header={t("search.collections")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <TouchableItemRouter
                   key={item.Id}
@@ -771,7 +782,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={actors}
               header={t("search.actors")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <PersonAvatar
                   key={item.Id}
@@ -784,7 +795,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={artists}
               header={t("search.artists")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <PersonAvatar
                   key={item.Id}
@@ -796,7 +807,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={albums}
               header={t("search.albums")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <MusicCard
                   key={item.Id}
@@ -810,7 +821,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={songs}
               header={t("search.songs")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <MusicCard
                   key={item.Id}
@@ -824,7 +835,7 @@ export default function SearchPage() {
             <SearchItemWrapper
               items={playlists}
               header={t("search.playlists")}
-              accent={NeonBoard.volt}
+              accent={accent}
               renderItem={(item: BaseItemDto) => (
                 <MusicCard
                   key={item.Id}
@@ -873,13 +884,14 @@ export default function SearchPage() {
   );
 }
 
-/** "No results found for" + the query in volt, centred on the stage. */
+/** "No results found for" + the query in the page accent, centred on the stage. */
 export const SearchEmpty: React.FC<{ query: string }> = ({ query }) => {
   const { t } = useTranslation();
+  const accent = usePageAccent();
   return (
     <View style={{ alignItems: "center", paddingTop: 24 }}>
       <Text variant='section'>{t("search.no_results_found_for")}</Text>
-      <Text variant='meta' accent={NeonBoard.volt} style={{ marginTop: 4 }}>
+      <Text variant='meta' accent={accent} style={{ marginTop: 4 }}>
         "{query}"
       </Text>
     </View>

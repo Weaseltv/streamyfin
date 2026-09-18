@@ -31,7 +31,7 @@ export const SearchTabButtons: React.FC<SearchTabButtonsProps> = ({
         icon={
           <Feather
             name='inbox'
-            size={14}
+            size={17}
             color={requestsSelected ? NeonBoard.onAccent : NeonBoard.text}
           />
         }

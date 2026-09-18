@@ -21,7 +21,7 @@ export const stackScreenOptions: ICommonScreenOptions = {
   headerStyle: { backgroundColor: NeonBoard.stage },
   headerTitleStyle: {
     ...FontFace.display,
-    fontSize: 20,
+    fontSize: 24,
     color: NeonBoard.text,
   },
   headerShadowVisible: false,

@@ -4,8 +4,8 @@ import type { PropsWithChildren } from "react";
 import { View } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { RAIL_GAP } from "@/components/home/ItemCard";
-import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 type SearchItemWrapperProps<T> = {
   items?: T[];
@@ -24,9 +24,10 @@ export const SearchItemWrapper = <T,>({
   items,
   renderItem,
   header,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   onEndReached,
 }: PropsWithChildren<SearchItemWrapperProps<T>>) => {
+  const accent = useAccent(accentProp);
   if (!items || items.length === 0) return null;
 
   return (

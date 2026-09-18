@@ -115,7 +115,7 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
           title={items[0]?.SeriesName ?? ""}
           accent={NeonBoard.yellow}
           count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
-          className='px-3'
+          className='px-4'
         />
       </TouchableItemRouter>
       {episodes.map((item) => (

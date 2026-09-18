@@ -40,9 +40,11 @@ const icons: Record<CollectionType, IconName> = {
 } as const;
 
 /**
- * A library row: 60 high on the stage with a 1pt `line` rule, a 44×30 `inset`
+ * A library row: 76 high on the stage with a 1pt `line` rule, a 56×40 `inset`
  * glyph box bordered in the library colour, name, count, coloured chevron.
- * Movies orange, TV yellow, Boxing / UFC cyan, Live TV green, Music volt.
+ * Colours follow the Android TV rail: Movies orange, TV yellow, Stand Up
+ * magenta, Boxing pink, UFC azure, Live TV green, Music volt; the 4K
+ * libraries match their regular counterparts.
  */
 export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
   const [api] = useAtom(apiAtom);
@@ -114,10 +116,10 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
     <TouchableItemRouter
       item={library}
       style={{
-        minHeight: 60,
+        minHeight: 76,
         paddingLeft: Sizes.rowLead,
         paddingRight: Sizes.gutter,
-        paddingVertical: 8,
+        paddingVertical: 12,
         flexDirection: "row",
         alignItems: "center",
         borderBottomWidth: 1,
@@ -127,19 +129,19 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
     >
       <View
         style={{
-          width: 44,
-          height: 30,
+          width: 56,
+          height: 40,
           backgroundColor: NeonBoard.inset,
           borderWidth: 1,
           borderColor: accent,
           alignItems: "center",
           justifyContent: "center",
-          marginRight: 14,
+          marginRight: 16,
         }}
       >
         <Feather
           name={icons[library.CollectionType!] || "folder"}
-          size={16}
+          size={22}
           color={accent}
         />
       </View>
@@ -154,7 +156,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
         ) : null}
       </View>
       <View style={glyphGlow(accent)}>
-        <Feather name='chevron-right' size={20} color={accent} />
+        <Feather name='chevron-right' size={26} color={accent} />
       </View>
     </TouchableItemRouter>
   );

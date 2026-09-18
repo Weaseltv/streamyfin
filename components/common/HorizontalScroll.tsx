@@ -59,7 +59,7 @@ export const HorizontalScroll = <T,>(
 
   if (!data || loading) {
     return (
-      <View style={{ paddingHorizontal: 12 }}>
+      <View style={{ paddingHorizontal: 16 }}>
         <View
           style={{
             height: 96,
@@ -88,7 +88,7 @@ export const HorizontalScroll = <T,>(
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: 12,
+          paddingHorizontal: 16,
           ...contentContainerStyle,
         }}
         keyExtractor={keyExtractor}

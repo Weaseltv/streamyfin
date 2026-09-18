@@ -191,7 +191,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           </Text>
         }
       >
-        <View className='px-3 pt-1 pb-3'>
+        <View className='px-4 pt-1 pb-3'>
           <Text variant='meta' muted className='mb-2'>
             {t("home.settings.subtitles.opensubtitles_api_key") || "API Key"}
           </Text>

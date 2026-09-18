@@ -26,7 +26,7 @@ const urlInputStyle = {
   flex: 1,
   textAlign: "right" as const,
   color: NeonBoard.text,
-  fontSize: 13,
+  fontSize: 16,
   ...FontFace.body,
 };
 
@@ -201,11 +201,11 @@ export default function StreamystatsPage() {
             />
           </ListItem>
         </ListGroup>
-        <View className='px-3 mt-2'>
+        <View className='px-4 mt-2'>
           <ServerUrlStatusText state={urlResolver} />
         </View>
 
-        <Text variant='meta' muted className='px-3 mt-2'>
+        <Text variant='meta' muted className='px-4 mt-2'>
           {t("home.settings.plugins.streamystats.streamystats_search_hint")}{" "}
           <Text variant='meta' accent={NeonBoard.volt} onPress={handleOpenLink}>
             {t(
@@ -304,7 +304,7 @@ export default function StreamystatsPage() {
             />
           </ListItem>
         </ListGroup>
-        <Text variant='meta' muted className='px-3 mt-2'>
+        <Text variant='meta' muted className='px-4 mt-2'>
           {t("home.settings.plugins.streamystats.home_sections_hint")}
         </Text>
 

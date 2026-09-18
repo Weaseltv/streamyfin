@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "../common/Text";
 
 interface Props extends ViewProps {
@@ -56,7 +57,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
   const rowStyle = [
     {
       minHeight: Sizes.row,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingLeft: Sizes.rowLead,
       paddingRight: Sizes.gutter,
       flexDirection: "row" as const,
@@ -114,14 +115,15 @@ const ListItemContent = ({
   tally,
   children,
 }: Props) => {
+  const pageAccent = usePageAccent();
   const titleColor =
     textColor === "red"
       ? NeonBoard.red
       : textColor === "blue"
-        ? (iconTint ?? NeonBoard.volt)
+        ? (iconTint ?? pageAccent)
         : NeonBoard.text;
   const glyphColor =
-    textColor === "red" ? NeonBoard.red : (iconTint ?? NeonBoard.volt);
+    textColor === "red" ? NeonBoard.red : (iconTint ?? pageAccent);
   return (
     <>
       {tally ? (
@@ -143,13 +145,13 @@ const ListItemContent = ({
         {icon && (
           <View
             style={{
-              width: 20,
+              width: 24,
               alignItems: "center",
               justifyContent: "center",
               marginRight: 14,
             }}
           >
-            <Ionicons name={icon} size={20} color={glyphColor} />
+            <Ionicons name={icon} size={24} color={glyphColor} />
           </View>
         )}
         {/* The label sizes to its content and only shrinks if it alone
@@ -194,7 +196,7 @@ const ListItemContent = ({
           <View className={children ? "ml-1" : "ml-auto"}>
             <Ionicons
               name='chevron-forward'
-              size={18}
+              size={22}
               color={textColor === "red" ? NeonBoard.red : NeonBoard.low}
             />
           </View>

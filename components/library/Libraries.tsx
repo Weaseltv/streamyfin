@@ -13,14 +13,17 @@ import { LoadingLine } from "@/components/common/LoadingLine";
 import { PageHead } from "@/components/common/PageHead";
 import { Text } from "@/components/common/Text";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
-import { serverHost } from "@/utils/serverHost";
 import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
-/** The Library hub: page head "LIBRARY · host · n libraries" and typed rows. */
+const ACCENT = sectionAccent("library");
+
+/** The Library hub: page head "WEASELPLEX · n libraries / LIBRARIES" and typed rows. */
 export const Libraries: React.FC = () => {
+  useSetPageAccent(ACCENT);
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const queryClient = useQueryClient();
@@ -69,7 +72,7 @@ export const Libraries: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
-      <LoadingLine active={isLoading} />
+      <LoadingLine accent={ACCENT} active={isLoading} />
       <FlashList
         extraData={settings}
         contentContainerStyle={{
@@ -79,8 +82,9 @@ export const Libraries: React.FC = () => {
         }}
         ListHeaderComponent={
           <PageHead
-            eyebrow={`${serverHost(api?.basePath)} · ${t("library.libraries_count", { count: libraries.length })}`}
-            title={t("tabs.library")}
+            eyebrow={t("library.eyebrow", { count: libraries.length })}
+            title={t("library.title")}
+            accent={ACCENT}
             style={{ marginBottom: 4 }}
           />
         }

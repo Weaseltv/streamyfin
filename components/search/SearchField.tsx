@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { FontFace, MAX_FONT_SCALE, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 interface Props extends Omit<TextInputProps, "value" | "onChangeText"> {
   value: string;
@@ -17,68 +18,71 @@ interface Props extends Omit<TextInputProps, "value" | "onChangeText"> {
   accent?: string;
 }
 
-export const SEARCH_FIELD_HEIGHT = 42;
+export const SEARCH_FIELD_HEIGHT = 52;
 
 /**
- * The 42 search strip under the page head: an 18 accent `search` glyph, the
- * query in Barlow 15/600 with an accent caret and selection, and a clear
+ * The 52 search strip under the page head: a 22 accent `search` glyph, the
+ * query in Barlow 18/600 with an accent caret and selection, and a clear
  * glyph on the right. Sits on the stage with a 1pt `line` rule below.
  */
 export const SearchField = forwardRef<TextInput, Props>(
-  ({ value, onChangeText, onClear, accent = NeonBoard.volt, ...rest }, ref) => (
-    <View
-      style={{
-        height: SEARCH_FIELD_HEIGHT,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: Sizes.gutter,
-        gap: 10,
-        backgroundColor: NeonBoard.stage,
-        borderBottomWidth: 1,
-        borderBottomColor: NeonBoard.line,
-      }}
-    >
-      <Feather name='search' size={18} color={accent} />
-      <TextInput
-        ref={ref}
-        value={value}
-        onChangeText={onChangeText}
-        allowFontScaling
-        maxFontSizeMultiplier={MAX_FONT_SCALE}
-        placeholderTextColor={NeonBoard.low}
-        selectionColor={accent}
-        cursorColor={accent}
-        autoCorrect={false}
-        autoCapitalize='none'
-        returnKeyType='search'
-        clearButtonMode='never'
+  ({ value, onChangeText, onClear, accent: accentProp, ...rest }, ref) => {
+    const accent = useAccent(accentProp);
+    return (
+      <View
         style={{
-          flex: 1,
           height: SEARCH_FIELD_HEIGHT,
-          paddingVertical: 0,
-          color: NeonBoard.text,
-          ...FontFace.bodySemi,
-          fontSize: 15,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: Sizes.gutter,
+          gap: 12,
+          backgroundColor: NeonBoard.stage,
+          borderBottomWidth: 1,
+          borderBottomColor: NeonBoard.line,
         }}
-        {...rest}
-      />
-      {value.length > 0 ? (
-        <TouchableOpacity
-          onPress={() => (onClear ? onClear() : onChangeText(""))}
-          hitSlop={8}
-          accessibilityRole='button'
+      >
+        <Feather name='search' size={22} color={accent} />
+        <TextInput
+          ref={ref}
+          value={value}
+          onChangeText={onChangeText}
+          allowFontScaling
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          placeholderTextColor={NeonBoard.low}
+          selectionColor={accent}
+          cursorColor={accent}
+          autoCorrect={false}
+          autoCapitalize='none'
+          returnKeyType='search'
+          clearButtonMode='never'
           style={{
-            width: 28,
-            height: 28,
-            alignItems: "center",
-            justifyContent: "center",
+            flex: 1,
+            height: SEARCH_FIELD_HEIGHT,
+            paddingVertical: 0,
+            color: NeonBoard.text,
+            ...FontFace.bodySemi,
+            fontSize: 18,
           }}
-        >
-          <Feather name='x' size={18} color={NeonBoard.mid} />
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  ),
+          {...rest}
+        />
+        {value.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => (onClear ? onClear() : onChangeText(""))}
+            hitSlop={8}
+            accessibilityRole='button'
+            style={{
+              width: 36,
+              height: 36,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name='x' size={22} color={NeonBoard.mid} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  },
 );
 
 SearchField.displayName = "SearchField";

@@ -9,16 +9,17 @@ import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { QuickConnect } from "@/components/settings/QuickConnect";
 import { StorageSettings } from "@/components/settings/StorageSettings";
 import { UserInfo } from "@/components/settings/UserInfo";
-import { NeonBoard } from "@/constants/Colors";
+import { sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { serverHost } from "@/utils/serverHost";
 
 // TV-specific settings component
 const SettingsTV = Platform.isTV ? require("./settings.tv").default : null;
 
-const ACCENT = NeonBoard.volt;
+const ACCENT = sectionAccent("settings");
 
 // Mobile settings component
 function SettingsMobile() {
@@ -27,6 +28,7 @@ function SettingsMobile() {
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
 
+  useSetPageAccent(ACCENT);
   const host = serverHost(api?.basePath);
   const eyebrow = [user?.Name, host].filter(Boolean).join(" · ");
 

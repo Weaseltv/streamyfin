@@ -65,10 +65,10 @@ const Layout = () => {
           tabBarBounces: true,
           tabBarLabelStyle: {
             ...FontFace.bodyBold,
-            fontSize: 12,
+            fontSize: 15,
             textTransform: "none",
           },
-          tabBarItemStyle: { width: 110, height: 40 },
+          tabBarItemStyle: { width: 132, height: 48 },
           tabBarStyle: {
             backgroundColor: NeonBoard.stage,
             borderBottomWidth: 1,

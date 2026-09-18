@@ -56,7 +56,7 @@ export default function HideLibrariesPage() {
           </ListItem>
         ))}
       </ListGroup>
-      <Text variant='meta' muted className='px-3 mt-2'>
+      <Text variant='meta' muted className='px-4 mt-2'>
         {t("home.settings.other.select_libraries_you_want_to_hide")}
       </Text>
     </DisabledSetting>

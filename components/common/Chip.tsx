@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "./Text";
 
 interface Props {
@@ -32,12 +33,13 @@ export const Chip: React.FC<PropsWithChildren<Props>> = ({
   label,
   selected = false,
   disabled = false,
-  accent = NeonBoard.volt,
+  accent: accentProp,
   icon,
   caret = false,
   onPress,
   style,
 }) => {
+  const accent = useAccent(accentProp);
   const color = selected ? NeonBoard.onAccent : NeonBoard.text;
   return (
     <TouchableOpacity
@@ -49,10 +51,10 @@ export const Chip: React.FC<PropsWithChildren<Props>> = ({
       style={[
         {
           height: Sizes.chip,
-          paddingHorizontal: 10,
+          paddingHorizontal: 14,
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           backgroundColor: selected ? accent : NeonBoard.card2,
           borderWidth: 1,
           borderColor: selected ? accent : NeonBoard.line2,
@@ -71,7 +73,7 @@ export const Chip: React.FC<PropsWithChildren<Props>> = ({
       >
         {label}
       </Text>
-      {caret ? <Feather name='chevron-down' size={12} color={color} /> : null}
+      {caret ? <Feather name='chevron-down' size={15} color={color} /> : null}
     </TouchableOpacity>
   );
 };

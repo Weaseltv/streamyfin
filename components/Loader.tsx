@@ -1,5 +1,5 @@
 import { ActivityIndicator, type ActivityIndicatorProps } from "react-native";
-import { NeonBoard } from "@/constants/Colors";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
 
 interface Props extends ActivityIndicatorProps {}
 
@@ -9,5 +9,6 @@ interface Props extends ActivityIndicatorProps {}
  * or a `LoadingLine`; this stays for buttons and small inline waits.
  */
 export const Loader: React.FC<Props> = ({ ...props }) => {
-  return <ActivityIndicator size={"small"} color={NeonBoard.volt} {...props} />;
+  const accent = usePageAccent();
+  return <ActivityIndicator size={"small"} color={accent} {...props} />;
 };

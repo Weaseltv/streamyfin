@@ -1,24 +1,35 @@
+import { useIsFocused } from "expo-router";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { NeonBoard } from "@/constants/Colors";
 
 /**
- * The accent of the page on screen. The tab bar's overline and the header's
- * loading line follow it: volt by default, orange inside a movie library or
- * on a movie, yellow on a series, cyan in the guide.
+ * The accent of the page on screen. The tab bar's active tab, the header's
+ * loading line and any primitive that is not handed an accent follow it:
+ * each tab's own neon on its root, the library's colour inside a library,
+ * the type colour on an item.
  */
 export const pageAccentAtom = atom<string>(NeonBoard.volt);
 
 export const usePageAccent = () => useAtomValue(pageAccentAtom);
 
-/** Sets the page accent while the calling screen is mounted (and focused, when `active`). */
+/** An explicit accent, or the accent of the page on screen. */
+export const useAccent = (accent?: string | null) => {
+  const pageAccent = usePageAccent();
+  return accent ?? pageAccent;
+};
+
+/**
+ * Claims the page accent whenever the calling screen has focus. Screens under
+ * it in the stack stay mounted, so they claim it back when they regain focus.
+ */
 export const useSetPageAccent = (accent: string | undefined, active = true) => {
   const set = useSetAtom(pageAccentAtom);
+  const focused = useIsFocused();
   useEffect(() => {
-    if (!active || !accent) return;
+    if (!active || !accent || !focused) return;
     set(accent);
-    return () => set(NeonBoard.volt);
-  }, [accent, active, set]);
+  }, [accent, active, focused, set]);
 };
 
 /** The accent of the item playing in the OSD (the item's type colour). */

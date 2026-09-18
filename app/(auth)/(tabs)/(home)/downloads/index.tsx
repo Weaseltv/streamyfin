@@ -28,10 +28,12 @@ import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
 import { type DownloadedItem } from "@/providers/Downloads/types";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { queueAtom } from "@/utils/atoms/queue";
 import { writeToLog } from "@/utils/log";
 
 export default function DownloadsPage() {
+  useSetPageAccent(NeonBoard.volt);
   const { t } = useTranslation();
   const [_queue, _setQueue] = useAtom(queueAtom);
   const { downloadedItems, deleteFileByType, deleteAllFiles, processes } =
@@ -223,7 +225,7 @@ export default function DownloadsPage() {
                 title={t("home.downloads.movies")}
                 accent={NeonBoard.orange}
                 count={movies.length}
-                className='px-3'
+                className='px-4'
               />
               {movies.map((item) => (
                 <MovieCard item={item.item} key={item.item.Id} />
@@ -244,7 +246,7 @@ export default function DownloadsPage() {
                 title={t("home.downloads.other_media")}
                 accent={NeonBoard.volt}
                 count={otherMedia.length}
-                className='px-3'
+                className='px-4'
               />
               {otherMedia.map((item) => (
                 <MovieCard item={item.item} key={item.item.Id} />

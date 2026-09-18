@@ -149,7 +149,7 @@ export const PasswordEntryModal: React.FC<PasswordEntryModalProps> = ({
               paddingHorizontal: 14,
               minHeight: 48,
               ...FontFace.bodySemi,
-              fontSize: 15,
+              fontSize: 18,
             }}
             onSubmitEditing={handleSubmit}
             returnKeyType='done'

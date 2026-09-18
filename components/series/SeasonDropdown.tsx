@@ -131,7 +131,7 @@ export const SeasonDropdown: React.FC<Props> = ({
       trigger={
         <TouchableOpacity onPress={() => setOpen(true)}>
           <View
-            className='px-3 flex flex-row items-center justify-between'
+            className='px-4 flex flex-row items-center justify-between'
             style={[
               {
                 height: 30,

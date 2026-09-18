@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { useAccent } from "@/utils/atoms/pageAccent";
 import type {
   QualityProfile,
   RootFolder,
@@ -67,8 +68,9 @@ export const SeasonRow: React.FC<{
   onToggle,
   right,
   leading,
-  accent = NeonBoard.volt,
+  accent: accentProp,
 }) => {
+  const accent = useAccent(accentProp);
   const { t } = useTranslation();
   const selectable = !!onToggle;
   return (
@@ -153,7 +155,7 @@ const PickerRow: React.FC<{ label: string; value?: string | null }> = ({
     </Text>
     <Text
       variant='rowTitle'
-      accent={NeonBoard.volt}
+      accent={sectionAccent("requests")}
       numberOfLines={1}
       style={{ maxWidth: "55%", fontSize: 14 }}
     >
@@ -162,7 +164,7 @@ const PickerRow: React.FC<{ label: string; value?: string | null }> = ({
     <Feather
       name='chevron-down'
       size={16}
-      color={NeonBoard.volt}
+      color={sectionAccent("requests")}
       style={{ marginLeft: 6 }}
     />
   </View>
@@ -528,7 +530,7 @@ const RequestModal = forwardRef<
           title={title}
           primary={
             <Button
-              accent={NeonBoard.volt}
+              accent={sectionAccent("requests")}
               onPress={request}
               disabled={isTv && selectedSeasons.length === 0}
               iconLeft={

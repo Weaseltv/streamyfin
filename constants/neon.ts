@@ -78,77 +78,85 @@ export const FontFace = {
 export const MAX_FONT_SCALE = 1.3;
 
 /**
- * The Neon Board type scale. Sizes are the 1.0 case; rows grow with the
- * system font size up to MAX_FONT_SCALE.
+ * One-off `fontSize` / `lineHeight` values passed to `Text` inline are written
+ * at the original handoff size and drawn this much larger, so they keep pace
+ * with the enlarged scale below.
+ */
+export const INLINE_TEXT_SCALE = 1.2;
+
+/**
+ * The Neon Board type scale, enlarged ~20 % over the handoff for readability
+ * on a phone (owner ruling 2026-09-17). Sizes are the 1.0 case; rows grow
+ * with the system font size up to MAX_FONT_SCALE.
  */
 export const Type = {
   display: {
+    ...FontFace.display,
+    fontSize: 17,
+    lineHeight: 23,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  pageTitle: {
     ...FontFace.display,
     fontSize: 30,
     lineHeight: 32,
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
-  pageTitle: {
-    ...FontFace.display,
-    fontSize: 24,
-    lineHeight: 26,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
   section: {
     ...FontFace.display,
-    fontSize: 16,
-    lineHeight: 18,
+    fontSize: 20,
+    lineHeight: 22,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
   tally: {
     ...FontFace.displayBold,
-    fontSize: 14,
-    lineHeight: 16,
+    fontSize: 17,
+    lineHeight: 19,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
-  numeral: { ...FontFace.displayBold, fontSize: 20, lineHeight: 22 },
+  numeral: { ...FontFace.displayBold, fontSize: 24, lineHeight: 26 },
   eyebrow: {
     ...FontFace.bodyBold,
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 12,
+    lineHeight: 15,
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
   overline: {
     ...FontFace.bodyBold,
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 11,
+    lineHeight: 13,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   body: { ...FontFace.body, fontSize: 15, lineHeight: 20 },
-  rowTitle: { ...FontFace.bodySemi, fontSize: 15, lineHeight: 18 },
-  cardTitle: { ...FontFace.bodySemi, fontSize: 13, lineHeight: 16 },
-  meta: { ...FontFace.body, fontSize: 12, lineHeight: 16 },
-  caption: { ...FontFace.body, fontSize: 11, lineHeight: 14 },
+  rowTitle: { ...FontFace.bodySemi, fontSize: 18, lineHeight: 22 },
+  cardTitle: { ...FontFace.bodySemi, fontSize: 15, lineHeight: 19 },
+  meta: { ...FontFace.body, fontSize: 14, lineHeight: 19 },
+  caption: { ...FontFace.body, fontSize: 13, lineHeight: 17 },
   button: {
     ...FontFace.display,
-    fontSize: 15,
-    lineHeight: 16,
+    fontSize: 18,
+    lineHeight: 20,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-  chip: { ...FontFace.bodyBold, fontSize: 12, lineHeight: 14 },
+  chip: { ...FontFace.bodyBold, fontSize: 14, lineHeight: 17 },
   badge: {
     ...FontFace.bodyBold,
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 11,
+    lineHeight: 13,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
   timecode: {
     ...FontFace.displayBold,
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 14,
+    lineHeight: 17,
     fontVariant: ["tabular-nums"],
   },
 } as const satisfies Record<string, TextStyle>;
@@ -157,25 +165,26 @@ export type TypeVariant = keyof typeof Type;
 
 /** Layout constants more than one screen must agree on. */
 export const Sizes = {
-  gutter: 12,
-  rowLead: 16,
-  brandRow: 48,
-  iconButton: 36,
-  row: 56,
-  tally: 3,
-  poster: { w: 110, h: 160 },
-  posterSmall: { w: 96, h: 140 },
-  thumb: { w: 176, h: 99 },
-  thumbSmall: { w: 150, h: 84 },
-  thumbNextUp: { w: 96, h: 54 },
-  thumbEpisode: { w: 84, h: 48 },
-  chip: 30,
-  button: 48,
-  buttonCompact: 34,
-  outline: 44,
-  glass: 40,
-  progress: 3,
-  seek: 4,
-  tabBar: 56,
-  badge: 18,
+  gutter: 16,
+  rowLead: 18,
+  brandRow: 56,
+  iconButton: 44,
+  headerGlyph: 26,
+  row: 68,
+  tally: 4,
+  poster: { w: 132, h: 192 },
+  posterSmall: { w: 116, h: 169 },
+  thumb: { w: 212, h: 119 },
+  thumbSmall: { w: 180, h: 101 },
+  thumbNextUp: { w: 116, h: 65 },
+  thumbEpisode: { w: 100, h: 57 },
+  chip: 36,
+  button: 56,
+  buttonCompact: 40,
+  outline: 52,
+  glass: 48,
+  progress: 4,
+  seek: 5,
+  tabBar: 68,
+  badge: 22,
 } as const;

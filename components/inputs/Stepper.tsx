@@ -4,6 +4,7 @@ import { Text } from "@/components/common/Text";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { useAccent } from "@/utils/atoms/pageAccent";
 
 interface StepperProps {
   value: number;
@@ -31,8 +32,9 @@ export const Stepper: React.FC<StepperProps> = ({
   max,
   onUpdate,
   appendValue,
-  accent = NeonBoard.volt,
+  accent: accentProp,
 }) => {
+  const accent = useAccent(accentProp);
   const box = {
     height: BOX,
     backgroundColor: NeonBoard.card2,
@@ -53,12 +55,12 @@ export const Stepper: React.FC<StepperProps> = ({
         hitSlop={4}
         style={[box, { width: BOX }]}
       >
-        <Feather name='minus' size={16} color={NeonBoard.text} />
+        <Feather name='minus' size={20} color={NeonBoard.text} />
       </TouchableOpacity>
       <View
         style={[
           box,
-          { minWidth: 48, paddingHorizontal: 8, marginHorizontal: -1 },
+          { minWidth: 56, paddingHorizontal: 8, marginHorizontal: -1 },
         ]}
       >
         <Text variant='tally' accent={accent} allowFontScaling={false}>
@@ -72,7 +74,7 @@ export const Stepper: React.FC<StepperProps> = ({
         hitSlop={4}
         style={[box, { width: BOX }]}
       >
-        <Feather name='plus' size={16} color={NeonBoard.text} />
+        <Feather name='plus' size={20} color={NeonBoard.text} />
       </TouchableOpacity>
     </DisabledSetting>
   );

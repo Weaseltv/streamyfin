@@ -8,9 +8,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NeonBoard } from "@/constants/Colors";
-import { glowOverline, glyphGlow, Sizes } from "@/constants/neon";
-import { usePageAccent } from "@/utils/atoms/pageAccent";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
+import { glowOverline, glyphGlow, rgba, Sizes } from "@/constants/neon";
 import { Text } from "./Text";
 
 export const NEON_TAB_BAR_HEIGHT = Sizes.tabBar;
@@ -19,22 +18,30 @@ type BottomTabBarProps = Parameters<
   NonNullable<ComponentProps<typeof Tabs>["tabBar"]>
 >[0];
 
-const TAB_GLYPHS: Record<string, keyof typeof Feather.glyphMap> = {
-  "(home)": "home",
-  "(search)": "search",
-  "(favorites)": "heart",
-  "(watchlists)": "list",
-  "(libraries)": "layers",
-  "(custom-links)": "link",
-  "(settings)": "settings",
+/**
+ * The phone's tabs, in order. Anything else in the route tree (Streamystats
+ * watchlists, custom links, settings) is never a tab: expo-router strips
+ * `href` from the options it hands a custom bar, so the bar cannot rely on it.
+ */
+const TABS: Record<
+  string,
+  { glyph: keyof typeof Feather.glyphMap; accent: string }
+> = {
+  "(home)": { glyph: "home", accent: sectionAccent("home") },
+  "(search)": { glyph: "search", accent: sectionAccent("search") },
+  "(favorites)": { glyph: "heart", accent: sectionAccent("watchlist") },
+  "(libraries)": { glyph: "layers", accent: sectionAccent("library") },
 };
 
+/** Tabs that are not selected wear their neon at this strength. */
+const IDLE_ALPHA = 0.55;
+
 /**
- * The docked Neon Board tab bar: stage fill, 1pt `line2` top rule, `low`
- * glyphs and uppercase 9pt labels, a 2pt accent overline on the active tab
- * that slides between tabs in 150 ms (dropped under reduce motion). The
- * accent follows the page: volt by default, orange in a movie library, cyan
- * in the guide.
+ * The docked Neon Board tab bar: stage fill, 1pt `line2` top rule, glyphs and
+ * uppercase labels, a 2pt overline on the active tab that slides between
+ * tabs in 150 ms (dropped under reduce motion). Every tab owns a neon (Home
+ * volt, Search cyan, Watchlist blue, Library indigo): dimmed at rest, full
+ * strength with the overline when selected.
  */
 export const NeonTabBar: React.FC<BottomTabBarProps> = ({
   state,
@@ -42,7 +49,6 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
-  const accent = usePageAccent();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [width, setWidth] = useState(0);
 
@@ -50,19 +56,13 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
   }, []);
 
-  const routes = state.routes.filter((route) => {
-    const options = descriptors[route.key]?.options as
-      | (BottomTabBarProps["descriptors"][string]["options"] & {
-          href?: unknown;
-        })
-      | undefined;
-    return options?.href !== null;
-  });
+  const routes = state.routes.filter((route) => route.name in TABS);
   const activeIndex = routes.findIndex(
     (route) => route.key === state.routes[state.index]?.key,
   );
+  const accent = TABS[routes[activeIndex]?.name]?.accent ?? NeonBoard.volt;
   const itemWidth = routes.length > 0 ? width / routes.length : 0;
-  const overlineWidth = Math.min(48, Math.max(0, itemWidth * 0.5));
+  const overlineWidth = Math.min(56, Math.max(0, itemWidth * 0.5));
 
   const x = useSharedValue(0);
   useEffect(() => {
@@ -108,7 +108,8 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
           const focused = route.key === state.routes[state.index]?.key;
           const label =
             typeof options.title === "string" ? options.title : route.name;
-          const color = focused ? accent : NeonBoard.low;
+          const tab = TABS[route.name];
+          const color = focused ? tab.accent : rgba(tab.accent, IDLE_ALPHA);
           const onPress = () => {
             const event = navigation.emit({
               type: "tabPress",
@@ -135,23 +136,19 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
                 flex: 1,
                 alignItems: "center",
                 justifyContent: "center",
-                paddingTop: 8,
-                paddingBottom: 6,
-                gap: 5,
+                paddingTop: 10,
+                paddingBottom: 8,
+                gap: 6,
               }}
             >
               <View
                 style={
                   focused && Platform.OS === "android"
-                    ? glyphGlow(accent)
+                    ? glyphGlow(tab.accent)
                     : undefined
                 }
               >
-                <Feather
-                  name={TAB_GLYPHS[route.name] ?? "circle"}
-                  size={22}
-                  color={color}
-                />
+                <Feather name={tab.glyph} size={26} color={color} />
               </View>
               <Text
                 variant='overline'

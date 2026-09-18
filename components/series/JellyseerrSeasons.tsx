@@ -19,7 +19,7 @@ import { Text } from "@/components/common/Text";
 import { dateOpts } from "@/components/jellyseerr/DetailFacts";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
 import { SeasonRow } from "@/components/jellyseerr/RequestModal";
-import { NeonBoard } from "@/constants/Colors";
+import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import {
@@ -32,7 +32,7 @@ import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/
 import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
 
-const ACCENT = NeonBoard.volt;
+const ACCENT = sectionAccent("requests");
 
 const JellyseerrSeasonEpisodes: React.FC<{
   details: TvDetails;
