@@ -26,7 +26,10 @@ export const SEARCH_FIELD_HEIGHT = 52;
  * glyph on the right. Sits on the stage with a 1pt `line` rule below.
  */
 export const SearchField = forwardRef<TextInput, Props>(
-  ({ value, onChangeText, onClear, accent: accentProp, ...rest }, ref) => {
+  (
+    { value, onChangeText, onClear, accent: accentProp, style, ...rest },
+    ref,
+  ) => {
     const accent = useAccent(accentProp);
     return (
       <View
@@ -55,14 +58,19 @@ export const SearchField = forwardRef<TextInput, Props>(
           autoCapitalize='none'
           returnKeyType='search'
           clearButtonMode='never'
-          style={{
-            flex: 1,
-            height: SEARCH_FIELD_HEIGHT,
-            paddingVertical: 0,
-            color: NeonBoard.text,
-            ...FontFace.bodySemi,
-            fontSize: 18,
-          }}
+          // ScrollView's sticky header injects a layout style. Merge it so
+          // it cannot replace the query's color and typography.
+          style={[
+            {
+              flex: 1,
+              height: SEARCH_FIELD_HEIGHT,
+              paddingVertical: 0,
+              color: NeonBoard.text,
+              ...FontFace.bodySemi,
+              fontSize: 18,
+            },
+            style,
+          ]}
           {...rest}
         />
         {value.length > 0 ? (
