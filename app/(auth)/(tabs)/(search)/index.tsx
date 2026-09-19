@@ -45,6 +45,7 @@ import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { usePageAccent, useSetPageAccent } from "@/utils/atoms/pageAccent";
@@ -88,18 +89,18 @@ export default function SearchPage() {
   const [searchType, setSearchType] = useState<SearchType>("Library");
   const [search, setSearch] = useState<string>("");
 
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { query: debouncedSearch, submit: submitSearch } = useSearchQuery(
+    search,
+    searchType === "Discover" && !Platform.isTV
+      ? { delay: 400, minimumLength: 2 }
+      : undefined,
+  );
 
   // Library search is cyan, the Requests side mint.
   const accent = sectionAccent(
     searchType === "Discover" ? "requests" : "search",
   );
   useSetPageAccent(Platform.isTV ? undefined : accent);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedSearch(search), 200);
-    return () => clearTimeout(timeout);
-  }, [search]);
 
   const [api] = useAtom(apiAtom);
 
@@ -464,15 +465,15 @@ export default function SearchPage() {
   const { data: jellyseerrTVResults, isFetching: jellyseerrTVLoading } =
     useQuery({
       queryKey: ["search", "jellyseerr", "tv", debouncedSearch],
-      queryFn: async () => {
+      queryFn: async ({ signal }) => {
         const params = {
-          query: new URLSearchParams(debouncedSearch || "").toString(),
+          query: debouncedSearch,
         };
         return await Promise.all([
-          jellyseerrApi?.search({ ...params, page: 1 }),
-          jellyseerrApi?.search({ ...params, page: 2 }),
-          jellyseerrApi?.search({ ...params, page: 3 }),
-          jellyseerrApi?.search({ ...params, page: 4 }),
+          jellyseerrApi?.search({ ...params, page: 1 }, signal),
+          jellyseerrApi?.search({ ...params, page: 2 }, signal),
+          jellyseerrApi?.search({ ...params, page: 3 }, signal),
+          jellyseerrApi?.search({ ...params, page: 4 }, signal),
         ]).then((all) =>
           uniqBy(
             all.flatMap((v) => v?.results || []),
@@ -675,6 +676,7 @@ export default function SearchPage() {
           ref={searchFieldRef}
           value={search}
           onChangeText={onChangeSearch}
+          onSubmitEditing={submitSearch}
           placeholder={t("search.search")}
           accent={accent}
         />
