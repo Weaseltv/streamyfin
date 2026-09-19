@@ -5,7 +5,6 @@ import { inRange } from "lodash";
 import type { User as JellyseerrUser } from "@/utils/jellyseerr/server/entity/User";
 import type {
   MovieResult,
-  Results,
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
 import { storage } from "@/utils/mmkv";
@@ -52,20 +51,12 @@ import type {
   TvDetails,
 } from "@/utils/jellyseerr/server/models/Tv";
 import { writeErrorLog } from "@/utils/log";
+import {
+  fetchRequestSearchPage,
+  type RequestSearchParams as SearchParams,
+  type RequestSearchResults as SearchResults,
+} from "@/utils/requestSearch";
 import { isVersionBelow } from "@/utils/serverUrl/semver";
-
-interface SearchParams {
-  query: string;
-  page: number;
-  // language: string;
-}
-
-interface SearchResults {
-  page: number;
-  totalPages: number;
-  totalResults: number;
-  results: Results[];
-}
 
 const JELLYSEERR_USER = "JELLYSEERR_USER";
 const JELLYSEERR_COOKIES = "JELLYSEERR_COOKIES";
@@ -297,10 +288,11 @@ export class JellyseerrApi {
       .then(({ data }) => data);
   }
 
-  async search(params: SearchParams): Promise<SearchResults> {
-    return this.axios
-      ?.get<SearchResults>(Endpoints.API_V1 + Endpoints.SEARCH, { params })
-      .then(({ data }) => data);
+  async search(
+    params: SearchParams,
+    signal?: AbortSignal,
+  ): Promise<SearchResults> {
+    return fetchRequestSearchPage(this.axios, params, signal);
   }
 
   async request(request: MediaRequestBody): Promise<MediaRequest> {
@@ -470,6 +462,7 @@ export class JellyseerrApi {
         return response;
       },
       (error: AxiosError) => {
+        if (axios.isCancel(error)) return Promise.reject(error);
         writeErrorLog(
           `Jellyseerr response error\nerror: ${error.toString()}\nurl: ${error?.config?.url}`,
           error.response?.data,

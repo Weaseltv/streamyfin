@@ -1,9 +1,11 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSegments } from "expo-router";
-import { orderBy, uniqBy } from "lodash";
+import { orderBy } from "lodash";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { Button } from "@/components/Button";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { Image } from "@/components/common/ServerImage";
 import Discover from "@/components/jellyseerr/discover/Discover";
@@ -16,6 +18,10 @@ import type {
   PersonResult,
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
+import {
+  requestSearchOptions,
+  requestSearchResults,
+} from "@/utils/requestSearch";
 import { useReactNavigationQuery } from "@/utils/useReactNavigationQuery";
 import { Text } from "../common/Text";
 import JellyseerrPoster from "../posters/JellyseerrPoster";
@@ -118,7 +124,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
   mediaTypeFilter,
   showDiscover = true,
 }) => {
-  const { jellyseerrApi } = useJellyseerr();
+  const { jellyseerrApi, jellyseerrUser } = useJellyseerr();
   const { t } = useTranslation();
 
   const {
@@ -132,29 +138,21 @@ export const JellyserrIndexPage: React.FC<Props> = ({
   });
 
   const {
-    data: jellyseerrResults,
+    data,
     isFetching: f2,
     isLoading: l2,
-  } = useReactNavigationQuery({
-    queryKey: ["search", "jellyseerr", "results", searchQuery],
-    queryFn: async () => {
-      const params = {
-        query: new URLSearchParams(searchQuery || "").toString(),
-      };
-      return await Promise.all([
-        jellyseerrApi?.search({ ...params, page: 1 }),
-        jellyseerrApi?.search({ ...params, page: 2 }),
-        jellyseerrApi?.search({ ...params, page: 3 }),
-        jellyseerrApi?.search({ ...params, page: 4 }),
-      ]).then((all) =>
-        uniqBy(
-          all.flatMap((v) => v?.results || []),
-          "id",
-        ),
-      );
-    },
-    enabled: !!jellyseerrApi && searchQuery.length > 0,
-  });
+    isError,
+    isFetchNextPageError,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery(
+    requestSearchOptions(jellyseerrApi?.axios, searchQuery, jellyseerrUser?.id),
+  );
+  const jellyseerrResults = useMemo(
+    () => requestSearchResults(data?.pages),
+    [data?.pages],
+  );
 
   const loading = f1 || f2 || l1 || l2;
 
@@ -181,7 +179,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         ],
         order || "desc",
       ),
-    [jellyseerrResults, sortingType, order],
+    [jellyseerrResults, sortingType, order, searchQuery],
   );
 
   const jellyseerrTvResults = useMemo(
@@ -195,7 +193,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         ],
         order || "desc",
       ),
-    [jellyseerrResults, sortingType, order],
+    [jellyseerrResults, sortingType, order, searchQuery],
   );
 
   const jellyseerrPersonResults = useMemo(
@@ -209,7 +207,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         ],
         order || "desc",
       ),
-    [jellyseerrResults, sortingType, order],
+    [jellyseerrResults, sortingType, order, searchQuery],
   );
 
   const showMovies = mediaTypeFilter !== MediaType.TV;
@@ -239,10 +237,10 @@ export const JellyserrIndexPage: React.FC<Props> = ({
     <View>
       <LoadingLine active={loading} />
       <View style={{ marginTop: 4 }}>
-        <LoadingSkeleton isLoading={loading} />
+        <LoadingSkeleton isLoading={l2} />
       </View>
 
-      {noResults && !loading && (
+      {noResults && !loading && !isError && !hasNextPage && (
         <View style={{ alignItems: "center", paddingTop: 24 }}>
           <Text variant='section'>{t("search.no_results_found_for")}</Text>
           <Text variant='meta' accent={ACCENT} style={{ marginTop: 4 }}>
@@ -251,7 +249,7 @@ export const JellyserrIndexPage: React.FC<Props> = ({
         </View>
       )}
 
-      <View style={{ opacity: loading ? 0 : 1 }}>
+      <View>
         {showMovies && (
           <SearchItemWrapper
             header={t("search.request_movies")}
@@ -283,6 +281,32 @@ export const JellyserrIndexPage: React.FC<Props> = ({
           />
         )}
       </View>
+      {isError && (
+        <View style={{ padding: 16, gap: 12 }}>
+          <Text variant='body' muted style={{ textAlign: "center" }}>
+            {t("search.request_search_failed")}
+          </Text>
+          <Button
+            accent={ACCENT}
+            variant='border'
+            loading={f2}
+            onPress={() => (isFetchNextPageError ? fetchNextPage() : refetch())}
+          >
+            {t("home.retry")}
+          </Button>
+        </View>
+      )}
+      {hasNextPage && !isError && (
+        <Button
+          accent={ACCENT}
+          variant='border'
+          style={{ margin: 16 }}
+          loading={f2}
+          onPress={() => fetchNextPage()}
+        >
+          {t("search.load_more")}
+        </Button>
+      )}
     </View>
   );
 };
