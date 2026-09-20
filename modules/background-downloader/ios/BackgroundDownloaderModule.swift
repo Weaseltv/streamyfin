@@ -490,6 +490,70 @@ public class BackgroundDownloaderModule: Module {
     }
   }
 
+  /// Why a finished transfer was refused before its staged file was promoted.
+  private enum DownloadValidationFailure {
+    case httpStatus(Int)
+    case emptyPayload
+    case errorPage
+
+    var message: String {
+      switch self {
+      case .httpStatus(let code):
+        return "Server returned HTTP \(code)"
+      case .emptyPayload:
+        return "Server returned an empty file"
+      case .errorPage:
+        return "Server returned a web page instead of media"
+      }
+    }
+  }
+
+  /// URLSession treats a 401/404/503 as a *successful* transfer whose body happens to be the
+  /// error document, so without this the app promotes a sign-in page to a finished download and
+  /// only finds out when the user goes offline. Android has always checked `response.isSuccessful`
+  /// in `OkHttpDownloadManager`; this closes the same hole on iOS.
+  ///
+  /// Deliberately cheap — status, size and an HTML sniff. No AVAsset probe: it would reject MKV
+  /// and other containers MPV plays perfectly well.
+  private func validateFinishedDownload(
+    at location: URL,
+    response: URLResponse?
+  ) -> DownloadValidationFailure? {
+    if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+      return .httpStatus(http.statusCode)
+    }
+
+    let attributes = try? FileManager.default.attributesOfItem(atPath: location.path)
+    let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    if size <= 0 {
+      return .emptyPayload
+    }
+
+    if looksLikeErrorPage(at: location, response: response) {
+      return .errorPage
+    }
+
+    return nil
+  }
+
+  /// An access gateway answering with a 200 sign-in page is the case a status check cannot catch.
+  /// Only `<html`/`<!doctype html` count: subtitle sidecars are legitimately XML (TTML), so a bare
+  /// `<?xml` prefix must never be read as an error page.
+  private func looksLikeErrorPage(at location: URL, response: URLResponse?) -> Bool {
+    if let mime = response?.mimeType?.lowercased(), mime.hasPrefix("text/html") {
+      return true
+    }
+
+    guard let handle = try? FileHandle(forReadingFrom: location) else { return false }
+    defer { try? handle.close() }
+    guard let prefix = try? handle.read(upToCount: 512), !prefix.isEmpty else { return false }
+
+    var text = String(decoding: prefix, as: UTF8.self)
+    if text.hasPrefix("\u{FEFF}") { text.removeFirst() }
+    let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return normalized.hasPrefix("<!doctype html") || normalized.hasPrefix("<html")
+  }
+
   private func handleDownloadCompleteLocked(
     taskId: Int,
     location: URL,
@@ -502,6 +566,31 @@ public class BackgroundDownloaderModule: Module {
         "taskId": taskId,
         "error": "Download task info not found"
       ])
+      return
+    }
+
+    if let failure = validateFinishedDownload(at: location, response: downloadTask.response) {
+      // Runs before the destination is touched, so a rejected replacement leaves any previously
+      // downloaded good file exactly where it was.
+      backgroundDownloaderLog.error(
+        "Task \(taskId) rejected before promotion: \(failure.message, privacy: .public)"
+      )
+      finishLiveActivity(taskId: taskId, state: .failed)
+
+      var payload: [String: Any] = [
+        "taskId": taskId,
+        "error": failure.message
+      ]
+      if let itemId = taskInfo.metadata?.itemId {
+        payload["itemId"] = itemId
+      }
+      sendEvent("onDownloadError", payload)
+
+      downloadTasks.removeValue(forKey: taskId)
+      lastProgressTime.removeValue(forKey: taskId)
+      persistTasksLocked()
+
+      processNextInQueueSafelyLocked()
       return
     }
 
