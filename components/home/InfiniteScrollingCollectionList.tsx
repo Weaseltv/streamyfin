@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View, type ViewProps } from "react-native";
+import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
@@ -39,7 +40,13 @@ interface Props extends ViewProps {
   pageSize?: number;
   onPressSeeAll?: () => void;
   enabled?: boolean;
-  onLoaded?: () => void;
+  /**
+   * Fires once per mount when the query *settles* — success or error. Home's
+   * priority gate consumes this, so a failed rail must still report in;
+   * reporting only on success left every lower-priority section disabled
+   * forever behind one broken endpoint.
+   */
+  onSettled?: () => void;
 }
 
 export const InfiniteScrollingCollectionList: React.FC<Props> = ({
@@ -56,11 +63,11 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   pageSize = 10,
   onPressSeeAll,
   enabled = true,
-  onLoaded,
+  onSettled,
   ...props
 }) => {
   const effectivePageSize = Math.max(1, pageSize);
-  const hasCalledOnLoaded = useRef(false);
+  const hasCalledOnSettled = useRef(false);
   const {
     data,
     isLoading,
@@ -68,6 +75,9 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     hasNextPage,
     fetchNextPage,
     isSuccess,
+    isError,
+    isFetching,
+    refetch,
   } = useInfiniteQuery({
     queryKey: queryKey,
     queryFn: ({ pageParam = 0, ...context }) =>
@@ -88,13 +98,13 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     enabled,
   });
 
-  // Notify parent when data has loaded
+  // Notify the parent once this rail settles either way.
   useEffect(() => {
-    if (isSuccess && !hasCalledOnLoaded.current && onLoaded) {
-      hasCalledOnLoaded.current = true;
-      onLoaded();
+    if ((isSuccess || isError) && !hasCalledOnSettled.current && onSettled) {
+      hasCalledOnSettled.current = true;
+      onSettled();
     }
-  }, [isSuccess, onLoaded]);
+  }, [isSuccess, isError, onSettled]);
 
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -122,7 +132,11 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return allItems.map((_, index) => index * itemWidth);
   }, [allItems, orientation]);
 
-  if (hideIfEmpty === true && allItems.length === 0 && !isLoading) return null;
+  // `isError` deliberately overrides hideIfEmpty: a rail that failed is not an
+  // empty rail, and silently removing it is what made a partial outage look
+  // like an empty Home screen.
+  if (hideIfEmpty === true && allItems.length === 0 && !isLoading && !isError)
+    return null;
   if (disabled || !title) return null;
 
   const handleScroll = (event: any) => {
@@ -154,7 +168,22 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
         onPressAction={onPressSeeAll}
         count={isLoading || onPressSeeAll ? undefined : allItems.length}
       />
-      {isLoading === false && allItems.length === 0 && (
+      {isError && allItems.length === 0 && (
+        <View style={{ paddingHorizontal: Sizes.gutter, gap: 8 }}>
+          <Text variant='meta' muted>
+            {t("home.section_failed")}
+          </Text>
+          <Button
+            accent={accent}
+            variant='border'
+            loading={isFetching}
+            onPress={() => refetch()}
+          >
+            {t("home.retry")}
+          </Button>
+        </View>
+      )}
+      {isLoading === false && !isError && allItems.length === 0 && (
         <View style={{ paddingHorizontal: Sizes.gutter }}>
           <Text variant='meta' muted>
             {t("home.no_items")}
