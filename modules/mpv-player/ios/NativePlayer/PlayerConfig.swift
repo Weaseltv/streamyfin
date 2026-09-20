@@ -157,6 +157,9 @@ struct UIOptionsRecord: Record {
 	@Field var holdToSpeedRate: Double = 2.0
 	@Field var pinchToZoomEnabled: Bool = true
 	@Field var doubleTapToSeekEnabled: Bool = false
+	@Field var horizontalSwipeSeekEnabled: Bool = true
+	@Field var brightnessSwipeEnabled: Bool = true
+	@Field var volumeSwipeEnabled: Bool = true
 	/// Remote subtitle search (online sessions with an API only).
 	@Field var subtitleSearchEnabled: Bool = false
 	@Field var subtitleSearchLanguages: [SubtitleSearchLanguageRecord] = []
