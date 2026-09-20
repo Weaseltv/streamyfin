@@ -10,6 +10,8 @@ struct VideoLoadConfig {
 	let url: URL
 	var headers: [String: String]?
 	var externalSubtitles: [String]?
+	/// Index into `externalSubtitles` of the initially-selected sidecar (-1 = none).
+	var initialExternalSubtitleIndex: Int = -1
 	var startPosition: Double?
 	var autoplay: Bool
 	/// MPV subtitle track ID to select on start (1-based, -1 to disable, nil to use default)
@@ -26,6 +28,7 @@ struct VideoLoadConfig {
 		url: URL,
 		headers: [String: String]? = nil,
 		externalSubtitles: [String]? = nil,
+		initialExternalSubtitleIndex: Int = -1,
 		startPosition: Double? = nil,
 		autoplay: Bool = true,
 		initialSubtitleId: Int? = nil,
@@ -38,6 +41,7 @@ struct VideoLoadConfig {
 		self.url = url
 		self.headers = headers
 		self.externalSubtitles = externalSubtitles
+		self.initialExternalSubtitleIndex = initialExternalSubtitleIndex
 		self.startPosition = startPosition
 		self.autoplay = autoplay
 		self.initialSubtitleId = initialSubtitleId

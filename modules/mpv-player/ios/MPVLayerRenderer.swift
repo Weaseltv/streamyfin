@@ -46,6 +46,8 @@ final class MPVLayerRenderer {
     private var currentURL: URL?
     private var currentHeaders: [String: String]?
     private var pendingExternalSubtitles: [String] = []
+    /// Index into `pendingExternalSubtitles` of the selected sidecar (-1 = none).
+    private var pendingSelectedExternalSubtitle: Int = -1
     private var initialSubtitleId: Int?
     private var initialAudioId: Int?
     
@@ -339,6 +341,7 @@ final class MPVLayerRenderer {
         headers: [String: String]? = nil,
         startPosition: Double? = nil,
         externalSubtitles: [String]? = nil,
+        initialExternalSubtitleIndex: Int = -1,
         initialSubtitleId: Int? = nil,
         initialAudioId: Int? = nil,
         cacheEnabled: String? = nil,
@@ -356,6 +359,7 @@ final class MPVLayerRenderer {
             // this queue. A caller-thread write racing that handler is an
             // unsynchronized Array/Optional swap (over-release ⇒ crash).
             self.pendingExternalSubtitles = externalSubtitles ?? []
+            self.pendingSelectedExternalSubtitle = initialExternalSubtitleIndex
             self.initialSubtitleId = initialSubtitleId
             self.initialAudioId = initialAudioId
             self.isLoading = true
@@ -573,15 +577,37 @@ final class MPVLayerRenderer {
     private func handleEvent(_ event: mpv_event) {
         switch event.event_id {
         case MPV_EVENT_FILE_LOADED:
-            // Add external subtitles now that the file is loaded
+            // Add external subtitles now that the file is loaded.
+            //
+            // Every sidecar used to be added with a *blocking* commandSync here,
+            // so a title with 30 sidecar languages performed 30 serial network
+            // fetches before the player was ready — and did it even with
+            // subtitles switched off.
+            //
+            // mpv executes commands on one handle in submission order, so
+            // submitting these asynchronously keeps the player's external track
+            // list in the same order as `externalSubtitles`. That order is load
+            // bearing: resolveSubtitleTrack's fallback path matches an external
+            // sub by its ordinal among loaded externals, which stays correct as
+            // long as the loaded set is a *prefix* of the full list. Only the
+            // selected sidecar is waited on, so the re-apply below can find it.
             if !pendingExternalSubtitles.isEmpty, let handle = mpv {
-                for (index, subUrl) in pendingExternalSubtitles.enumerated() {
-                    print("🔧 Adding external subtitle [\(index)]: \(subUrl)")
-                    // Use commandSync to ensure subs are added in exact order (not async)
-                    // "auto" flag = add without auto-selecting
-                    commandSync(handle, ["sub-add", subUrl, "auto"])
-                }
+                let subtitles = pendingExternalSubtitles
+                let selected = pendingSelectedExternalSubtitle
                 pendingExternalSubtitles = []
+                pendingSelectedExternalSubtitle = -1
+
+                for (index, subUrl) in subtitles.enumerated() {
+                    // "auto" flag = add without auto-selecting.
+                    if index == selected {
+                        // Waited on: the selection re-apply below needs this
+                        // track to exist. Submission order means the ones
+                        // before it have landed by the time this returns.
+                        commandSync(handle, ["sub-add", subUrl, "auto"])
+                    } else {
+                        command(handle, ["sub-add", subUrl, "auto"])
+                    }
+                }
             }
             // Apply the initial audio/subtitle selection now that the file's
             // tracks are enumerated. Setting sid/aid before `loadfile` does not

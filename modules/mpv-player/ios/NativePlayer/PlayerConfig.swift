@@ -16,6 +16,8 @@ struct StreamConfigRecord: Record {
 	@Field var url: String = ""
 	@Field var headers: [String: String]?
 	@Field var externalSubtitles: [String]?
+	/// Index into `externalSubtitles` of the initially-selected sidecar (-1 = none).
+	@Field var initialExternalSubtitleIndex: Int = -1
 	@Field var startPositionSec: Double?
 	@Field var autoplay: Bool = true
 	/// MPV track ids pre-resolved by JS (1-based; -1 disables subtitles).
@@ -200,6 +202,7 @@ extension StreamConfigRecord {
 			url: videoURL,
 			headers: headers,
 			externalSubtitles: externalSubtitles,
+			initialExternalSubtitleIndex: initialExternalSubtitleIndex,
 			startPosition: startPositionSec,
 			autoplay: autoplay,
 			initialSubtitleId: initialSubtitleMpvId,

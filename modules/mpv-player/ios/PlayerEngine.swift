@@ -214,6 +214,7 @@ final class MPVPlayerEngine: NSObject {
 			headers: config.headers,
 			startPosition: config.startPosition,
 			externalSubtitles: config.externalSubtitles,
+			initialExternalSubtitleIndex: config.initialExternalSubtitleIndex,
 			initialSubtitleId: config.initialSubtitleId,
 			initialAudioId: config.initialAudioId,
 			cacheEnabled: config.cacheEnabled,
