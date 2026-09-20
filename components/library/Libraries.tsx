@@ -14,6 +14,7 @@ import { PageHead } from "@/components/common/PageHead";
 import { Text } from "@/components/common/Text";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
+import { Freshness } from "@/constants/queryFreshness";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
@@ -40,7 +41,7 @@ export const Libraries: React.FC = () => {
 
       return sortWeaselLibraries(response.data.Items) || null;
     },
-    staleTime: 60,
+    staleTime: Freshness.catalog,
   });
 
   const libraries = useMemo(

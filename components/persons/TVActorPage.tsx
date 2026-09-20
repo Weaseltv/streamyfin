@@ -27,6 +27,7 @@ import { Text } from "@/components/common/Text";
 import { getItemNavigation } from "@/components/common/TouchableItemRouter";
 import { Loader } from "@/components/Loader";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
+import { Freshness } from "@/constants/queryFreshness";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVSizes } from "@/constants/TVSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
@@ -75,7 +76,7 @@ export const TVActorPage: React.FC<TVActorPageProps> = ({ personId }) => {
         itemId: personId,
       }),
     enabled: !!personId && !!api,
-    staleTime: 60,
+    staleTime: Freshness.person,
   });
 
   // Fetch movies
@@ -100,7 +101,7 @@ export const TVActorPage: React.FC<TVActorPageProps> = ({ personId }) => {
       return response.data.Items || [];
     },
     enabled: !!personId && !!api && !!user?.Id,
-    staleTime: 60,
+    staleTime: Freshness.person,
   });
 
   // Fetch series
@@ -125,7 +126,7 @@ export const TVActorPage: React.FC<TVActorPageProps> = ({ personId }) => {
       return response.data.Items || [];
     },
     enabled: !!personId && !!api && !!user?.Id,
-    staleTime: 60,
+    staleTime: Freshness.person,
   });
 
   // Get backdrop URL from the currently focused filmography item
