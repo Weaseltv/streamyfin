@@ -193,7 +193,14 @@ final class MPVPlayerEngine: NSObject {
 	/// Single location for Now Playing updates
 	private func syncNowPlaying(isPlaying: Bool) {
 		print("[MPV] syncNowPlaying: pos=\(Int(cachedPosition))s, dur=\(Int(cachedDuration))s, playing=\(isPlaying)")
-		nowPlayingManager.updatePlayback(position: cachedPosition, duration: cachedDuration, isPlaying: isPlaying)
+		nowPlayingManager.updatePlayback(
+			position: cachedPosition,
+			duration: cachedDuration,
+			isPlaying: isPlaying,
+			// One authoritative rate: whatever mpv is actually playing at,
+			// including a temporary hold-to-speed boost.
+			rate: getSpeed()
+		)
 	}
 
 	// MARK: - Loading

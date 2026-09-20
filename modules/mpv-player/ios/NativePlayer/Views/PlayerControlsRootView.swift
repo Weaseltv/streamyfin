@@ -515,8 +515,14 @@ struct PlayerBottomBar: View {
 	/// Wall-clock finish time. The i18n template carries a %TIME% placeholder;
 	/// translations without one (e.g. sv "slutar") get the time appended.
 	private func endsAtLabel(remaining: Double) -> String {
-		// Real remaining wall time, not speed-adjusted — matches the JS player.
-		let time = Self.endsAtFormatter.string(from: Date().addingTimeInterval(remaining))
+		// `remaining` is media-seconds; this label is a wall-clock time, so it
+		// has to be divided by the rate. Playing 10 minutes of video at 2x
+		// finishes in 5 minutes, and the label used to say 10.
+		let rate = max(viewModel.speed, 0.01)
+		let wallRemaining = remaining / rate
+		let time = Self.endsAtFormatter.string(
+			from: Date().addingTimeInterval(wallRemaining)
+		)
 		let template = viewModel.str("endsAt", "Ends at %TIME%")
 		if template.contains("%TIME%") {
 			return template.replacingOccurrences(of: "%TIME%", with: time)
