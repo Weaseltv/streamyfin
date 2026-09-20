@@ -49,8 +49,13 @@ actor TrickplayProvider {
 		return max(0, Int((seconds * 1000) / config.intervalMs))
 	}
 
+	/// Decode the tile covering `seconds`.
+	///
+	/// Returns nil if the calling task was cancelled while a sheet was in
+	/// flight. Callers must still check cancellation before using the result:
+	/// a sheet shared with another consumer completes regardless.
 	func thumbnail(forSeconds seconds: Double) async -> UIImage? {
-		guard isAvailable else { return nil }
+		guard isAvailable, !Task.isCancelled else { return nil }
 
 		let tile = tileIndex(forSeconds: seconds)
 		let tilesPerSheet = config.tileCols * config.tileRows
@@ -63,6 +68,10 @@ actor TrickplayProvider {
 		let row = tileInSheet / config.tileCols
 
 		guard let sheet = await sheetImage(at: sheetIndex) else { return nil }
+		// Abandoned mid-fetch: skip the crop and, more importantly, the
+		// neighbour prefetch — speculative sheets for a tile the user has
+		// already scrubbed past compete with the video for bandwidth.
+		guard !Task.isCancelled else { return nil }
 
 		// Warm the neighbors so continued scrubbing doesn't stall on fetches.
 		prefetchSheet(at: sheetIndex + 1)

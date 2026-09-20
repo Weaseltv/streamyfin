@@ -50,7 +50,14 @@ struct TrickplayBubbleView: View {
 				.background(.black.opacity(0.6), in: Capsule())
 		}
 		.task(id: provider.tileIndex(forSeconds: positionSec)) {
-			image = await provider.thumbnail(forSeconds: positionSec)
+			let result = await provider.thumbnail(forSeconds: positionSec)
+			// `.task(id:)` cancellation is cooperative: scrubbing to a new tile
+			// cancels this task but the sheet fetch it is waiting on can still
+			// resolve afterwards. Without this check that late result is
+			// assigned over the newer tile, showing a preview from the wrong
+			// part of the film.
+			guard !Task.isCancelled else { return }
+			image = result
 		}
 	}
 }
