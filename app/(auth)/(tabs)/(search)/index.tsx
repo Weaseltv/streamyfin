@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
 import ContinueWatchingPoster from "@/components/ContinueWatchingPoster";
 import { Chip } from "@/components/common/Chip";
 import { LoadingLine } from "@/components/common/LoadingLine";
@@ -52,6 +53,7 @@ import { usePageAccent, useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { eventBus } from "@/utils/eventBus";
+import { isCancellation } from "@/utils/isCancellation";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 import type {
@@ -238,11 +240,13 @@ export default function SearchPage() {
 
         return (response2.data.Items as BaseItemDto[]) || [];
       } catch (error) {
-        // Silently handle aborted requests
-        if (error instanceof Error && error.name === "AbortError") {
+        // Cancellation is normal here (every keystroke supersedes the last) and
+        // must stay quiet. Everything else has to surface: swallowing it made a
+        // network failure indistinguishable from "no matches".
+        if (isCancellation(error)) {
           return [];
         }
-        return [];
+        throw error;
       }
     },
     [api, searchEngine, settings, user?.Id],
@@ -277,11 +281,13 @@ export default function SearchPage() {
 
         return (searchApi.data.Items as BaseItemDto[]) || [];
       } catch (error) {
-        // Silently handle aborted requests
-        if (error instanceof Error && error.name === "AbortError") {
+        // Cancellation is normal here (every keystroke supersedes the last) and
+        // must stay quiet. Everything else has to surface: swallowing it made a
+        // network failure indistinguishable from "no matches".
+        if (isCancellation(error)) {
           return [];
         }
-        return [];
+        throw error;
       }
     },
     [api, user?.Id],
@@ -324,7 +330,12 @@ export default function SearchPage() {
     };
   }, []);
 
-  const { data: movies, isFetching: l1 } = useQuery({
+  const {
+    data: movies,
+    isFetching: l1,
+    isError: e1,
+    refetch: r1,
+  } = useQuery({
     queryKey: ["search", "movies", debouncedSearch],
     queryFn: ({ signal }) =>
       searchFn({
@@ -335,7 +346,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: series, isFetching: l2 } = useQuery({
+  const {
+    data: series,
+    isFetching: l2,
+    isError: e2,
+    refetch: r2,
+  } = useQuery({
     queryKey: ["search", "series", debouncedSearch],
     queryFn: ({ signal }) =>
       searchFn({
@@ -346,7 +362,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: episodes, isFetching: l3 } = useQuery({
+  const {
+    data: episodes,
+    isFetching: l3,
+    isError: e3,
+    refetch: r3,
+  } = useQuery({
     queryKey: ["search", "episodes", debouncedSearch],
     queryFn: ({ signal }) =>
       searchFn({
@@ -357,7 +378,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: collections, isFetching: l7 } = useQuery({
+  const {
+    data: collections,
+    isFetching: l7,
+    isError: e7,
+    refetch: r7,
+  } = useQuery({
     queryKey: ["search", "collections", debouncedSearch],
     queryFn: ({ signal }) =>
       searchFn({
@@ -368,7 +394,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: actors, isFetching: l8 } = useQuery({
+  const {
+    data: actors,
+    isFetching: l8,
+    isError: e8,
+    refetch: r8,
+  } = useQuery({
     queryKey: ["search", "actors", debouncedSearch],
     queryFn: ({ signal }) =>
       searchFn({
@@ -380,7 +411,12 @@ export default function SearchPage() {
   });
 
   // Music search queries - always use Jellyfin since Streamystats doesn't support music
-  const { data: artists, isFetching: l9 } = useQuery({
+  const {
+    data: artists,
+    isFetching: l9,
+    isError: e9,
+    refetch: r9,
+  } = useQuery({
     queryKey: ["search", "artists", debouncedSearch],
     queryFn: ({ signal }) =>
       jellyfinSearchFn({
@@ -391,7 +427,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: albums, isFetching: l10 } = useQuery({
+  const {
+    data: albums,
+    isFetching: l10,
+    isError: e10,
+    refetch: r10,
+  } = useQuery({
     queryKey: ["search", "albums", debouncedSearch],
     queryFn: ({ signal }) =>
       jellyfinSearchFn({
@@ -402,7 +443,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: songs, isFetching: l11 } = useQuery({
+  const {
+    data: songs,
+    isFetching: l11,
+    isError: e11,
+    refetch: r11,
+  } = useQuery({
     queryKey: ["search", "songs", debouncedSearch],
     queryFn: ({ signal }) =>
       jellyfinSearchFn({
@@ -413,7 +459,12 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
-  const { data: playlists, isFetching: l12 } = useQuery({
+  const {
+    data: playlists,
+    isFetching: l12,
+    isError: e12,
+    refetch: r12,
+  } = useQuery({
     queryKey: ["search", "playlists", debouncedSearch],
     queryFn: ({ signal }) =>
       jellyfinSearchFn({
@@ -451,6 +502,57 @@ export default function SearchPage() {
   const loading = useMemo(() => {
     return l1 || l2 || l3 || l7 || l8 || l9 || l10 || l11 || l12;
   }, [l1, l2, l3, l7, l8, l9, l10, l11, l12]);
+
+  /**
+   * Retry handlers for whichever categories failed. Categories resolve
+   * independently, so one dead endpoint should cost the user that section and
+   * nothing else.
+   */
+  const failedRetries = useMemo(() => {
+    return (
+      [
+        [e1, r1],
+        [e2, r2],
+        [e3, r3],
+        [e7, r7],
+        [e8, r8],
+        [e9, r9],
+        [e10, r10],
+        [e11, r11],
+        [e12, r12],
+      ] as const
+    )
+      .filter(([isError]) => isError)
+      .map(([, retry]) => retry);
+  }, [
+    e1,
+    r1,
+    e2,
+    r2,
+    e3,
+    r3,
+    e7,
+    r7,
+    e8,
+    r8,
+    e9,
+    r9,
+    e10,
+    r10,
+    e11,
+    r11,
+    e12,
+    r12,
+  ]);
+
+  const hasAnyResults = useMemo(() => !noResults, [noResults]);
+
+  /**
+   * The old skeleton hid the whole result area until the slowest of nine
+   * categories finished. Now it only covers the window where there is genuinely
+   * nothing to show yet.
+   */
+  const showInitialSkeleton = loading && !hasAnyResults;
 
   // TV item press handler
   const handleItemPress = useCallback(
@@ -715,12 +817,12 @@ export default function SearchPage() {
 
         {searchType === "Library" && (
           <View style={{ marginTop: 4 }}>
-            <LoadingSkeleton isLoading={loading} />
+            <LoadingSkeleton isLoading={showInitialSkeleton} />
           </View>
         )}
 
         {searchType === "Library" ? (
-          <View style={{ opacity: loading ? 0 : 1 }}>
+          <View>
             <SearchItemWrapper
               header={t("search.movies")}
               accent={NeonBoard.orange}
@@ -863,8 +965,29 @@ export default function SearchPage() {
           />
         )}
 
+        {searchType === "Library" && failedRetries.length > 0 && (
+          <View
+            style={{ paddingHorizontal: Sizes.gutter, paddingTop: 12, gap: 8 }}
+          >
+            <Text variant='meta' muted>
+              {t("search.some_categories_failed")}
+            </Text>
+            <Button
+              variant='border'
+              onPress={() => {
+                for (const retry of failedRetries) retry();
+              }}
+            >
+              {t("home.retry")}
+            </Button>
+          </View>
+        )}
+
         {searchType === "Library" &&
-          (!loading && noResults && debouncedSearch.length > 0 ? (
+          (!loading &&
+          noResults &&
+          failedRetries.length === 0 &&
+          debouncedSearch.length > 0 ? (
             <SearchEmpty query={debouncedSearch} />
           ) : debouncedSearch.length === 0 ? (
             <View
