@@ -38,7 +38,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
 	// MARK: - Playback state
 
 	@Published var isPlaying = false
-	@Published var isBuffering = true
+	@Published var isBuffering = true {
+		didSet {
+			guard oldValue != isBuffering else { return }
+			updateDisplayLinkState()
+		}
+	}
 	@Published var isReadyToSeek = false
 	/// Authoritative position from the renderer (~1Hz), seconds. Not
 	/// published on purpose — no view renders it, and publishing would fire
@@ -83,7 +88,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
 	// MARK: - UI state
 
-	@Published var controlsVisible = true
+	@Published var controlsVisible = true {
+		didSet {
+			// Hiding the chrome unmounts everything that animates from the
+			// interpolated clock, so the clock itself can stop.
+			guard oldValue != controlsVisible else { return }
+			updateDisplayLinkState()
+		}
+	}
 	/// VLC-style lock mode: chrome hidden and taps ignored except for a
 	/// transient unlock pill. Survives episode changes on purpose — it's a
 	/// hands-off viewing mode.
@@ -95,7 +107,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
 	/// Vertical brightness drag while the chrome is hidden shows just the
 	/// brightness slider as feedback.
 	@Published var brightnessSliderRevealed = false
-	@Published var isScrubbing = false
+	@Published var isScrubbing = false {
+		didSet {
+			guard oldValue != isScrubbing else { return }
+			updateDisplayLinkState()
+		}
+	}
 	@Published var scrubPosition: Double = 0
 	@Published var showTechnicalInfo = false
 	@Published var showEpisodeList = false
@@ -200,6 +217,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
 	#endif
 	private var displayLink: CADisplayLink?
 	private var lastTickTimestamp: CFTimeInterval = 0
+	/// When the last ~1Hz authoritative position landed. Used to reconstruct an
+	/// accurate position the moment the chrome comes back, rather than showing
+	/// a value up to a second stale until the next engine tick.
+	private var lastAuthoritativeTimestamp: CFTimeInterval = 0
 	/// mpv reports "unpaused" while the stream is still loading — without this
 	/// gate the interpolation clock counts up from the seed position and then
 	/// snaps back on the first real progress tick.
@@ -1262,8 +1283,24 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
 	// MARK: - Display-position interpolation
 
+	/// Whether anything on screen is actually animating from the interpolated
+	/// clock right now.
+	///
+	/// This used to be just `isPlaying`, so the 30Hz link ran for the whole
+	/// film with the chrome hidden or in PiP — waking the CPU 30 times a second
+	/// to update a value nothing was reading. The scrubber and time labels are
+	/// unmounted while hidden, and PiP draws its progress from the engine's
+	/// cached position, so the ~1Hz authoritative tick is enough on its own.
+	private var shouldInterpolateDisplayPosition: Bool {
+		guard isPlaying, !isTearingDown else { return false }
+		guard controlsVisible || isScrubbing else { return false }
+		// Buffering stands still anyway (see displayLinkTick), so there is
+		// nothing to interpolate towards.
+		return !isBuffering
+	}
+
 	private func updateDisplayLinkState() {
-		if isPlaying && !isTearingDown {
+		if shouldInterpolateDisplayPosition {
 			startDisplayLink()
 		} else {
 			stopDisplayLink()
@@ -1272,6 +1309,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
 	private func startDisplayLink() {
 		guard displayLink == nil else { return }
+		// Catch up first: while the link was stopped only the ~1Hz engine tick
+		// moved the clock, so revealing the chrome mid-second would otherwise
+		// show a position that jumps forward a moment later.
+		if hasAuthoritativePosition, !isScrubbing, lastAuthoritativeTimestamp > 0 {
+			let elapsed = CACurrentMediaTime() - lastAuthoritativeTimestamp
+			var caughtUp = position + elapsed * speed
+			if duration > 0 {
+				caughtUp = min(caughtUp, duration)
+			}
+			displayPosition = max(caughtUp, position)
+		}
 		let link = CADisplayLink(target: self, selector: #selector(displayLinkTick))
 		link.preferredFrameRateRange = CAFrameRateRange(minimum: 10, maximum: 30, preferred: 30)
 		link.add(to: .main, forMode: .common)
@@ -1312,6 +1360,7 @@ extension PlayerViewModel: MPVPlayerEngineDelegate {
 	func engine(_ engine: MPVPlayerEngine, didUpdateProgress position: Double, duration: Double, cacheSeconds: Double) {
 		guard !isTearingDown else { return }
 		hasAuthoritativePosition = true
+		lastAuthoritativeTimestamp = CACurrentMediaTime()
 		self.position = position
 		// This callback is 1Hz and duration is @Published — only assign on a
 		// real change, or every observer re-renders once per second (which
