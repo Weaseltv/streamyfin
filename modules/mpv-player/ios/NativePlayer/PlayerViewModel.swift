@@ -590,6 +590,28 @@ final class PlayerViewModel: NSObject, ObservableObject {
 		}
 	}
 
+	/// Release every touch-driven interaction at once.
+	///
+	/// SwiftUI never delivers onEnded when the *system* cancels a touch
+	/// (incoming call, Control Centre edge swipe, backgrounding), so anything
+	/// that relies on onEnded to clean up stays stuck. Hold-speed was already
+	/// handled; an in-flight scrub and the edge sliders were not, leaving
+	/// playback paused mid-scrub or a slider permanently "being dragged".
+	///
+	/// The scrub is abandoned via cancelScrub, i.e. WITHOUT seeking: the
+	/// system cancelling a touch is not the user letting go at a chosen
+	/// position, so committing scrubPosition would jump playback to wherever
+	/// their finger happened to be when the call came in.
+	///
+	/// Resume decisions stay inside the individual cancels — this is gesture
+	/// cleanup, not a play/pause policy.
+	func cancelActiveGestures() {
+		endHoldSpeed()
+		cancelScrub()
+		brightnessController.isUserInteracting = false
+		volumeController.isUserInteracting = false
+	}
+
 	#if os(tvOS)
 	/// A blind left/right jump with the chrome hidden flashes the transport
 	/// bar so the user sees where the jump landed — WITHOUT entering focus

@@ -233,13 +233,20 @@ struct PlayerControlsRootView: View {
 		.animation(.easeInOut(duration: 0.15), value: viewModel.doubleTapSeekForward)
 		// SwiftUI never delivers onEnded when the SYSTEM cancels the touch
 		// (incoming call, Control Center edge swipe, backgrounding) — release
-		// an engaged hold here or playback stays stuck at 2×.
+		// every touch-driven interaction here, or playback stays stuck at 2×,
+		// paused mid-scrub, or with a slider that thinks it is still held.
 		.onReceive(
 			NotificationCenter.default.publisher(
 				for: UIApplication.willResignActiveNotification
 			)
 		) { _ in
-			viewModel.endHoldSpeed()
+			viewModel.cancelActiveGestures()
+			// The drag's own bookkeeping lives here, not in the view model.
+			// Suppressing rather than clearing means a resumed touch sequence
+			// stays ignored instead of applying its accumulated translation
+			// against a stale baseline.
+			dragSuppressed = true
+			dragAxis = nil
 		}
 		.sheet(isPresented: $viewModel.showEpisodeList) {
 			EpisodeListView(viewModel: viewModel)
