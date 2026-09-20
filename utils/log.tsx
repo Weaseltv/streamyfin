@@ -1,7 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import type React from "react";
-import { createContext, useContext } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { storage } from "./mmkv";
 
 export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
@@ -28,15 +35,24 @@ const _DownloadContext = createContext<ReturnType<
 > | null>(null);
 
 function useLogProvider() {
+  // LogProvider is mounted at the root but the only consumer is the diagnostics
+  // screen, so this used to read and JSON.parse the log store once a second for
+  // the entire life of the app. Poll only while something is actually reading.
+  const [subscriberCount, setSubscriberCount] = useState(0);
+
+  const subscribe = useCallback(() => {
+    setSubscriberCount((count) => count + 1);
+    return () => setSubscriberCount((count) => Math.max(0, count - 1));
+  }, []);
+
   const { data: logs } = useQuery({
     queryKey: ["logs"],
     queryFn: async () => readFromLog(),
     refetchInterval: 1000,
+    enabled: subscriberCount > 0,
   });
 
-  return {
-    logs,
-  };
+  return useMemo(() => ({ logs, subscribe }), [logs, subscribe]);
 }
 
 export const writeToLog = (level: LogLevel, message: string, data?: any) => {
@@ -77,6 +93,10 @@ export function useLog() {
   if (context === null) {
     throw new Error("useLog must be used within a LogProvider");
   }
+  // `subscribe` is stable, so this registers once per consumer rather than
+  // re-running every time fresh logs arrive.
+  const { subscribe } = context;
+  useEffect(() => subscribe(), [subscribe]);
   return context;
 }
 
