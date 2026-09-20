@@ -73,10 +73,17 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
           position: "relative",
         }}
         ref={scrollRef}
-        scrollEventThrottle={16}
-        onScroll={(e) => {
-          if (isCloseToBottom(e.nativeEvent)) onEndReached?.();
-        }}
+        // Only pay for a 16ms JS scroll callback when there is actually an
+        // end-of-list handler to call. The parallax header itself runs on the
+        // UI thread through useScrollViewOffset and does not need this.
+        scrollEventThrottle={onEndReached ? 16 : undefined}
+        onScroll={
+          onEndReached
+            ? (e) => {
+                if (isCloseToBottom(e.nativeEvent)) onEndReached();
+              }
+            : undefined
+        }
       >
         {logo && (
           <View

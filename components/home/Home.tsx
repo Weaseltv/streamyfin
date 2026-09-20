@@ -110,6 +110,12 @@ const HomeMobile = () => {
     new Set(),
   );
   /**
+   * Snapshot of the merged Continue/Next Up feed. Held outside the query so
+   * client-side pages slice one fetch instead of re-merging the same two
+   * requests for every page.
+   */
+  const mergedFeedRef = useRef<BaseItemDto[] | null>(null);
+  /**
    * Releases the priority gate unconditionally once the initial stagger has had
    * long enough. A request that neither resolves nor rejects — a reachable but
    * unresponsive server — would otherwise hold every lower-priority section at
@@ -352,34 +358,45 @@ const HomeMobile = () => {
             title: t("home.continue_and_next_up"),
             queryKey: ["home", "continueAndNextUp"],
             queryFn: async ({ pageParam = 0 }) => {
-              // Fetch both in parallel
-              const [resumeResponse, nextUpResponse] = await Promise.all([
-                getItemsApi(api).getResumeItems({
-                  userId: user.Id,
-                  enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-                  includeItemTypes: ["Movie", "Series", "Episode"],
-                  startIndex: 0,
-                  limit: 20,
-                }),
-                getTvShowsApi(api).getNextUp({
-                  userId: user?.Id,
-                  startIndex: 0,
-                  limit: 20,
-                  enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-                  enableResumable: false,
-                }),
-              ]);
+              // There is no combined server endpoint, so the merged list is
+              // built once per refresh and later pages slice that snapshot.
+              // Re-merging on every page meant page 3 re-downloaded the same
+              // 20 resume + 20 next-up items it had already merged twice.
+              //
+              // Page 0 is always a fresh fetch, so invalidation and
+              // pull-to-refresh still pick up new media; an infinite query
+              // refetches its pages in order, so later pages see the rebuilt
+              // snapshot.
+              if (pageParam === 0 || !mergedFeedRef.current) {
+                const [resumeResponse, nextUpResponse] = await Promise.all([
+                  getItemsApi(api).getResumeItems({
+                    userId: user.Id,
+                    enableImageTypes: ["Primary", "Backdrop", "Thumb"],
+                    includeItemTypes: ["Movie", "Series", "Episode"],
+                    startIndex: 0,
+                    limit: 20,
+                  }),
+                  getTvShowsApi(api).getNextUp({
+                    userId: user?.Id,
+                    startIndex: 0,
+                    limit: 20,
+                    enableImageTypes: ["Primary", "Backdrop", "Thumb"],
+                    enableResumable: false,
+                  }),
+                ]);
 
-              const resumeItems = resumeResponse.data.Items || [];
-              const nextUpItems = nextUpResponse.data.Items || [];
+                const resumeItems = resumeResponse.data.Items || [];
+                const nextUpItems = nextUpResponse.data.Items || [];
 
-              // Combine, sort by recent activity, deduplicate
-              const combined = [...resumeItems, ...nextUpItems];
-              const sorted = sortByRecentActivity(combined);
-              const deduplicated = deduplicateById(sorted);
+                // Combine, sort by recent activity, deduplicate
+                const combined = [...resumeItems, ...nextUpItems];
+                mergedFeedRef.current = deduplicateById(
+                  sortByRecentActivity(combined),
+                );
+              }
 
               // Paginate client-side
-              return deduplicated.slice(pageParam, pageParam + 10);
+              return mergedFeedRef.current.slice(pageParam, pageParam + 10);
             },
             type: "InfiniteScrollingCollectionList",
             orientation: "horizontal",
