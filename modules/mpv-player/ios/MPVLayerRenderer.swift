@@ -12,6 +12,18 @@ enum HDRMode {
     case hlg
 }
 
+/// A terminal playback failure reported by mpv, carried with enough structure
+/// that a consumer can tell "the file ended" from "the file could not be
+/// opened" without parsing a message string.
+struct MPVPlaybackFailure {
+    /// mpv's end-file reason, narrowed to the ones that mean failure.
+    let reason: String
+    /// mpv error code (`MPV_ERROR_*`), negative. 0 when mpv gave no code.
+    let mpvErrorCode: Int32
+    /// mpv's own description, e.g. "Failed to open file".
+    let message: String
+}
+
 protocol MPVLayerRendererDelegate: AnyObject {
     func renderer(_ renderer: MPVLayerRenderer, didUpdatePosition position: Double, duration: Double, cacheSeconds: Double)
     func renderer(_ renderer: MPVLayerRenderer, didChangePause isPaused: Bool)
@@ -23,6 +35,9 @@ protocol MPVLayerRendererDelegate: AnyObject {
     /// Fired only for a genuine end-of-file (MPV_END_FILE_REASON_EOF) — never
     /// for stop/quit during teardown, which would emit spurious end events.
     func rendererDidReachEnd(_ renderer: MPVLayerRenderer)
+    /// Fired for a terminal END_FILE failure. Stop/quit/redirect are teardown,
+    /// not failure, and deliberately stay silent here.
+    func renderer(_ renderer: MPVLayerRenderer, didFailWith failure: MPVPlaybackFailure)
 }
 
 /// MPV player using vo_avfoundation for video output.
@@ -673,15 +688,39 @@ final class MPVLayerRenderer {
                 }
             }
         case MPV_EVENT_END_FILE:
-            // Only a real EOF counts as "playback ended". The other reasons
-            // (stop, quit, error, redirect) fire during teardown and stream
-            // replacement, where an end event would incorrectly trigger the
-            // native player's auto-advance/auto-close.
-            if let endFile = event.data?.assumingMemoryBound(to: mpv_event_end_file.self).pointee,
-               endFile.reason == MPV_END_FILE_REASON_EOF {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    self.delegate?.rendererDidReachEnd(self)
+            // Only a real EOF counts as "playback ended". Stop, quit and
+            // redirect fire during teardown and stream replacement, where an
+            // end event would incorrectly trigger the native player's
+            // auto-advance/auto-close — they stay silent.
+            //
+            // ERROR is different: it used to be dropped along with them, so a
+            // failed open, an expired URL or a corrupt file produced no event
+            // at all and left the UI on a spinner or a frozen frame forever.
+            // It is reported as a failure, never as an end, so the
+            // auto-advance protection above is preserved.
+            if let endFile = event.data?.assumingMemoryBound(to: mpv_event_end_file.self).pointee {
+                if endFile.reason == MPV_END_FILE_REASON_EOF {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        self.delegate?.rendererDidReachEnd(self)
+                    }
+                } else if endFile.reason == MPV_END_FILE_REASON_ERROR {
+                    let code = endFile.error
+                    let text = String(cString: mpv_error_string(code))
+                    let failure = MPVPlaybackFailure(
+                        reason: "error",
+                        mpvErrorCode: code,
+                        message: text
+                    )
+                    isLoading = false
+                    Logger.shared.log("Playback failed: \(text) (\(code))", type: "Error")
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        // Clear the spinner explicitly: mpv does not flip pause
+                        // on a fatal error, so nothing else would.
+                        self.delegate?.renderer(self, didChangeLoading: false)
+                        self.delegate?.renderer(self, didFailWith: failure)
+                    }
                 }
             }
 

@@ -315,7 +315,13 @@ export type NativePlayerEvents = {
   onLoad: (payload: { url: string }) => void;
   onProgress: (payload: NativePlayerProgressPayload) => void;
   onPlaybackStateChange: (payload: NativePlayerStateChangePayload) => void;
-  onError: (payload: { error: string }) => void;
+  onError: (payload: {
+    error: string;
+    /** mpv end-file reason for a terminal playback failure. */
+    reason?: string;
+    /** mpv error code (`MPV_ERROR_*`), negative. */
+    mpvErrorCode?: number;
+  }) => void;
   /**
    * Fired after embedded track enumeration AND again after each external
    * sub-add — re-run the subtitle identity resolution on every fire.

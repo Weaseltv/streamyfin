@@ -21,6 +21,13 @@ export type OnProgressEventPayload = {
 
 export type OnErrorEventPayload = {
   error: string;
+  /**
+   * mpv's end-file reason for a terminal failure ("error"). Absent for errors
+   * raised outside playback, e.g. a renderer that failed to start.
+   */
+  reason?: string;
+  /** mpv error code (`MPV_ERROR_*`), negative. Absent when mpv gave none. */
+  mpvErrorCode?: number;
 };
 
 export type OnTracksReadyEventPayload = Record<string, never>;
