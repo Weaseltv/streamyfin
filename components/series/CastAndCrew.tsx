@@ -12,6 +12,7 @@ import { Image } from "@/components/common/ServerImage";
 import { NeonBoard, typeAccent } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { apiAtom } from "@/providers/JellyfinProvider";
+import { ImageWidths } from "@/utils/imageSizes";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { HorizontalScroll } from "../common/HorizontalScroll";
 import { SectionHeader } from "../common/SectionHeader";
@@ -38,7 +39,11 @@ export const PersonAvatar: React.FC<{
   onPress?: () => void;
 }> = ({ person, onPress }) => {
   const [api] = useAtom(apiAtom);
-  const url = getPrimaryImageUrl({ api, item: person });
+  const url = getPrimaryImageUrl({
+    api,
+    item: person,
+    width: ImageWidths.avatar,
+  });
   return (
     <TouchableOpacity
       onPress={onPress}

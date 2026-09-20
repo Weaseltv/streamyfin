@@ -22,6 +22,7 @@ import {
 import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { ImageWidths } from "@/utils/imageSizes";
 
 const HOUR_HEIGHT = 30;
 const CHANNEL_COLUMN = 64;
@@ -173,6 +174,7 @@ export default function LiveTvGuidePage() {
                     style={{ width: "100%", height: "100%" }}
                     contentFit='contain'
                     item={c}
+                    width={ImageWidths.channelLogo}
                   />
                 </View>
               </View>
