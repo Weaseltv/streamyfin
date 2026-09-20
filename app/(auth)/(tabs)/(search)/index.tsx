@@ -545,14 +545,12 @@ export default function SearchPage() {
     r12,
   ]);
 
-  const hasAnyResults = useMemo(() => !noResults, [noResults]);
-
   /**
    * The old skeleton hid the whole result area until the slowest of nine
    * categories finished. Now it only covers the window where there is genuinely
    * nothing to show yet.
    */
-  const showInitialSkeleton = loading && !hasAnyResults;
+  const showInitialSkeleton = loading && noResults;
 
   // TV item press handler
   const handleItemPress = useCallback(
@@ -965,23 +963,29 @@ export default function SearchPage() {
           />
         )}
 
-        {searchType === "Library" && failedRetries.length > 0 && (
-          <View
-            style={{ paddingHorizontal: Sizes.gutter, paddingTop: 12, gap: 8 }}
-          >
-            <Text variant='meta' muted>
-              {t("search.some_categories_failed")}
-            </Text>
-            <Button
-              variant='border'
-              onPress={() => {
-                for (const retry of failedRetries) retry();
+        {searchType === "Library" &&
+          debouncedSearch.length > 0 &&
+          failedRetries.length > 0 && (
+            <View
+              style={{
+                paddingHorizontal: Sizes.gutter,
+                paddingTop: 12,
+                gap: 8,
               }}
             >
-              {t("home.retry")}
-            </Button>
-          </View>
-        )}
+              <Text variant='meta' muted>
+                {t("search.some_categories_failed")}
+              </Text>
+              <Button
+                variant='border'
+                onPress={() => {
+                  for (const retry of failedRetries) retry();
+                }}
+              >
+                {t("home.retry")}
+              </Button>
+            </View>
+          )}
 
         {searchType === "Library" &&
           (!loading &&
