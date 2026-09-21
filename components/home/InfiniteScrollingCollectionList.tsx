@@ -29,6 +29,13 @@ interface Props extends ViewProps {
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[], QueryKey, number>;
   hideIfEmpty?: boolean;
+  /**
+   * Drop items from the rendered rail without touching the query. Used by the
+   * Continue & Next Up / Next Up rails to hide series the user dismissed —
+   * filtering here rather than in queryFn keeps it instant (no refetch, no
+   * skeleton) and leaves pagination, which keys off raw page length, alone.
+   */
+  excludeItem?: (item: BaseItemDto) => boolean;
   pageSize?: number;
   onPressSeeAll?: () => void;
   enabled?: boolean;
@@ -45,6 +52,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   queryFn,
   queryKey,
   hideIfEmpty = false,
+  excludeItem,
   pageSize = 10,
   onPressSeeAll,
   enabled = true,
@@ -102,11 +110,12 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
       if (!id) continue;
       if (seen.has(id)) continue;
       seen.add(id);
+      if (excludeItem?.(item)) continue;
       deduped.push(item);
     }
 
     return deduped;
-  }, [data]);
+  }, [data, excludeItem]);
 
   const snapOffsets = useMemo(() => {
     const itemWidth = railCardWidth(orientation) + RAIL_GAP;

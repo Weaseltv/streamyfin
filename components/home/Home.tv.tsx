@@ -43,6 +43,7 @@ import {
   cacheVersionAtom,
   userAtom,
 } from "@/providers/JellyfinProvider";
+import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import { useSettings } from "@/utils/atoms/settings";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { scaleSize } from "@/utils/scaleSize";
@@ -75,6 +76,7 @@ export const Home = () => {
   const { t } = useTranslation();
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
+  const { excludeItem: excludeDismissedSeries } = useDismissedNextUp();
   const cacheVersion = useAtomValue(cacheVersionAtom);
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
@@ -821,6 +823,14 @@ export const Home = () => {
                     queryKey={section.queryKey}
                     queryFn={section.queryFn}
                     orientation={section.orientation}
+                    // Only the two rails Jellyfin's Next Up feeds into. Dismissing a
+                    // series must not hide its episodes from Recently Added or a library.
+                    excludeItem={
+                      section.queryKey[1] === "continueAndNextUp" ||
+                      section.queryKey[1] === "nextUp-all"
+                        ? excludeDismissedSeries
+                        : undefined
+                    }
                     displayShowName={true}
                     hideIfEmpty
                     pageSize={section.pageSize}

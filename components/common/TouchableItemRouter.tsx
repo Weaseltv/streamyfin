@@ -13,6 +13,7 @@ import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useDownload } from "@/providers/DownloadProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -158,6 +159,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const router = useRouter();
   const isOffline = useOfflineMode();
   const { deleteFile } = useDownload();
+  const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
 
   const from = (segments as string[])[2] || "(home)";
 
@@ -183,36 +185,51 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     )
       return;
 
-    const options: string[] = [
-      t("common.mark_as_played"),
-      t("common.mark_as_not_played"),
-      isFavorite
-        ? t("music.track_options.remove_from_favorites")
-        : t("music.track_options.add_to_favorites"),
-      ...(isOffline ? [t("home.downloads.delete_download")] : []),
-      t("common.cancel"),
+    const actions: { label: string; onPress: () => void | Promise<void> }[] = [
+      {
+        label: t("common.mark_as_played"),
+        onPress: () => markAsPlayedStatus(true),
+      },
+      {
+        label: t("common.mark_as_not_played"),
+        onPress: () => markAsPlayedStatus(false),
+      },
+      {
+        label: isFavorite
+          ? t("music.track_options.remove_from_favorites")
+          : t("music.track_options.add_to_favorites"),
+        onPress: toggleFavorite,
+      },
     ];
+    // Jellyfin's Next Up keeps offering a series' next unwatched episode for
+    // as long as an earlier one is marked watched, and has no way to exclude
+    // a series. "Mark as not played" on that episode cannot remove it — this
+    // can. Lifted automatically when the user plays the series again.
+    if (item.Type === "Episode" && item.SeriesId) {
+      const seriesId = item.SeriesId;
+      actions.push({
+        label: t("common.remove_from_continue_and_next_up"),
+        onPress: () => dismissSeriesFromNextUp(seriesId),
+      });
+    }
+    let destructiveButtonIndex: number | undefined;
+    if (isOffline && item.Id) {
+      const itemId = item.Id;
+      destructiveButtonIndex = actions.length;
+      actions.push({
+        label: t("home.downloads.delete_download"),
+        onPress: () => deleteFile(itemId),
+      });
+    }
+    const options = [...actions.map((a) => a.label), t("common.cancel")];
     const cancelButtonIndex = options.length - 1;
-    const destructiveButtonIndex = isOffline
-      ? cancelButtonIndex - 1
-      : undefined;
 
     showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-        destructiveButtonIndex,
-      },
+      { options, cancelButtonIndex, destructiveButtonIndex },
       async (selectedIndex) => {
-        if (selectedIndex === 0) {
-          await markAsPlayedStatus(true);
-        } else if (selectedIndex === 1) {
-          await markAsPlayedStatus(false);
-        } else if (selectedIndex === 2) {
-          toggleFavorite();
-        } else if (isOffline && selectedIndex === 3 && item.Id) {
-          deleteFile(item.Id);
-        }
+        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex)
+          return;
+        await actions[selectedIndex]?.onPress();
       },
     );
   }, [
@@ -222,7 +239,10 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     toggleFavorite,
     isOffline,
     deleteFile,
+    dismissSeriesFromNextUp,
     item.Id,
+    item.Type,
+    item.SeriesId,
     t,
   ]);
 
