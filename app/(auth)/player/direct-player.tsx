@@ -330,7 +330,22 @@ export default function DirectPlayerPage() {
     }
   }, [tracksReady]);
 
+  /** Monotonic ids used to reject superseded item/stream acquisitions. */
+  const itemGenerationRef = useRef(0);
+  const streamGenerationRef = useRef(0);
+
   useEffect(() => {
+    // Every item load gets a generation. Rapid episode taps, a Back during
+    // negotiation or a server-URL change all leave an earlier request in
+    // flight; without this the late response still called setItem/setStream
+    // and replaced the newer selection.
+    const generation = ++itemGenerationRef.current;
+    // A new item also invalidates any stream still negotiating for the old
+    // one. The reverse is not true, so the two counters stay separate: a
+    // quality change must not cancel the item fetch that is feeding it.
+    streamGenerationRef.current += 1;
+    const isCurrent = () => itemGenerationRef.current === generation;
+
     const fetchItemData = async () => {
       setItemStatus({ isLoading: true, isError: false });
       try {
@@ -351,11 +366,15 @@ export default function DirectPlayerPage() {
             itemId,
             userId: user?.Id,
           });
+          if (!isCurrent()) return;
           fetchedItem = res.data;
         }
+        if (!isCurrent()) return;
         setItem(fetchedItem);
         setItemStatus({ isLoading: false, isError: false });
       } catch (error) {
+        // A superseded request's failure is not this screen's failure.
+        if (!isCurrent()) return;
         console.error("Failed to fetch item:", error);
         setItemStatus({ isLoading: false, isError: true });
       }
@@ -454,6 +473,12 @@ export default function DirectPlayerPage() {
 
   useEffect(() => {
     const fetchStreamData = async (): Promise<Stream | null> => {
+      // Bumped here rather than in the effect body so a manual refresh through
+      // refetchStreamRef is itself a new generation instead of inheriting a
+      // stale one and bailing immediately.
+      const generation = ++streamGenerationRef.current;
+      const isCurrent = () => streamGenerationRef.current === generation;
+
       setStreamStatus({ isLoading: true, isError: false });
       try {
         // Don't attempt to fetch stream data if item is not available
@@ -509,6 +534,10 @@ export default function DirectPlayerPage() {
               audioMode: settings.audioTranscodeMode,
             }),
           });
+          // The item-match check above happens before this await, so it
+          // cannot catch a response that arrives after a newer request has
+          // started. Anything acquired here belongs to a dead request.
+          if (!isCurrent()) return null;
           if (!res) return null;
           const { mediaSource, sessionId, url, requiredHttpHeaders } = res;
 
@@ -521,10 +550,12 @@ export default function DirectPlayerPage() {
           }
           result = { mediaSource, sessionId, url, requiredHttpHeaders };
         }
+        if (!isCurrent()) return null;
         setStream(result);
         setStreamStatus({ isLoading: false, isError: false });
         return result;
       } catch (error) {
+        if (!isCurrent()) return null;
         console.error("Failed to fetch stream:", error);
         setStreamStatus({ isLoading: false, isError: true });
         return null;
