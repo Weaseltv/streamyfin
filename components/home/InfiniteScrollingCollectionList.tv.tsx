@@ -38,6 +38,13 @@ interface Props extends ViewProps {
   queryFn: QueryFunction<BaseItemDto[], QueryKey, number>;
   displayShowName?: boolean;
   hideIfEmpty?: boolean;
+  /**
+   * Drop items from the rendered rail without touching the query. Used by the
+   * Continue & Next Up / Next Up rails to hide series the user dismissed —
+   * filtering here rather than in queryFn keeps it instant (no refetch, no
+   * skeleton) and leaves pagination, which keys off raw page length, alone.
+   */
+  excludeItem?: (item: BaseItemDto) => boolean;
   pageSize?: number;
   onPressSeeAll?: () => void;
   enabled?: boolean;
@@ -121,6 +128,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   queryKey,
   displayShowName,
   hideIfEmpty = false,
+  excludeItem,
   pageSize = 10,
   enabled = true,
   isFirstSection = false,
@@ -180,11 +188,12 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
       if (!id) continue;
       if (seen.has(id)) continue;
       seen.add(id);
+      if (excludeItem?.(item)) continue;
       deduped.push(item);
     }
 
     return deduped;
-  }, [data]);
+  }, [data, excludeItem]);
 
   const itemWidth =
     orientation === "horizontal" ? posterSizes.episode : posterSizes.poster;

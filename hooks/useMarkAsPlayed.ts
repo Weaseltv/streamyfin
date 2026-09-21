@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import { useHaptic } from "./useHaptic";
 import { usePlaybackManager } from "./usePlaybackManager";
 import { useInvalidatePlaybackProgressCache } from "./useRevalidatePlaybackProgressCache";
@@ -10,10 +11,19 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
   const lightHapticFeedback = useHaptic("light");
   const { markItemPlayed, markItemUnplayed } = usePlaybackManager();
   const invalidatePlaybackProgressCache = useInvalidatePlaybackProgressCache();
+  const { undismiss: undismissSeriesFromNextUp } = useDismissedNextUp();
 
   const toggle = useCallback(
     async (played: boolean) => {
       lightHapticFeedback();
+
+      // Marking an episode played is the user re-engaging with the series, so
+      // a dismissal from the Continue & Next Up rail no longer applies.
+      if (played) {
+        for (const item of items) {
+          if (item.Type === "Episode") undismissSeriesFromNextUp(item.SeriesId);
+        }
+      }
 
       const itemIds = items.map((item) => item.Id).filter(Boolean) as string[];
 
@@ -70,6 +80,7 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
       markItemPlayed,
       markItemUnplayed,
       queryClient,
+      undismissSeriesFromNextUp,
     ],
   );
 

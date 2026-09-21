@@ -46,6 +46,7 @@ import {
   userAtom,
 } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
+import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
@@ -83,6 +84,7 @@ const HomeMobile = () => {
   const { t } = useTranslation();
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
+  const { excludeItem: excludeDismissedSeries } = useDismissedNextUp();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const { settings, refreshStreamyfinPluginSettings } = useSettings();
@@ -810,6 +812,14 @@ const HomeMobile = () => {
                     queryKey={section.queryKey}
                     queryFn={section.queryFn}
                     orientation={section.orientation}
+                    // Only the two rails Jellyfin's Next Up feeds into. Dismissing a
+                    // series must not hide its episodes from Recently Added or a library.
+                    excludeItem={
+                      section.queryKey[1] === "continueAndNextUp" ||
+                      section.queryKey[1] === "nextUp-all"
+                        ? excludeDismissedSeries
+                        : undefined
+                    }
                     hideIfEmpty
                     pageSize={section.pageSize}
                     enabled={isHighPriority || allHighPriorityLoaded}

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import useRouter from "@/hooks/useAppRouter";
 import { isNativePlayerPresented } from "@/modules/mpv-player";
 import { useNativePlayer } from "@/providers/NativePlayerProvider";
+import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import {
   getActiveVideoPlayer,
   useSettings,
@@ -35,6 +36,7 @@ interface PlayMediaOptions {
  * path can never block playback.
  */
 export const usePlayMedia = () => {
+  const { undismiss: undismissSeriesFromNextUp } = useDismissedNextUp();
   const router = useRouter();
   const { settings, updateSettings } = useSettings();
   const setShuffleQueue = useSetAtom(shuffleQueueAtom);
@@ -49,6 +51,11 @@ export const usePlayMedia = () => {
       }
       if (!options?.preserveShuffleQueue) {
         setShuffleQueue(null);
+      }
+      // Playing an episode is the user re-engaging with the series: lift any
+      // "Remove from Continue & Next Up" dismissal so it can come back.
+      if (options?.item?.Type === "Episode") {
+        undismissSeriesFromNextUp(options.item.SeriesId);
       }
 
       const isLiveTv =
@@ -68,6 +75,13 @@ export const usePlayMedia = () => {
 
       router.push(`/player/direct-player?${toDirectPlayerQuery(req)}`);
     },
-    [router, settings, updateSettings, setShuffleQueue, presentFromRequest],
+    [
+      router,
+      settings,
+      updateSettings,
+      setShuffleQueue,
+      presentFromRequest,
+      undismissSeriesFromNextUp,
+    ],
   );
 };
