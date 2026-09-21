@@ -67,6 +67,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         fun onReadyToSeek()
         fun onTracksReady()
         fun onError(message: String)
+        /** A terminal playback failure inferred from END_FILE (see the handler). */
+        fun onPlaybackFailed(message: String)
         fun onVideoDimensionsChanged(width: Int, height: Int)
     }
     
@@ -91,6 +93,12 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var cachedCacheSeconds: Double = 0.0
     private var _isPaused: Boolean = true
     private var _isLoading: Boolean = false
+    /**
+     * Set by load() right before it stops the previous file, cleared when the
+     * new file's FILE_LOADED arrives. The END_FILE mpv emits for the old file
+     * in between is ours, not a failure.
+     */
+    private var expectingEndFile: Boolean = false
     private var _playbackSpeed: Double = 1.0
     private var isReadyToSeek: Boolean = false
 
@@ -471,6 +479,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
 
         _isLoading = true
         isReadyToSeek = false
+        // The stop below makes mpv emit END_FILE for whatever was playing.
+        expectingEndFile = true
         mainHandler.post { delegate?.onLoadingChanged(true) }
 
         // Stop previous playback
@@ -923,6 +933,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     override fun event(eventId: Int) {
         when (eventId) {
             MPVLib.MPV_EVENT_FILE_LOADED -> {
+                expectingEndFile = false
                 // Add external subtitles now that file is loaded
                 if (pendingExternalSubtitles.isNotEmpty()) {
                     pendingExternalSubtitles.forEachIndexed { index, subUrl ->
@@ -976,7 +987,34 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 }
             }
             MPVLib.MPV_EVENT_END_FILE -> {
-                Log.i(TAG, "Playback ended")
+                // The pinned libmpv-android delivers event(int) with no
+                // end-file reason, so unlike iOS this cannot read
+                // MPV_END_FILE_REASON_ERROR. A file that ends while the
+                // renderer is still active, was not replaced by load(), and
+                // is nowhere near its duration did not end on purpose — treat
+                // it as a failure so the player shows Retry/Close instead of a
+                // frozen frame. Natural EOF lands within the last two seconds
+                // and is excluded; a real end-file reason needs a JNI change
+                // to the library and is a separate, later project.
+                val duration = cachedDuration
+                val position = cachedPosition
+                val looksLikeFailure =
+                    isRunning &&
+                    !expectingEndFile &&
+                    duration > 0.0 &&
+                    position < duration - 2.0
+                if (looksLikeFailure) {
+                    Log.w(TAG, "Playback ended unexpectedly at ${"%.1f".format(position)}s of ${"%.1f".format(duration)}s")
+                    _isLoading = false
+                    mainHandler.post {
+                        // mpv does not flip pause on a fatal error, so the
+                        // spinner would otherwise outlive the failure.
+                        delegate?.onLoadingChanged(false)
+                        delegate?.onPlaybackFailed("Playback stopped unexpectedly")
+                    }
+                } else {
+                    Log.i(TAG, "Playback ended")
+                }
             }
             MPVLib.MPV_EVENT_SHUTDOWN -> {
                 Log.w(TAG, "MPV shutdown")
