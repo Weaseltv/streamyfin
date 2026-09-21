@@ -18,8 +18,20 @@ protocol MPVPlayerEngineDelegate: AnyObject {
 	func engine(_ engine: MPVPlayerEngine, didBecomeTracksReady ready: Bool)
 	func engine(_ engine: MPVPlayerEngine, didChangePictureInPicture isActive: Bool)
 	func engine(_ engine: MPVPlayerEngine, didFailWithError message: String)
+	/// Structured variant. Defaulted below so existing conformers keep working;
+	/// override it to surface the mpv reason/code rather than only a string.
+	func engine(_ engine: MPVPlayerEngine, didFailWith failure: MPVPlaybackFailure)
 	func engine(_ engine: MPVPlayerEngine, didDetectHDRMode mode: HDRMode, fps: Double)
 	func engineDidReachEnd(_ engine: MPVPlayerEngine)
+}
+
+extension MPVPlayerEngineDelegate {
+	func engine(_ engine: MPVPlayerEngine, didFailWith failure: MPVPlaybackFailure) {
+		// `self.` is required: the parameter is also named `engine`, and without
+		// the qualifier Swift resolves the bare call to the parameter and
+		// reports "cannot call value of non-function type 'MPVPlayerEngine'".
+		self.engine(engine, didFailWithError: failure.message)
+	}
 }
 
 /// Non-UI playback engine: owns the display layer, the libmpv renderer, PiP,
@@ -567,6 +579,15 @@ extension MPVPlayerEngine: MPVLayerRendererDelegate {
 		DispatchQueue.main.async { [weak self] in
 			guard let self else { return }
 			self.delegate?.engineDidReachEnd(self)
+		}
+	}
+
+	func renderer(_: MPVLayerRenderer, didFailWith failure: MPVPlaybackFailure) {
+		// Already on main (the renderer hops before calling), but the engine
+		// contract promises main-thread delivery for every callback.
+		DispatchQueue.main.async { [weak self] in
+			guard let self else { return }
+			self.delegate?.engine(self, didFailWith: failure)
 		}
 	}
 }

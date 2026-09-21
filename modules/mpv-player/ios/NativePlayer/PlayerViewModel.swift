@@ -1393,6 +1393,23 @@ extension PlayerViewModel: MPVPlayerEngineDelegate {
 		emit?("onError", ["error": message])
 	}
 
+	func engine(_ engine: MPVPlayerEngine, didFailWith failure: MPVPlaybackFailure) {
+		guard !isTearingDown else { return }
+		isPlaying = false
+		isBuffering = false
+		updateDisplayLinkState()
+		errorMessage = failure.message
+		showControls()
+		autoHideTask?.cancel()
+		// Carry the reason and code so JS can distinguish a transient transport
+		// failure from an unsupported source instead of guessing from the text.
+		emit?("onError", [
+			"error": failure.message,
+			"reason": failure.reason,
+			"mpvErrorCode": failure.mpvErrorCode,
+		])
+	}
+
 	func engine(_ engine: MPVPlayerEngine, didDetectHDRMode mode: HDRMode, fps: Double) {
 		// tvOS applies AVDisplayCriteria via the view controller; no-op on iOS.
 		onHDRModeDetected?(mode, fps)

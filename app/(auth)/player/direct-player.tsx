@@ -1596,11 +1596,28 @@ export default function DirectPlayerPage() {
                 onLoad={() => setIsVideoLoaded(true)}
                 onError={(e: { nativeEvent: MpvOnErrorEventPayload }) => {
                   console.error("Video Error:", e.nativeEvent);
+                  writeToLog("ERROR", "Video Error", e.nativeEvent);
+                  // Clear the startup gate: mpv does not flip pause on a fatal
+                  // error, so without this the spinner outlives the failure.
+                  setIsBuffering(false);
                   Alert.alert(
                     t("player.error"),
-                    t("player.an_error_occurred_while_playing_the_video"),
+                    e.nativeEvent.error ||
+                      t("player.an_error_occurred_while_playing_the_video"),
+                    [
+                      {
+                        text: t("home.retry"),
+                        onPress: () => {
+                          void refetchStreamRef.current?.();
+                        },
+                      },
+                      {
+                        text: t("common.close"),
+                        style: "cancel",
+                        onPress: () => router.back(),
+                      },
+                    ],
                   );
-                  writeToLog("ERROR", "Video Error", e.nativeEvent);
                 }}
                 onTracksReady={() => {
                   setTracksReady(true);

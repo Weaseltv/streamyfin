@@ -341,6 +341,14 @@ extension MpvPlayerView: MPVPlayerEngineDelegate {
 		onError(["error": message])
 	}
 
+	func engine(_ engine: MPVPlayerEngine, didFailWith failure: MPVPlaybackFailure) {
+		onError([
+			"error": failure.message,
+			"reason": failure.reason,
+			"mpvErrorCode": failure.mpvErrorCode,
+		])
+	}
+
 	func engine(_ engine: MPVPlayerEngine, didDetectHDRMode mode: HDRMode, fps: Double) {
 		#if os(tvOS)
 		setDisplayCriteria(for: mode, fps: Float(fps))
