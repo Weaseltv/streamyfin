@@ -36,8 +36,11 @@ type Props<Value extends string | number> = {
  * the control will actually draw.
  */
 const WHEEL_HEIGHT = 216;
-/** `UIPickerView`'s default row height, which the selection band must match. */
-const ROW_HEIGHT = 32;
+/**
+ * The wheel's row height at the type size below — SwiftUI's wheel sizes rows
+ * to their content, and the selection band has to match.
+ */
+const ROW_HEIGHT = 40;
 
 /**
  * The one discrete-option control, matching WeaselTV iOS's `SelectionWheel`.
@@ -120,11 +123,14 @@ export function WheelPickerSheet<Value extends string | number>({
                 key={String(option.value)}
                 modifiers={[
                   tag(option.value),
-                  // Barlow SemiBold 17 on the selected row, Medium 16
-                  // elsewhere — the wheel dims and foreshortens the rest.
+                  // Larger than WeaselTV's 17/16 by request, and with a
+                  // wider gap so the row that settles in the middle visibly
+                  // steps up and the one scrolled past steps back down. The
+                  // native wheel re-renders on settle, not continuously, so
+                  // this is the enlarge-in-the-middle a UIPickerView can do.
                   font({
                     family: Fonts.body,
-                    size: option.value === draft ? 17 : 16,
+                    size: option.value === draft ? 24 : 19,
                     weight: option.value === draft ? "semibold" : "medium",
                   }),
                   foregroundColor(
