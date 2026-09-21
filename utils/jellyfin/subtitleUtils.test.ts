@@ -483,3 +483,71 @@ describe("compareTracksForMenu — stable order across play methods (8 Mile live
     expect(order(transcoding)).toEqual(order(directPlay));
   });
 });
+
+// The iOS renderer no longer waits for every sidecar before signalling
+// readiness: it submits them to mpv in order and blocks only on the selected
+// one. So the player's external track list is a *prefix* of the full list
+// while the rest land. These pin the two properties that makes safe.
+describe("resolveSubtitleTrack — externals still loading (prefix of the list)", () => {
+  const streams = [
+    ext(0, { Language: "eng" }),
+    ext(1, { Language: "fre" }),
+    ext(2, { Language: "spa" }),
+    ext(3, { Language: "deu" }),
+  ];
+
+  // Mirrors what mpv reports once the first k sidecars have been added, in
+  // submission order.
+  const loadedPrefix = (k: number): PlayerSubtitleTrack[] =>
+    streams.slice(0, k).map((s, i) =>
+      track({
+        id: i + 1,
+        external: true,
+        externalFilename: `http://srv/sub/${s.Index}.srt`,
+      }),
+    );
+
+  test("an already-loaded sidecar resolves to its own track", () => {
+    // Only 2 of 4 have landed; both must still select correctly.
+    expect(resolve(streams, 0, loadedPrefix(2))).toEqual({
+      kind: "select",
+      trackId: 1,
+    });
+    expect(resolve(streams, 1, loadedPrefix(2))).toEqual({
+      kind: "select",
+      trackId: 2,
+    });
+  });
+
+  test("a not-yet-loaded sidecar reports notFound, never another language", () => {
+    // The ordinal fallback must not hand back track 1 (English) when Spanish
+    // has not been added yet — a wrong subtitle is worse than none.
+    expect(resolve(streams, 2, loadedPrefix(2))).toEqual({ kind: "notFound" });
+    expect(resolve(streams, 3, loadedPrefix(2))).toEqual({ kind: "notFound" });
+    expect(resolve(streams, 0, loadedPrefix(0))).toEqual({ kind: "notFound" });
+  });
+
+  test("the ordinal fallback stays correct once every sidecar has landed", () => {
+    // With no URL builder at all, selection falls back to the ordinal among
+    // loaded externals. That only holds because submission order is preserved.
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 2,
+        playerTracks: loadedPrefix(4),
+      }),
+    ).toEqual({ kind: "select", trackId: 3 });
+  });
+
+  test("the ordinal fallback cannot overshoot a partially loaded list", () => {
+    // Same call with only two sidecars landed: the ordinal (2) is past the end
+    // of the player's list, so it must decline rather than wrap onto track 2.
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 2,
+        playerTracks: loadedPrefix(2),
+      }),
+    ).toEqual({ kind: "notFound" });
+  });
+});

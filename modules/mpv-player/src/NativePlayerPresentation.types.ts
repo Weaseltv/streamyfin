@@ -15,6 +15,12 @@ export type NativePlayerStreamConfig = {
   url: string;
   headers?: Record<string, string>;
   externalSubtitles?: string[];
+  /**
+   * Position in `externalSubtitles` of the initially-selected sidecar, or -1
+   * when none is (subtitles off, or the selection is embedded/burned-in).
+   * Native blocks readiness on this one only; the rest load in the background.
+   */
+  initialExternalSubtitleIndex?: number;
   startPositionSec?: number;
   autoplay?: boolean;
   /** MPV track ids pre-resolved by JS (1-based; -1 disables subtitles). */

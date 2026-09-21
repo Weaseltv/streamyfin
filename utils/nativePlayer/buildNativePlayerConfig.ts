@@ -449,11 +449,22 @@ export async function buildNativePlayerConfig(params: {
   const playMethod = getPlayMethod(stream, offline);
 
   // 3. External subtitles + initial audio (mirror of the videoSource memo)
-  const externalSubs = mediaSource.MediaStreams?.filter(
-    (s) => s.Type === "Subtitle" && s.DeliveryMethod === "External",
-  )
-    .map((s) => getExternalSubtitleUrl(s, { offline, basePath: api?.basePath }))
-    .filter((u): u is string => !!u);
+  // Keep the stream alongside its URL so we can tell native which entry is the
+  // selected one. Native waits on that sidecar alone and backgrounds the rest,
+  // rather than blocking playback readiness behind every language.
+  const externalSubEntries = (mediaSource.MediaStreams ?? [])
+    .filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External")
+    .flatMap((s) => {
+      const url = getExternalSubtitleUrl(s, {
+        offline,
+        basePath: api?.basePath,
+      });
+      return url ? [{ index: s.Index, url }] : [];
+    });
+  const externalSubs = externalSubEntries.map((e) => e.url);
+  const initialExternalSubtitleIndex = externalSubEntries.findIndex(
+    (e) => e.index === subtitleIndex,
+  );
 
   const initialAudioId = getMpvAudioId(mediaSource, audioIndex, isTranscoding);
   const videoStream = mediaSource.MediaStreams?.find((s) => s.Type === "Video");
@@ -484,8 +495,8 @@ export async function buildNativePlayerConfig(params: {
     stream: {
       url: stream.url,
       headers,
-      externalSubtitles:
-        externalSubs && externalSubs.length > 0 ? externalSubs : undefined,
+      externalSubtitles: externalSubs.length > 0 ? externalSubs : undefined,
+      initialExternalSubtitleIndex,
       startPositionSec: ticksToSeconds(startTicks),
       autoplay: true,
       initialAudioMpvId: initialAudioId,
