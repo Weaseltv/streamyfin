@@ -550,6 +550,12 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         onError(mapOf("error" to message))
     }
 
+    override fun onPlaybackFailed(message: String) {
+        // Same JS event as iOS's structured failure, with the honest reason:
+        // the Android library gives us no end-file reason to forward.
+        onError(mapOf("error" to message, "reason" to "unknown"))
+    }
+
     // MARK: - Resume Recovery
 
     /**
