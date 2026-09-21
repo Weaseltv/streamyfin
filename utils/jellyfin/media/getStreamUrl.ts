@@ -5,6 +5,7 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { BaseItemKind } from "@jellyfin/sdk/lib/generated-client/models/base-item-kind";
 import { getMediaInfoApi } from "@jellyfin/sdk/lib/utils/api";
+import { Deadlines } from "@/constants/networkDeadlines";
 import { generateDownloadProfile } from "../../profiles/download";
 import type { AudioTranscodeModeType } from "../../profiles/native";
 
@@ -198,6 +199,10 @@ export const getStreamUrl = async ({
       },
       {
         method: "POST",
+        // Negotiation is the one call that may legitimately take this
+        // long: the server can be spinning up a transcode before it
+        // answers. Without it this inherited no deadline at all.
+        timeout: Deadlines.negotiation,
         params: {
           startTimeTicks: 0,
           isPlayback: true,
@@ -238,6 +243,10 @@ export const getStreamUrl = async ({
     },
     {
       method: "POST",
+      // Negotiation is the one call that may legitimately take this
+      // long: the server can be spinning up a transcode before it
+      // answers. Without it this inherited no deadline at all.
+      timeout: Deadlines.negotiation,
       data: {
         userId,
         deviceProfile,
@@ -315,6 +324,10 @@ export const getDownloadStreamUrl = async ({
     },
     {
       method: "POST",
+      // Negotiation is the one call that may legitimately take this
+      // long: the server can be spinning up a transcode before it
+      // answers. Without it this inherited no deadline at all.
+      timeout: Deadlines.negotiation,
       data: {
         userId,
         deviceProfile: generateDownloadProfile(audioMode),

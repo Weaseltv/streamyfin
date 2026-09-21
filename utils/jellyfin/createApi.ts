@@ -1,4 +1,5 @@
 import type { Api, Jellyfin } from "@jellyfin/sdk";
+import { Deadlines } from "@/constants/networkDeadlines";
 import { getJellyfinHeaders } from "@/utils/customHeaders";
 
 /**
@@ -19,6 +20,12 @@ export function createApiWithCustomHeaders(
   accessToken?: string,
 ): Api {
   const api = jellyfin.createApi(serverUrl, accessToken);
+
+  // The SDK leaves this unset, which means "wait forever". A server that
+  // accepts the connection but never answers would otherwise hang Play, a
+  // track switch or session cleanup with no recovery. Individual calls can
+  // still pass a tighter or looser timeout; this is only the ceiling.
+  api.axiosInstance.defaults.timeout = Deadlines.negotiation;
 
   api.axiosInstance.interceptors.request.use((config) => {
     for (const [key, value] of Object.entries(getJellyfinHeaders(serverUrl))) {

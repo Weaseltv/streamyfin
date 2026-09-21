@@ -6,6 +6,7 @@ import { getPlaystateApi, getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { Deadlines } from "@/constants/networkDeadlines";
 import { useDownload } from "@/providers/DownloadProvider";
 import { DownloadedItem } from "@/providers/Downloads/types";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -248,9 +249,10 @@ export const usePlaybackManager = ({
     // Handle remote state update if online
     if (isOnline && api) {
       try {
-        await getPlaystateApi(api).reportPlaybackProgress({
-          playbackProgressInfo,
-        });
+        await getPlaystateApi(api).reportPlaybackProgress(
+          { playbackProgressInfo },
+          { timeout: Deadlines.reporting },
+        );
       } catch (error) {
         console.error("Failed to report playback progress", error);
       }

@@ -27,6 +27,7 @@ import {
   PlaybackSpeedScope,
   updatePlaybackSpeedSettings,
 } from "@/components/video-player/controls/utils/playback-speed-settings";
+import { Deadlines } from "@/constants/networkDeadlines";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useOrientation } from "@/hooks/useOrientation";
 import { usePlaybackManager } from "@/hooks/usePlaybackManager";
@@ -416,16 +417,20 @@ const NativePlayerProviderInner: React.FC<{
       if (session.reportedStopKey === stopKey) return;
       session.reportedStopKey = stopKey;
       try {
-        await getPlaystateApi(currentApi).reportPlaybackStopped({
-          playbackStopInfo: {
-            ItemId: session.item.Id,
-            MediaSourceId: session.mediaSourceId,
-            PositionTicks: positionTicks ?? msToTicks(session.positionMs),
-            PlaySessionId: session.stream.sessionId || undefined,
-            // Required to release the server-side live stream's tuner slot.
-            LiveStreamId: session.stream.mediaSource?.LiveStreamId ?? undefined,
+        await getPlaystateApi(currentApi).reportPlaybackStopped(
+          {
+            playbackStopInfo: {
+              ItemId: session.item.Id,
+              MediaSourceId: session.mediaSourceId,
+              PositionTicks: positionTicks ?? msToTicks(session.positionMs),
+              PlaySessionId: session.stream.sessionId || undefined,
+              // Required to release the server-side live stream's tuner slot.
+              LiveStreamId:
+                session.stream.mediaSource?.LiveStreamId ?? undefined,
+            },
           },
-        });
+          { timeout: Deadlines.reporting },
+        );
       } catch (error) {
         // Un-mark so a later teardown path can retry.
         if (session.reportedStopKey === stopKey) {
@@ -790,21 +795,34 @@ const NativePlayerProviderInner: React.FC<{
       if (finalPositionSec !== undefined) {
         session.positionMs = finalPositionSec * 1000;
       }
-      // Final progress write first: it also lands in the downloads DB for
-      // offline items (5%/90% thresholds), then close the server session.
+      // Snapshot before any state is cleared — the reports below run detached.
       const info = buildProgressInfo(session);
-      try {
-        await reportProgressRef.current(info);
-      } catch {}
-      await reportPlaybackStopped(session);
-      releaseLiveStream(session);
-      revalidateProgressCache();
+
+      // Local teardown first and synchronously. This used to sit behind an
+      // awaited progress report and an awaited stop report, so dismissing the
+      // player against an unreachable server left the orientation locked and
+      // the session "active" until those requests gave up. Nothing the user
+      // sees depends on the server acknowledging anything.
       unlockOrientation();
       if (sessionRef.current === session) {
         sessionRef.current = null;
         setActiveItem(null);
         setIsActive(false);
       }
+
+      // Telemetry and server-side cleanup, in order, off the critical path.
+      // Ordering still matters (progress before stop), and the live stream is
+      // released last so the tuner slot is freed even when reporting fails.
+      void (async () => {
+        try {
+          await reportProgressRef.current(info);
+        } catch {}
+        try {
+          await reportPlaybackStopped(session);
+        } catch {}
+        releaseLiveStream(session);
+        revalidateProgressCache();
+      })();
     },
     [
       buildProgressInfo,
