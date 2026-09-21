@@ -38,6 +38,8 @@ class MpvPlayerModule : Module() {
                     url = urlString,
                     headers = source["headers"] as? Map<String, String>,
                     externalSubtitles = source["externalSubtitles"] as? List<String>,
+                    initialExternalSubtitleIndex =
+                        (source["initialExternalSubtitleIndex"] as? Number)?.toInt() ?: -1,
                     startPosition = (source["startPosition"] as? Number)?.toDouble(),
                     autoplay = (source["autoplay"] as? Boolean) ?: true,
                     initialSubtitleId = (source["initialSubtitleId"] as? Number)?.toInt(),

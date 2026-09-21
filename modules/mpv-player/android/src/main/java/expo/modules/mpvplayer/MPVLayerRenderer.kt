@@ -6,6 +6,9 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import android.system.Os
 import android.util.Log
 import android.view.Surface
@@ -133,6 +136,18 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var currentUrl: String? = null
     private var currentHeaders: Map<String, String>? = null
     private var pendingExternalSubtitles: List<String> = emptyList()
+    /** Index into `pendingExternalSubtitles` of the selected sidecar (-1 = none). */
+    private var pendingSelectedExternalSubtitle: Int = -1
+    /** Survives the FILE_LOADED drain, like `activeExternalSubtitles`, for recovery reloads. */
+    private var activeSelectedExternalSubtitle: Int = -1
+    /**
+     * One thread, so sidecars reach mpv in list order. The pinned libmpv-android
+     * exposes only the synchronous `command`, and `mpv_command` is safe to call
+     * off the event thread, so this is how the adds get off the critical path.
+     */
+    private val subtitleExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "mpv-subtitle-add").apply { isDaemon = true }
+    }
     // Persistent record of the external subtitle URLs attached to the
     // current item. pendingExternalSubtitles above is a one-shot staging
     // list: load() fills it and the FILE_LOADED handler drains it via
@@ -288,6 +303,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         currentHeaders = null
         pendingExternalSubtitles = emptyList()
         activeExternalSubtitles = emptyList()
+        pendingSelectedExternalSubtitle = -1
+        activeSelectedExternalSubtitle = -1
         initialSubtitleId = null
         initialAudioId = null
         cachedPosition = 0.0
@@ -450,7 +467,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             startPosition = cachedPosition,
             initialAudioId = savedAid,
             initialSubtitleId = savedSid,
-            externalSubtitles = activeExternalSubtitles
+            externalSubtitles = activeExternalSubtitles,
+            initialExternalSubtitleIndex = activeSelectedExternalSubtitle
         )
 
         // Hold the paused state explicitly — we only get here while paused,
@@ -463,6 +481,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         headers: Map<String, String>? = null,
         startPosition: Double? = null,
         externalSubtitles: List<String>? = null,
+        initialExternalSubtitleIndex: Int = -1,
         initialSubtitleId: Int? = null,
         initialAudioId: Int? = null,
         cacheEnabled: String? = null,
@@ -474,6 +493,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         currentHeaders = headers
         pendingExternalSubtitles = externalSubtitles ?: emptyList()
         activeExternalSubtitles = pendingExternalSubtitles
+        pendingSelectedExternalSubtitle = initialExternalSubtitleIndex
+        activeSelectedExternalSubtitle = initialExternalSubtitleIndex
         this.initialSubtitleId = initialSubtitleId
         this.initialAudioId = initialAudioId
 
@@ -934,14 +955,48 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         when (eventId) {
             MPVLib.MPV_EVENT_FILE_LOADED -> {
                 expectingEndFile = false
-                // Add external subtitles now that file is loaded
+                // Add external subtitles now that file is loaded.
+                //
+                // Every sidecar used to be added right here with the blocking
+                // `command`, on mpv's own event thread, before readiness was
+                // signalled — so a title with 30 sidecar languages did 30 serial
+                // network fetches before the player was usable, even with
+                // subtitles switched off.
+                //
+                // They now go through a single-thread executor, so they still
+                // reach mpv in list order. That order is load-bearing: JS's
+                // resolveSubtitleTrack falls back to matching an external sub
+                // by its ordinal among the player's externals, which stays
+                // correct as long as the loaded set is a *prefix* of the full
+                // list. Only the selected sidecar is waited on, so the
+                // selection re-apply below can find it.
                 if (pendingExternalSubtitles.isNotEmpty()) {
-                    pendingExternalSubtitles.forEachIndexed { index, subUrl ->
-                        android.util.Log.d("MPVRenderer", "Adding external subtitle [$index]: $subUrl")
-                        // "auto" flag = add without auto-selecting (order preserved, MPVLib.command is sync)
-                        mpv?.command(arrayOf("sub-add", subUrl, "auto"))
-                    }
+                    val subtitles = pendingExternalSubtitles
+                    val selected = pendingSelectedExternalSubtitle
+                    val handle = mpv
                     pendingExternalSubtitles = emptyList()
+                    pendingSelectedExternalSubtitle = -1
+                    val selectedAdded = CountDownLatch(1)
+
+                    subtitles.forEachIndexed { index, subUrl ->
+                        subtitleExecutor.execute {
+                            // A stop() or a new load() since this was queued means
+                            // the handle is gone or belongs to a different item.
+                            if (isRunning && mpv === handle && handle != null) {
+                                android.util.Log.d("MPVRenderer", "Adding external subtitle [$index]")
+                                // "auto" flag = add without auto-selecting.
+                                handle.command(arrayOf("sub-add", subUrl, "auto"))
+                            }
+                            if (index == selected) selectedAdded.countDown()
+                        }
+                    }
+
+                    if (selected in subtitles.indices) {
+                        // Bounded: a dead sidecar must not hold readiness hostage.
+                        // On timeout the video proceeds; the re-apply simply
+                        // reports notFound until the add lands.
+                        selectedAdded.await(10, TimeUnit.SECONDS)
+                    }
                 }
 
                 // Apply the initial audio/subtitle selection now that the file's

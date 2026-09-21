@@ -57,6 +57,12 @@ export type VideoSource = {
   url: string;
   headers?: Record<string, string>;
   externalSubtitles?: string[];
+  /**
+   * Position in `externalSubtitles` of the initially-selected sidecar, or -1
+   * when none is. Native waits on that one alone before signalling readiness
+   * and adds the rest in the background — see the iOS/Android renderers.
+   */
+  initialExternalSubtitleIndex?: number;
   startPosition?: number;
   autoplay?: boolean;
   /** MPV subtitle track ID to select on start (1-based, -1 to disable) */

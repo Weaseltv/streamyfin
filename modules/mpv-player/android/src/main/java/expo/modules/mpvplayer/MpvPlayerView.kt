@@ -24,6 +24,8 @@ data class VideoLoadConfig(
     val url: String,
     val headers: Map<String, String>? = null,
     val externalSubtitles: List<String>? = null,
+    /** Index into `externalSubtitles` of the initially-selected sidecar (-1 = none). */
+    val initialExternalSubtitleIndex: Int = -1,
     val startPosition: Double? = null,
     val autoplay: Boolean = true,
     val initialSubtitleId: Int? = null,
@@ -280,6 +282,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
             headers = config.headers,
             startPosition = config.startPosition,
             externalSubtitles = config.externalSubtitles,
+            initialExternalSubtitleIndex = config.initialExternalSubtitleIndex,
             initialSubtitleId = config.initialSubtitleId,
             initialAudioId = config.initialAudioId,
             cacheEnabled = config.cacheEnabled,

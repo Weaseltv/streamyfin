@@ -926,13 +926,23 @@ export default function DirectPlayerPage() {
     // Get external subtitle URLs — getExternalSubtitleUrl is the shared source
     // of truth with identity matching (online: basePath + DeliveryUrl unless
     // IsExternalUrl; offline: local file path stored in DeliveryUrl).
-    const externalSubs = mediaSource?.MediaStreams?.filter(
-      (s) => s.Type === "Subtitle" && s.DeliveryMethod === "External",
-    )
-      .map((s) =>
-        getExternalSubtitleUrl(s, { offline, basePath: api?.basePath }),
-      )
-      .filter((u): u is string => !!u);
+    // Keep the stream beside its URL so native can be told which entry is the
+    // selected one. It waits on that sidecar alone and backgrounds the rest,
+    // rather than blocking readiness behind every language (same contract as
+    // buildNativePlayerConfig for the iOS native player).
+    const externalSubEntries = (mediaSource?.MediaStreams ?? [])
+      .filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External")
+      .flatMap((s) => {
+        const url = getExternalSubtitleUrl(s, {
+          offline,
+          basePath: api?.basePath,
+        });
+        return url ? [{ index: s.Index, url }] : [];
+      });
+    const externalSubs = externalSubEntries.map((e) => e.url);
+    const initialExternalSubtitleIndex = externalSubEntries.findIndex(
+      (e) => e.index === subtitleIndex,
+    );
 
     // Audio maps positionally (audio tracks aren't reordered or hidden like
     // subtitles). The subtitle selection is applied later, once MPV's real track
@@ -963,8 +973,9 @@ export default function DirectPlayerPage() {
     };
 
     // Add external subtitles only for online playback
-    if (externalSubs && externalSubs.length > 0) {
+    if (externalSubs.length > 0) {
       source.externalSubtitles = externalSubs;
+      source.initialExternalSubtitleIndex = initialExternalSubtitleIndex;
     }
 
     // Add headers for online streaming (not for local file:// URLs)
