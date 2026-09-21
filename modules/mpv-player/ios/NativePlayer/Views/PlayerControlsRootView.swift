@@ -327,6 +327,13 @@ struct PlayerControlsRootView: View {
 
 				if dragAxis == nil {
 					if abs(value.translation.width) >= abs(value.translation.height) {
+						// Disabled by preference: suppress the whole sequence rather than
+						// fall through to the vertical branch, which would turn a sloppy
+						// horizontal swipe into a volume change.
+						guard viewModel.horizontalSwipeSeekEnabled else {
+							dragSuppressed = true
+							return
+						}
 						dragAxis = .horizontal
 						if viewModel.duration > 0 {
 							viewModel.showControls()
@@ -334,8 +341,16 @@ struct PlayerControlsRootView: View {
 							dragStartFraction = viewModel.scrubPosition / viewModel.duration
 						}
 					} else {
+						let onLeftHalf = value.startLocation.x < size.width / 2
+						guard onLeftHalf
+							? viewModel.brightnessSwipeEnabled
+							: viewModel.volumeSwipeEnabled
+						else {
+							dragSuppressed = true
+							return
+						}
 						dragAxis = .vertical
-						dragOnLeftHalf = value.startLocation.x < size.width / 2
+						dragOnLeftHalf = onLeftHalf
 						if dragOnLeftHalf {
 							dragStartLevel = viewModel.brightnessController.brightness
 							viewModel.brightnessController.isUserInteracting = true

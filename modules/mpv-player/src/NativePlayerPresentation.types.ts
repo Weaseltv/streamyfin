@@ -232,6 +232,12 @@ export type NativePlayerUIOptions = {
   pinchToZoomEnabled?: boolean;
   /** true enables double tap on the video halves to seek (settings.enableDoubleTapToSeek). */
   doubleTapToSeekEnabled?: boolean;
+  /** false disables horizontal drag-to-scrub (settings.enableHorizontalSwipeSkip). */
+  horizontalSwipeSeekEnabled?: boolean;
+  /** false disables the left-half vertical brightness drag (settings.enableLeftSideBrightnessSwipe). */
+  brightnessSwipeEnabled?: boolean;
+  /** false disables the right-half vertical volume drag (settings.enableRightSideVolumeSwipe). */
+  volumeSwipeEnabled?: boolean;
   /** Remote subtitle search entry in the subtitles menu (online only). */
   subtitleSearchEnabled?: boolean;
   /** ISO 639-2 codes + localized display names for the language picker. */
