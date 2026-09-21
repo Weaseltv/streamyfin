@@ -4,16 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { atom, useAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
-import { Chip } from "@/components/common/Chip";
+import { TouchableOpacity, View } from "react-native";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { SectionHeader } from "@/components/common/SectionHeader";
+import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
 import { EpisodeRow } from "@/components/series/EpisodeRow";
 import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useDownload } from "@/providers/DownloadProvider";
+import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/utils/downloads/offline-series";
 import { Text } from "../common/Text";
 import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
+import { DropdownTrigger } from "../PlatformDropdown";
 import { PlayedStatus } from "../PlayedStatus";
 
 type Props = {
@@ -44,6 +46,7 @@ export const SeasonPicker: React.FC<Props> = ({
   const { t } = useTranslation();
   const isOffline = useOfflineMode();
   const { getDownloadedItems, downloadedItems } = useDownload();
+  const { showModal, hideModal } = useGlobalModal();
 
   const seasonIndex = useMemo(
     () => seasonIndexState[item.Id ?? ""],
@@ -160,6 +163,16 @@ export const SeasonPicker: React.FC<Props> = ({
     [seasons],
   );
 
+  const selectedSeason = useMemo(
+    () =>
+      sortedSeasons.find(
+        (s) =>
+          Number(s.IndexNumber) === Number(seasonIndex) ||
+          s.Name === seasonIndex,
+      ),
+    [sortedSeasons, seasonIndex],
+  );
+
   const selectSeason = (season: BaseItemDto) => {
     if (!item.Id) return;
     setSeasonIndexState((prev) => ({
@@ -193,27 +206,54 @@ export const SeasonPicker: React.FC<Props> = ({
         className='flex flex-row items-center'
         style={{ paddingLeft: Sizes.gutter, paddingRight: 4, gap: 8 }}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-        >
-          {sortedSeasons.map((season: BaseItemDto) => (
-            <Chip
-              key={season.Id ?? String(season.IndexNumber)}
-              label={
-                season.Name || `${t("item_card.season")} ${season.IndexNumber}`
-              }
+        {/* One trigger in place of the horizontal chip strip. With 18
+            seasons the strip scrolled under the download and played icons
+            and clipped whichever chips sat beneath them; a single trigger
+            has a fixed width and never reaches them. It opens the same
+            wheel WeaselTV iOS uses for playlists and categories. */}
+        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
+          <TouchableOpacity
+            accessibilityRole='button'
+            accessibilityLabel={t("item_card.seasons")}
+            disabled={sortedSeasons.length === 0}
+            onPress={() =>
+              showModal(
+                <WheelPickerSheet
+                  title={t("item_card.seasons")}
+                  accent={NeonBoard.yellow}
+                  options={sortedSeasons.map((season) => ({
+                    value: season.Id ?? String(season.IndexNumber),
+                    title:
+                      season.Name ||
+                      `${t("item_card.season")} ${season.IndexNumber}`,
+                  }))}
+                  selection={
+                    selectedSeason?.Id ?? String(selectedSeason?.IndexNumber)
+                  }
+                  onCommit={(value) => {
+                    const season = sortedSeasons.find(
+                      (s) => (s.Id ?? String(s.IndexNumber)) === value,
+                    );
+                    if (season) selectSeason(season);
+                  }}
+                  onClose={hideModal}
+                />,
+                { enablePanDownToClose: true },
+              )
+            }
+          >
+            <DropdownTrigger
               accent={NeonBoard.yellow}
-              selected={
-                Number(season.IndexNumber) === Number(seasonIndex) ||
-                season.Name === seasonIndex
+              disabled={sortedSeasons.length === 0}
+              value={
+                selectedSeason
+                  ? selectedSeason.Name ||
+                    `${t("item_card.season")} ${selectedSeason.IndexNumber}`
+                  : t("item_card.seasons")
               }
-              onPress={() => selectSeason(season)}
             />
-          ))}
-        </ScrollView>
+          </TouchableOpacity>
+        </View>
         {episodes?.length && !isOffline ? (
           <View className='flex flex-row items-center' style={{ gap: 4 }}>
             <DownloadItems

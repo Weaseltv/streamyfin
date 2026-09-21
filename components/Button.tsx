@@ -247,8 +247,14 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
         <Loader color={labelColor} />
       ) : (
         <View
-          className={`flex flex-row items-center w-full ${
-            justify === "between" ? "justify-between" : "justify-center"
+          // w-full only when the layout actually needs the full width
+          // (label-left / icon-right). For the default centred label it is
+          // not just unnecessary but harmful: inside an auto-width parent in
+          // a flex row, Yoga resolves width:100% against the *available*
+          // width, so the button's flex basis became the entire row and
+          // squeezed its siblings to nothing — see the series Next Up row.
+          className={`flex flex-row items-center ${
+            justify === "between" ? "w-full justify-between" : "justify-center"
           }`}
           style={{ gap: 10 }}
         >

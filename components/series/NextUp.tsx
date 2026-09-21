@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
@@ -87,7 +88,10 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
           ]}
         />
         <ContinueWatchingPoster item={item} useEpisodePoster size='tiny' />
-        <View style={{ flex: 1 }}>
+        {/* minWidth: 0 lets this column actually shrink to fit beside the
+            button; Yoga's default min-width of "auto" refused to, and the
+            unconstrained button ate the row until only "S" and "2." showed. */}
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text variant='rowTitle' numberOfLines={1} style={{ fontSize: 14 }}>
             {`S${item.ParentIndexNumber}:E${item.IndexNumber} · ${item.Name}`}
           </Text>
@@ -98,6 +102,10 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
         <Button
           compact
           accent={NeonBoard.yellow}
+          // Size to its label, never to the row: the shared Button lays its
+          // content out at w-full, so without these it grows to fill whatever
+          // the row will give it and pushes the title out of existence.
+          style={{ flexGrow: 0, flexShrink: 0 }}
           onPress={() =>
             void playMedia(
               {
@@ -108,10 +116,11 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
               { item },
             )
           }
+          // A vector glyph, not "▶": that character is not in Barlow
+          // Condensed, so it fell back to a symbol font whose taller ascent
+          // was clipped by the button label's 20pt line height.
           iconLeft={
-            <Text variant='button' style={{ color: NeonBoard.onAccent }}>
-              ▶
-            </Text>
+            <Feather name='play' size={16} color={NeonBoard.onAccent} />
           }
         >
           {position > 0 ? t("item.resume") : t("item.play")}

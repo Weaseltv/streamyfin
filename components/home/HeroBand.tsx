@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
@@ -216,10 +217,9 @@ const HeroSlide: React.FC<{
             compact
             accent={accent}
             onPress={play}
+            style={{ flexGrow: 0, flexShrink: 0 }}
             iconLeft={
-              <Text variant='button' style={{ color: NeonBoard.onAccent }}>
-                ▶
-              </Text>
+              <Feather name='play' size={16} color={NeonBoard.onAccent} />
             }
           >
             {position > 0 ? t("item.resume") : t("item.play")}
