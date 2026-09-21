@@ -421,6 +421,19 @@ export type StreamyfinPluginConfig = {
   settings: PluginLockableSettings;
 };
 
+/**
+ * The shape the language pickers store for English. Mirrors what the server's
+ * cultures list returns for `eng`, so the picker recognises it as selected and
+ * the settings label renders "English" before the cultures query has loaded.
+ */
+const ENGLISH_CULTURE: CultureDto = {
+  Name: "English",
+  DisplayName: "English",
+  TwoLetterISOLanguageName: "en",
+  ThreeLetterISOLanguageName: "eng",
+  ThreeLetterISOLanguageNames: ["eng"],
+};
+
 export const defaultValues: Settings = {
   home: null,
   deviceProfile: "Expo",
@@ -444,13 +457,21 @@ export const defaultValues: Settings = {
     showTitles: true,
     showStats: true,
   },
-  defaultAudioLanguage: null,
+  // English is the fallback, not a force: these keys mirror the Jellyfin user
+  // profile (see useMediaPreferences), and a real server preference seeds over
+  // them once per session. A user who explicitly picks "None" stores null,
+  // which also wins here. Only an unset profile on a fresh install lands on
+  // English.
+  defaultAudioLanguage: ENGLISH_CULTURE,
   playDefaultAudioTrack: true,
   rememberAudioSelections: true,
-  defaultSubtitleLanguage: null,
-  subtitleMode: SubtitlePlaybackMode.Default,
+  defaultSubtitleLanguage: ENGLISH_CULTURE,
+  // Smart: subtitles come on automatically for audio that is not in the
+  // preferred language and stay off when it is. With English as the
+  // language default this is what most viewers actually want.
+  subtitleMode: SubtitlePlaybackMode.Smart,
   rememberSubtitleSelections: true,
-  subtitlesOnMute: false,
+  subtitlesOnMute: true,
   showHomeTitles: true,
   defaultVideoOrientation: ScreenOrientation.OrientationLock.DEFAULT,
   forwardSkipTime: 30,
@@ -498,11 +519,11 @@ export const defaultValues: Settings = {
   enableHoldToSpeed: true,
   holdToSpeedRate: 2.0,
   enablePinchToZoom: true,
-  enableDoubleTapToSeek: false,
+  enableDoubleTapToSeek: true,
   hideVolumeSlider: false,
   hideBrightnessSlider: false,
   usePopularPlugin: true,
-  mergeNextUpAndContinueWatching: false,
+  mergeNextUpAndContinueWatching: true,
   useEpisodeImagesForNextUp: false,
   // TV-specific settings
   nativeVideoPlayerTV: true,
