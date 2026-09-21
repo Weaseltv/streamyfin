@@ -466,7 +466,10 @@ export const defaultValues: Settings = {
   playDefaultAudioTrack: true,
   rememberAudioSelections: true,
   defaultSubtitleLanguage: ENGLISH_CULTURE,
-  subtitleMode: SubtitlePlaybackMode.Default,
+  // Smart: subtitles come on automatically for audio that is not in the
+  // preferred language and stay off when it is. With English as the
+  // language default this is what most viewers actually want.
+  subtitleMode: SubtitlePlaybackMode.Smart,
   rememberSubtitleSelections: true,
   subtitlesOnMute: true,
   showHomeTitles: true,
