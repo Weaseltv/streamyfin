@@ -233,13 +233,20 @@ struct PlayerControlsRootView: View {
 		.animation(.easeInOut(duration: 0.15), value: viewModel.doubleTapSeekForward)
 		// SwiftUI never delivers onEnded when the SYSTEM cancels the touch
 		// (incoming call, Control Center edge swipe, backgrounding) — release
-		// an engaged hold here or playback stays stuck at 2×.
+		// every touch-driven interaction here, or playback stays stuck at 2×,
+		// paused mid-scrub, or with a slider that thinks it is still held.
 		.onReceive(
 			NotificationCenter.default.publisher(
 				for: UIApplication.willResignActiveNotification
 			)
 		) { _ in
-			viewModel.endHoldSpeed()
+			viewModel.cancelActiveGestures()
+			// The drag's own bookkeeping lives here, not in the view model.
+			// Suppressing rather than clearing means a resumed touch sequence
+			// stays ignored instead of applying its accumulated translation
+			// against a stale baseline.
+			dragSuppressed = true
+			dragAxis = nil
 		}
 		.sheet(isPresented: $viewModel.showEpisodeList) {
 			EpisodeListView(viewModel: viewModel)
@@ -515,8 +522,14 @@ struct PlayerBottomBar: View {
 	/// Wall-clock finish time. The i18n template carries a %TIME% placeholder;
 	/// translations without one (e.g. sv "slutar") get the time appended.
 	private func endsAtLabel(remaining: Double) -> String {
-		// Real remaining wall time, not speed-adjusted — matches the JS player.
-		let time = Self.endsAtFormatter.string(from: Date().addingTimeInterval(remaining))
+		// `remaining` is media-seconds; this label is a wall-clock time, so it
+		// has to be divided by the rate. Playing 10 minutes of video at 2x
+		// finishes in 5 minutes, and the label used to say 10.
+		let rate = max(viewModel.speed, 0.01)
+		let wallRemaining = remaining / rate
+		let time = Self.endsAtFormatter.string(
+			from: Date().addingTimeInterval(wallRemaining)
+		)
 		let template = viewModel.str("endsAt", "Ends at %TIME%")
 		if template.contains("%TIME%") {
 			return template.replacingOccurrences(of: "%TIME%", with: time)

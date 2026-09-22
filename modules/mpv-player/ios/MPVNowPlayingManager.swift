@@ -16,6 +16,10 @@ class MPVNowPlayingManager {
     private var duration: TimeInterval = 0
     private var position: TimeInterval = 0
     private var isPlaying: Bool = false
+    /// Actual playback rate. The system uses this to extrapolate elapsed time
+    /// between updates, so publishing a flat 1.0 made its scrubber drift at any
+    /// other speed.
+    private var rate: Double = 1.0
     private var isCommandsSetup = false
     
     private var artworkTask: URLSessionDataTask?
@@ -145,10 +149,16 @@ class MPVNowPlayingManager {
     }
     
     /// Update playback state (position, duration, playing)
-    func updatePlayback(position: TimeInterval, duration: TimeInterval, isPlaying: Bool) {
+    func updatePlayback(
+        position: TimeInterval,
+        duration: TimeInterval,
+        isPlaying: Bool,
+        rate: Double = 1.0
+    ) {
         self.position = position
         self.duration = duration
         self.isPlaying = isPlaying
+        self.rate = rate > 0 ? rate : 1.0
         refresh()
     }
     
@@ -178,7 +188,7 @@ class MPVNowPlayingManager {
         var info: [String: Any] = [
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? rate : 0.0
         ]
         
         if let title { info[MPMediaItemPropertyTitle] = title }
@@ -187,6 +197,6 @@ class MPVNowPlayingManager {
         if let cachedArtwork { info[MPMediaItemPropertyArtwork] = cachedArtwork }
         
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        print("[NowPlaying] ✅ Set info: title=\(title ?? "nil"), dur=\(Int(duration))s, pos=\(Int(position))s, rate=\(isPlaying ? 1.0 : 0.0)")
+        print("[NowPlaying] ✅ Set info: title=\(title ?? "nil"), dur=\(Int(duration))s, pos=\(Int(position))s, rate=\(isPlaying ? rate : 0.0)")
     }
 }

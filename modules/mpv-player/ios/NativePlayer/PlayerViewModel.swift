@@ -590,6 +590,28 @@ final class PlayerViewModel: NSObject, ObservableObject {
 		}
 	}
 
+	/// Release every touch-driven interaction at once.
+	///
+	/// SwiftUI never delivers onEnded when the *system* cancels a touch
+	/// (incoming call, Control Centre edge swipe, backgrounding), so anything
+	/// that relies on onEnded to clean up stays stuck. Hold-speed was already
+	/// handled; an in-flight scrub and the edge sliders were not, leaving
+	/// playback paused mid-scrub or a slider permanently "being dragged".
+	///
+	/// The scrub is abandoned via cancelScrub, i.e. WITHOUT seeking: the
+	/// system cancelling a touch is not the user letting go at a chosen
+	/// position, so committing scrubPosition would jump playback to wherever
+	/// their finger happened to be when the call came in.
+	///
+	/// Resume decisions stay inside the individual cancels — this is gesture
+	/// cleanup, not a play/pause policy.
+	func cancelActiveGestures() {
+		endHoldSpeed()
+		cancelScrub()
+		brightnessController.isUserInteracting = false
+		volumeController.isUserInteracting = false
+	}
+
 	#if os(tvOS)
 	/// A blind left/right jump with the chrome hidden flashes the transport
 	/// bar so the user sees where the jump landed — WITHOUT entering focus
@@ -1188,8 +1210,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
 					// Paused playback freezes the countdown: EOF (the real
 					// episode switch) can't arrive while paused, so ticking on
 					// would swap the episode out from under a paused screen.
-					guard self.isPlaying else { return false }
-					let next = remaining - 1
+					//
+					// Buffering and scrubbing freeze it for the same reason.
+					// mpv reports "unpaused" while a stream stalls, so isPlaying
+					// alone let a rebuffer longer than the countdown advance the
+					// episode out from under a viewer still waiting for video.
+					guard self.isPlaying, !self.isBuffering, !self.isScrubbing
+					else { return false }
+					// Count in media-seconds, not wall-seconds: one wall second
+					// consumes `speed` seconds of video, and the countdown is
+					// meant to reach zero when the video does. At 0.5x a plain
+					// -1 fired with twice the video still to play.
+					let next = remaining - max(self.speed, 0.01)
 					if next <= 0 {
 						self.countdownRemaining = nil
 						// Clear the handle so a completed countdown doesn't
@@ -1467,8 +1499,11 @@ extension PlayerViewModel: MPVPlayerEngineDelegate {
 	func engineDidReachEnd(_ engine: MPVPlayerEngine) {
 		guard !isTearingDown else { return }
 		// A canceled countdown is a deliberate "let me watch to the end" —
-		// EOF must not auto-advance past it.
-		if let next = nextEpisode, next.countdownSeconds > 0, !countdownCanceled {
+		// EOF must not auto-advance past it. countdownFired is the same latch
+		// the countdown sets when it advances: without it a countdown that
+		// fired just before EOF requested the next episode twice.
+		if let next = nextEpisode, next.countdownSeconds > 0, !countdownCanceled,
+		   !countdownFired {
 			cancelCountdownTask()
 			countdownRemaining = nil
 			emit?("onNextEpisodeRequested", [
