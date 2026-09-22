@@ -37,6 +37,7 @@ Unless the owner explicitly asks for a **Release** build, use:
 - **Never merge an Android-native WeaselPlex change (Kotlin/JNI under `modules/*/android`) without a green compile.** Either the `WeaselPlex Android compile check` workflow (`.github/workflows/weaselplex-android-check.yml`, hosted Linux runner, runs on every PR to `weaselfin`) is green on the PR, or an equivalent local compile ran on the VPS/ThinkCentre via `bun run android:compile-check` and its `COMPILE OK` line is quoted in the PR.
 - The gate is `expo prebuild --platform android` → `./gradlew compileReleaseKotlin` across every project. Green means it compiles; it is not a device test. There is still no pre-merge Android device gate.
 - Shared TypeScript ships to Android in the same build as iOS; only native changes need this gate.
+- **Recommended (admin setting, not yet applied):** make the check `Compile Android Kotlin (app + native modules)` a **required status check** on `weaselfin` via branch protection. Until then the gate is advisory — it reports red/green on every PR but does not block a merge — and the never-merge-unbuilt rule is enforced by this file and reviewer discipline alone. Do not block merges on this being flipped; do record it as open.
 
 ## Android error-reporting policy
 
