@@ -265,6 +265,30 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Query roots that are never useful offline and so must not be written into the
+ * persisted snapshot.
+ *
+ * Everything successful used to be persisted, so a session of typing in the
+ * search box left a permanent entry per keystroke-debounced query. The snapshot
+ * is serialised with JSON.stringify on the JS thread, so its size is paid for
+ * on every write and again on hydration at startup.
+ *
+ * Each of these needs the server to be reachable anyway, so caching them buys
+ * nothing when it matters:
+ * - search: results are meaningless without the server to search.
+ * - sessions: a live view of what is playing elsewhere.
+ * - logs: read straight out of MMKV by the diagnostics screen.
+ * - appSize / musicCacheStats: recomputed on demand from local storage.
+ */
+const NON_PERSISTED_QUERY_ROOTS = new Set([
+  "search",
+  "sessions",
+  "logs",
+  "appSize",
+  "musicCacheStats",
+]);
+
 // Create MMKV-based persister for offline support
 const mmkvPersister = createSyncStoragePersister({
   storage: {
@@ -434,9 +458,12 @@ function Layout() {
         maxAge: 1000 * 60 * 60 * 24, // 24 hours max cache age
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
-            return (
-              query.state.status === "success" && query.options.gcTime !== 0
-            );
+            if (query.state.status !== "success") return false;
+            if (query.options.gcTime === 0) return false;
+            const root = query.queryKey[0];
+            if (typeof root === "string" && NON_PERSISTED_QUERY_ROOTS.has(root))
+              return false;
+            return true;
           },
         },
       }}
