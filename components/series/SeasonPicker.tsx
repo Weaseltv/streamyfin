@@ -13,6 +13,7 @@ import { EpisodeRow } from "@/components/series/EpisodeRow";
 import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { Freshness } from "@/constants/queryFreshness";
 import { useDownload } from "@/providers/DownloadProvider";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -78,7 +79,7 @@ export const SeasonPicker: React.FC<Props> = ({
 
       return response.data.Items;
     },
-    staleTime: isOffline ? Infinity : 60,
+    staleTime: isOffline ? Infinity : Freshness.catalog,
     enabled: isOffline || (!!api && !!user?.Id && !!item.Id),
   });
 

@@ -17,6 +17,7 @@ import { OverviewText } from "@/components/OverviewText";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
 import { TVActorPage } from "@/components/persons/TVActorPage";
 import MoviePoster from "@/components/posters/MoviePoster";
+import { Freshness } from "@/constants/queryFreshness";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
@@ -48,7 +49,7 @@ const MobileActorPage: React.FC<{ personId: string }> = ({ personId }) => {
         itemId: personId,
       }),
     enabled: !!personId && !!api,
-    staleTime: 60,
+    staleTime: Freshness.person,
   });
 
   const fetchItems = useCallback(
