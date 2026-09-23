@@ -76,6 +76,17 @@ interface PlatformDropdownProps {
     enableDynamicSizing?: boolean;
     enablePanDownToClose?: boolean;
   };
+  /**
+   * How the options are presented on iOS. Android and TV always use the sheet.
+   *
+   * `native` overlays an @expo/ui SwiftUI Menu on the trigger, which means the
+   * trigger itself is a React Native view hosted *inside* SwiftUI. Inside a
+   * scrolling page that hosted copy can be left at a stale position after the
+   * menu dismisses, drifting with the scroll until the next full layout pass.
+   * `sheet` keeps everything in React Native and opens the same bottom sheet
+   * Android uses.
+   */
+  presentation?: "native" | "sheet";
 }
 
 /**
@@ -230,14 +241,16 @@ const PlatformDropdownComponent = ({
   accent: accentProp,
   expoUIConfig,
   bottomSheetConfig,
+  presentation = "native",
 }: PlatformDropdownProps) => {
   const accent = useAccent(accentProp);
   const { t } = useTranslation();
   const { showModal, hideModal, isVisible } = useGlobalModal();
+  const useSheet = Platform.OS === "android" || presentation === "sheet";
 
-  // Handle controlled open state for Android
+  // Handle controlled open state for the sheet presentation
   useEffect(() => {
-    if (Platform.OS === "android" && controlledOpen === true) {
+    if (useSheet && controlledOpen === true) {
       showModal(
         <BottomSheetContent
           title={title}
@@ -258,15 +271,15 @@ const PlatformDropdownComponent = ({
     }
   }, [controlledOpen]);
 
-  // Watch for modal dismissal on Android (e.g., swipe down, backdrop tap)
-  // and sync the controlled open state
+  // Watch for sheet dismissal (e.g., swipe down, backdrop tap) and sync the
+  // controlled open state
   useEffect(() => {
-    if (Platform.OS === "android" && controlledOpen === true && !isVisible) {
+    if (useSheet && controlledOpen === true && !isVisible) {
       controlledOnOpenChange?.(false);
     }
-  }, [isVisible, controlledOpen, controlledOnOpenChange]);
+  }, [useSheet, isVisible, controlledOpen, controlledOnOpenChange]);
 
-  if (Platform.OS === "ios" && !Platform.isTV) {
+  if (!useSheet && Platform.OS === "ios" && !Platform.isTV) {
     // @expo/ui's <Host> can't size to content, so an in-flow invisible copy of
     // the trigger sizes the wrapper while the Host overlays the real Menu.
     return (
@@ -392,7 +405,7 @@ const PlatformDropdownComponent = ({
     );
   }
 
-  // Android: Direct modal trigger
+  // Sheet presentation (Android, TV, or opted in): direct modal trigger
   const handlePress = () => {
     showModal(
       <BottomSheetContent
@@ -427,6 +440,7 @@ export const PlatformDropdown = React.memo(
       prevProps.open === nextProps.open &&
       prevProps.groups === nextProps.groups && // Reference equality (works because we memoize groups in caller)
       prevProps.accent === nextProps.accent &&
+      prevProps.presentation === nextProps.presentation &&
       prevProps.trigger === nextProps.trigger // Reference equality
     );
   },
