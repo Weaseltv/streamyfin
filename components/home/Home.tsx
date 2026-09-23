@@ -56,6 +56,13 @@ import { serverHost } from "@/utils/serverHost";
 import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 // Conditionally load TV version
+/**
+ * How long the priority-1 sections get to settle before lower-priority ones are
+ * released anyway. Only reached when a request hangs rather than resolving or
+ * rejecting; a healthy or cleanly-failing Home passes the gate well before this.
+ */
+const PRIORITY_GATE_DEADLINE_MS = 8000;
+
 const HomeTV = Platform.isTV ? require("./Home.tv").Home : null;
 
 type InfiniteScrollingCollectionListSection = {
@@ -99,7 +106,16 @@ const HomeMobile = () => {
     retryCheck,
   } = useNetworkStatus();
   const invalidateCache = useInvalidatePlaybackProgressCache();
-  const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set());
+  const [settledSections, setSettledSections] = useState<Set<string>>(
+    new Set(),
+  );
+  /**
+   * Releases the priority gate unconditionally once the initial stagger has had
+   * long enough. A request that neither resolves nor rejects — a reachable but
+   * unresponsive server — would otherwise hold every lower-priority section at
+   * enabled={false} indefinitely.
+   */
+  const [priorityDeadlinePassed, setPriorityDeadlinePassed] = useState(false);
   const { showIntro } = useIntroSheet();
   // Gate the intro so it can't steal presentation from the post-login
   // save-account sheet (both are BottomSheetModals): wait until no save is pending.
@@ -224,13 +240,13 @@ const HomeMobile = () => {
 
   const refetch = async () => {
     setLoading(true);
-    // Do NOT reset loadedSections here. The priority gate only exists to
+    // Do NOT reset settledSections here. The priority gate only exists to
     // stagger the initial mount; every section is already on screen by the
     // time the user can pull. Clearing it flipped every priority-2 section
     // ("Recently added in …", suggestions) to enabled={false}, and
     // invalidateQueries only refetches *active* queries, so those rows were
     // marked stale but never refetched. They could not recover either:
-    // InfiniteScrollingCollectionList fires onLoaded once per mount, so the
+    // InfiniteScrollingCollectionList fires onSettled once per mount, so the
     // gate never reopened until the app was force-quit and remounted.
     await refreshStreamyfinPluginSettings();
     // force: pulling to refresh is the user asserting they want fresh data.
@@ -535,14 +551,24 @@ const HomeMobile = () => {
       .map((s) => s.queryKey.join("-"));
   }, [sections]);
 
-  const allHighPriorityLoaded = useMemo(() => {
-    return highPrioritySectionKeys.every((key) => loadedSections.has(key));
-  }, [highPrioritySectionKeys, loadedSections]);
+  const allHighPrioritySettled = useMemo(() => {
+    if (priorityDeadlinePassed) return true;
+    return highPrioritySectionKeys.every((key) => settledSections.has(key));
+  }, [highPrioritySectionKeys, settledSections, priorityDeadlinePassed]);
 
-  const markSectionLoaded = useCallback(
+  useEffect(() => {
+    if (allHighPrioritySettled) return;
+    const timer = setTimeout(
+      () => setPriorityDeadlinePassed(true),
+      PRIORITY_GATE_DEADLINE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [allHighPrioritySettled]);
+
+  const markSectionSettled = useCallback(
     (queryKey: (string | undefined | null)[]) => {
       const key = queryKey.join("-");
-      setLoadedSections((prev) => new Set(prev).add(key));
+      setSettledSections((prev) => new Set(prev).add(key));
     },
     [],
   );
@@ -772,7 +798,7 @@ const HomeMobile = () => {
                         "home.settings.plugins.streamystats.recommended_movies",
                       )}
                       type='Movie'
-                      enabled={allHighPriorityLoaded}
+                      enabled={allHighPrioritySettled}
                     />
                   )}
                   {settings.streamyStatsSeriesRecommendations && (
@@ -781,12 +807,12 @@ const HomeMobile = () => {
                         "home.settings.plugins.streamystats.recommended_series",
                       )}
                       type='Series'
-                      enabled={allHighPriorityLoaded}
+                      enabled={allHighPrioritySettled}
                     />
                   )}
                   {settings.streamyStatsPromotedWatchlists && (
                     <StreamystatsPromotedWatchlists
-                      enabled={allHighPriorityLoaded}
+                      enabled={allHighPrioritySettled}
                     />
                   )}
                 </View>
@@ -822,10 +848,10 @@ const HomeMobile = () => {
                     }
                     hideIfEmpty
                     pageSize={section.pageSize}
-                    enabled={isHighPriority || allHighPriorityLoaded}
-                    onLoaded={
+                    enabled={isHighPriority || allHighPrioritySettled}
+                    onSettled={
                       isHighPriority
-                        ? () => markSectionLoaded(section.queryKey)
+                        ? () => markSectionSettled(section.queryKey)
                         : undefined
                     }
                     onPressSeeAll={handleSeeAll}
