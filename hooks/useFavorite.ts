@@ -69,7 +69,11 @@ export const useFavorite = (item: BaseItemDto) => {
       queryClient.setQueriesData<BaseItemDto | null | undefined>(
         { queryKey: itemQueryKeyPrefix },
         (old) => {
-          if (!old) return old;
+          // The prefix also matches ["item", id, "people"], whose data is an
+          // array. Spreading that into an object destroyed the cast list, so
+          // the rail emptied and reloaded on every toggle. Only patch caches
+          // that actually hold an item.
+          if (!old || Array.isArray(old)) return old;
           return {
             ...old,
             ...newData,

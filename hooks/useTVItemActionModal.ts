@@ -35,7 +35,9 @@ export const useTVItemActionModal = () => {
             queryClient.setQueriesData<BaseItemDto | null | undefined>(
               { queryKey: ["item", item.Id] },
               (old) => {
-                if (!old) return old;
+                // The prefix also matches ["item", id, "people"] (an array);
+                // see useFavorite. Only patch caches that actually hold an item.
+                if (!old || Array.isArray(old)) return old;
                 return {
                   ...old,
                   UserData: {
