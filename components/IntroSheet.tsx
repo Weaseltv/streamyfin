@@ -76,8 +76,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
         }
       >
         <NeonSheetNote>
-          {t("home.intro.a_free_and_open_source_client_for_jellyfin")}{" "}
-          {t("home.intro.features_description")}
+          {t("home.intro.a_free_and_open_source_client_for_jellyfin")}
         </NeonSheetNote>
 
         <View style={{ marginTop: 8 }}>
