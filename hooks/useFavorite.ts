@@ -1,44 +1,67 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
-// Shared atom to store favorite status across all components
-// Maps itemId -> isFavorite
+/**
+ * Optimistic favourite state, shared so a toggle in one place is reflected
+ * everywhere the item appears. Keyed `userId:itemId` so a different account
+ * can never read the previous one's entries.
+ *
+ * Consumers must NOT subscribe to this map directly: every mounted card uses
+ * this hook, so a whole-map subscription re-rendered every card on every
+ * toggle. Read through a per-item selector instead (see below).
+ */
 const favoritesAtom = atom<Record<string, boolean>>({});
 
 export const useFavorite = (item: BaseItemDto) => {
   const queryClient = useQueryClient();
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
-  const [favorites, setFavorites] = useAtom(favoritesAtom);
+  // Write-only: subscribing here would defeat the per-item selector below.
+  const setFavorites = useSetAtom(favoritesAtom);
 
   const itemId = item.Id ?? "";
+  const entryKey = itemId && user?.Id ? `${user.Id}:${itemId}` : "";
 
-  // Get current favorite status from shared state, falling back to item data
-  const isFavorite = itemId
-    ? (favorites[itemId] ?? item.UserData?.IsFavorite)
+  // Derived per item, so this consumer only re-renders when *its* entry
+  // changes. Created in a useMemo rather than a module-level registry: the
+  // atom lives and dies with the component, so browsing thousands of items
+  // cannot accumulate selector atoms.
+  const entryAtom = useMemo(
+    () => selectAtom(favoritesAtom, (map) => map[entryKey]),
+    [entryKey],
+  );
+  const optimisticIsFavorite = useAtomValue(entryAtom);
+
+  // Optimistic state wins; otherwise fall back to what the item carries.
+  const isFavorite = entryKey
+    ? (optimisticIsFavorite ?? item.UserData?.IsFavorite)
     : item.UserData?.IsFavorite;
 
   // Update shared state when item data changes
   useEffect(() => {
-    if (itemId && item.UserData?.IsFavorite !== undefined) {
-      setFavorites((prev) => ({
-        ...prev,
-        [itemId]: item.UserData!.IsFavorite!,
-      }));
-    }
-  }, [itemId, item.UserData?.IsFavorite, setFavorites]);
+    const next = item.UserData?.IsFavorite;
+    if (!entryKey || next === undefined) return;
+    setFavorites((prev) =>
+      // Returning `prev` unchanged makes Jotai skip the update entirely. The
+      // unconditional spread this replaces produced a fresh map on every
+      // mount, so a screenful of cards re-rendered each other on arrival.
+      prev[entryKey] === next ? prev : { ...prev, [entryKey]: next },
+    );
+  }, [entryKey, item.UserData?.IsFavorite, setFavorites]);
 
   // Helper to update favorite status in shared state
   const setIsFavorite = useCallback(
     (value: boolean | undefined) => {
-      if (itemId && value !== undefined) {
-        setFavorites((prev) => ({ ...prev, [itemId]: value }));
-      }
+      if (!entryKey || value === undefined) return;
+      setFavorites((prev) =>
+        prev[entryKey] === value ? prev : { ...prev, [entryKey]: value },
+      );
     },
-    [itemId, setFavorites],
+    [entryKey, setFavorites],
   );
 
   // Use refs to avoid stale closure issues in mutationFn
