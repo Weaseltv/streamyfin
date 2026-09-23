@@ -9,6 +9,7 @@ import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { ImageWidths } from "@/utils/imageSizes";
 
 export default function LiveTvChannelsPage() {
   const [api] = useAtom(apiAtom);
@@ -69,6 +70,7 @@ export default function LiveTvChannelsPage() {
                 style={{ width: "100%", height: "100%" }}
                 contentFit='contain'
                 item={item}
+                width={ImageWidths.channelLogo}
               />
             </View>
             <Text variant='rowTitle' numberOfLines={1} style={{ flex: 1 }}>

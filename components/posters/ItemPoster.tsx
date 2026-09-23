@@ -2,6 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { View, type ViewProps } from "react-native";
 import { PosterFrame } from "@/components/posters/PosterFrame";
 import { Sizes } from "@/constants/neon";
+import { ImageWidths } from "@/utils/imageSizes";
 import { ItemImage } from "../common/ItemImage";
 
 interface Props extends ViewProps {
@@ -35,7 +36,11 @@ export const ItemPoster: React.FC<Props> = ({
         progress={showProgress}
         watched={isPoster}
       >
-        <ItemImage style={{ width: "100%", height: "100%" }} item={item} />
+        <ItemImage
+          style={{ width: "100%", height: "100%" }}
+          item={item}
+          width={ImageWidths.poster}
+        />
       </PosterFrame>
     </View>
   );

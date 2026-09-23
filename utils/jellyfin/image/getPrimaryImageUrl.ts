@@ -28,7 +28,14 @@ export const getPrimaryImageUrl = ({
   }
 
   if (!isBaseItemDto(item)) {
-    return `${api?.basePath}/Items/${item?.Id}/Images/Primary`;
+    // BaseItemPerson has no ImageTags to forward, but it does still honour
+    // fillWidth/quality. Dropping them here is what made every cast avatar
+    // fetch its full source resolution.
+    const personParams = new URLSearchParams({
+      fillWidth: width ? String(width) : "400",
+      quality: quality ? String(quality) : "80",
+    });
+    return `${api?.basePath}/Items/${item?.Id}/Images/Primary?${personParams.toString()}`;
   }
 
   const primaryTag = item.ImageTags?.Primary;
