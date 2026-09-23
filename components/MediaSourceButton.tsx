@@ -217,6 +217,12 @@ export const MediaSourceButton: React.FC<Props> = ({
       title={t("item_card.media_options")}
       open={open}
       onOpenChange={setOpen}
+      // The item page scrolls under a parallax header. The native SwiftUI
+      // menu hosts this trigger inside SwiftUI, and after the menu dismissed
+      // the hosted copy was left drifting with the scroll until the next full
+      // layout pass. The sheet keeps the trigger in React Native and matches
+      // what Android already shows here.
+      presentation='sheet'
       bottomSheetConfig={{
         enablePanDownToClose: true,
       }}
