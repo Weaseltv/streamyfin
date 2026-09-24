@@ -11,6 +11,7 @@ import {
   getUserLibraryApi,
   getUserViewsApi,
 } from "@jellyfin/sdk/lib/utils/api";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
 import { useNavigation, useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
@@ -96,7 +97,7 @@ const HomeMobile = () => {
   const [loading, setLoading] = useState(false);
   const { settings, refreshStreamyfinPluginSettings } = useSettings();
   const navigation = useNavigation();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlashListRef<Section>>(null);
   const { downloadedItems, cleanCacheDirectory } = useDownload();
   const prevIsConnected = useRef<boolean | null>(false);
   const {
@@ -198,8 +199,8 @@ const HomeMobile = () => {
   useEffect(() => {
     const unsubscribe = eventBus.on("scrollToTop", () => {
       if ((segments as string[])[2] === "(home)")
-        scrollRef.current?.scrollTo({
-          y: Platform.isTV ? -152 : -100,
+        scrollRef.current?.scrollToOffset({
+          offset: Platform.isTV ? -152 : -100,
           animated: true,
         });
     });
@@ -765,8 +766,16 @@ const HomeMobile = () => {
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
       <LoadingLine active={l1} />
-      <ScrollView
+      {/* Virtualized: the outer ScrollView mounted every section (and every
+          rail's first page of cards) at once. FlashList mounts sections near
+          the viewport. Each section is its own item type so a cell is never
+          recycled into a different section, which would hand one rail's
+          horizontal scroll position to another. */}
+      <FlashList
         ref={scrollRef}
+        data={sections}
+        keyExtractor={sectionKey}
+        getItemType={sectionKey}
         nestedScrollEnabled
         contentInsetAdjustmentBehavior='automatic'
         refreshControl={
@@ -783,120 +792,124 @@ const HomeMobile = () => {
           paddingRight: insets.right,
           paddingBottom: 16,
         }}
-      >
-        {settings?.usePopularPlugin ? (
-          <LargeMovieCarousel />
-        ) : heroItems && heroItems.length > 0 ? (
-          <HeroBand items={heroItems} eyebrow={t("home.continue_watching")} />
-        ) : null}
-        <View className='flex flex-col' style={{ gap: 4 }}>
-          {sections.map((section, index) => {
-            // Render Streamystats sections after Recently Added sections
-            // For default sections: place after Recently Added, before Suggested Movies (if present)
-            // For custom sections: place at the very end
-            const hasSuggestedMovies =
-              !settings?.streamyStatsMovieRecommendations &&
-              !settings?.home?.sections;
-            const streamystatsIndex =
-              sections.length - 1 - (hasSuggestedMovies ? 1 : 0);
-            const hasStreamystatsContent =
-              settings.streamyStatsMovieRecommendations ||
-              settings.streamyStatsSeriesRecommendations ||
-              settings.streamyStatsPromotedWatchlists;
-            const streamystatsSections =
-              index === streamystatsIndex && hasStreamystatsContent ? (
-                <View
-                  key='streamystats-sections'
-                  className='flex flex-col space-y-4'
-                >
-                  {settings.streamyStatsMovieRecommendations && (
-                    <StreamystatsRecommendations
-                      title={t(
-                        "home.settings.plugins.streamystats.recommended_movies",
-                      )}
-                      type='Movie'
-                      enabled={allHighPrioritySettled}
-                    />
-                  )}
-                  {settings.streamyStatsSeriesRecommendations && (
-                    <StreamystatsRecommendations
-                      title={t(
-                        "home.settings.plugins.streamystats.recommended_series",
-                      )}
-                      type='Series'
-                      enabled={allHighPrioritySettled}
-                    />
-                  )}
-                  {settings.streamyStatsPromotedWatchlists && (
-                    <StreamystatsPromotedWatchlists
-                      enabled={allHighPrioritySettled}
-                    />
-                  )}
-                </View>
-              ) : null;
-            if (section.type === "InfiniteScrollingCollectionList") {
-              const isHighPriority = section.priority === 1;
-              const handleSeeAll = section.parentId
-                ? () => {
-                    router.push({
-                      // Home's own stack, so Back returns to Home rather than
-                      // walking the Library tab's history.
-                      pathname: "/(auth)/(tabs)/(home)/library/[libraryId]",
-                      params: {
-                        libraryId: section.parentId!,
-                        sortBy: SortByOption.DateCreated,
-                        sortOrder: SortOrderOption.Descending,
-                      },
-                    } as any);
+        ItemSeparatorComponent={SectionGap}
+        ListHeaderComponent={
+          settings?.usePopularPlugin ? (
+            <LargeMovieCarousel />
+          ) : heroItems && heroItems.length > 0 ? (
+            <HeroBand items={heroItems} eyebrow={t("home.continue_watching")} />
+          ) : null
+        }
+        renderItem={({ item: section, index }) => {
+          // Render Streamystats sections after Recently Added sections
+          // For default sections: place after Recently Added, before Suggested Movies (if present)
+          // For custom sections: place at the very end
+          const hasSuggestedMovies =
+            !settings?.streamyStatsMovieRecommendations &&
+            !settings?.home?.sections;
+          const streamystatsIndex =
+            sections.length - 1 - (hasSuggestedMovies ? 1 : 0);
+          const hasStreamystatsContent =
+            settings.streamyStatsMovieRecommendations ||
+            settings.streamyStatsSeriesRecommendations ||
+            settings.streamyStatsPromotedWatchlists;
+          const streamystatsSections =
+            index === streamystatsIndex && hasStreamystatsContent ? (
+              <View
+                key='streamystats-sections'
+                className='flex flex-col space-y-4'
+              >
+                {settings.streamyStatsMovieRecommendations && (
+                  <StreamystatsRecommendations
+                    title={t(
+                      "home.settings.plugins.streamystats.recommended_movies",
+                    )}
+                    type='Movie'
+                    enabled={allHighPrioritySettled}
+                  />
+                )}
+                {settings.streamyStatsSeriesRecommendations && (
+                  <StreamystatsRecommendations
+                    title={t(
+                      "home.settings.plugins.streamystats.recommended_series",
+                    )}
+                    type='Series'
+                    enabled={allHighPrioritySettled}
+                  />
+                )}
+                {settings.streamyStatsPromotedWatchlists && (
+                  <StreamystatsPromotedWatchlists
+                    enabled={allHighPrioritySettled}
+                  />
+                )}
+              </View>
+            ) : null;
+          if (section.type === "InfiniteScrollingCollectionList") {
+            const isHighPriority = section.priority === 1;
+            const handleSeeAll = section.parentId
+              ? () => {
+                  router.push({
+                    // Home's own stack, so Back returns to Home rather than
+                    // walking the Library tab's history.
+                    pathname: "/(auth)/(tabs)/(home)/library/[libraryId]",
+                    params: {
+                      libraryId: section.parentId!,
+                      sortBy: SortByOption.DateCreated,
+                      sortOrder: SortOrderOption.Descending,
+                    },
+                  } as any);
+                }
+              : undefined;
+            return (
+              <View key={index} className='flex flex-col space-y-4'>
+                <InfiniteScrollingCollectionList
+                  title={section.title}
+                  queryKey={section.queryKey}
+                  queryFn={section.queryFn}
+                  orientation={section.orientation}
+                  // Only the two rails Jellyfin's Next Up feeds into. Dismissing a
+                  // series must not hide its episodes from Recently Added or a library.
+                  excludeItem={
+                    section.queryKey[1] === "continueAndNextUp" ||
+                    section.queryKey[1] === "nextUp-all"
+                      ? excludeDismissedSeries
+                      : undefined
                   }
-                : undefined;
-              return (
-                <View key={index} className='flex flex-col space-y-4'>
-                  <InfiniteScrollingCollectionList
-                    title={section.title}
-                    queryKey={section.queryKey}
-                    queryFn={section.queryFn}
-                    orientation={section.orientation}
-                    // Only the two rails Jellyfin's Next Up feeds into. Dismissing a
-                    // series must not hide its episodes from Recently Added or a library.
-                    excludeItem={
-                      section.queryKey[1] === "continueAndNextUp" ||
-                      section.queryKey[1] === "nextUp-all"
-                        ? excludeDismissedSeries
-                        : undefined
-                    }
-                    hideIfEmpty
-                    pageSize={section.pageSize}
-                    enabled={isHighPriority || allHighPrioritySettled}
-                    onSettled={
-                      isHighPriority
-                        ? () => markSectionSettled(section.queryKey)
-                        : undefined
-                    }
-                    onPressSeeAll={handleSeeAll}
-                  />
-                  {streamystatsSections}
-                </View>
-              );
-            }
-            if (section.type === "MediaListSection") {
-              return (
-                <View key={index} className='flex flex-col space-y-4'>
-                  <MediaListSection
-                    queryKey={section.queryKey}
-                    queryFn={section.queryFn}
-                  />
-                  {streamystatsSections}
-                </View>
-              );
-            }
-            return null;
-          })}
-        </View>
-      </ScrollView>
+                  hideIfEmpty
+                  pageSize={section.pageSize}
+                  enabled={isHighPriority || allHighPrioritySettled}
+                  onSettled={
+                    isHighPriority
+                      ? () => markSectionSettled(section.queryKey)
+                      : undefined
+                  }
+                  onPressSeeAll={handleSeeAll}
+                />
+                {streamystatsSections}
+              </View>
+            );
+          }
+          if (section.type === "MediaListSection") {
+            return (
+              <View key={index} className='flex flex-col space-y-4'>
+                <MediaListSection
+                  queryKey={section.queryKey}
+                  queryFn={section.queryFn}
+                />
+                {streamystatsSections}
+              </View>
+            );
+          }
+          return null;
+        }}
+      />
     </View>
   );
 };
+
+const sectionKey = (section: { queryKey: readonly unknown[] }) =>
+  section.queryKey.join("-");
+const SectionGap = () => <View style={{ height: 4 }} />;
 
 // Exported component that renders TV or mobile version based on platform
 export const Home = () => {
