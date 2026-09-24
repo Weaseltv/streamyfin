@@ -17,7 +17,13 @@ import {
   useNavigation,
 } from "expo-router";
 import { useAtom } from "jotai";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   BackHandler,
@@ -125,8 +131,21 @@ const Page = () => {
   const { orientation } = useOrientation();
 
   // Fallback refresh for newly added content when returning to the library
-  // (primary path is the LibraryChanged WebSocket event).
-  useRefreshLibraryOnFocus();
+  // (primary path is the LibraryChanged WebSocket event). Scoped to this
+  // library's own items; Home and other libraries refresh on their own focus.
+  const refreshKeys = useMemo(
+    () => [["library-items", libraryId]],
+    [libraryId],
+  );
+  useRefreshLibraryOnFocus(refreshKeys);
+
+  // True only while this screen is focused AND its filters have been restored
+  // into the shared atoms. The atoms are global, so while this screen sits
+  // hidden in the stack a sibling library rewrites them; without this gate
+  // the hidden screen refetched its items with the sibling's filters, and on
+  // refocus fired one more request with the stale filters before the restore
+  // below ran.
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const { t } = useTranslation();
   const router = useRouter();
@@ -194,12 +213,59 @@ const Page = () => {
   // move away from them, so they only win on the run that first sees them.
   const appliedUrlParamsRef = useRef<string | null>(null);
 
+  // What this screen was showing when it lost focus. The atoms are shared, so
+  // a sibling library rewrites them while this one is hidden; on return the
+  // screen restores exactly its own previous state instead of re-deriving it.
+  // Re-deriving used saved preferences only, so a library opened from Home's
+  // "See all" (newest first) came back sorted A-Z and refetched.
+  const currentFiltersRef = useRef({
+    sortBy,
+    sortOrder,
+    filterBy,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+  });
+  currentFiltersRef.current = {
+    sortBy,
+    sortOrder,
+    filterBy,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+  };
+  const blurSnapshotRef = useRef<typeof currentFiltersRef.current | null>(null);
+  const focusNavigation = useNavigation();
+  useEffect(
+    () =>
+      focusNavigation.addListener("blur", () => {
+        blurSnapshotRef.current = currentFiltersRef.current;
+      }),
+    [focusNavigation],
+  );
+
   // Restoring on focus rather than on mount: every filter atom is global and
   // shared by all library screens, so a sibling library that mounts on top
   // overwrites them. The stack keeps this screen mounted, so a mount effect
   // never runs again and the wrong library's filters stay applied.
   useFocusEffect(
     useCallback(() => {
+      // Returning to this screen: put back what it was showing. Consumed once,
+      // so later runs of this effect (preference changes while focused, a
+      // reset) take the normal path below.
+      const snapshot = blurSnapshotRef.current;
+      if (snapshot) {
+        blurSnapshotRef.current = null;
+        _setSortBy(snapshot.sortBy);
+        _setSortOrder(snapshot.sortOrder);
+        _setFilterBy(snapshot.filterBy);
+        setSelectedGenres(snapshot.selectedGenres);
+        setSelectedYears(snapshot.selectedYears);
+        setSelectedTags(snapshot.selectedTags);
+        setFiltersReady(true);
+        return () => setFiltersReady(false);
+      }
+
       const urlParamsKey = `${searchParams.sortBy ?? ""}|${
         searchParams.sortOrder ?? ""
       }|${searchParams.filterBy ?? ""}`;
@@ -247,6 +313,8 @@ const Page = () => {
       setSelectedGenres(getMultiFilterPreference(libraryId, genrePreference));
       setSelectedYears(getMultiFilterPreference(libraryId, yearPreference));
       setSelectedTags(getMultiFilterPreference(libraryId, tagPreference));
+      setFiltersReady(true);
+      return () => setFiltersReady(false);
     }, [
       libraryId,
       sortOrderPreference,
@@ -400,8 +468,10 @@ const Page = () => {
   const fetchItems = useCallback(
     async ({
       pageParam,
+      signal,
     }: {
       pageParam: number;
+      signal?: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
       if (!api || !library) return null;
 
@@ -423,27 +493,32 @@ const Page = () => {
         itemType = "Playlist";
       }
 
-      const response = await getItemsApi(api).getItems({
-        userId: user?.Id,
-        parentId: libraryId,
-        limit: 36,
-        startIndex: pageParam,
-        sortBy: [sortBy[0], "SortName", "ProductionYear"],
-        sortOrder: [sortOrder[0]],
-        enableImageTypes: ["Primary", "Backdrop", "Banner", "Thumb"],
-        filters: filterBy as ItemFilter[],
-        // true is needed for merged versions
-        recursive: true,
-        imageTypeLimit: 1,
-        fields: ["PrimaryImageAspectRatio", "SortName"],
-        genres: selectedGenres,
-        tags: selectedTags,
-        years: selectedYears.map((year) => Number.parseInt(year, 10)),
-        includeItemTypes: itemType ? [itemType] : undefined,
-        ...(Platform.isTV && library.CollectionType === "playlists"
-          ? { mediaTypes: ["Video"] }
-          : {}),
-      });
+      const response = await getItemsApi(api).getItems(
+        {
+          userId: user?.Id,
+          parentId: libraryId,
+          limit: 36,
+          startIndex: pageParam,
+          sortBy: [sortBy[0], "SortName", "ProductionYear"],
+          sortOrder: [sortOrder[0]],
+          enableImageTypes: ["Primary", "Backdrop", "Banner", "Thumb"],
+          filters: filterBy as ItemFilter[],
+          // true is needed for merged versions
+          recursive: true,
+          imageTypeLimit: 1,
+          fields: ["PrimaryImageAspectRatio", "SortName"],
+          genres: selectedGenres,
+          tags: selectedTags,
+          years: selectedYears.map((year) => Number.parseInt(year, 10)),
+          includeItemTypes: itemType ? [itemType] : undefined,
+          ...(Platform.isTV && library.CollectionType === "playlists"
+            ? { mediaTypes: ["Video"] }
+            : {}),
+        },
+        // Superseded filter/sort combinations are cancelled instead of
+        // finishing in the background.
+        { signal },
+      );
 
       return response.data || null;
     },
@@ -494,7 +569,7 @@ const Page = () => {
         return undefined;
       },
       initialPageParam: 0,
-      enabled: !!api && !!user?.Id && !!library,
+      enabled: !!api && !!user?.Id && !!library && filtersReady,
     });
 
   const flatData = useMemo(() => {
