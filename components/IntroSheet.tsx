@@ -1,7 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, Platform, TouchableOpacity, View } from "react-native";
+import { Platform, TouchableOpacity, View } from "react-native";
 import { Button } from "@/components/Button";
 import {
   NeonSheet,
@@ -11,7 +11,6 @@ import {
 } from "@/components/common/NeonSheet";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
-import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { storage } from "@/utils/mmkv";
 
@@ -77,8 +76,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
         }
       >
         <NeonSheetNote>
-          {t("home.intro.a_free_and_open_source_client_for_jellyfin")}{" "}
-          {t("home.intro.features_description")}
+          {t("home.intro.a_free_and_open_source_client_for_jellyfin")}
         </NeonSheetNote>
 
         <View style={{ marginTop: 8 }}>
@@ -101,27 +99,6 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
               />
             </>
           )}
-          <NeonSheetRow
-            label={t("home.intro.centralised_settings_plugin_title")}
-            subtitle={t("home.intro.centralised_settings_plugin_description")}
-            icon='settings'
-            right={
-              <TouchableOpacity
-                onPress={() => {
-                  Linking.openURL(
-                    "https://github.com/streamyfin/jellyfin-plugin-streamyfin",
-                  );
-                }}
-                accessibilityRole='link'
-                hitSlop={8}
-                style={{ paddingLeft: Sizes.gutter }}
-              >
-                <Text variant='chip' accent={NeonBoard.volt}>
-                  {t("home.intro.read_more")}
-                </Text>
-              </TouchableOpacity>
-            }
-          />
         </View>
       </NeonSheet>
     </BottomSheetModal>
