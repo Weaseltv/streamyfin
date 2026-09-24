@@ -2,11 +2,14 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useRef } from "react";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 
-// Query keys that depend on the set of library items. Kept in sync with the
-// LibraryChanged handler in WebSocketProvider.
-const LIBRARY_QUERY_KEYS = [
+/**
+ * Home's library-dependent queries. Kept in sync with the LibraryChanged
+ * handler in WebSocketProvider, minus `library-items`: Home does not show it,
+ * and invalidating it refetched every library screen still mounted in the
+ * other tab's stack.
+ */
+export const HOME_LIBRARY_QUERY_KEYS: readonly (readonly unknown[])[] = [
   ["home"],
-  ["library-items"],
   ["nextUp-all"],
   ["nextUp"],
   ["resumeItems"],
@@ -24,7 +27,10 @@ const LIBRARY_QUERY_KEYS = [
  * Skips the refresh on the very first focus (initial mount already fetches) and
  * throttles to avoid refetch storms when quickly switching tabs.
  */
-export function useRefreshLibraryOnFocus(throttleMs = 30_000) {
+export function useRefreshLibraryOnFocus(
+  queryKeys: readonly (readonly unknown[])[] = HOME_LIBRARY_QUERY_KEYS,
+  throttleMs = 30_000,
+) {
   const queryClient = useNetworkAwareQueryClient();
   const hasFocusedOnce = useRef(false);
   const lastRefreshRef = useRef(0);
@@ -42,9 +48,9 @@ export function useRefreshLibraryOnFocus(throttleMs = 30_000) {
       }
       lastRefreshRef.current = now;
 
-      for (const queryKey of LIBRARY_QUERY_KEYS) {
-        queryClient.invalidateQueries({ queryKey });
+      for (const queryKey of queryKeys) {
+        queryClient.invalidateQueries({ queryKey: [...queryKey] });
       }
-    }, [queryClient, throttleMs]),
+    }, [queryClient, queryKeys, throttleMs]),
   );
 }
