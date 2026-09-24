@@ -857,7 +857,9 @@ final class MPVLayerRenderer {
                 let text = String(cString: logMessagePointer.pointee.text)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 let level = String(cString: logMessagePointer.pointee.level)
-                if level == "error" || level == "fatal" {
+                if text.isEmpty {
+                    // mpv emits blank separator lines; nothing to record.
+                } else if level == "error" || level == "fatal" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Error")
                 } else if level == "warn" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Warn")
