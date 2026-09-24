@@ -115,6 +115,8 @@ export const buildNativePlayerStrings = (
   // Native substitutes %TIME% (appends the time when a translation lacks
   // the placeholder, e.g. sv "slutar").
   endsAt: t("player.ends_at", { time: "%TIME%" }),
+  // Shown by the native start watchdog when a stream never yields media.
+  playbackDidNotStart: t("player.playback_did_not_start"),
   // Exit confirmation (TV Menu press — mirror of useRemoteControl's alert).
   // Native substitutes %TITLE% with the current item's title.
   stop: t("common.stop"),

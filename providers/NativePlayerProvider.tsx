@@ -1504,6 +1504,16 @@ const NativePlayerProviderInner: React.FC<{
         writeToLog("ERROR", "NativePlayer playback error", payload.error);
       }),
 
+      addNativePlayerListener("onNativeLog", (payload) => {
+        const level =
+          payload.type === "Error"
+            ? "ERROR"
+            : payload.type === "Warn"
+              ? "WARN"
+              : "INFO";
+        writeToLog(level, payload.message);
+      }),
+
       addNativePlayerListener("onPlaybackEnded", (payload) => {
         const session = sessionRef.current;
         if (!session) return;

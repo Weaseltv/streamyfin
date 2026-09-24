@@ -214,6 +214,11 @@ final class MPVPlayerEngine: NSObject {
 			return
 		}
 		currentURL = config.url
+		// Seed the cached position with the requested start. The dismiss
+		// report reads it, and a stream that never produces a frame would
+		// otherwise report 0 and wipe the resume point the user came from.
+		cachedPosition = config.startPosition ?? 0
+		cachedDuration = 0
 		// Paired with the disarm in destroy(), which the reused view would
 		// otherwise never undo.
 		pipController?.setAutoStartEnabled(true)
@@ -520,6 +525,11 @@ final class MPVPlayerEngine: NSObject {
 
 extension MPVPlayerEngine: MPVLayerRendererDelegate {
 	func renderer(_: MPVLayerRenderer, didUpdatePosition position: Double, duration: Double, cacheSeconds: Double) {
+		// mpv reports 0/0 while a stream is stuck loading. Caching that as the
+		// position is what the dismiss report would send to the server, and
+		// it wiped the saved resume point. Live streams have no duration but
+		// do advance, so only the empty tick is ignored.
+		guard duration > 0 || position > 0 else { return }
 		cachedPosition = position
 		cachedDuration = duration
 

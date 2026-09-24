@@ -156,6 +156,110 @@ final class MPVLayerRenderer {
         get { stateQueue.sync { _isSeeking } }
         set { stateQueue.async(flags: .barrier) { self._isSeeking = newValue } }
     }
+
+    // MARK: - Start watchdog
+
+    /// How long a load or a seek may sit without a PLAYBACK_RESTART before it
+    /// is declared failed. Server-side transcodes can take 10-20s to produce
+    /// their first segment, so this is deliberately generous.
+    private static let startDeadlineSeconds: Double = 30
+    private var startWatchdog: DispatchWorkItem?
+
+    /// mpv never reports an error for a stream that keeps answering but never
+    /// yields media — Jellyfin returning HTTP 500 for every HLS segment is the
+    /// case seen in the field. It retries the segment forever, the position
+    /// clock keeps running and the player shows a spinner over a black frame
+    /// with no way out. If nothing has restarted playback within the deadline,
+    /// stop mpv and report a failure so the existing error overlay appears.
+    private func armStartWatchdog(reason: String) {
+        startWatchdog?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.isRunning, !self.isStopping, self.isLoading,
+                  let handle = self.mpv else { return }
+            Logger.shared.log(
+                "Playback did not start within \(Self.startDeadlineSeconds)s after \(reason)",
+                type: "Error"
+            )
+            self.isLoading = false
+            self.isSeeking = false
+            // Stop the retry loop; the resulting END_FILE carries reason STOP
+            // and is deliberately silent, so this is the only report.
+            self.command(handle, ["stop"])
+            let failure = MPVPlaybackFailure(
+                reason: "timeout",
+                mpvErrorCode: 0,
+                message: "Playback did not start"
+            )
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.delegate?.renderer(self, didChangeLoading: false)
+                self.delegate?.renderer(self, didFailWith: failure)
+            }
+        }
+        startWatchdog = item
+        queue.asyncAfter(deadline: .now() + Self.startDeadlineSeconds, execute: item)
+    }
+
+    private func disarmStartWatchdog() {
+        startWatchdog?.cancel()
+        startWatchdog = nil
+    }
+
+    // MARK: - Playback diagnostics
+
+    /// For this long after a load or a seek, the player writes mpv's own
+    /// network read speed, buffered seconds and stream/ffmpeg log lines to the
+    /// app log (Settings > Logs, shareable). A stall after a seek on cellular
+    /// could not be diagnosed from the server side alone.
+    private static let diagnosticWindowSeconds: Double = 35
+    private var diagnosticsUntil: CFAbsoluteTime = 0
+    private var diagnosticsStartedAt: CFAbsoluteTime = 0
+    private var diagnosticsReason = ""
+    private var diagnosticsGeneration = 0
+    private static let diagnosticLogPrefixes: Set<String> = [
+        "ffmpeg", "stream", "cache", "demux", "lavf", "network", "tls", "cplayer",
+    ]
+
+    private var diagnosticsActive: Bool {
+        CFAbsoluteTimeGetCurrent() < diagnosticsUntil
+    }
+
+    private func startDiagnostics(reason: String) {
+        let now = CFAbsoluteTimeGetCurrent()
+        diagnosticsStartedAt = now
+        diagnosticsUntil = now + Self.diagnosticWindowSeconds
+        diagnosticsReason = reason
+        diagnosticsGeneration += 1
+        let generation = diagnosticsGeneration
+        Logger.shared.log("[diag] \(reason) started", type: "Info")
+        sampleDiagnostics(generation: generation)
+    }
+
+    private func sampleDiagnostics(generation: Int) {
+        queue.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self, generation == self.diagnosticsGeneration,
+                  self.isRunning, !self.isStopping, self.diagnosticsActive,
+                  let handle = self.mpv else { return }
+            var speed: Int64 = 0
+            var cached = Double(0)
+            var pausedForCache: Int32 = 0
+            var timePos = Double(0)
+            _ = self.getProperty(handle: handle, name: "cache-speed", format: MPV_FORMAT_INT64, value: &speed)
+            _ = self.getProperty(handle: handle, name: "demuxer-cache-duration", format: MPV_FORMAT_DOUBLE, value: &cached)
+            _ = self.getProperty(handle: handle, name: "paused-for-cache", format: MPV_FORMAT_FLAG, value: &pausedForCache)
+            _ = self.getProperty(handle: handle, name: "time-pos", format: MPV_FORMAT_DOUBLE, value: &timePos)
+            let elapsed = CFAbsoluteTimeGetCurrent() - self.diagnosticsStartedAt
+            Logger.shared.log(
+                String(
+                    format: "[diag] %@ +%.0fs net=%.0f kbit/s buffered=%.1fs waiting=%@ pos=%.1fs loading=%@",
+                    self.diagnosticsReason, elapsed, Double(speed) * 8 / 1000, cached,
+                    pausedForCache != 0 ? "yes" : "no", timePos, self.isLoading ? "yes" : "no"
+                ),
+                type: "Info"
+            )
+            self.sampleDiagnostics(generation: generation)
+        }
+    }
     
     var isPausedState: Bool {
         return isPaused
@@ -235,11 +339,11 @@ final class MPVLayerRenderer {
         mpv = handle
 
         // Logging - only warnings and errors in release, verbose in debug
-        #if DEBUG
-        checkError(mpv_request_log_messages(handle, "warn"))
-        #else
-        checkError(mpv_request_log_messages(handle, "no"))
-        #endif
+        // "info" in every build: the handler below only keeps warnings and
+        // errors, plus stream/network lines inside the diagnostic window
+        // after a load or seek. Release used to request "no", so a field
+        // playback failure left nothing to diagnose.
+        checkError(mpv_request_log_messages(handle, "info"))
 
         // Pass the AVSampleBufferDisplayLayer to mpv via --wid
         // The vo_avfoundation driver expects this
@@ -310,6 +414,7 @@ final class MPVLayerRenderer {
         if !isRunning, mpv == nil { return }
         isRunning = false
         isStopping = true
+        disarmStartWatchdog()
 
         // Stop observing display layer status
         statusObservation?.invalidate()
@@ -429,6 +534,8 @@ final class MPVLayerRenderer {
             }
             let target = url.isFileURL ? url.path : url.absoluteString
             self.command(handle, ["loadfile", target, "replace"])
+            self.armStartWatchdog(reason: "load")
+            self.startDiagnostics(reason: startPosition.map { $0 > 0 ? String(format: "load@%.0fs", $0) : "load" } ?? "load")
         }
     }
     
@@ -669,6 +776,8 @@ final class MPVLayerRenderer {
         case MPV_EVENT_SEEK:
             // Seek started - show loading indicator and enable immediate progress updates
             isSeeking = true
+            armStartWatchdog(reason: "seek")
+            startDiagnostics(reason: "seek")
             if !isLoading {
                 isLoading = true
                 DispatchQueue.main.async { [weak self] in
@@ -679,6 +788,14 @@ final class MPVLayerRenderer {
             
         case MPV_EVENT_PLAYBACK_RESTART:
             // Video playback has started/restarted (including after seek)
+            if diagnosticsActive {
+                Logger.shared.log(
+                    String(format: "[diag] %@ playback started after %.1fs", diagnosticsReason,
+                           CFAbsoluteTimeGetCurrent() - diagnosticsStartedAt),
+                    type: "Info"
+                )
+            }
+            disarmStartWatchdog()
             isSeeking = false
             if isLoading {
                 isLoading = false
@@ -688,6 +805,7 @@ final class MPVLayerRenderer {
                 }
             }
         case MPV_EVENT_END_FILE:
+            disarmStartWatchdog()
             // Only a real EOF counts as "playback ended". Stop, quit and
             // redirect fire during teardown and stream replacement, where an
             // end event would incorrectly trigger the native player's
@@ -737,11 +855,17 @@ final class MPVLayerRenderer {
             if let logMessagePointer = event.data?.assumingMemoryBound(to: mpv_event_log_message.self) {
                 let component = String(cString: logMessagePointer.pointee.prefix)
                 let text = String(cString: logMessagePointer.pointee.text)
-                let lower = text.lowercased()
-                if lower.contains("error") {
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let level = String(cString: logMessagePointer.pointee.level)
+                if text.isEmpty {
+                    // mpv emits blank separator lines; nothing to record.
+                } else if level == "error" || level == "fatal" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Error")
-                } else if lower.contains("warn") || lower.contains("warning") {
+                } else if level == "warn" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Warn")
+                } else if diagnosticsActive,
+                          Self.diagnosticLogPrefixes.contains(where: { component.hasPrefix($0) }) {
+                    Logger.shared.log("mpv[\(component)] \(text)", type: "Info")
                 }
             }
         default:
@@ -791,6 +915,13 @@ final class MPVLayerRenderer {
                 let newPaused = flag != 0
                 if newPaused != isPaused {
                     isPaused = newPaused
+                    // A user pause is not a stall; re-arm on resume if the
+                    // stream still has not produced anything.
+                    if newPaused {
+                        disarmStartWatchdog()
+                    } else if isLoading {
+                        armStartWatchdog(reason: "unpause")
+                    }
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
                         self.delegate?.renderer(self, didChangePause: self.isPaused)
