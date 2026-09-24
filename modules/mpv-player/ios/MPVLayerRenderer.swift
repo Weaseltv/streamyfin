@@ -156,6 +156,54 @@ final class MPVLayerRenderer {
         get { stateQueue.sync { _isSeeking } }
         set { stateQueue.async(flags: .barrier) { self._isSeeking = newValue } }
     }
+
+    // MARK: - Start watchdog
+
+    /// How long a load or a seek may sit without a PLAYBACK_RESTART before it
+    /// is declared failed. Server-side transcodes can take 10-20s to produce
+    /// their first segment, so this is deliberately generous.
+    private static let startDeadlineSeconds: Double = 30
+    private var startWatchdog: DispatchWorkItem?
+
+    /// mpv never reports an error for a stream that keeps answering but never
+    /// yields media — Jellyfin returning HTTP 500 for every HLS segment is the
+    /// case seen in the field. It retries the segment forever, the position
+    /// clock keeps running and the player shows a spinner over a black frame
+    /// with no way out. If nothing has restarted playback within the deadline,
+    /// stop mpv and report a failure so the existing error overlay appears.
+    private func armStartWatchdog(reason: String) {
+        startWatchdog?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.isRunning, !self.isStopping, self.isLoading,
+                  let handle = self.mpv else { return }
+            Logger.shared.log(
+                "Playback did not start within \(Self.startDeadlineSeconds)s after \(reason)",
+                type: "Error"
+            )
+            self.isLoading = false
+            self.isSeeking = false
+            // Stop the retry loop; the resulting END_FILE carries reason STOP
+            // and is deliberately silent, so this is the only report.
+            self.command(handle, ["stop"])
+            let failure = MPVPlaybackFailure(
+                reason: "timeout",
+                mpvErrorCode: 0,
+                message: "Playback did not start"
+            )
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.delegate?.renderer(self, didChangeLoading: false)
+                self.delegate?.renderer(self, didFailWith: failure)
+            }
+        }
+        startWatchdog = item
+        queue.asyncAfter(deadline: .now() + Self.startDeadlineSeconds, execute: item)
+    }
+
+    private func disarmStartWatchdog() {
+        startWatchdog?.cancel()
+        startWatchdog = nil
+    }
     
     var isPausedState: Bool {
         return isPaused
@@ -310,6 +358,7 @@ final class MPVLayerRenderer {
         if !isRunning, mpv == nil { return }
         isRunning = false
         isStopping = true
+        disarmStartWatchdog()
 
         // Stop observing display layer status
         statusObservation?.invalidate()
@@ -429,6 +478,7 @@ final class MPVLayerRenderer {
             }
             let target = url.isFileURL ? url.path : url.absoluteString
             self.command(handle, ["loadfile", target, "replace"])
+            self.armStartWatchdog(reason: "load")
         }
     }
     
@@ -669,6 +719,7 @@ final class MPVLayerRenderer {
         case MPV_EVENT_SEEK:
             // Seek started - show loading indicator and enable immediate progress updates
             isSeeking = true
+            armStartWatchdog(reason: "seek")
             if !isLoading {
                 isLoading = true
                 DispatchQueue.main.async { [weak self] in
@@ -679,6 +730,7 @@ final class MPVLayerRenderer {
             
         case MPV_EVENT_PLAYBACK_RESTART:
             // Video playback has started/restarted (including after seek)
+            disarmStartWatchdog()
             isSeeking = false
             if isLoading {
                 isLoading = false
@@ -688,6 +740,7 @@ final class MPVLayerRenderer {
                 }
             }
         case MPV_EVENT_END_FILE:
+            disarmStartWatchdog()
             // Only a real EOF counts as "playback ended". Stop, quit and
             // redirect fire during teardown and stream replacement, where an
             // end event would incorrectly trigger the native player's
@@ -791,6 +844,13 @@ final class MPVLayerRenderer {
                 let newPaused = flag != 0
                 if newPaused != isPaused {
                     isPaused = newPaused
+                    // A user pause is not a stall; re-arm on resume if the
+                    // stream still has not produced anything.
+                    if newPaused {
+                        disarmStartWatchdog()
+                    } else if isLoading {
+                        armStartWatchdog(reason: "unpause")
+                    }
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
                         self.delegate?.renderer(self, didChangePause: self.isPaused)

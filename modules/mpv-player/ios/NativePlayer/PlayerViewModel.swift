@@ -1479,7 +1479,11 @@ extension PlayerViewModel: MPVPlayerEngineDelegate {
 		isPlaying = false
 		isBuffering = false
 		updateDisplayLinkState()
-		errorMessage = failure.message
+		// The renderer's timeout carries an English placeholder; show the
+		// localized explanation instead.
+		errorMessage = failure.reason == "timeout"
+			? str("playbackDidNotStart", failure.message)
+			: failure.message
 		showControls()
 		autoHideTask?.cancel()
 		// Carry the reason and code so JS can distinguish a transient transport

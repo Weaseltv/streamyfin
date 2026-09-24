@@ -19,6 +19,9 @@ import java.util.Locale
  * MPV renderer that wraps libmpv for video playback.
  * This mirrors the iOS MPVLayerRenderer implementation.
  */
+/** See `startWatchdog` in MPVLayerRenderer. */
+private const val START_DEADLINE_MS = 30_000L
+
 class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     
     companion object {
@@ -102,6 +105,35 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
      * in between is ours, not a failure.
      */
     private var expectingEndFile: Boolean = false
+
+    // Start watchdog. mpv never reports an error for a stream that keeps
+    // answering but never yields media (Jellyfin returning HTTP 500 for every
+    // HLS segment is the case seen in the field): it retries forever behind a
+    // spinner. If no PLAYBACK_RESTART lands within the deadline after a load
+    // or a seek, stop and report a failure so the player shows Retry/Close.
+    // 30s is generous on purpose: a server transcode can take 10-20s to
+    // produce its first segment.
+    private val startWatchdog = Runnable {
+        if (!isRunning || !_isLoading) return@Runnable
+        Log.w(TAG, "Playback did not start within ${START_DEADLINE_MS / 1000}s")
+        _isLoading = false
+        _isSeeking = false
+        // The END_FILE from this stop must stay silent (see the heuristic
+        // below); this is the only report.
+        expectingEndFile = true
+        mpv?.command(arrayOf("stop"))
+        delegate?.onLoadingChanged(false)
+        delegate?.onPlaybackFailed("Playback did not start")
+    }
+
+    private fun armStartWatchdog() {
+        mainHandler.removeCallbacks(startWatchdog)
+        mainHandler.postDelayed(startWatchdog, START_DEADLINE_MS)
+    }
+
+    private fun disarmStartWatchdog() {
+        mainHandler.removeCallbacks(startWatchdog)
+    }
     private var _playbackSpeed: Double = 1.0
     private var isReadyToSeek: Boolean = false
 
@@ -292,6 +324,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     fun stop() {
         if (!isRunning) return
         isRunning = false
+        disarmStartWatchdog()
 
         val m = mpv
         mpv = null
@@ -545,6 +578,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         
         // Load the file
         mpv?.command(arrayOf("loadfile", url, "replace"))
+        armStartWatchdog()
     }
     
     fun reloadCurrentItem() {
@@ -913,6 +947,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             "pause" -> {
                 if (value != _isPaused) {
                     _isPaused = value
+                    // A user pause is not a stall; re-arm on resume if the
+                    // stream still has not produced anything.
+                    if (value) disarmStartWatchdog() else if (_isLoading) armStartWatchdog()
                     mainHandler.post { delegate?.onPauseChanged(value) }
                 }
             }
@@ -1028,6 +1065,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             MPVLib.MPV_EVENT_SEEK -> {
                 // Seek started - show loading indicator and enable immediate progress updates
                 _isSeeking = true
+                armStartWatchdog()
                 if (!_isLoading) {
                     _isLoading = true
                     mainHandler.post { delegate?.onLoadingChanged(true) }
@@ -1035,6 +1073,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             }
             MPVLib.MPV_EVENT_PLAYBACK_RESTART -> {
                 // Video playback has started/restarted (including after seek)
+                disarmStartWatchdog()
                 _isSeeking = false
                 if (_isLoading) {
                     _isLoading = false
@@ -1042,6 +1081,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 }
             }
             MPVLib.MPV_EVENT_END_FILE -> {
+                disarmStartWatchdog()
                 // The pinned libmpv-android delivers event(int) with no
                 // end-file reason, so unlike iOS this cannot read
                 // MPV_END_FILE_REASON_ERROR. A file that ends while the

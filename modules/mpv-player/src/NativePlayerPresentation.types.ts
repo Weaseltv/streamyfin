@@ -178,6 +178,7 @@ export type NativePlayerStrings = Partial<
   Record<
     | "skipIntro"
     | "skipCredits"
+    | "playbackDidNotStart"
     | "nextEpisode"
     | "playNow"
     | "cancel"
