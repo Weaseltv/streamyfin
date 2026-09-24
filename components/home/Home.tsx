@@ -839,7 +839,9 @@ const HomeMobile = () => {
               const handleSeeAll = section.parentId
                 ? () => {
                     router.push({
-                      pathname: "/(auth)/(tabs)/(libraries)/[libraryId]",
+                      // Home's own stack, so Back returns to Home rather than
+                      // walking the Library tab's history.
+                      pathname: "/(auth)/(tabs)/(home)/library/[libraryId]",
                       params: {
                         libraryId: section.parentId!,
                         sortBy: SortByOption.DateCreated,

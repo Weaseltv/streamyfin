@@ -220,6 +220,19 @@ export default function IndexLayout() {
           headerShadowVisible: false,
         }}
       />
+      <Stack.Screen
+        name='library/[libraryId]'
+        options={{
+          title: "",
+          headerShown: !Platform.isTV,
+          header: ({ navigation }) => (
+            <NeonHeader
+              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+              downloads={false}
+            />
+          ),
+        }}
+      />
       {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
         <Stack.Screen key={name} name={name} options={options} />
       ))}
