@@ -109,9 +109,12 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
     setFocusedCount((c) => Math.max(0, c - 1));
   }, []);
 
+  // Online queries must not depend on the download count: see series/[id].
+  const offlineRevision = isOffline ? downloadedItems.length : 0;
+
   // Fetch seasons
   const { data: seasons = [] } = useQuery({
-    queryKey: ["seasons", item.Id, isOffline, downloadedItems.length],
+    queryKey: ["seasons", item.Id, isOffline, offlineRevision],
     queryFn: async () => {
       if (isOffline) {
         return buildOfflineSeasons(getDownloadedItems(), item.Id!);
@@ -166,7 +169,7 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
       item.Id,
       isOffline ? selectedSeasonNumber : selectedSeasonId,
       isOffline,
-      downloadedItems.length,
+      offlineRevision,
     ],
     queryFn: async () => {
       if (isOffline) {
@@ -183,7 +186,8 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
         userId: user.Id,
         seasonId: selectedSeasonId,
         enableUserData: true,
-        fields: ["MediaSources", "MediaStreams", "Overview", "Trickplay"],
+        // Lightweight on purpose; see SeasonPicker. Shuffle and play resolve
+        // the media source for the episode they start.
       });
       return res.data.Items || [];
     },

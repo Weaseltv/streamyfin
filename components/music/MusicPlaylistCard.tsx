@@ -29,14 +29,17 @@ export const MusicPlaylistCard: React.FC<Props> = ({ playlist }) => {
     [api, playlist],
   );
 
-  // Fetch playlist tracks to check download status
+  // Membership only: the badge needs each track's Id to look up a local
+  // file. Requesting MediaSources here pulled every track's full media
+  // description for every playlist card on screen.
   const { data: tracks } = useQuery({
     queryKey: ["playlist-tracks-status", playlist.Id, user?.Id],
     queryFn: async () => {
       const response = await getItemsApi(api!).getItems({
         userId: user?.Id,
         parentId: playlist.Id,
-        fields: ["MediaSources"],
+        enableUserData: false,
+        enableImages: false,
       });
       return response.data.Items || [];
     },

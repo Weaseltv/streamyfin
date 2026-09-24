@@ -9,6 +9,7 @@ import type {
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { getUserLibraryApi } from "@jellyfin/sdk/lib/utils/api";
+import { useQuery } from "@tanstack/react-query";
 import { type Href } from "expo-router";
 import { t } from "i18next";
 import { useAtom } from "jotai";
@@ -102,12 +103,37 @@ export const DownloadItems: React.FC<DownloadProps> = ({
     SelectedOptions | undefined
   >(undefined);
 
+  // Episode lists deliberately omit MediaSources (they are several MB for a
+  // long show and only this sheet reads them). For a single item without
+  // them, fetch the full DTO the first time the options sheet is requested,
+  // never on mount: every episode row renders one of these buttons.
+  const [optionsRequested, setOptionsRequested] = useState(false);
+  const singleItemId = items.length === 1 ? items[0]?.Id : undefined;
+  const needsResolution = !!singleItemId && !items[0]?.MediaSources;
+  const { data: resolvedSingle } = useQuery({
+    queryKey: ["download-options-item", singleItemId, user?.Id],
+    queryFn: async () =>
+      (
+        await getUserLibraryApi(api!).getItem({
+          itemId: singleItemId!,
+          userId: user!.Id!,
+        })
+      ).data,
+    enabled: optionsRequested && needsResolution && !!api && !!user?.Id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const resolvedItems = useMemo(
+    () => (needsResolution && resolvedSingle ? [resolvedSingle] : items),
+    [items, needsResolution, resolvedSingle],
+  );
+  const resolvingSingle = needsResolution && !resolvedSingle;
+
   const {
     defaultAudioIndex,
     defaultBitrate,
     defaultMediaSource,
     defaultSubtitleIndex,
-  } = useDefaultPlaySettings(items[0], settings);
+  } = useDefaultPlaySettings(resolvedItems[0], settings);
 
   const userCanDownload = useMemo(
     () => user?.Policy?.EnableContentDownloading,
@@ -117,6 +143,7 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const handlePresentModalPress = useCallback(() => {
+    setOptionsRequested(true);
     bottomSheetModalRef.current?.present();
   }, []);
 
@@ -132,8 +159,10 @@ export const DownloadItems: React.FC<DownloadProps> = ({
 
   const itemsNotDownloaded = useMemo(
     () =>
-      items.filter((i) => !downloadedFiles?.some((f) => f.item.Id === i.Id)),
-    [items, downloadedFiles],
+      resolvedItems.filter(
+        (i) => !downloadedFiles?.some((f) => f.item.Id === i.Id),
+      ),
+    [resolvedItems, downloadedFiles],
   );
 
   // Initialize selectedOptions with default values
@@ -466,11 +495,16 @@ export const DownloadItems: React.FC<DownloadProps> = ({
                   />
                 </View>
               )}
-              {itemsNotDownloaded.length === 1 && (
+              {itemsNotDownloaded.length === 1 && resolvingSingle && (
+                <View className='items-center py-4'>
+                  <Loader />
+                </View>
+              )}
+              {itemsNotDownloaded.length === 1 && !resolvingSingle && (
                 <View>
                   <View className='items-start'>
                     <MediaSourceSelector
-                      item={items[0]}
+                      item={resolvedItems[0]}
                       onChange={(val) =>
                         setSelectedOptions(
                           (prev) =>
@@ -517,7 +551,11 @@ export const DownloadItems: React.FC<DownloadProps> = ({
               )}
             </View>
 
-            <Button onPress={acceptDownloadOptions} color='primary'>
+            <Button
+              onPress={acceptDownloadOptions}
+              color='primary'
+              disabled={itemsNotDownloaded.length === 1 && resolvingSingle}
+            >
               {t("item_card.download.download_button")}
             </Button>
           </View>
