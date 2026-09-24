@@ -1,12 +1,13 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { FlashList } from "@shopify/flash-list";
 import {
   type QueryFunction,
   type QueryKey,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
@@ -127,6 +128,34 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return deduped;
   }, [data, excludeItem]);
 
+  const cardExtras = useMemo(
+    () => ({
+      useEpisodePoster: settings?.useEpisodeImagesForNextUp,
+      badge,
+      badgeColor,
+      orientation,
+    }),
+    [settings?.useEpisodeImagesForNextUp, badge, badgeColor, orientation],
+  );
+  const renderRailItem = useCallback(
+    ({ item }: { item: BaseItemDto }) => (
+      <TouchableItemRouter
+        item={item}
+        style={{ width: railCardWidth(cardExtras.orientation) }}
+      >
+        <ItemCard
+          item={item}
+          orientation={cardExtras.orientation}
+          useEpisodePoster={cardExtras.useEpisodePoster}
+          badge={cardExtras.badge}
+          badgeColor={cardExtras.badgeColor}
+        />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [cardExtras],
+  );
+
   const snapOffsets = useMemo(() => {
     const itemWidth = railCardWidth(orientation) + RAIL_GAP;
     return allItems.map((_, index) => index * itemWidth);
@@ -139,21 +168,9 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return null;
   if (disabled || !title) return null;
 
-  const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const paddingToBottom = 20;
-
-    // Check if we're near the end of the scroll
-    if (
-      layoutMeasurement.width + contentOffset.x >=
-      contentSize.width - paddingToBottom
-    ) {
-      if (hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    }
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   };
-
   return (
     <View {...props}>
       <SectionHeader
@@ -193,50 +210,40 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
       {isLoading ? (
         <RailSkeleton orientation={orientation} />
       ) : (
-        <ScrollView
+        // Virtualized: a plain horizontal ScrollView kept every card of every
+        // loaded page mounted (with its image and subscriptions), so a rail
+        // paged ten deep held ~100 live cards per rail across Home. FlashList
+        // recycles cells and only mounts what is near the viewport.
+        <FlashList
           horizontal
+          data={allItems}
+          keyExtractor={railKeyExtractor}
+          renderItem={renderRailItem}
+          extraData={cardExtras}
           showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingHorizontal: Sizes.gutter }}
+          ItemSeparatorComponent={RailGap}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
           snapToOffsets={snapOffsets}
           decelerationRate='fast'
-        >
-          <View
-            style={{
-              paddingHorizontal: Sizes.gutter,
-              flexDirection: "row",
-              gap: RAIL_GAP,
-            }}
-          >
-            {allItems.map((item, index) => (
-              <TouchableItemRouter
-                item={item}
-                key={`${item.Id}-${index}`}
-                style={{ width: railCardWidth(orientation) }}
-              >
-                <ItemCard
-                  item={item}
-                  orientation={orientation}
-                  useEpisodePoster={settings?.useEpisodeImagesForNextUp}
-                  badge={badge}
-                  badgeColor={badgeColor}
-                />
-                <ItemCardText item={item} />
-              </TouchableItemRouter>
-            ))}
-            {/* Loading indicator for next page */}
-            {isFetchingNextPage && (
+          ListFooterComponent={
+            isFetchingNextPage ? (
               <View
                 style={{
+                  marginLeft: RAIL_GAP,
                   marginTop: orientation === "horizontal" ? 37 : 70,
                 }}
               >
                 <Loader />
               </View>
-            )}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+        />
       )}
     </View>
   );
 };
+
+const railKeyExtractor = (item: BaseItemDto) => item.Id ?? "";
+const RailGap = () => <View style={{ width: RAIL_GAP }} />;
