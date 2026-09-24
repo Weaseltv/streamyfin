@@ -204,6 +204,62 @@ final class MPVLayerRenderer {
         startWatchdog?.cancel()
         startWatchdog = nil
     }
+
+    // MARK: - Playback diagnostics
+
+    /// For this long after a load or a seek, the player writes mpv's own
+    /// network read speed, buffered seconds and stream/ffmpeg log lines to the
+    /// app log (Settings > Logs, shareable). A stall after a seek on cellular
+    /// could not be diagnosed from the server side alone.
+    private static let diagnosticWindowSeconds: Double = 35
+    private var diagnosticsUntil: CFAbsoluteTime = 0
+    private var diagnosticsStartedAt: CFAbsoluteTime = 0
+    private var diagnosticsReason = ""
+    private var diagnosticsGeneration = 0
+    private static let diagnosticLogPrefixes: Set<String> = [
+        "ffmpeg", "stream", "cache", "demux", "lavf", "network", "tls", "cplayer",
+    ]
+
+    private var diagnosticsActive: Bool {
+        CFAbsoluteTimeGetCurrent() < diagnosticsUntil
+    }
+
+    private func startDiagnostics(reason: String) {
+        let now = CFAbsoluteTimeGetCurrent()
+        diagnosticsStartedAt = now
+        diagnosticsUntil = now + Self.diagnosticWindowSeconds
+        diagnosticsReason = reason
+        diagnosticsGeneration += 1
+        let generation = diagnosticsGeneration
+        Logger.shared.log("[diag] \(reason) started", type: "Info")
+        sampleDiagnostics(generation: generation)
+    }
+
+    private func sampleDiagnostics(generation: Int) {
+        queue.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self, generation == self.diagnosticsGeneration,
+                  self.isRunning, !self.isStopping, self.diagnosticsActive,
+                  let handle = self.mpv else { return }
+            var speed: Int64 = 0
+            var cached = Double(0)
+            var pausedForCache: Int32 = 0
+            var timePos = Double(0)
+            _ = self.getProperty(handle: handle, name: "cache-speed", format: MPV_FORMAT_INT64, value: &speed)
+            _ = self.getProperty(handle: handle, name: "demuxer-cache-duration", format: MPV_FORMAT_DOUBLE, value: &cached)
+            _ = self.getProperty(handle: handle, name: "paused-for-cache", format: MPV_FORMAT_FLAG, value: &pausedForCache)
+            _ = self.getProperty(handle: handle, name: "time-pos", format: MPV_FORMAT_DOUBLE, value: &timePos)
+            let elapsed = CFAbsoluteTimeGetCurrent() - self.diagnosticsStartedAt
+            Logger.shared.log(
+                String(
+                    format: "[diag] %@ +%.0fs net=%.0f kbit/s buffered=%.1fs waiting=%@ pos=%.1fs loading=%@",
+                    self.diagnosticsReason, elapsed, Double(speed) * 8 / 1000, cached,
+                    pausedForCache != 0 ? "yes" : "no", timePos, self.isLoading ? "yes" : "no"
+                ),
+                type: "Info"
+            )
+            self.sampleDiagnostics(generation: generation)
+        }
+    }
     
     var isPausedState: Bool {
         return isPaused
@@ -283,11 +339,11 @@ final class MPVLayerRenderer {
         mpv = handle
 
         // Logging - only warnings and errors in release, verbose in debug
-        #if DEBUG
-        checkError(mpv_request_log_messages(handle, "warn"))
-        #else
-        checkError(mpv_request_log_messages(handle, "no"))
-        #endif
+        // "info" in every build: the handler below only keeps warnings and
+        // errors, plus stream/network lines inside the diagnostic window
+        // after a load or seek. Release used to request "no", so a field
+        // playback failure left nothing to diagnose.
+        checkError(mpv_request_log_messages(handle, "info"))
 
         // Pass the AVSampleBufferDisplayLayer to mpv via --wid
         // The vo_avfoundation driver expects this
@@ -479,6 +535,7 @@ final class MPVLayerRenderer {
             let target = url.isFileURL ? url.path : url.absoluteString
             self.command(handle, ["loadfile", target, "replace"])
             self.armStartWatchdog(reason: "load")
+            self.startDiagnostics(reason: startPosition.map { $0 > 0 ? String(format: "load@%.0fs", $0) : "load" } ?? "load")
         }
     }
     
@@ -720,6 +777,7 @@ final class MPVLayerRenderer {
             // Seek started - show loading indicator and enable immediate progress updates
             isSeeking = true
             armStartWatchdog(reason: "seek")
+            startDiagnostics(reason: "seek")
             if !isLoading {
                 isLoading = true
                 DispatchQueue.main.async { [weak self] in
@@ -730,6 +788,13 @@ final class MPVLayerRenderer {
             
         case MPV_EVENT_PLAYBACK_RESTART:
             // Video playback has started/restarted (including after seek)
+            if diagnosticsActive {
+                Logger.shared.log(
+                    String(format: "[diag] %@ playback started after %.1fs", diagnosticsReason,
+                           CFAbsoluteTimeGetCurrent() - diagnosticsStartedAt),
+                    type: "Info"
+                )
+            }
             disarmStartWatchdog()
             isSeeking = false
             if isLoading {
@@ -790,11 +855,15 @@ final class MPVLayerRenderer {
             if let logMessagePointer = event.data?.assumingMemoryBound(to: mpv_event_log_message.self) {
                 let component = String(cString: logMessagePointer.pointee.prefix)
                 let text = String(cString: logMessagePointer.pointee.text)
-                let lower = text.lowercased()
-                if lower.contains("error") {
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let level = String(cString: logMessagePointer.pointee.level)
+                if level == "error" || level == "fatal" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Error")
-                } else if lower.contains("warn") || lower.contains("warning") {
+                } else if level == "warn" {
                     Logger.shared.log("mpv[\(component)] \(text)", type: "Warn")
+                } else if diagnosticsActive,
+                          Self.diagnosticLogPrefixes.contains(where: { component.hasPrefix($0) }) {
+                    Logger.shared.log("mpv[\(component)] \(text)", type: "Info")
                 }
             }
         default:

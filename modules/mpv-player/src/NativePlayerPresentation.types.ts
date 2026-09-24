@@ -355,6 +355,8 @@ export type NativePlayerEvents = {
   /** EOF with no next episode configured; native auto-dismisses after this. */
   onPlaybackEnded: (payload: { positionSec: number }) => void;
   onDismiss: (payload: NativePlayerDismissPayload) => void;
+  /** mpv module log lines (errors, warnings, and the playback diagnostic window). */
+  onNativeLog: (payload: { message: string; type: string }) => void;
   /** Search sheet opened / language changed; answer via updateSubtitleSearch. */
   onSubtitleSearchRequested: (payload: { language: string }) => void;
   /** A result row was tapped; resultId keys into the last pushed results. */

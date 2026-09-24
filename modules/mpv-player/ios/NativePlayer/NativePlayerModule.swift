@@ -28,6 +28,7 @@ internal final class InvalidStreamUrlException: Exception, @unchecked Sendable {
 /// events emitted with no listener are dropped.
 public class NativePlayerModule: Module {
 	private var session: NativePlayerSession?
+	private var logObserver: NSObjectProtocol?
 
 	public func definition() -> ModuleDefinition {
 		Name("NativePlayer")
@@ -41,7 +42,7 @@ public class NativePlayerModule: Module {
 			"onNextEpisodeRequested", "onPreviousEpisodeRequested",
 			"onEpisodeSelected", "onPlaybackEnded", "onDismiss",
 			"onSubtitleSearchRequested", "onSubtitleDownloadRequested",
-			"onMuteStateChanged"
+			"onMuteStateChanged", "onNativeLog"
 		)
 
 		// MARK: - Lifecycle
@@ -54,6 +55,18 @@ public class NativePlayerModule: Module {
 			guard config.stream.toVideoLoadConfig() != nil else {
 				promise.reject(InvalidStreamUrlException())
 				return
+			}
+			// Forward the mpv module's log lines to JS for the app's Logs page
+			// while a player session is up.
+			self.logObserver.map { NotificationCenter.default.removeObserver($0) }
+			self.logObserver = NotificationCenter.default.addObserver(
+				forName: NSNotification.Name("LoggerNotification"), object: nil, queue: .main
+			) { [weak self] note in
+				guard let info = note.userInfo else { return }
+				self?.sendEvent("onNativeLog", [
+					"message": info["message"] as? String ?? "",
+					"type": info["type"] as? String ?? "Info",
+				])
 			}
 			let session = NativePlayerSession(
 				emit: { [weak self] name, payload in
