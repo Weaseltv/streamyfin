@@ -213,12 +213,59 @@ const Page = () => {
   // move away from them, so they only win on the run that first sees them.
   const appliedUrlParamsRef = useRef<string | null>(null);
 
+  // What this screen was showing when it lost focus. The atoms are shared, so
+  // a sibling library rewrites them while this one is hidden; on return the
+  // screen restores exactly its own previous state instead of re-deriving it.
+  // Re-deriving used saved preferences only, so a library opened from Home's
+  // "See all" (newest first) came back sorted A-Z and refetched.
+  const currentFiltersRef = useRef({
+    sortBy,
+    sortOrder,
+    filterBy,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+  });
+  currentFiltersRef.current = {
+    sortBy,
+    sortOrder,
+    filterBy,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+  };
+  const blurSnapshotRef = useRef<typeof currentFiltersRef.current | null>(null);
+  const focusNavigation = useNavigation();
+  useEffect(
+    () =>
+      focusNavigation.addListener("blur", () => {
+        blurSnapshotRef.current = currentFiltersRef.current;
+      }),
+    [focusNavigation],
+  );
+
   // Restoring on focus rather than on mount: every filter atom is global and
   // shared by all library screens, so a sibling library that mounts on top
   // overwrites them. The stack keeps this screen mounted, so a mount effect
   // never runs again and the wrong library's filters stay applied.
   useFocusEffect(
     useCallback(() => {
+      // Returning to this screen: put back what it was showing. Consumed once,
+      // so later runs of this effect (preference changes while focused, a
+      // reset) take the normal path below.
+      const snapshot = blurSnapshotRef.current;
+      if (snapshot) {
+        blurSnapshotRef.current = null;
+        _setSortBy(snapshot.sortBy);
+        _setSortOrder(snapshot.sortOrder);
+        _setFilterBy(snapshot.filterBy);
+        setSelectedGenres(snapshot.selectedGenres);
+        setSelectedYears(snapshot.selectedYears);
+        setSelectedTags(snapshot.selectedTags);
+        setFiltersReady(true);
+        return () => setFiltersReady(false);
+      }
+
       const urlParamsKey = `${searchParams.sortBy ?? ""}|${
         searchParams.sortOrder ?? ""
       }|${searchParams.filterBy ?? ""}`;
