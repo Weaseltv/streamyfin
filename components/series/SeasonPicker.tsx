@@ -54,8 +54,11 @@ export const SeasonPicker: React.FC<Props> = ({
     [item, seasonIndexState],
   );
 
+  // Online queries must not depend on the download count: see series/[id].
+  const offlineRevision = isOffline ? downloadedItems.length : 0;
+
   const { data: seasons } = useQuery({
-    queryKey: ["seasons", item.Id, isOffline, downloadedItems.length],
+    queryKey: ["seasons", item.Id, isOffline, offlineRevision],
     queryFn: async () => {
       if (isOffline) {
         return buildOfflineSeasons(getDownloadedItems(), item.Id!);
@@ -110,7 +113,7 @@ export const SeasonPicker: React.FC<Props> = ({
       item.Id,
       isOffline ? selectedSeasonNumber : selectedSeasonId,
       isOffline,
-      downloadedItems.length,
+      offlineRevision,
     ],
     queryFn: async () => {
       if (isOffline) {
@@ -130,7 +133,10 @@ export const SeasonPicker: React.FC<Props> = ({
         userId: user.Id,
         seasonId: selectedSeasonId,
         enableUserData: true,
-        fields: ["MediaSources", "MediaStreams", "Overview", "Trickplay"],
+        // Lightweight on purpose: rows show title, runtime and progress.
+        // The download sheet fetches the full episode when it is opened and
+        // playback resolves its own media source, so MediaSources,
+        // MediaStreams, Overview and Trickplay (3.6x the payload) stay out.
       });
 
       if (res.data.TotalRecordCount === 0)

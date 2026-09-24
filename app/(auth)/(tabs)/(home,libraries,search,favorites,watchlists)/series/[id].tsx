@@ -49,10 +49,15 @@ const page: React.FC = () => {
   const [user] = useAtom(userAtom);
   const { getDownloadedItems, downloadedItems } = useDownload();
 
+  // Offline data is built from the downloads, so those queries must refetch
+  // when a download is added or deleted. Online data never depends on it:
+  // keying online queries on the download count minted a new cache entry and
+  // a full refetch of every episode each time a download finished.
+  const offlineRevision = isOffline ? downloadedItems.length : 0;
+
   // For offline mode, construct series data from downloaded episodes
-  // Include downloadedItems.length so query refetches when items are deleted
   const { data: item } = useQuery({
-    queryKey: ["series", seriesId, isOffline, downloadedItems.length],
+    queryKey: ["series", seriesId, isOffline, offlineRevision],
     queryFn: async () => {
       if (isOffline) {
         return buildOfflineSeriesFromEpisodes(getDownloadedItems(), seriesId);
@@ -91,7 +96,7 @@ const page: React.FC = () => {
   useSetPageAccent(NeonBoard.yellow);
 
   const { data: allEpisodes, isLoading } = useQuery({
-    queryKey: ["AllEpisodes", seriesId, isOffline, downloadedItems.length],
+    queryKey: ["AllEpisodes", seriesId, isOffline, offlineRevision],
     queryFn: async () => {
       if (isOffline) {
         return getDownloadedEpisodesForSeries(getDownloadedItems(), seriesId);
@@ -102,7 +107,11 @@ const page: React.FC = () => {
         seriesId: seriesId,
         userId: user.Id,
         enableUserData: true,
-        fields: ["MediaSources", "MediaStreams", "Overview", "Trickplay"],
+        // Lightweight on purpose: this list only feeds counts, the next-up
+        // marker and the series download button. MediaSources, MediaStreams,
+        // Overview and Trickplay made it 3.6x larger (4.65 MB vs 1.29 MB for
+        // a 745-episode show) and nothing here read them. Playback and
+        // downloads resolve the full item for the episode they act on.
       });
       return res?.data.Items || [];
     },
