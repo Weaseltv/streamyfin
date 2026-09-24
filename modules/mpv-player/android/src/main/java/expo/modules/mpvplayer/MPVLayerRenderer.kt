@@ -126,6 +126,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         delegate?.onPlaybackFailed("Playback did not start")
     }
 
+    /** Live streams have no duration but do advance; only the empty 0/0 tick is not a position. */
+    private fun hasMediaPosition(): Boolean = cachedDuration > 0.0 || cachedPosition > 0.0
+
     private fun armStartWatchdog() {
         mainHandler.removeCallbacks(startWatchdog)
         mainHandler.postDelayed(startWatchdog, START_DEADLINE_MS)
@@ -970,13 +973,18 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         when (property) {
             "duration" -> {
                 cachedDuration = value
-                mainHandler.post { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
+                // A stream that has not produced media yet reports 0/0; see
+                // hasMediaPosition(). Forwarding it overwrote the resume point
+                // and the stop report then wiped it on the server.
+                if (hasMediaPosition()) {
+                    mainHandler.post { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
+                }
             }
             "time-pos" -> {
                 cachedPosition = value
                 // Always update immediately when seeking, otherwise throttle to once per second
                 val now = System.currentTimeMillis()
-                val shouldUpdate = _isSeeking || (now - lastProgressUpdateTime >= 1000)
+                val shouldUpdate = (_isSeeking || (now - lastProgressUpdateTime >= 1000)) && hasMediaPosition()
                 if (shouldUpdate) {
                     lastProgressUpdateTime = now
                     mainHandler.post { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }

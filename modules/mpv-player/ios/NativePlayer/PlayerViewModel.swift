@@ -1391,6 +1391,12 @@ extension PlayerViewModel: MPVPlayerEngineDelegate {
 
 	func engine(_ engine: MPVPlayerEngine, didUpdateProgress position: Double, duration: Double, cacheSeconds: Double) {
 		guard !isTearingDown else { return }
+		// A stream that has not produced media yet reports 0/0. Taking that as
+		// the authoritative position overwrote the resume point we started
+		// from, and the stop report on dismiss then wiped the user's saved
+		// position on the server. Live streams legitimately have no duration
+		// but do advance position, so only the empty tick is ignored.
+		guard duration > 0 || position > 0 else { return }
 		hasAuthoritativePosition = true
 		lastAuthoritativeTimestamp = CACurrentMediaTime()
 		self.position = position

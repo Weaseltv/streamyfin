@@ -640,7 +640,13 @@ export default function DirectPlayerPage() {
     const stopKey = stream.sessionId || item.Id;
     if (reportedStopKeyRef.current === stopKey) return;
     reportedStopKeyRef.current = stopKey;
-    const currentTimeInTicks = msToTicks(progress.get());
+    // A session that never produced a frame still has progress at 0.
+    // Reporting that as the stop position wiped the resume point the user
+    // started from, so fall back to where playback was asked to begin.
+    const currentTimeInTicks =
+      progress.get() > 0
+        ? msToTicks(progress.get())
+        : initialPlaybackTicksRef.current;
     try {
       await getPlaystateApi(api).reportPlaybackStopped({
         playbackStopInfo: {
