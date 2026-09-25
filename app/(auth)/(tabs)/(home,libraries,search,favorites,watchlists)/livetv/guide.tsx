@@ -5,6 +5,10 @@ import { useAtom } from "jotai";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dimensions, ScrollView, View } from "react-native";
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Chip } from "@/components/common/Chip";
 import { ItemImage } from "@/components/common/ItemImage";
@@ -85,7 +89,12 @@ export default function LiveTvGuidePage() {
 
   const screenWidth = Dimensions.get("window").width;
 
-  const [scrollX, setScrollX] = useState(0);
+  // UI-thread scroll offset: rows read it in animated styles, so scrolling
+  // the guide does not re-render them.
+  const scrollX = useSharedValue(0);
+  const onGuideScroll = useAnimatedScrollHandler((e) => {
+    scrollX.value = e.contentOffset.x;
+  });
   const [gridStart] = useState(() => guideGridStart());
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -180,16 +189,14 @@ export default function LiveTvGuidePage() {
               </View>
             ))}
           </View>
-          <ScrollView
+          <Animated.ScrollView
             style={{
               width: screenWidth - CHANNEL_COLUMN,
             }}
             horizontal
             scrollEnabled
-            scrollEventThrottle={32}
-            onScroll={(e) => {
-              setScrollX(e.nativeEvent.contentOffset.x);
-            }}
+            scrollEventThrottle={16}
+            onScroll={onGuideScroll}
           >
             <View className='flex flex-col'>
               <HourHeader height={HOUR_HEIGHT} gridStart={gridStart} />
@@ -200,6 +207,7 @@ export default function LiveTvGuidePage() {
                   gridStart={gridStart}
                   key={c.Id}
                   scrollX={scrollX}
+                  now={now}
                 />
               ))}
               {/* The now-line: 2pt cyan with a 12 dot, from the header down. */}
@@ -231,7 +239,7 @@ export default function LiveTvGuidePage() {
                 </View>
               ) : null}
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         </View>
       </ScrollView>
     </View>
