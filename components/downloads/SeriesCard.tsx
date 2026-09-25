@@ -4,62 +4,18 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
-import { DownloadSize } from "@/components/downloads/DownloadSize";
+import { MovieCard } from "@/components/downloads/MovieCard";
 import { NeonBoard } from "@/constants/Colors";
-import { Sizes } from "@/constants/neon";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
-import { Text } from "../common/Text";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
-const EPISODE_ROW = 44;
+const _EPISODE_ROW = 44;
 
-/** "S1:E1 · Body Shop" */
-const episodeTitle = (item: BaseItemDto) =>
-  `S${item.ParentIndexNumber ?? 0}:E${item.IndexNumber ?? 0} · ${item.Name ?? ""}`;
-
-export const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => {
-  const { deleteFile } = useDownload();
-  const confirmDelete = useConfirmDelete();
-
-  const onLongPress = useCallback(
-    () =>
-      confirmDelete({
-        title: episodeTitle(item),
-        onConfirm: () => {
-          if (item.Id) deleteFile(item.Id);
-        },
-      }),
-    [confirmDelete, deleteFile, item],
-  );
-
-  return (
-    <TouchableItemRouter
-      item={item}
-      onLongPress={onLongPress}
-      style={{
-        minHeight: EPISODE_ROW,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingLeft: Sizes.rowLead,
-        paddingRight: Sizes.gutter,
-        paddingVertical: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: NeonBoard.line,
-      }}
-    >
-      <Text
-        variant='rowTitle'
-        numberOfLines={1}
-        style={{ flexShrink: 1, paddingRight: 12, fontSize: 16 }}
-      >
-        {episodeTitle(item)}
-      </Text>
-      <DownloadSize items={[item]} variant='tally' accent={NeonBoard.mid} />
-    </TouchableItemRouter>
-  );
-};
+/** A downloaded episode: the same row as a downloaded movie. */
+export const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => (
+  <MovieCard item={item} />
+);
 
 /** Season, then episode order for a series' downloaded episodes. */
 export const sortEpisodes = (items: BaseItemDto[]) =>
@@ -114,6 +70,7 @@ export const SeriesHeader: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
         accent={NeonBoard.yellow}
         count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
         className='px-4'
+        bleedRule
       />
     </TouchableItemRouter>
   );

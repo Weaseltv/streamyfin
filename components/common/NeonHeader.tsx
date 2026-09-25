@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useAtomValue } from "jotai";
 import type { ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
@@ -8,6 +9,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
+import { processesAtom } from "@/providers/DownloadProvider";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { HeaderIcon, type HeaderIconName } from "./HeaderIcon";
 import { Text } from "./Text";
@@ -31,7 +33,7 @@ interface Props {
 
 /** The mascot beside the text wordmark: `WEASEL` in `text`, `PLEX` in volt. */
 export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
-  size = 32,
+  size = 36,
   dim,
 }) => (
   <View
@@ -115,6 +117,13 @@ export const NeonHeader: React.FC<Props> = ({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const accent = usePageAccent();
+  const processes = useAtomValue(processesAtom);
+  const downloading = processes.some(
+    (p) =>
+      p.status === "downloading" ||
+      p.status === "queued" ||
+      p.status === "pending",
+  );
 
   return (
     <View
@@ -155,6 +164,9 @@ export const NeonHeader: React.FC<Props> = ({
             <HeaderIconButton
               name='downloads'
               accessibilityLabel='Downloads'
+              // Bright while something is downloading or waiting to, the
+              // same grey as Settings otherwise.
+              tintColor={downloading ? NeonBoard.text : NeonBoard.mid}
               onPress={() => router.push("/(auth)/(tabs)/(home)/downloads")}
             />
           ) : null}

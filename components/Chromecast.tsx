@@ -8,6 +8,7 @@ import GoogleCast, {
   useMediaStatus,
   useRemoteMediaClient,
 } from "react-native-google-cast";
+import { NeonBoard } from "@/constants/Colors";
 import { HeaderButton, type HeaderButtonProps } from "./common/HeaderButton";
 import { HeaderIcon } from "./common/HeaderIcon";
 
@@ -52,7 +53,12 @@ export function Chromecast(props: Props) {
           <CastButton tintColor='transparent' />
         </View>
       ) : null}
-      <HeaderIcon name='cast' />
+      {/* Bright while a cast session is connected, otherwise the same grey
+          as the Downloads and Settings icons. */}
+      <HeaderIcon
+        name='cast'
+        tintColor={castDevice ? NeonBoard.text : NeonBoard.mid}
+      />
     </HeaderButton>
   );
 }
