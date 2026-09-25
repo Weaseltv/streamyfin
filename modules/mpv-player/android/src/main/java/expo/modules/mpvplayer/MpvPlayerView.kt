@@ -89,6 +89,14 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     // PiP state tracking
     private val pipHandler = Handler(Looper.getMainLooper())
 
+    // R29: this player's audio-focus owner (calls, alarms, other audio,
+    // headphones unplugged). See AudioFocusController.
+    private val audioFocus = AudioFocusController(context, object : AudioFocusController.Delegate {
+        override fun onFocusPause() = pauseForSystem()
+        override fun onFocusResume() = play()
+        override fun isPlaying() = intendedPlayState
+    })
+
     // Resume-recovery state: recreate the decoder when returning from the
     // screensaver / app background while paused. See
     // MPVLayerRenderer.recoverVideoOutput for why zero-copy hwdec=mediacodec
@@ -170,6 +178,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         // Watch the host activity's lifecycle to recover the video pipeline
         // when returning from the screensaver while paused.
         registerLifecycleCallbacks()
+        registerBackgroundPause()
     }
 
     /**
@@ -306,12 +315,27 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     // MARK: - Playback Controls
 
     fun play() {
+        if (!audioFocus.onPlay()) {
+            // Refused: another app holds focus, or Android will not grant it
+            // to an app in this state. Stay paused rather than play over it;
+            // the pause event tells JS.
+            pauseForSystem()
+            return
+        }
         intendedPlayState = true
         renderer?.play()
         pipController?.setPlaybackRate(1.0)
     }
 
     fun pause() {
+        audioFocus.onUserPause()
+        intendedPlayState = false
+        renderer?.pause()
+        pipController?.setPlaybackRate(0.0)
+    }
+
+    /** A pause the system caused (focus loss, route change), not the user. */
+    private fun pauseForSystem() {
         intendedPlayState = false
         renderer?.pause()
         pipController?.setPlaybackRate(0.0)
@@ -337,6 +361,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * instant OOM on a 2 GB device.
      */
     fun destroy() {
+        audioFocus.release()
         renderer?.stop()
 
         // Reset view-level state so a subsequent loadVideo() on the SAME view
@@ -637,6 +662,45 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         lifecycleRegistered = true
     }
 
+    /**
+     * Phones pause video when the app leaves the screen, unless it is in
+     * picture-in-picture (owner decision, 2026-09-25). Before this, pressing
+     * Home with PiP off, locking the phone or closing the PiP window left the
+     * video playing unseen with its audio still running. The pause is a
+     * system pause: playback stays paused when the user returns. Android TV
+     * keeps its behaviour.
+     */
+    private var backgroundPauseCallbacks: Application.ActivityLifecycleCallbacks? = null
+
+    private fun registerBackgroundPause() {
+        if (renderer?.isTv == true || backgroundPauseCallbacks != null) return
+        val app = context.applicationContext as? Application ?: return
+        val callbacks = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityStopped(activity: Activity) {
+                if (activity !== findActivity()) return
+                if (activity.isInPictureInPictureMode) return
+                if (!intendedPlayState) return
+                Log.i(TAG, "Host left the screen outside PiP: pausing")
+                audioFocus.onUserPause()
+                pauseForSystem()
+            }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        }
+        app.registerActivityLifecycleCallbacks(callbacks)
+        backgroundPauseCallbacks = callbacks
+    }
+
+    private fun unregisterBackgroundPause() {
+        val callbacks = backgroundPauseCallbacks ?: return
+        (context.applicationContext as? Application)?.unregisterActivityLifecycleCallbacks(callbacks)
+        backgroundPauseCallbacks = null
+    }
+
     private fun unregisterLifecycleCallbacks() {
         pipHandler.removeCallbacks(recoverResumeRunnable)
         if (!lifecycleRegistered) return
@@ -670,6 +734,8 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * off the JS path.
      */
     fun cleanup() {
+        audioFocus.release()
+        unregisterBackgroundPause()
         pipHandler.removeCallbacksAndMessages(null)
         unregisterLifecycleCallbacks()
         pipController?.stopPictureInPicture()
