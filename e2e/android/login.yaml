@@ -1,0 +1,26 @@
+# Signs the test account in from a cold start. Credentials come from the
+# environment (MAESTRO_WEASELPLEX_*), never from this file; see README.md.
+appId: tv.theweasel.weaselplex.phone
+---
+- runFlow: connect.yaml
+- extendedWaitUntil:
+    visible: ".*LOG IN TO WEASELPLEX.*"
+    timeout: 20000
+- tapOn:
+    rightOf: "Username"
+- eraseText: 80
+- inputText: ${MAESTRO_WEASELPLEX_USERNAME}
+# "below Username" excludes the username box, which starts above the
+# label's bottom edge; only the password box is both below and right.
+- tapOn:
+    rightOf: "Password"
+    below: "Username"
+- eraseText: 80
+- inputText: ${MAESTRO_WEASELPLEX_PASSWORD}
+- pressKey: Enter
+- tapOn:
+    text: ".*LOG IN$"
+    optional: true
+- extendedWaitUntil:
+    notVisible: ".*LOG IN TO WEASELPLEX.*"
+    timeout: 30000
