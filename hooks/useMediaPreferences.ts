@@ -280,7 +280,12 @@ export function useMediaPreferences(): MediaPreferences {
       // `undefined` would blank a perfectly good local value — and a toggle
       // whose value is `undefined` renders off and refuses to stay on.
       const seed: Partial<Settings> = {};
-      if (config?.SubtitleLanguagePreference !== undefined) {
+      // A fresh Jellyfin account carries factory values: no subtitle
+      // language ("") and mode "Default". Seeding those overwrote the app's
+      // own defaults (English, Smart; #20) on every launch for anyone who
+      // never touched their server preferences, which is every new account.
+      // Only values the user actually chose on the server are taken.
+      if (config?.SubtitleLanguagePreference) {
         seed.defaultSubtitleLanguage = findCulture(
           config.SubtitleLanguagePreference,
         );
@@ -293,7 +298,10 @@ export function useMediaPreferences(): MediaPreferences {
             ? ({ ThreeLetterISOLanguageName: ORIGINAL_LANGUAGE } as CultureDto)
             : findCulture(userAudioPreference);
       }
-      if (config?.SubtitleMode !== undefined) {
+      if (
+        config?.SubtitleMode !== undefined &&
+        config.SubtitleMode !== "Default"
+      ) {
         seed.subtitleMode = config.SubtitleMode;
       }
       if (config?.PlayDefaultAudioTrack !== undefined) {
