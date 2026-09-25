@@ -54,10 +54,18 @@ echo "emulator build: $(git branch --show-current) @ $(git rev-parse --short HEA
 # android/ is gitignored; prebuild regenerates it from app.json.
 EXPO_TV=0 CI=1 bunx expo prebuild --platform android --no-install
 
+# The template's 4 GB heap plus two emulators overran the ThinkCentre's 15 GB
+# and the kernel OOM-killed Gradle. GRADLE_HEAP overrides.
+sed -i -E "s/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx${GRADLE_HEAP:-2560m} -XX:MaxMetaspaceSize=768m/" android/gradle.properties
+
 (
   cd android
+  # Two emulators (~5 GB) plus an uncapped build overran the ThinkCentre's
+  # 15 GB and the kernel OOM-killed Gradle. GRADLE_HEAP / GRADLE_WORKERS
+  # override the caps.
   NODE_ENV=production ./gradlew assembleRelease --no-daemon --console=plain \
-    -PreactNativeArchitectures="$ABI"
+    -PreactNativeArchitectures="$ABI" \
+    --max-workers="${GRADLE_WORKERS:-4}"
 )
 
 APK=android/app/build/outputs/apk/release/app-release.apk

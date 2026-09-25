@@ -55,9 +55,28 @@ never from a flow file or the command line.
 e2e/android/run.sh e2e/android/login.yaml               # cold start -> signed in
 e2e/android/run.sh e2e/android/see-all-back.yaml        # #47 regression
 e2e/android/run.sh e2e/android/open-movie.yaml emulator-5554 -- -e MOVIE_TITLE=Unleashed
+e2e/android/run.sh e2e/android/resume-movie.yaml emulator-5554 -- -e MOVIE_TITLE=Unleashed
+
+# R01: play/close cycles from an item page, CSV of PSS and thread counts
+e2e/android/r01-engine-spike.sh emulator-5556 60 10 > r01.csv
 ```
 
 ## Things that bit us
+
+- **Seerr fail2ban.** Every cold start of a build without #56 makes one Seerr
+  Quick Connect attempt, which the trial account answers with 403. Five in ten
+  minutes and the request server bans the ThinkCentre's IP for an hour, and
+  media.theweasel.tv with it. Keep #56 in every test build, and count cold
+  starts of older builds.
+- Two emulators plus a Gradle build overran the 15 GB host and the kernel
+  OOM-killed Gradle; `emulator-build.sh` now caps the Gradle heap
+  (`GRADLE_HEAP`, default 2560m) and workers (`GRADLE_WORKERS`, default 4).
+- Right after a cold boot the emulator is too loaded to use for several
+  minutes (System UI ANRs); anything that must happen "soon after boot" is not
+  reliably testable here.
+- Never import `@react-navigation/native` in app code: the release bundle fails
+  ("expo-router is no longer compatible with react-navigation"); typecheck does
+  not catch it. Use expo-router's exports.
 
 - `hideKeyboard` sends Back on Android and leaves the app. Submit with
   `pressKey: Enter` instead.

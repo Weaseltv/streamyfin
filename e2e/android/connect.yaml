@@ -1,9 +1,10 @@
 appId: tv.theweasel.weaselplex.phone
 ---
 - launchApp
+# The field is found by its label: API 36 exposes the label as the field's
+# accessibility text, API 29 does not.
 - tapOn:
-    text: "Server URL"
-    index: 1
+    rightOf: "Server URL"
 - eraseText: 60
 - inputText: ${MAESTRO_WEASELPLEX_SERVER_URL}
 - pressKey: Enter
