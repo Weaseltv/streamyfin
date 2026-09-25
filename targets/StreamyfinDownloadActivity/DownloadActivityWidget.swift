@@ -286,8 +286,9 @@ private func transferredText(for context: ActivityViewContext<DownloadActivityAt
   }
   // A speed frozen at its pre-suspension value is a lie; drop it once the update has gone stale.
   if !isProgressStale(context), context.state.speedBytesPerSec > 0 {
-    let speed = formatter.string(fromByteCount: Int64(context.state.speedBytesPerSec))
-    parts.append("\(speed)/s")
+    // Megabits per second, the unit people know from speed tests.
+    let mbps = Double(context.state.speedBytesPerSec) * 8 / 1_000_000
+    parts.append(mbps >= 10 ? String(format: "%.0f Mbps", mbps) : String(format: "%.1f Mbps", mbps))
   }
   return parts.joined(separator: " · ")
 }
