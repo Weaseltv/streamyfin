@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { NeonBoard } from "@/constants/Colors";
 import { useAllSessions, type useSessionsProps } from "@/hooks/useSessions";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { HeaderIcon } from "./common/HeaderIcon";
@@ -34,6 +35,13 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
   const api = useAtomValue(apiAtom);
   const { sessions, isLoading } = useAllSessions({} as useSessionsProps);
   const { t } = useTranslation();
+  // Bright while another client is playing this item, otherwise grey — the
+  // same idle/active pair as the Cast button beside it.
+  const isPlayingElsewhere = !!sessions?.some(
+    (session) =>
+      session.NowPlayingItem?.Id === item.Id &&
+      session.DeviceId !== api?.deviceInfo.id,
+  );
   const handlePlayInSession = async (sessionId: string) => {
     if (!api || !item.Id) return;
 
@@ -56,6 +64,7 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
       <SquareButton onPress={() => setModalVisible(true)} size={props.size}>
         <HeaderIcon
           name='remoteSession'
+          tintColor={isPlayingElsewhere ? NeonBoard.text : NeonBoard.mid}
           size={props.size === "large" ? undefined : 18}
         />
       </SquareButton>

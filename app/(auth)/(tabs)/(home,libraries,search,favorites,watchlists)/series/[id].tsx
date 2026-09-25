@@ -159,8 +159,11 @@ const page: React.FC = () => {
                 size='large'
                 title={t("item_card.download.download_series")}
                 items={allEpisodes}
-                MissingDownloadIconComponent={() => (
-                  <HeaderIcon name='downloads' />
+                MissingDownloadIconComponent={({ active }) => (
+                  <HeaderIcon
+                    name='downloads'
+                    tintColor={active ? NeonBoard.text : NeonBoard.mid}
+                  />
                 )}
                 DownloadedIconComponent={() => (
                   <HeaderIcon name='downloaded' tintColor={NeonBoard.green} />

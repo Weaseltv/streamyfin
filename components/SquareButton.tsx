@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { type ViewProps } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
+import { HEADER_ICON_SIZE } from "@/components/common/HeaderButton";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -14,7 +15,10 @@ interface Props extends ViewProps {
    */
   variant?: "glass" | "plain";
   background?: boolean;
-  /** `large` matches the header grid (glyph-sized box, spacing owned by the group). */
+  /**
+   * `large` matches the header grid: a bare glyph in `HeaderButton`'s box, with
+   * no glass square — on iOS 26 the header's own glass pill is the background.
+   */
   size?: "default" | "large";
   hapticFeedback?: boolean;
 }
@@ -24,8 +28,8 @@ const LARGE_HIT_SLOP = 10;
 
 /**
  * The square icon button (formerly `RoundButton`). Over video and backdrops it
- * is a glass square; in headers (`size="large"`) it matches `HeaderButton`'s
- * glyph-sized box so item-page buttons land on the same grid.
+ * is a glass square; in headers (`size="large"`) it is a bare glyph in
+ * `HeaderButton`'s box so item-page buttons land on the same grid.
  */
 export const SquareButton: React.FC<PropsWithChildren<Props>> = ({
   variant,
@@ -54,9 +58,12 @@ export const SquareButton: React.FC<PropsWithChildren<Props>> = ({
   // responder restores the "innermost touchable wins" behavior.
   const claimResponder = () => true;
 
-  // `large` lives in item-page headers over a backdrop: the 36 glass square.
-  const box = isLarge ? 36 : glass ? Sizes.glass : Sizes.iconButton;
-  const drawGlass = glass || isLarge;
+  const box = isLarge
+    ? HEADER_ICON_SIZE
+    : glass
+      ? Sizes.glass
+      : Sizes.iconButton;
+  const drawGlass = glass && !isLarge;
 
   return (
     <Pressable
