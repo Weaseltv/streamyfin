@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Platform, useWindowDimensions, View } from "react-native";
 import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
 import { BITRATES } from "@/components/BitrateSelector";
+import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
 import { Controls } from "@/components/video-player/controls/Controls";
@@ -216,6 +217,8 @@ export default function DirectPlayerPage() {
   const [downloadedItem, setDownloadedItem] = useState<DownloadedItem | null>(
     null,
   );
+  /** Bumped by the error screen's Retry to run the item fetch again. */
+  const [itemAttempt, setItemAttempt] = useState(0);
   const [itemStatus, setItemStatus] = useState({
     isLoading: true,
     isError: false,
@@ -394,7 +397,7 @@ export default function DirectPlayerPage() {
       progress.set(0);
       fetchItemData();
     }
-  }, [itemId, offline, api, user?.Id, progress]);
+  }, [itemId, offline, api, user?.Id, progress, itemAttempt]);
 
   // Lock orientation based on user settings
   useEffect(() => {
@@ -1578,11 +1581,28 @@ export default function DirectPlayerPage() {
     preloadLocalSubtitles();
   }, [isVideoLoaded, itemId]);
 
-  // Show error UI first, before checking loading/missing‐data
+  // Show error UI first, before checking loading/missing‐data. It used to be
+  // the word "Error" alone, with hardware Back as the only way out; losing the
+  // network while opening the player left the user there.
   if (itemStatus.isError || streamStatus.isError) {
+    const retry = () => {
+      if (itemStatus.isError) setItemAttempt((n) => n + 1);
+      else refetchStreamRef.current?.();
+    };
     return (
-      <View className='w-screen h-screen flex flex-col items-center justify-center bg-black'>
-        <Text className='text-white'>{t("player.error")}</Text>
+      <View
+        className='w-screen h-screen flex flex-col items-center justify-center bg-black'
+        style={{ paddingHorizontal: 32, gap: 20 }}
+      >
+        <Text className='text-white text-center'>
+          {t("player.an_error_occurred_while_playing_the_video")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <Button onPress={retry}>{t("home.retry")}</Button>
+          <Button variant='border' onPress={() => router.back()}>
+            {t("common.close")}
+          </Button>
+        </View>
       </View>
     );
   }
