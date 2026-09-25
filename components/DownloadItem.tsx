@@ -67,7 +67,10 @@ export type SelectedOptions = {
 
 interface DownloadProps extends ViewProps {
   items: BaseItemDto[];
-  MissingDownloadIconComponent: () => React.ReactElement;
+  /** `active` is true while any of `items` is downloading or queued. */
+  MissingDownloadIconComponent: (state: {
+    active: boolean;
+  }) => React.ReactElement;
   DownloadedIconComponent: () => React.ReactElement;
   title?: string;
   subtitle?: string;
@@ -413,7 +416,9 @@ export const DownloadItems: React.FC<DownloadProps> = ({
       return <DownloadedIconComponent />;
     }
 
-    return <MissingDownloadIconComponent />;
+    return (
+      <MissingDownloadIconComponent active={itemsInProgressOrQueued > 0} />
+    );
   };
 
   const onButtonPress = () => {

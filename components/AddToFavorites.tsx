@@ -18,7 +18,7 @@ export const AddToFavorites: FC<Props> = ({ item, ...props }) => {
       <SquareButton size='large' onPress={toggleFavorite}>
         <HeaderIcon
           name={isFavorite ? "favorited" : "favorite"}
-          tintColor={isFavorite ? NeonBoard.volt : NeonBoard.text}
+          tintColor={isFavorite ? NeonBoard.text : NeonBoard.mid}
         />
       </SquareButton>
     </View>
