@@ -15,6 +15,8 @@ type Props = {
   onPressAction?: () => void;
   /** Row classes, so callers can set their own horizontal padding. */
   className?: string;
+  /** Run the rule edge to edge; the title row keeps its padding. */
+  bleedRule?: boolean;
 };
 
 /**
@@ -29,13 +31,21 @@ export const SectionHeader: React.FC<Props> = ({
   actionDisabled = false,
   onPressAction,
   className = "px-4",
+  bleedRule = false,
 }) => {
   const accent = useAccent(accentProp);
   const shouldShowAction = Boolean(actionLabel) && Boolean(onPressAction);
 
   return (
-    <View className={`mb-3 ${className}`} style={{ paddingTop: 10 }}>
-      <View className='flex flex-row items-end justify-between pb-1.5'>
+    <View
+      className={bleedRule ? "mb-3" : `mb-3 ${className}`}
+      style={{ paddingTop: 10 }}
+    >
+      <View
+        className={`flex flex-row items-end justify-between pb-1.5 ${
+          bleedRule ? className : ""
+        }`}
+      >
         <Text variant='section' numberOfLines={1} className='shrink pr-3'>
           {title}
         </Text>
@@ -48,14 +58,14 @@ export const SectionHeader: React.FC<Props> = ({
             hitSlop={8}
           >
             <Text
-              variant='tally'
+              variant='headTally'
               accent={actionDisabled ? NeonBoard.low : accent}
             >
               {actionLabel}
             </Text>
           </TouchableOpacity>
         ) : count !== undefined && count !== null ? (
-          <Text variant='tally' accent={accent}>
+          <Text variant='headTally' accent={accent}>
             {count}
           </Text>
         ) : null}

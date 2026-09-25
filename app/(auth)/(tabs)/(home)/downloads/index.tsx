@@ -239,6 +239,7 @@ export default function DownloadsPage() {
               }
               count={row.count}
               className='px-4'
+              bleedRule
             />
           );
         case "item":
@@ -290,6 +291,7 @@ export default function DownloadsPage() {
                   ) : null
                 }
                 style={{ marginBottom: 4 }}
+                bleedRule
               />
 
               <ActiveDownloads />

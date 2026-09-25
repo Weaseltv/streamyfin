@@ -14,6 +14,8 @@ interface Props {
   right?: ReactNode;
   accent?: string;
   style?: StyleProp<ViewStyle>;
+  /** Run the rule edge to edge instead of inside the gutter. */
+  bleedRule?: boolean;
 }
 
 /**
@@ -27,11 +29,16 @@ export const PageHead: React.FC<Props> = ({
   right,
   accent: accentProp,
   style,
+  bleedRule = false,
 }) => {
   const accent = useAccent(accentProp);
+  const gutter = { paddingHorizontal: Sizes.gutter };
   return (
-    <View style={[{ paddingHorizontal: Sizes.gutter, paddingTop: 12 }, style]}>
-      <View className='flex flex-row items-end justify-between pb-2'>
+    <View style={[!bleedRule && gutter, { paddingTop: 12 }, style]}>
+      <View
+        className='flex flex-row items-end justify-between pb-2'
+        style={bleedRule ? gutter : undefined}
+      >
         <View className='shrink'>
           {eyebrow ? (
             <Text variant='eyebrow' accent={accent} numberOfLines={1}>
@@ -44,7 +51,7 @@ export const PageHead: React.FC<Props> = ({
         </View>
         {right ??
           (trailing !== undefined && trailing !== null ? (
-            <Text variant='tally' accent={accent} className='pl-3'>
+            <Text variant='headTally' accent={accent} className='pl-3'>
               {trailing}
             </Text>
           ) : null)}

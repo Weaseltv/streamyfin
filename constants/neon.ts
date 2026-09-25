@@ -97,17 +97,21 @@ export const Type = {
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
+  // Heads sized up so titles stand clearly above row text (owner ruling
+  // 2026-09-25): pageTitle 30→34, section 20→22, eyebrow 12→13, and head
+  // counts get their own `headTally` so row-level tallies (download sizes)
+  // stay where they were.
   pageTitle: {
     ...FontFace.display,
-    fontSize: 30,
-    lineHeight: 32,
+    fontSize: 34,
+    lineHeight: 36,
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
   section: {
     ...FontFace.display,
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 22,
+    lineHeight: 25,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
@@ -118,11 +122,19 @@ export const Type = {
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
+  /** Count or action beside a page or section head. */
+  headTally: {
+    ...FontFace.displayBold,
+    fontSize: 19,
+    lineHeight: 21,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
   numeral: { ...FontFace.displayBold, fontSize: 24, lineHeight: 26 },
   eyebrow: {
     ...FontFace.bodyBold,
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 16,
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },

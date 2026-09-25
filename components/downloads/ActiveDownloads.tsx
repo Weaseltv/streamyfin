@@ -35,6 +35,7 @@ export default function ActiveDownloads({ ...props }: ActiveDownloadsProps) {
             accent={NeonBoard.volt}
             count={active.length}
             className='px-4'
+            bleedRule
           />
           {active.map((p: JobStatus) => (
             <DownloadCard key={p.id} process={p} />
@@ -48,6 +49,7 @@ export default function ActiveDownloads({ ...props }: ActiveDownloadsProps) {
             accent={NeonBoard.volt}
             count={queued.length}
             className='px-4'
+            bleedRule
           />
           {queued.map((p: JobStatus) => (
             <DownloadCard key={p.id} process={p} />
