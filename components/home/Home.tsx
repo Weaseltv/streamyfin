@@ -13,7 +13,7 @@ import {
 } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
-import { useNavigation, useSegments } from "expo-router";
+import { useIsFocused, useNavigation, useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -107,6 +107,21 @@ const HomeMobile = () => {
     retryCheck,
   } = useNetworkStatus();
   const invalidateCache = useInvalidatePlaybackProgressCache();
+
+  // Which of Home's two trees to show: the sections, or an offline notice.
+  // Only switched while Home is on screen. Home stays mounted, frozen by
+  // react-native-screens, while the player covers it; a network drop and
+  // return during playback swapped the tree out and back, remounting every
+  // FlashList inside the frozen screen, and their layout updates looped until
+  // React threw "Maximum update depth exceeded" and the app died (Android
+  // emulator, 5 of 5 runs). Held, the sections stay mounted while covered and
+  // their queries refetch on reconnect as usual.
+  const isFocused = useIsFocused();
+  const reachable = isConnected && serverConnected === true;
+  const [showSections, setShowSections] = useState(reachable);
+  useEffect(() => {
+    if (isFocused) setShowSections(reachable);
+  }, [isFocused, reachable]);
   const [settledSections, setSettledSections] = useState<Set<string>>(
     new Set(),
   );
@@ -593,7 +608,12 @@ const HomeMobile = () => {
 
   // Server unreachable with downloads on the phone: the offline notice row
   // and the downloaded items, instead of a dead end.
-  if (serverConnected === false && hasDownloads && !Platform.isTV) {
+  if (
+    !showSections &&
+    serverConnected === false &&
+    hasDownloads &&
+    !Platform.isTV
+  ) {
     return (
       <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
         <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
@@ -633,7 +653,7 @@ const HomeMobile = () => {
     );
   }
 
-  if (!isConnected || serverConnected !== true) {
+  if (!showSections) {
     let title = "";
     let subtitle = "";
 
