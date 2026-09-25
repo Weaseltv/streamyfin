@@ -315,6 +315,21 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             mpv?.setOptionString("subs-fallback", "yes")
             mpv?.setOptionString("sub-vsfilter-bidi-compat", "yes")
             
+            // No built-in Lua scripts. The app draws every control in React
+            // Native, so mpv's own OSC, console, stats overlay, menus and
+            // ytdl hook are never used, yet each engine started a Lua thread
+            // and heap for every one of them: 7 threads per engine. Engines
+            // are never destroyed (see MPVLib), so on a phone every play ->
+            // back -> play cycle left those 7 behind (R01 spike, API 29 AVD).
+            // Unknown option names are ignored by older libmpv builds.
+            for (option in listOf(
+                "osc", "ytdl", "load-stats-overlay", "load-console", "load-select",
+                "load-positioning", "load-context-menu", "load-commands",
+                "load-auto-profiles", "load-scripts"
+            )) {
+                mpv?.setOptionString(option, "no")
+            }
+
             // Important: Start with force-window=no, will be set to yes when surface is attached
             mpv?.setOptionString("force-window", "no")
             mpv?.setOptionString("keep-open", "always")
