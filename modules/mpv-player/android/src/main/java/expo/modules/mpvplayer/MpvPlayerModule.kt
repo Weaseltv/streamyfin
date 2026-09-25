@@ -117,7 +117,8 @@ class MpvPlayerModule : Module() {
                 view.getDuration()
             }
 
-            // Picture in Picture functions
+            // Picture in Picture functions. startPictureInPicture resolves
+            // false when the system refused, so JS can restore its controls.
             AsyncFunction("startPictureInPicture") { view: MpvPlayerView ->
                 view.startPictureInPicture()
             }

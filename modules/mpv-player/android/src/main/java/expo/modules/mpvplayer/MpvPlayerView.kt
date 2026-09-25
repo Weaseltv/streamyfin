@@ -391,8 +391,9 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     // MARK: - Picture in Picture
 
-    fun startPictureInPicture() {
-        pipController?.startPictureInPicture()
+    /** Whether the system entered picture-in-picture; see PiPController. */
+    fun startPictureInPicture(): Boolean {
+        return pipController?.startPictureInPicture() ?: false
     }
 
     fun stopPictureInPicture() {
