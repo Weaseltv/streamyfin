@@ -10,6 +10,20 @@ class MpvPlayerModule : Module() {
         // Defines event names that the module can send to JavaScript.
         Events("onChange")
 
+        // R22: what the device has, so the demuxer budget can follow it
+        // instead of giving a 2 GB phone the same 150 MB read-ahead as a
+        // flagship. Cheap and synchronous: a MemoryInfo read.
+        Function("getDeviceMemory") {
+            val activityManager = appContext.reactContext
+                ?.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            val info = android.app.ActivityManager.MemoryInfo()
+            activityManager?.getMemoryInfo(info)
+            mapOf(
+                "totalMb" to (info.totalMem / (1024 * 1024)).toDouble(),
+                "lowRam" to (activityManager?.isLowRamDevice ?: false)
+            )
+        }
+
         // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
         Function("hello") {
             "Hello from MPV Player! 👋"

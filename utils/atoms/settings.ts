@@ -14,6 +14,10 @@ import { BITRATES, type Bitrate } from "@/components/BitrateSelector";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { writeInfoLog } from "@/utils/log";
+import {
+  defaultMpvBufferBudget,
+  LEGACY_PHONE_BUDGET,
+} from "@/utils/mpvBufferBudget";
 import { storage } from "../mmkv";
 import {
   type AppliedPluginDefaults,
@@ -504,12 +508,13 @@ export const defaultValues: Settings = {
   // Android TV gets tighter caps — combined with libmpv 1.0's larger
   // baseline (fontconfig + libxml2 + libplacebo HDR path + scudo
   // retention) the larger mobile budget pushes 2 GB Android TV boxes
-  // into swap death during 4K HDR playback. Apple TV has more RAM and
-  // keeps the full budget. Users can override via the settings screen.
+  // into swap death during 4K HDR playback. Android phones now follow their
+  // memory the same way (R22, see utils/mpvBufferBudget). Apple devices keep
+  // the full budget. Users can override via the settings screen.
   mpvCacheEnabled: "auto",
   mpvCacheSeconds: 10,
-  mpvDemuxerMaxBytes: Platform.isTV && Platform.OS === "android" ? 75 : 150, // MB
-  mpvDemuxerMaxBackBytes: Platform.isTV && Platform.OS === "android" ? 30 : 50, // MB
+  mpvDemuxerMaxBytes: defaultMpvBufferBudget().maxBytes, // MB
+  mpvDemuxerMaxBackBytes: defaultMpvBufferBudget().maxBackBytes, // MB
   // MPV video output driver defaults (Android only)
   mpvVoDriver: "gpu-next",
   // Gesture controls
@@ -555,6 +560,21 @@ const loadSettings = (): Partial<Settings> => {
     const jsonValue = storage.getString("settings");
     const loadedValues: Partial<Settings> =
       jsonValue != null ? JSON.parse(jsonValue) : {};
+
+    // Saving any setting writes every default along with it, so an Android
+    // phone that never touched the buffer settings stored the old flat
+    // 150/50 budget. That exact pair is taken as "never customised" and
+    // dropped, so the device budget applies; a user who changed either value
+    // keeps both.
+    if (
+      Platform.OS === "android" &&
+      !Platform.isTV &&
+      loadedValues.mpvDemuxerMaxBytes === LEGACY_PHONE_BUDGET.maxBytes &&
+      loadedValues.mpvDemuxerMaxBackBytes === LEGACY_PHONE_BUDGET.maxBackBytes
+    ) {
+      delete loadedValues.mpvDemuxerMaxBytes;
+      delete loadedValues.mpvDemuxerMaxBackBytes;
+    }
 
     return loadedValues;
   } catch (error) {
