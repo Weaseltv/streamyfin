@@ -26,10 +26,6 @@ const ACTIVE_ROW = 76;
 const QUEUE_ROW = 60;
 const PROGRESS_WIDTH = 200;
 
-const bytesToMB = (bytes: number) => {
-  return bytes / 1024 / 1024;
-};
-
 const formatBytes = (bytes: number): string => {
   if (bytes >= 1024 * 1024 * 1024) {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
@@ -59,7 +55,7 @@ interface DownloadCardProps extends TouchableOpacityProps {
 
 /**
  * One in-flight download. Downloading = the 76 "active" row: 3pt type tally,
- * 40×58 poster, title + type badge, "412 MB of 1.2 GB · 3.1 MB/s · 4 min
+ * 40×58 poster, title + type badge, "412 MB of 1.2 GB · 25 Mbps · 4 min
  * left", a 200-wide 3pt progress in the type colour and a red `x` to cancel.
  * Queued = the 60 row with a `Queued` outline badge in `mid`.
  */
@@ -162,9 +158,8 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
               })
             : formatBytes(process.bytesDownloaded)
           : `${sanitizedProgress.toFixed(0)}%`,
-        process.speed && process.speed > 0
-          ? `${bytesToMB(process.speed).toFixed(1)} MB/s`
-          : null,
+        // Megabits, the unit people know from speed tests and ISP plans.
+        process.speed && process.speed > 0 ? formatMbps(process.speed) : null,
         eta ? t("home.downloads.time_left", { time: eta }) : null,
         isTranscoding ? t("home.downloads.transcoding") : null,
       ]
@@ -273,4 +268,10 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
       )}
     </TouchableOpacity>
   );
+};
+
+/** Bytes per second as megabits per second: "25 Mbps", "4.2 Mbps". */
+const formatMbps = (bytesPerSecond: number) => {
+  const mbps = (bytesPerSecond * 8) / 1_000_000;
+  return `${mbps >= 10 ? mbps.toFixed(0) : mbps.toFixed(1)} Mbps`;
 };
