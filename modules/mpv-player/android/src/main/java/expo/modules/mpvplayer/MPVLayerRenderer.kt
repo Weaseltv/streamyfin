@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.Trace
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -26,6 +27,26 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     
     companion object {
         private const val TAG = "MPVLayerRenderer"
+
+        /**
+         * R28: the one thread that runs every mpv call JS asks for, plus load
+         * and teardown.
+         *
+         * Expo runs view AsyncFunctions on the UI thread, and every one of
+         * them went straight into synchronous JNI (a seek, a track switch, a
+         * track list read of ~10 property reads per track). One serial thread
+         * keeps them in the order JS issued them and off the UI thread.
+         * Surface attach/detach/resize stay on the UI thread with the
+         * SurfaceView.
+         *
+         * Process-wide rather than per player: the previous player's teardown
+         * (stop, which releases the decoder) always finishes before the next
+         * player's load starts, so two decoders are never being set up and
+         * torn down at once.
+         */
+        private val commandExecutor = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "mpv-command").apply { isDaemon = true }
+        }
         
         // Property observation format types
         const val MPV_FORMAT_NONE = 0
@@ -191,6 +212,111 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     // the same sidecar URLs back to load() and the tracks re-attach after
     // the decoder reset.
     private var activeExternalSubtitles: List<String> = emptyList()
+
+    /**
+     * Run [block] on the command thread. It is bound to the handle that is
+     * current now: if stop()/start() replaced the handle before it runs, it is
+     * dropped rather than applied to the next item's engine.
+     */
+    fun runCommand(name: String, block: () -> Unit) {
+        val handle = mpv ?: return
+        commandExecutor.execute {
+            if (mpv !== handle) return@execute
+            Trace.beginSection("mpv:$name")
+            try {
+                block()
+            } catch (e: Exception) {
+                Log.e(TAG, "mpv command $name failed: ${e.message}")
+            } finally {
+                Trace.endSection()
+            }
+        }
+    }
+
+    /** Like [runCommand], for reads: [deliver] always gets a value, [fallback] if the handle went away. */
+    fun <T> runQuery(name: String, fallback: T, block: () -> T, deliver: (T) -> Unit) {
+        val handle = mpv ?: return deliver(fallback)
+        commandExecutor.execute {
+            var result = fallback
+            if (mpv === handle) {
+                Trace.beginSection("mpv:$name")
+                try {
+                    result = block()
+                } catch (e: Exception) {
+                    Log.e(TAG, "mpv query $name failed: ${e.message}")
+                } finally {
+                    Trace.endSection()
+                }
+            }
+            deliver(result)
+        }
+    }
+
+    // Seek coalescing. A scrub or a burst of skip taps used to issue one
+    // blocking mpv seek per event; only the latest target matters, so a burst
+    // collapses into the one seek the command thread gets to next.
+    private val seekLock = Any()
+    private var pendingSeekAbsolute: Double? = null
+    private var pendingSeekRelative: Double = 0.0
+    private var seekQueued = false
+
+    fun requestSeekTo(seconds: Double) {
+        val clamped = maxOf(0.0, seconds)
+        cachedPosition = clamped
+        synchronized(seekLock) {
+            pendingSeekAbsolute = clamped
+            pendingSeekRelative = 0.0
+        }
+        scheduleSeek()
+    }
+
+    fun requestSeekBy(seconds: Double) {
+        cachedPosition = maxOf(0.0, cachedPosition + seconds)
+        synchronized(seekLock) {
+            val absolute = pendingSeekAbsolute
+            if (absolute != null) {
+                pendingSeekAbsolute = maxOf(0.0, absolute + seconds)
+            } else {
+                pendingSeekRelative += seconds
+            }
+        }
+        scheduleSeek()
+    }
+
+    private fun scheduleSeek() {
+        synchronized(seekLock) {
+            if (seekQueued) return
+            seekQueued = true
+        }
+        val handle = mpv
+        if (handle == null) {
+            synchronized(seekLock) { seekQueued = false }
+            return
+        }
+        runCommand("seek") {
+            val (absolute, relative) = synchronized(seekLock) {
+                seekQueued = false
+                val pending = pendingSeekAbsolute to pendingSeekRelative
+                pendingSeekAbsolute = null
+                pendingSeekRelative = 0.0
+                pending
+            }
+            when {
+                absolute != null -> mpv?.command(arrayOf("seek", absolute.toString(), "absolute"))
+                relative != 0.0 -> mpv?.command(arrayOf("seek", relative.toString(), "relative"))
+            }
+        }
+    }
+
+    // Track snapshots, rebuilt only when the track list or the selection
+    // changes rather than on every read.
+    @Volatile private var subtitleTracksCache: List<Map<String, Any>>? = null
+    @Volatile private var audioTracksCache: List<Map<String, Any>>? = null
+
+    private fun invalidateTrackCaches() {
+        subtitleTracksCache = null
+        audioTracksCache = null
+    }
     private var initialSubtitleId: Int? = null
     private var initialAudioId: Int? = null
     
@@ -346,17 +472,19 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         cachedPosition = 0.0
         cachedDuration = 0.0
         cachedCacheSeconds = 0.0
+        invalidateTrackCaches()
 
         if (m == null) return
 
-        // Teardown runs on a background daemon thread. mpv's "stop" command
+        // Teardown runs on the command thread. mpv's "stop" command
         // flushes the demuxer queue and releases the MediaCodec hardware
         // decoder — synchronous JNI work that can block for hundreds of ms
         // on TV hardware. Running it on the main thread produced a visible
         // delay/stutter between pressing "exit" and the confirm alert
-        // appearing. The local `m` keeps the MPVLib instance alive for the
-        // lifetime of this thread even though we've already nulled `mpv`.
-        Thread {
+        // appearing. The local `m` keeps the MPVLib instance alive until the
+        // task runs even though we've already nulled `mpv`; commands still
+        // queued for this handle drop themselves (see runCommand).
+        commandExecutor.execute {
             // Drop force-window BEFORE issuing stop. With keep-open=always +
             // force-window=yes, mpv tears down the decoder at stop time but
             // tries to keep the VO alive — which fires an internal
@@ -390,7 +518,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             } catch (e: Exception) {
                 Log.e(TAG, "Error detaching mpv surface: ${e.message}")
             }
-        }.also { it.isDaemon = true }.start()
+        }
     }
     
     /**
@@ -533,6 +661,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         activeSelectedExternalSubtitle = initialExternalSubtitleIndex
         this.initialSubtitleId = initialSubtitleId
         this.initialAudioId = initialAudioId
+        invalidateTrackCaches()
 
         _isLoading = true
         isReadyToSeek = false
@@ -632,18 +761,6 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         if (_isPaused) play() else pause()
     }
     
-    fun seekTo(seconds: Double) {
-        val clamped = maxOf(0.0, seconds)
-        cachedPosition = clamped
-        mpv?.command(arrayOf("seek", clamped.toString(), "absolute"))
-    }
-    
-    fun seekBy(seconds: Double) {
-        val newPosition = maxOf(0.0, cachedPosition + seconds)
-        cachedPosition = newPosition
-        mpv?.command(arrayOf("seek", seconds.toString(), "relative"))
-    }
-    
     fun setSpeed(speed: Double) {
         _playbackSpeed = speed
         mpv?.setPropertyDouble("speed", speed)
@@ -656,6 +773,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     // MARK: - Subtitle Controls
     
     fun getSubtitleTracks(): List<Map<String, Any>> {
+        subtitleTracksCache?.let { return it }
         val tracks = mutableListOf<Map<String, Any>>()
         
         val trackCount = mpv?.getPropertyInt("track-list/count") ?: 0
@@ -689,10 +807,12 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             tracks.add(track)
         }
 
+        subtitleTracksCache = tracks
         return tracks
     }
     
     fun setSubtitleTrack(trackId: Int) {
+        invalidateTrackCaches()
         Log.i(TAG, "setSubtitleTrack: setting sid to $trackId")
         if (trackId < 0) {
             mpv?.setPropertyString("sid", "no")
@@ -718,6 +838,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     }
     
     fun disableSubtitles() {
+        invalidateTrackCaches()
         mpv?.setPropertyString("sid", "no")
         applyBidiModeFor(-1)
     }
@@ -727,6 +848,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     }
     
     fun addSubtitleFile(url: String, select: Boolean = true) {
+        invalidateTrackCaches()
         val flag = if (select) "select" else "cached"
         mpv?.command(arrayOf("sub-add", url, flag))
         if (select) applyBidiModeFor(mpv?.getPropertyInt("sid") ?: -1)
@@ -778,6 +900,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     // MARK: - Audio Track Controls
     
     fun getAudioTracks(): List<Map<String, Any>> {
+        audioTracksCache?.let { return it }
         val tracks = mutableListOf<Map<String, Any>>()
         
         val trackCount = mpv?.getPropertyInt("track-list/count") ?: 0
@@ -804,10 +927,12 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             tracks.add(track)
         }
         
+        audioTracksCache = tracks
         return tracks
     }
     
     fun setAudioTrack(trackId: Int) {
+        invalidateTrackCaches()
         Log.i(TAG, "setAudioTrack: setting aid to $trackId")
         mpv?.setPropertyInt("aid", trackId)
     }
@@ -916,6 +1041,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     override fun eventProperty(property: String, value: Long) {
         when (property) {
             "track-list/count" -> {
+                invalidateTrackCaches()
                 if (value > 0) {
                     Log.i(TAG, "Track list updated: $value tracks available")
                     mainHandler.post { delegate?.onTracksReady() }
@@ -1000,6 +1126,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         when (eventId) {
             MPVLib.MPV_EVENT_FILE_LOADED -> {
                 expectingEndFile = false
+                invalidateTrackCaches()
                 // Add external subtitles now that file is loaded.
                 //
                 // Every sidecar used to be added right here with the blocking
