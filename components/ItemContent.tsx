@@ -112,14 +112,14 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     downloadedTracks,
   ]);
 
-  // Glass squares over the backdrop: cast, remote session, watchlists.
+  // Bare glyphs over the backdrop — iOS 26 wraps the group in its glass pill.
   useEffect(() => {
     if (!Platform.isTV && itemWithSources) {
       navigation.setOptions({
         headerRight: () =>
           item && (
             <HeaderButtonGroup>
-              <Chromecast.Chromecast variant='glass' />
+              <Chromecast.Chromecast />
               {item.Type !== "Program" &&
                 user?.Policy?.IsAdministrator &&
                 !settings.hideRemoteSessionButton && (
