@@ -105,6 +105,13 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
      * in between is ours, not a failure.
      */
     private var expectingEndFile: Boolean = false
+    /**
+     * True between the new file's START_FILE and its FILE_LOADED. An END_FILE
+     * in that window is the file failing to open (unreachable host, network
+     * gone, refused), which mpv reports with no duration and no position, so
+     * the far-from-duration heuristic below can never see it.
+     */
+    private var openingFile: Boolean = false
 
     // Start watchdog. mpv never reports an error for a stream that keeps
     // answering but never yields media (Jellyfin returning HTTP 500 for every
@@ -121,6 +128,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         // The END_FILE from this stop must stay silent (see the heuristic
         // below); this is the only report.
         expectingEndFile = true
+        openingFile = false
         mpv?.command(arrayOf("stop"))
         delegate?.onLoadingChanged(false)
         delegate?.onPlaybackFailed("Playback did not start")
@@ -998,8 +1006,16 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     
     override fun event(eventId: Int) {
         when (eventId) {
+            MPVLib.MPV_EVENT_START_FILE -> {
+                // mpv has finished with whatever load() stopped and is now
+                // opening the new file; any END_FILE from here on is this
+                // file's own.
+                expectingEndFile = false
+                openingFile = true
+            }
             MPVLib.MPV_EVENT_FILE_LOADED -> {
                 expectingEndFile = false
+                openingFile = false
                 // Add external subtitles now that file is loaded.
                 //
                 // Every sidecar used to be added right here with the blocking
@@ -1099,6 +1115,20 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 // frozen frame. Natural EOF lands within the last two seconds
                 // and is excluded; a real end-file reason needs a JNI change
                 // to the library and is a separate, later project.
+                if (isRunning && openingFile && !expectingEndFile) {
+                    // The file never opened. Before this, the END_FILE was
+                    // swallowed and the start watchdog disarmed above, so a
+                    // Resume with the network gone spun forever.
+                    openingFile = false
+                    Log.w(TAG, "Playback could not open the stream")
+                    _isLoading = false
+                    mainHandler.post {
+                        delegate?.onLoadingChanged(false)
+                        delegate?.onPlaybackFailed("Playback could not start")
+                    }
+                    return
+                }
+                openingFile = false
                 val duration = cachedDuration
                 val position = cachedPosition
                 val looksLikeFailure =
