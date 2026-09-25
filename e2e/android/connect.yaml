@@ -1,0 +1,12 @@
+appId: tv.theweasel.weaselplex.phone
+---
+- launchApp
+- tapOn:
+    text: "Server URL"
+    index: 1
+- eraseText: 60
+- inputText: ${MAESTRO_WEASELPLEX_SERVER_URL}
+- pressKey: Enter
+- tapOn:
+    text: ".*CONNECT.*"
+    optional: true
