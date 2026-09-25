@@ -60,13 +60,17 @@ export function getVersionInfo(): VersionInfo {
   const build = read(() => Application.nativeBuildVersion);
   const meta = (read(() => Constants.expoConfig?.extra?.build) ??
     {}) as BuildMeta;
-  const commit = meta.commit ?? null;
-  const branch = meta.branch ?? null;
-  const profile = meta.profile ?? null;
-  const runNumber = meta.runNumber ?? null;
+  // Android's embedded app config turns a null `extra` field into `{}`, which
+  // is truthy: a local build showed "1.3 · 23e026a · #[object Object]" and
+  // could never reach the production tier. Only real strings count.
+  const text = (value: unknown): string | null =>
+    typeof value === "string" && value.length > 0 ? value : null;
+  const commit = text(meta.commit);
+  const branch = text(meta.branch);
+  const profile = text(meta.profile);
+  const runNumber = text(meta.runNumber);
   const isDev = __DEV__ === true;
-  const isProduction =
-    typeof profile === "string" && profile.startsWith("production");
+  const isProduction = profile?.startsWith("production") ?? false;
 
   let display: string;
   if (isDev) {
