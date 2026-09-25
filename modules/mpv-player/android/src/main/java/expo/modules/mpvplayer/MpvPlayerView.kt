@@ -277,19 +277,25 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     private fun loadVideoInternal(config: VideoLoadConfig) {
         currentUrl = config.url
 
-        renderer?.load(
-            url = config.url,
-            headers = config.headers,
-            startPosition = config.startPosition,
-            externalSubtitles = config.externalSubtitles,
-            initialExternalSubtitleIndex = config.initialExternalSubtitleIndex,
-            initialSubtitleId = config.initialSubtitleId,
-            initialAudioId = config.initialAudioId,
-            cacheEnabled = config.cacheEnabled,
-            cacheSeconds = config.cacheSeconds,
-            demuxerMaxBytes = config.demuxerMaxBytes,
-            demuxerMaxBackBytes = config.demuxerMaxBackBytes
-        )
+        // On the command thread (R28): load stops the previous file and
+        // queues the new one, both blocking JNI. The play() below is queued
+        // behind it on the same thread, so the order is kept.
+        val r = renderer
+        r?.runCommand("load") {
+            r.load(
+                url = config.url,
+                headers = config.headers,
+                startPosition = config.startPosition,
+                externalSubtitles = config.externalSubtitles,
+                initialExternalSubtitleIndex = config.initialExternalSubtitleIndex,
+                initialSubtitleId = config.initialSubtitleId,
+                initialAudioId = config.initialAudioId,
+                cacheEnabled = config.cacheEnabled,
+                cacheSeconds = config.cacheSeconds,
+                demuxerMaxBytes = config.demuxerMaxBytes,
+                demuxerMaxBackBytes = config.demuxerMaxBackBytes
+            )
+        }
 
         if (config.autoplay) {
             play()
@@ -307,13 +313,15 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     fun play() {
         intendedPlayState = true
-        renderer?.play()
+        val r = renderer
+        r?.runCommand("play") { r.play() }
         pipController?.setPlaybackRate(1.0)
     }
 
     fun pause() {
         intendedPlayState = false
-        renderer?.pause()
+        val r = renderer
+        r?.runCommand("pause") { r.pause() }
         pipController?.setPlaybackRate(0.0)
     }
 
@@ -362,19 +370,31 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     }
 
     fun seekTo(position: Double) {
-        renderer?.seekTo(position)
+        renderer?.requestSeekTo(position)
     }
 
     fun seekBy(offset: Double) {
-        renderer?.seekBy(offset)
+        renderer?.requestSeekBy(offset)
     }
 
     fun setSpeed(speed: Double) {
-        renderer?.setSpeed(speed)
+        command("setSpeed") { it.setSpeed(speed) }
     }
 
-    fun getSpeed(): Double {
-        return renderer?.getSpeed() ?: 1.0
+    fun getSpeed(deliver: (Double) -> Unit) {
+        query("getSpeed", 1.0, { it.getSpeed() }, deliver)
+    }
+
+    // Everything JS asks of the engine runs on the renderer's command thread
+    // (R28); see MPVLayerRenderer.runCommand.
+    private fun command(name: String, block: (MPVLayerRenderer) -> Unit) {
+        val r = renderer ?: return
+        r.runCommand(name) { block(r) }
+    }
+
+    private fun <T> query(name: String, fallback: T, block: (MPVLayerRenderer) -> T, deliver: (T) -> Unit) {
+        val r = renderer ?: return deliver(fallback)
+        r.runQuery(name, fallback, { block(r) }, deliver)
     }
 
     fun isPaused(): Boolean {
@@ -410,76 +430,76 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     // MARK: - Subtitle Controls
 
-    fun getSubtitleTracks(): List<Map<String, Any>> {
-        return renderer?.getSubtitleTracks() ?: emptyList()
+    fun getSubtitleTracks(deliver: (List<Map<String, Any>>) -> Unit) {
+        query("getSubtitleTracks", emptyList(), { it.getSubtitleTracks() }, deliver)
     }
 
     fun setSubtitleTrack(trackId: Int) {
-        renderer?.setSubtitleTrack(trackId)
+        command("setSubtitleTrack") { it.setSubtitleTrack(trackId) }
     }
 
     fun disableSubtitles() {
-        renderer?.disableSubtitles()
+        command("disableSubtitles") { it.disableSubtitles() }
     }
 
-    fun getCurrentSubtitleTrack(): Int {
-        return renderer?.getCurrentSubtitleTrack() ?: 0
+    fun getCurrentSubtitleTrack(deliver: (Int) -> Unit) {
+        query("getCurrentSubtitleTrack", 0, { it.getCurrentSubtitleTrack() }, deliver)
     }
 
     fun addSubtitleFile(url: String, select: Boolean = true) {
-        renderer?.addSubtitleFile(url, select)
+        command("addSubtitleFile") { it.addSubtitleFile(url, select) }
     }
 
     // MARK: - Subtitle Positioning
 
     fun setSubtitlePosition(position: Int) {
-        renderer?.setSubtitlePosition(position)
+        command("setSubtitlePosition") { it.setSubtitlePosition(position) }
     }
 
     fun setSubtitleScale(scale: Double) {
-        renderer?.setSubtitleScale(scale)
+        command("setSubtitleScale") { it.setSubtitleScale(scale) }
     }
 
     fun setSubtitleMarginY(margin: Int) {
-        renderer?.setSubtitleMarginY(margin)
+        command("setSubtitleMarginY") { it.setSubtitleMarginY(margin) }
     }
 
     fun setSubtitleAlignX(alignment: String) {
-        renderer?.setSubtitleAlignX(alignment)
+        command("setSubtitleAlignX") { it.setSubtitleAlignX(alignment) }
     }
 
     fun setSubtitleAlignY(alignment: String) {
-        renderer?.setSubtitleAlignY(alignment)
+        command("setSubtitleAlignY") { it.setSubtitleAlignY(alignment) }
     }
 
     fun setSubtitleFontSize(size: Int) {
-        renderer?.setSubtitleFontSize(size)
+        command("setSubtitleFontSize") { it.setSubtitleFontSize(size) }
     }
 
     fun setSubtitleBorderStyle(style: String) {
-        renderer?.setSubtitleBorderStyle(style)
+        command("setSubtitleBorderStyle") { it.setSubtitleBorderStyle(style) }
     }
 
     fun setSubtitleBackgroundColor(color: String) {
-        renderer?.setSubtitleBackgroundColor(color)
+        command("setSubtitleBackgroundColor") { it.setSubtitleBackgroundColor(color) }
     }
 
     fun setSubtitleAssOverride(mode: String) {
-        renderer?.setSubtitleAssOverride(mode)
+        command("setSubtitleAssOverride") { it.setSubtitleAssOverride(mode) }
     }
 
     // MARK: - Audio Track Controls
 
-    fun getAudioTracks(): List<Map<String, Any>> {
-        return renderer?.getAudioTracks() ?: emptyList()
+    fun getAudioTracks(deliver: (List<Map<String, Any>>) -> Unit) {
+        query("getAudioTracks", emptyList(), { it.getAudioTracks() }, deliver)
     }
 
     fun setAudioTrack(trackId: Int) {
-        renderer?.setAudioTrack(trackId)
+        command("setAudioTrack") { it.setAudioTrack(trackId) }
     }
 
-    fun getCurrentAudioTrack(): Int {
-        return renderer?.getCurrentAudioTrack() ?: 0
+    fun getCurrentAudioTrack(deliver: (Int) -> Unit) {
+        query("getCurrentAudioTrack", 0, { it.getCurrentAudioTrack() }, deliver)
     }
 
     // MARK: - Video Scaling
@@ -488,7 +508,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     fun setZoomedToFill(zoomed: Boolean) {
         _isZoomedToFill = zoomed
-        renderer?.setZoomedToFill(zoomed)
+        command("setZoomedToFill") { it.setZoomedToFill(zoomed) }
     }
 
     fun isZoomedToFill(): Boolean {
@@ -497,8 +517,8 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     // MARK: - Technical Info
 
-    fun getTechnicalInfo(): Map<String, Any> {
-        return renderer?.getTechnicalInfo() ?: emptyMap()
+    fun getTechnicalInfo(deliver: (Map<String, Any>) -> Unit) {
+        query("getTechnicalInfo", emptyMap(), { it.getTechnicalInfo() }, deliver)
     }
 
     // MARK: - MPVLayerRenderer.Delegate
@@ -574,7 +594,8 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         if (intendedPlayState) return  // playing self-heals
         val surface = surfaceView.holder.surface?.takeIf { it.isValid }
         Log.i(TAG, "[Recover] onResume recovery — paused, surfaceValid=${surface != null}")
-        renderer?.recoverVideoOutput(surface)
+        val r = renderer
+        r?.runCommand("recoverVideoOutput") { r.recoverVideoOutput(surface) }
     }
 
     private fun registerLifecycleCallbacks() {
