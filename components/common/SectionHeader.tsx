@@ -46,7 +46,10 @@ export const SectionHeader: React.FC<Props> = ({
           bleedRule ? className : ""
         }`}
       >
-        <Text variant='section' numberOfLines={1} className='shrink pr-3'>
+        {/* Two lines, not one: at the #51 head size a long rail title
+            ("Recently added in Stand Up Comedy") no longer fits beside
+            See all on a phone and was cut off. */}
+        <Text variant='section' numberOfLines={2} className='shrink pr-3'>
           {title}
         </Text>
         {shouldShowAction ? (

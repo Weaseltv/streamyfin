@@ -128,7 +128,7 @@ export const NeonSheetHead: React.FC<HeadProps> = ({
           ) : null}
           <Text
             variant='pageTitle'
-            numberOfLines={1}
+            numberOfLines={2}
             style={{ marginTop: eyebrow ? 2 : 0 }}
           >
             {title}

@@ -45,7 +45,7 @@ export const PageHead: React.FC<Props> = ({
               {eyebrow}
             </Text>
           ) : null}
-          <Text variant='pageTitle' numberOfLines={1} style={{ marginTop: 2 }}>
+          <Text variant='pageTitle' numberOfLines={2} style={{ marginTop: 2 }}>
             {title}
           </Text>
         </View>
