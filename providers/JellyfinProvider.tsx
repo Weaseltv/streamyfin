@@ -51,6 +51,10 @@ interface Server {
   address: string;
 }
 
+/** Server URLs compare equal regardless of trailing slashes. */
+const sameServerUrl = (a: string | undefined, b: string) =>
+  (a ?? "").replace(/\/+$/, "") === b.replace(/\/+$/, "");
+
 const initialApi = (() => {
   try {
     const token = storage.getString("token") || null;
@@ -711,6 +715,13 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const switchServerUrl = useCallback(
     (newUrl: string) => {
       if (!jellyfin || !api?.accessToken) return;
+      // Every Wi-Fi change re-evaluates the URL, and most evaluations land on
+      // the URL already in use (leaving home Wi-Fi keeps the remote URL,
+      // losing the network entirely does too). A new api object for the same
+      // URL is not free: everything keyed on `api` refetches, and the player
+      // refetched its item mid-playback, failed while offline and replaced the
+      // video with its error screen.
+      if (sameServerUrl(api.basePath, newUrl)) return;
 
       clearTVDiscoverySafely();
       const newApi = createApiWithCustomHeaders(
