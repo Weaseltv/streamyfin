@@ -49,6 +49,12 @@ export const ItemImage: FC<Props> = ({
     });
   }, [api, item, quality, variant, width]);
 
+  // `blurhash` belongs to the placeholder only. expo-image reads any source
+  // object carrying a `blurhash` key as a blurhash source and gives it that
+  // hash's 16x16 size, so on Android Glide decoded the real 1000px artwork
+  // down to 16x16 and the item page poster and backdrop stayed pixelated.
+  const { blurhash, ...imageSource } = source ?? {};
+
   // return placeholder icon if no source
   if (!source?.uri)
     return (
@@ -69,16 +75,14 @@ export const ItemImage: FC<Props> = ({
     <Image
       cachePolicy={"memory-disk"}
       transition={300}
-      placeholder={{
-        blurhash: source?.blurhash,
-      }}
+      placeholder={{ blurhash }}
       style={{
         width: "100%",
         height: "100%",
       }}
       // The whole source, not just its uri: getItemImage already resolved the
       // custom proxy auth headers for it.
-      source={source}
+      source={imageSource}
       {...props}
     />
   );
