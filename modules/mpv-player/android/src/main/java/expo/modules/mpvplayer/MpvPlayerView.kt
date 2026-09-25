@@ -89,6 +89,14 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     // PiP state tracking
     private val pipHandler = Handler(Looper.getMainLooper())
 
+    // R29: this player's audio-focus owner (calls, alarms, other audio,
+    // headphones unplugged). See AudioFocusController.
+    private val audioFocus = AudioFocusController(context, object : AudioFocusController.Delegate {
+        override fun onFocusPause() = pauseForSystem()
+        override fun onFocusResume() = play()
+        override fun isPlaying() = intendedPlayState
+    })
+
     // Resume-recovery state: recreate the decoder when returning from the
     // screensaver / app background while paused. See
     // MPVLayerRenderer.recoverVideoOutput for why zero-copy hwdec=mediacodec
@@ -306,12 +314,27 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     // MARK: - Playback Controls
 
     fun play() {
+        if (!audioFocus.onPlay()) {
+            // Refused: another app holds focus, or Android will not grant it
+            // to an app in this state. Stay paused rather than play over it;
+            // the pause event tells JS.
+            pauseForSystem()
+            return
+        }
         intendedPlayState = true
         renderer?.play()
         pipController?.setPlaybackRate(1.0)
     }
 
     fun pause() {
+        audioFocus.onUserPause()
+        intendedPlayState = false
+        renderer?.pause()
+        pipController?.setPlaybackRate(0.0)
+    }
+
+    /** A pause the system caused (focus loss, route change), not the user. */
+    private fun pauseForSystem() {
         intendedPlayState = false
         renderer?.pause()
         pipController?.setPlaybackRate(0.0)
@@ -337,6 +360,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * instant OOM on a 2 GB device.
      */
     fun destroy() {
+        audioFocus.release()
         renderer?.stop()
 
         // Reset view-level state so a subsequent loadVideo() on the SAME view
@@ -670,6 +694,7 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * off the JS path.
      */
     fun cleanup() {
+        audioFocus.release()
         pipHandler.removeCallbacksAndMessages(null)
         unregisterLifecycleCallbacks()
         pipController?.stopPictureInPicture()
