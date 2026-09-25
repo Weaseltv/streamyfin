@@ -1158,12 +1158,35 @@ export default function DirectPlayerPage() {
     return () => setIsMounted(false);
   }, []);
 
+  // Only offer PiP where the device supports it. Checked once the native view
+  // exists; until then the button stays hidden rather than dead.
+  const [pipSupported, setPipSupported] = useState(false);
+  useEffect(() => {
+    if (!isVideoLoaded) return;
+    let cancelled = false;
+    videoRef.current
+      ?.isPictureInPictureSupported?.()
+      .then((supported) => {
+        if (!cancelled) setPipSupported(supported === true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isVideoLoaded]);
+
   // Memoize video ref functions to prevent unnecessary re-renders
   const startPictureInPicture = useCallback(async () => {
-    // Hide controls BEFORE entering PiP so the window captures a clean view
+    // Hide controls BEFORE entering PiP so the window captures a clean view.
+    // PiP mode itself is set only by the native onPictureInPictureChange
+    // callback: the system can refuse (PiP switched off for the app in system
+    // settings), and setting it here left fullscreen video with no controls.
     _setShowControls(false);
-    setIsPipMode(true);
-    return videoRef.current?.startPictureInPicture?.();
+    const entered = await videoRef.current?.startPictureInPicture?.();
+    if (entered === false) {
+      setIsPipMode(false);
+      _setShowControls(true);
+    }
   }, []);
 
   const play = useCallback(() => {
@@ -1740,7 +1763,9 @@ export default function DirectPlayerPage() {
                   isBuffering={isBuffering}
                   showControls={showControls}
                   setShowControls={setShowControls}
-                  startPictureInPicture={startPictureInPicture}
+                  startPictureInPicture={
+                    pipSupported ? startPictureInPicture : undefined
+                  }
                   play={play}
                   pause={pause}
                   seek={seek}

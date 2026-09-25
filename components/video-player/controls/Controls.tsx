@@ -68,7 +68,7 @@ interface Props {
   setShowControls: (shown: boolean) => void;
   mediaSource?: MediaSourceInfo | null;
   seek: (ticks: number) => void;
-  startPictureInPicture?: () => Promise<void>;
+  startPictureInPicture?: () => Promise<unknown>;
   play: () => void;
   pause: () => void;
   aspectRatio?: AspectRatio;

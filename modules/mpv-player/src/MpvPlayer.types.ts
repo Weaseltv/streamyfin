@@ -119,7 +119,11 @@ export interface MpvPlayerViewRef {
   isPaused: () => Promise<boolean>;
   getCurrentPosition: () => Promise<number>;
   getDuration: () => Promise<number>;
-  startPictureInPicture: () => Promise<void>;
+  /**
+   * Android resolves `false` when the system refused picture-in-picture
+   * (disabled for the app, unsupported, no activity); iOS resolves nothing.
+   */
+  startPictureInPicture: () => Promise<boolean | undefined>;
   stopPictureInPicture: () => Promise<void>;
   isPictureInPictureSupported: () => Promise<boolean>;
   isPictureInPictureActive: () => Promise<boolean>;

@@ -46,8 +46,13 @@ export default React.forwardRef<MpvPlayerViewRef, MpvPlayerViewProps>(
       },
       startPictureInPicture: async () => {
         console.log(PIP_LOG, "startPictureInPicture → native");
-        await nativeRef.current?.startPictureInPicture();
-        console.log(PIP_LOG, "startPictureInPicture ← native returned");
+        const entered = await nativeRef.current?.startPictureInPicture();
+        console.log(
+          PIP_LOG,
+          "startPictureInPicture ← native returned",
+          entered,
+        );
+        return entered;
       },
       stopPictureInPicture: async () => {
         console.log(PIP_LOG, "stopPictureInPicture → native");

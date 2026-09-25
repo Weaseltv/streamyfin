@@ -78,35 +78,50 @@ class PiPController(private val context: Context, private val appContext: AppCon
         return false
     }
 
-    fun startPictureInPicture() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    /**
+     * Ask the system for picture-in-picture. Returns whether it accepted.
+     *
+     * The caller has usually already hidden its controls for a clean PiP
+     * window, so every refusal must come back as `false` rather than a silent
+     * return: the user may have switched PiP off for the app in system
+     * settings, the device may not support it, or there may be no activity.
+     * Before this returned Unit, a refusal left the player fullscreen with its
+     * controls and gestures gone.
+     */
+    fun startPictureInPicture(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
 
         val activity = getActivity() ?: run {
             Log.e(TAG, "Cannot start PiP: no activity")
-            return
+            return false
         }
 
         if (!isPictureInPictureSupported()) {
             Log.e(TAG, "PiP not supported on this device")
-            return
+            return false
         }
 
-        try {
+        return try {
             val params = buildPiPParams(forEntering = true)
             val result = activity.enterPictureInPictureMode(params)
 
             if (!result) {
                 Log.e(TAG, "enterPictureInPictureMode rejected by system")
                 isInPiPMode = false
-                return
+                return false
             }
 
             isInPiPMode = true
             pipEntryNotified = true
             delegate?.onPictureInPictureModeChanged(true)
             registerLifecycleCallbacks()
+            true
         } catch (e: Exception) {
+            // Thrown instead of returning false on some versions when PiP is
+            // disabled for the app.
             Log.e(TAG, "Failed to enter PiP: ${e.message}")
+            isInPiPMode = false
+            false
         }
     }
 
