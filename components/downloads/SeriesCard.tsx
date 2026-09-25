@@ -18,7 +18,7 @@ const EPISODE_ROW = 44;
 const episodeTitle = (item: BaseItemDto) =>
   `S${item.ParentIndexNumber ?? 0}:E${item.IndexNumber ?? 0} · ${item.Name ?? ""}`;
 
-const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => {
+export const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => {
   const { deleteFile } = useDownload();
   const confirmDelete = useConfirmDelete();
 
@@ -61,25 +61,24 @@ const EpisodeRow: React.FC<{ item: BaseItemDto }> = ({ item }) => {
   );
 };
 
+/** Season, then episode order for a series' downloaded episodes. */
+export const sortEpisodes = (items: BaseItemDto[]) =>
+  [...items].sort(
+    (a, b) =>
+      (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
+      (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
+  );
+
 /**
- * A downloaded series as its own section: the name on a yellow rule with
- * "SERIES · n EPISODES" right (tap opens the series, long press asks to
- * delete every episode), then 44 episode rows with sizes on the right.
+ * A downloaded series' header: the name on a yellow rule with
+ * "SERIES · n EPISODES" right. Tap opens the series, long press asks to
+ * delete every episode. The Downloads screen renders it as its own list row,
+ * with each EpisodeRow as a separate recyclable row beneath it.
  */
-export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
+export const SeriesHeader: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
   const { t } = useTranslation();
   const { deleteItems } = useDownload();
   const confirmDelete = useConfirmDelete();
-
-  const episodes = useMemo(
-    () =>
-      [...items].sort(
-        (a, b) =>
-          (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
-          (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
-      ),
-    [items],
-  );
 
   const deleteSeries = useCallback(
     () =>
@@ -105,19 +104,27 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
   );
 
   return (
+    <TouchableItemRouter
+      item={seriesItem}
+      onLongPress={showActionSheet}
+      activeOpacity={0.7}
+    >
+      <SectionHeader
+        title={items[0]?.SeriesName ?? ""}
+        accent={NeonBoard.yellow}
+        count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
+        className='px-4'
+      />
+    </TouchableItemRouter>
+  );
+};
+
+/** Header plus every episode, unvirtualized. Kept for small embedded uses. */
+export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
+  const episodes = useMemo(() => sortEpisodes(items), [items]);
+  return (
     <View>
-      <TouchableItemRouter
-        item={seriesItem}
-        onLongPress={showActionSheet}
-        activeOpacity={0.7}
-      >
-        <SectionHeader
-          title={items[0]?.SeriesName ?? ""}
-          accent={NeonBoard.yellow}
-          count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
-          className='px-4'
-        />
-      </TouchableItemRouter>
+      <SeriesHeader items={items} />
       {episodes.map((item) => (
         <EpisodeRow key={item.Id} item={item} />
       ))}

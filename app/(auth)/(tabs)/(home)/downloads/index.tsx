@@ -5,10 +5,12 @@ import {
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { FlashList } from "@shopify/flash-list";
 import { useAtom } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { Alert, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { Button } from "@/components/Button";
@@ -20,7 +22,11 @@ import { Text } from "@/components/common/Text";
 import ActiveDownloads from "@/components/downloads/ActiveDownloads";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
 import { MovieCard } from "@/components/downloads/MovieCard";
-import { SeriesCard } from "@/components/downloads/SeriesCard";
+import {
+  EpisodeRow,
+  SeriesHeader,
+  sortEpisodes,
+} from "@/components/downloads/SeriesCard";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Scrims, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
@@ -182,10 +188,78 @@ export default function DownloadsPage() {
   const hasDownloads = (downloadedFiles?.length ?? 0) > 0;
   const hasProcesses = (processes?.length ?? 0) > 0;
 
+  // One flat list of typed rows instead of a ScrollView that mapped every
+  // movie and every episode of every series: 500 downloaded episodes meant
+  // 500 mounted rows, each with its own size lookup and press handlers.
+  const rows = useMemo<DownloadRow[]>(() => {
+    const out: DownloadRow[] = [];
+    if (movies.length > 0) {
+      out.push({
+        kind: "heading",
+        key: "h-movies",
+        section: "movies",
+        count: movies.length,
+      });
+      for (const m of movies)
+        out.push({ kind: "item", key: `m-${m.item.Id}`, item: m.item });
+    }
+    for (const group of groupedBySeries) {
+      const items = group.map((g) => g.item);
+      const seriesKey = items[0].SeriesId ?? items[0].SeriesName ?? "";
+      out.push({ kind: "series", key: `s-${seriesKey}`, items });
+      for (const ep of sortEpisodes(items))
+        out.push({ kind: "episode", key: `e-${ep.Id}`, item: ep });
+    }
+    if (otherMedia.length > 0) {
+      out.push({
+        kind: "heading",
+        key: "h-other",
+        section: "other",
+        count: otherMedia.length,
+      });
+      for (const o of otherMedia)
+        out.push({ kind: "item", key: `o-${o.item.Id}`, item: o.item });
+    }
+    return out;
+  }, [movies, groupedBySeries, otherMedia]);
+
+  const renderRow = useCallback(
+    ({ item: row }: { item: DownloadRow }) => {
+      switch (row.kind) {
+        case "heading":
+          return (
+            <SectionHeader
+              title={t(
+                row.section === "movies"
+                  ? "home.downloads.movies"
+                  : "home.downloads.other_media",
+              )}
+              accent={
+                row.section === "movies" ? NeonBoard.orange : NeonBoard.volt
+              }
+              count={row.count}
+              className='px-4'
+            />
+          );
+        case "item":
+          return <MovieCard item={row.item} />;
+        case "series":
+          return <SeriesHeader items={row.items} />;
+        case "episode":
+          return <EpisodeRow item={row.item} />;
+      }
+    },
+    [t],
+  );
+
   return (
     <OfflineModeProvider isOffline={true}>
       <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
-        <ScrollView
+        <FlashList
+          data={rows}
+          keyExtractor={rowKey}
+          getItemType={rowType}
+          renderItem={renderRow}
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior='automatic'
           contentContainerStyle={{
@@ -193,75 +267,44 @@ export default function DownloadsPage() {
             paddingLeft: insets.left,
             paddingRight: insets.right,
           }}
-        >
-          <PageHead
-            eyebrow={`${t("tabs.home")} · ${t("home.downloads.offline_library")}`}
-            title={t("home.downloads.downloads_title")}
-            right={
-              hasDownloads ? (
-                <TouchableOpacity
-                  onPress={() => bottomSheetModalRef.current?.present()}
-                  accessibilityRole='button'
-                  accessibilityLabel={t("home.downloads.manage_title")}
-                  hitSlop={8}
-                  style={{ paddingLeft: 12 }}
-                >
-                  <DownloadSize
-                    items={allItems}
-                    variant='tally'
-                    accent={NeonBoard.volt}
-                  />
-                </TouchableOpacity>
-              ) : null
-            }
-            style={{ marginBottom: 4 }}
-          />
-
-          <ActiveDownloads />
-
-          {movies.length > 0 && (
-            <View>
-              <SectionHeader
-                title={t("home.downloads.movies")}
-                accent={NeonBoard.orange}
-                count={movies.length}
-                className='px-4'
+          ListHeaderComponent={
+            <>
+              <PageHead
+                eyebrow={`${t("tabs.home")} · ${t("home.downloads.offline_library")}`}
+                title={t("home.downloads.downloads_title")}
+                right={
+                  hasDownloads ? (
+                    <TouchableOpacity
+                      onPress={() => bottomSheetModalRef.current?.present()}
+                      accessibilityRole='button'
+                      accessibilityLabel={t("home.downloads.manage_title")}
+                      hitSlop={8}
+                      style={{ paddingLeft: 12 }}
+                    >
+                      <DownloadSize
+                        items={allItems}
+                        variant='tally'
+                        accent={NeonBoard.volt}
+                      />
+                    </TouchableOpacity>
+                  ) : null
+                }
+                style={{ marginBottom: 4 }}
               />
-              {movies.map((item) => (
-                <MovieCard item={item.item} key={item.item.Id} />
-              ))}
-            </View>
-          )}
 
-          {groupedBySeries.map((items) => (
-            <SeriesCard
-              items={items.map((i) => i.item)}
-              key={items[0].item.SeriesId ?? items[0].item.SeriesName}
-            />
-          ))}
-
-          {otherMedia.length > 0 && (
-            <View>
-              <SectionHeader
-                title={t("home.downloads.other_media")}
-                accent={NeonBoard.volt}
-                count={otherMedia.length}
-                className='px-4'
+              <ActiveDownloads />
+            </>
+          }
+          ListEmptyComponent={
+            !hasDownloads && !hasProcesses ? (
+              <EmptyState
+                icon='download'
+                title={t("home.downloads.no_downloaded_items")}
+                detail={t("home.downloads.no_downloaded_items_detail")}
               />
-              {otherMedia.map((item) => (
-                <MovieCard item={item.item} key={item.item.Id} />
-              ))}
-            </View>
-          )}
-
-          {!hasDownloads && !hasProcesses && (
-            <EmptyState
-              icon='download'
-              title={t("home.downloads.no_downloaded_items")}
-              detail={t("home.downloads.no_downloaded_items_detail")}
-            />
-          )}
-        </ScrollView>
+            ) : null
+          }
+        />
         <ConfirmDeleteHost />
       </View>
       <BottomSheetModal
@@ -401,3 +444,12 @@ export default function DownloadsPage() {
     </OfflineModeProvider>
   );
 }
+
+type DownloadRow =
+  | { kind: "heading"; key: string; section: "movies" | "other"; count: number }
+  | { kind: "item"; key: string; item: BaseItemDto }
+  | { kind: "series"; key: string; items: BaseItemDto[] }
+  | { kind: "episode"; key: string; item: BaseItemDto };
+
+const rowKey = (row: DownloadRow) => row.key;
+const rowType = (row: DownloadRow) => row.kind;
