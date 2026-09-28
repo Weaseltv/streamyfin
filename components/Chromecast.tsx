@@ -8,6 +8,7 @@ import GoogleCast, {
   useMediaStatus,
   useRemoteMediaClient,
 } from "react-native-google-cast";
+import { useOpenCastDialog } from "@/components/cast/CastDialog";
 import { NeonBoard } from "@/constants/Colors";
 import { HeaderButton, type HeaderButtonProps } from "./common/HeaderButton";
 import { HeaderIcon } from "./common/HeaderIcon";
@@ -25,6 +26,7 @@ export function Chromecast(props: Props) {
   const sessionManager = GoogleCast.getSessionManager();
   const discoveryManager = GoogleCast.getDiscoveryManager();
   const mediaStatus = useMediaStatus();
+  const openCastDialog = useOpenCastDialog();
 
   useEffect(() => {
     (async () => {
@@ -41,7 +43,7 @@ export function Chromecast(props: Props) {
     <HeaderButton
       onPress={() => {
         if (mediaStatus?.currentItemId) CastContext.showExpandedControls();
-        else CastContext.showCastDialog();
+        else openCastDialog();
       }}
       {...props}
     >
