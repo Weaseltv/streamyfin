@@ -562,12 +562,21 @@ export const PlayButton: React.FC<Props> = ({
         >
           {label}
         </Text>
-        {client && (
+        {client ? (
           <View>
             <Feather name='cast' size={18} color={NeonBoard.onAccent} />
-            <CastButton tintColor='transparent' />
+            {/* Kept mounted so Android discovery stays alive. It must not
+                open the system cast dialog, whose status line is clipped. */}
+            {Platform.OS === "android" ? (
+              <View
+                pointerEvents='none'
+                style={{ position: "absolute", opacity: 0 }}
+              >
+                <CastButton tintColor='transparent' />
+              </View>
+            ) : null}
           </View>
-        )}
+        ) : null}
       </View>
     </TouchableOpacity>
   );

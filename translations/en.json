@@ -1164,6 +1164,16 @@
     "episodes_count": "{{count}} episodes",
     "seasons_count": "{{count}} seasons"
   },
+  "cast": {
+    "cast_to": "Cast to",
+    "no_media_selected": "No media selected",
+    "stop_casting": "Stop casting",
+    "searching": "Looking for devices…",
+    "no_devices": "Make sure this phone and your TV are on the same Wi-Fi.",
+    "connecting": "Connecting…",
+    "mute": "Mute",
+    "unmute": "Unmute"
+  },
   "states": {
     "retry": "Retry",
     "offline_title": "Offline mode",
