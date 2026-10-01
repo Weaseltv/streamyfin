@@ -60,11 +60,10 @@ export const TVLogin: React.FC = () => {
     loginWithPassword,
   } = useJellyfin();
 
-  const {
-    apiUrl: _apiUrl,
-    username: _username,
-    password: _password,
-  } = params as { apiUrl: string; username: string; password: string };
+  // Only the server address may arrive by link. The old
+  // `weaselfin://login?username=&password=` form signed in with a plaintext
+  // password in the URL and is gone; use "Sign in with theweasel.tv" instead.
+  const { apiUrl: _apiUrl } = params as { apiUrl?: string };
 
   // Selected server persistence
   const [selectedTVServer, setSelectedTVServer] = useAtom(selectedTVServerAtom);
@@ -162,13 +161,6 @@ export const TVLogin: React.FC = () => {
       }
     })();
   }, [_apiUrl]);
-
-  // Handle auto-login when api is ready and credentials are provided via URL params
-  useEffect(() => {
-    if (api?.basePath && _apiUrl && _username && _password) {
-      login(_username, _password);
-    }
-  }, [api?.basePath, _apiUrl, _username, _password]);
 
   // Update header
   useEffect(() => {

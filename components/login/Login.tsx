@@ -42,6 +42,15 @@ import {
 } from "@/utils/jellyfin/checkServer";
 import type { SavedServer } from "@/utils/secureCredentials";
 import { serverHost } from "@/utils/serverHost";
+import {
+  WEASELPLEX_CONNECT_RETURN_URL,
+  weaselPlexConnectDevice,
+  weaselPlexConnectUrl,
+} from "@/utils/weaselPlexConnect";
+
+// Phone only: the auth session opens the website's approve page and comes
+// back through the return link. TV builds keep the plain Quick Connect code.
+const WebBrowser = !Platform.isTV ? require("expo-web-browser") : null;
 
 const CredentialsSchema = z.object({
   username: z.string().min(1, t("login.username_required")),
@@ -98,11 +107,13 @@ export const Login: React.FC = () => {
   } = useJellyfin();
   const setPendingAccountSave = useSetAtom(pendingAccountSaveAtom);
 
-  const {
-    apiUrl: _apiUrl,
-    username: _username,
-    password: _password,
-  } = params as { apiUrl: string; username: string; password: string };
+  // Only the server address and a username may arrive by link. The old
+  // `weaselfin://login?username=&password=` form carried a plaintext password
+  // in the URL and signed in by itself; "Sign in with theweasel.tv" replaces it.
+  const { apiUrl: _apiUrl, username: _username } = params as {
+    apiUrl?: string;
+    username?: string;
+  };
 
   const [loadingServerCheck, setLoadingServerCheck] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -115,7 +126,7 @@ export const Login: React.FC = () => {
     password: string;
   }>({
     username: _username || "",
-    password: _password || "",
+    password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -198,14 +209,6 @@ export const Login: React.FC = () => {
       }
     })();
   }, [_apiUrl]);
-
-  // Handle auto-login when api is ready and credentials are provided via URL params
-  useEffect(() => {
-    if (api?.basePath && _apiUrl && _username && _password) {
-      setCredentials({ username: _username, password: _password });
-      login(_username, _password);
-    }
-  }, [api?.basePath, _apiUrl, _username, _password]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -335,6 +338,50 @@ export const Login: React.FC = () => {
     }
   };
 
+  // "Sign in with theweasel.tv": a Quick Connect code for this phone is approved
+  // on the website after the customer signs in with their theweasel.tv account,
+  // so no WeaselPlex password is typed here. The provider keeps polling the
+  // code and the `user` effect above finishes the login. Only offered for the
+  // server this build points at: the website can only approve WeaselPlex codes.
+  const weaselPlexHost = serverHost(DEFAULT_SERVER_URL);
+  const canSignInWithTheWeasel =
+    WebBrowser != null &&
+    weaselPlexHost !== "" &&
+    serverHost(api?.basePath) === weaselPlexHost;
+  const [signingInWithTheWeasel, setSigningInWithTheWeasel] = useState(false);
+  const handleSignInWithTheWeasel = async () => {
+    if (!WebBrowser) return;
+    setSigningInWithTheWeasel(true);
+    try {
+      const code = await initiateQuickConnect();
+      if (!code) return;
+      setQuickConnectActive(true);
+      // `isPad` only exists on the iOS Platform type; read it loosely.
+      const device = weaselPlexConnectDevice(
+        Platform.OS,
+        (Platform as { isPad?: boolean }).isPad === true,
+      );
+      const result = await WebBrowser.openAuthSessionAsync(
+        weaselPlexConnectUrl(code, device),
+        WEASELPLEX_CONNECT_RETURN_URL,
+      );
+      if (result?.type !== "success") {
+        // The browser closed without the return link: cancelled, or the
+        // customer switched back by hand after approving. Polling is still
+        // running, so show the code sheet as the fallback; an approval that
+        // already happened closes it within a second.
+        setQuickConnectCode(code);
+      }
+    } catch (_error) {
+      Alert.alert(
+        t("login.error_title"),
+        t("login.failed_to_initiate_quick_connect"),
+      );
+    } finally {
+      setSigningInWithTheWeasel(false);
+    }
+  };
+
   const host = serverHost(api?.basePath);
   const disabledGlyph = NeonBoard.low;
 
@@ -374,6 +421,31 @@ export const Login: React.FC = () => {
               title={t("home.settings.switch_user.account")}
               accent={ACCENT}
             />
+
+            {canSignInWithTheWeasel ? (
+              <View
+                style={{ paddingHorizontal: Sizes.gutter, marginBottom: 20 }}
+              >
+                <Button
+                  onPress={handleSignInWithTheWeasel}
+                  loading={signingInWithTheWeasel}
+                  disabled={signingInWithTheWeasel}
+                  accent={ACCENT}
+                  iconLeft={
+                    <Feather
+                      name='globe'
+                      size={18}
+                      color={NeonBoard.onAccent}
+                    />
+                  }
+                >
+                  {t("login.sign_in_with_theweasel")}
+                </Button>
+                <Text variant='meta' muted style={{ marginTop: 8 }}>
+                  {t("login.sign_in_with_theweasel_hint")}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Username */}
             <View style={fieldRow}>
