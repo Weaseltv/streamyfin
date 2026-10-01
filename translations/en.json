@@ -20,6 +20,8 @@
     "password_placeholder": "Password",
     "login_button": "Log in",
     "quick_connect": "Quick Connect",
+    "sign_in_with_theweasel": "Sign in with theweasel.tv",
+    "sign_in_with_theweasel_hint": "Approve this phone with your theweasel.tv account. No WeaselPlex password is typed here.",
     "your_code": "Your code",
     "enter_code_to_login": "Enter code {{code}} to log in",
     "quick_connect_instructions": "Enter this code on a signed-in device. You'll be logged in automatically.",
