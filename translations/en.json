@@ -1194,6 +1194,7 @@
     "not_now": "Not now",
     "downloading": "Downloading… {{percent}}%",
     "failed": "The update couldn't be installed. Try again from Settings.",
-    "unverified": "The update couldn't be verified, so it wasn't installed."
+    "unverified": "The update couldn't be verified, so it wasn't installed.",
+    "allow_installs": "To update, allow WeaselPlex to install unknown apps in your phone's Settings."
   }
 }

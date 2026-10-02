@@ -34,6 +34,18 @@ export const AppUpdatePrompt: React.FC = () => {
   promptRef.current = prompt;
   const downloading = prompt?.percent != null;
 
+  /** Sends the user to allow "Install unknown apps"; the popup resumes on return. */
+  const requestInstallPermission = useCallback(() => {
+    if (AppUpdater?.openInstallPermissionSettings()) {
+      awaitingPermission.current = true;
+      // Android can restart the app when the permission is granted; clearing the
+      // timestamp brings the popup back if that happens.
+      storage.remove(UPDATE_PROMPT_SHOWN_AT_KEY);
+    } else {
+      toast.error(t("app_update.allow_installs"));
+    }
+  }, [t]);
+
   const download = useCallback(async () => {
     if (!AppUpdater) return;
     try {
@@ -51,12 +63,9 @@ export const AppUpdatePrompt: React.FC = () => {
     const current = promptRef.current;
     if (!AppUpdater || !current || current.percent != null) return;
     // Ask before downloading: Android can restart the app when the permission is
-    // granted, which would kill a download in progress. Clearing the timestamp brings
-    // the popup back if that happens.
+    // granted, which would kill a download in progress.
     if (!AppUpdater.canInstallPackages()) {
-      awaitingPermission.current = true;
-      storage.remove(UPDATE_PROMPT_SHOWN_AT_KEY);
-      AppUpdater.openInstallPermissionSettings();
+      requestInstallPermission();
       return;
     }
     storage.set(UPDATE_PROMPT_SHOWN_AT_KEY, Date.now());
@@ -73,8 +82,7 @@ export const AppUpdatePrompt: React.FC = () => {
     try {
       await download();
       if ((await AppUpdater.installUpdate()) === "needsPermission") {
-        awaitingPermission.current = true;
-        AppUpdater.openInstallPermissionSettings();
+        requestInstallPermission();
       }
       setPrompt(null);
     } catch (error) {
@@ -95,7 +103,7 @@ export const AppUpdatePrompt: React.FC = () => {
     } finally {
       subscription.remove();
     }
-  }, [download, setPrompt, t]);
+  }, [download, requestInstallPermission, setPrompt, t]);
 
   const startUpdateRef = useRef(startUpdate);
   startUpdateRef.current = startUpdate;

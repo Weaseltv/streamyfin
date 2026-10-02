@@ -36,7 +36,8 @@ interface AppUpdaterNativeModule {
   cancelDownload(): void;
   /** Whether "Install unknown apps" is allowed for WeaselPlex. */
   canInstallPackages(): boolean;
-  openInstallPermissionSettings(): void;
+  /** False when no settings screen could be opened. */
+  openInstallPermissionSettings(): boolean;
   /** Opens Android's installer for the downloaded APK. */
   installUpdate(): Promise<"installer" | "needsPermission">;
   addListener(

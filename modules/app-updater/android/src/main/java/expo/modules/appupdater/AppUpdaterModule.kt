@@ -53,14 +53,7 @@ class AppUpdaterModule : Module() {
 
     Function("canInstallPackages") { canInstallPackages() }
 
-    Function("openInstallPermissionSettings") {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val intent =
-          Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-      }
-    }
+    Function("openInstallPermissionSettings") { openInstallPermissionSettings() }
 
     AsyncFunction("installUpdate") Coroutine { -> guarded { install() } }
   }
@@ -140,6 +133,21 @@ class AppUpdaterModule : Module() {
       }
     (appContext.currentActivity ?: context).startActivity(intent)
     return "installer"
+  }
+
+  /**
+   * Opens "Install unknown apps" for this app, or its app-info page where a build lacks
+   * that screen. False if neither opened, so JS can say what to allow instead.
+   */
+  private fun openInstallPermissionSettings(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+    val packageUri = Uri.parse("package:${context.packageName}")
+    return listOf(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+      .any { action ->
+        runCatching {
+          context.startActivity(Intent(action, packageUri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
+      }
   }
 
   private fun canInstallPackages(): Boolean =
