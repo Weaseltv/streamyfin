@@ -1,11 +1,13 @@
 /**
- * The Jellyfin server this build points at out of the box.
+ * The WeaselPlex server this build signs in to.
  *
- * 🛑 This is a PRE-FILL, never a lock. The server field stays editable on every
- * platform. An iOS client that can only ever reach one server reads to App Review
- * as a *service* rather than a general-purpose tool, which forfeits the
- * generic-client position that gets self-hosted clients approved. Seeding the
- * input is enough to spare our own customers from typing a URL.
+ * On phones this is a LOCK, not a pre-fill (owner decision, 2026-10-02): the
+ * only sign-in screen is "Connect to your account", which connects here and
+ * approves the code on theweasel.tv. There is no server field. The app is
+ * distributed through TestFlight and direct download, not the App Store, so
+ * the owner accepted that an app reaching only one server reads as a service.
+ * Don't bring back a server field or password sign-in without asking.
+ * (TV builds still pre-fill TVAddServerForm with it.)
  *
  * Referenced as a full `process.env.EXPO_PUBLIC_*` member expression on purpose:
  * Expo inlines these textually at build time, so destructuring or computing the
