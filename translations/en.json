@@ -7,12 +7,9 @@
     "invalid_url": "Enter a valid address"
   },
   "login": {
-    "username_required": "Username is required",
     "error_title": "Error",
     "login_title": "Log in",
     "login_to_title": "Log in to",
-    "log_in_to_weaselplex": "Log in to WeaselPlex",
-    "account_note": "Use your WeaselPlex account. Your password never leaves this device.",
     "select_user": "Select a user to log in",
     "add_user_to_login": "Add a user to log in",
     "add_user": "Add user",
@@ -20,8 +17,6 @@
     "password_placeholder": "Password",
     "login_button": "Log in",
     "quick_connect": "Quick Connect",
-    "sign_in_with_theweasel": "Sign in with theweasel.tv",
-    "sign_in_with_theweasel_hint": "Approve this phone with your theweasel.tv account. No WeaselPlex password is typed here.",
     "your_code": "Your code",
     "enter_code_to_login": "Enter code {{code}} to log in",
     "quick_connect_instructions": "Enter this code on a signed-in device. You'll be logged in automatically.",
@@ -32,7 +27,6 @@
     "connection_failed": "Connection failed",
     "could_not_connect_to_server": "Could not connect to the server. Please check the URL and your network connection.",
     "an_unexpected_error_occurred": "An unexpected error occurred",
-    "change_server": "Change server",
     "invalid_username_or_password": "Invalid username or password",
     "user_does_not_have_permission_to_log_in": "User does not have permission to log in",
     "server_is_taking_too_long_to_respond_try_again_later": "Server is taking too long to respond, try again later",
@@ -40,7 +34,9 @@
     "there_is_a_server_error": "There is a server error",
     "an_unexpected_error_occurred_did_you_enter_the_correct_url": "An unexpected error occurred. Did you enter the server URL correctly?",
     "too_old_server_text": "Unsupported Jellyfin server discovered",
-    "too_old_server_description": "Please update Jellyfin to the latest version"
+    "too_old_server_description": "Please update Jellyfin to the latest version",
+    "connect_denied": "Not signed in. Tap Connect to your account to try again.",
+    "could_not_reach_weaselplex": "WeaselPlex couldn't be reached. Check your internet connection and try again."
   },
   "server": {
     "enter_url_to_jellyfin_server": "Enter the URL to your WeaselPlex server",
@@ -50,7 +46,6 @@
     "clear_button": "Clear all",
     "clear_all_confirm_title": "Clear previous servers?",
     "clear_all_confirm_desc": "This removes every saved server and account from this device.",
-    "server_url": "Server URL",
     "swipe_to_remove": "Swipe to remove",
     "search_for_local_servers": "Search for local servers",
     "searching": "Searching...",
@@ -70,7 +65,9 @@
     "add_server_to_get_started": "Add a server to get started",
     "add_server": "Add server",
     "change_server": "Change server",
-    "swipe_for_options": "Swipe a server for options"
+    "swipe_for_options": "Swipe a server for options",
+    "connect_account_intro": "To start watching connect your WeaselPlex account to the app.",
+    "connect_to_your_account": "Connect to your account"
   },
   "save_account": {
     "title": "Save account",
@@ -126,10 +123,10 @@
       "welcome_to_streamyfin": "Welcome to WeaselPlex",
       "a_free_and_open_source_client_for_jellyfin": "Your WeaselPlex library, on your phone.",
       "features_title": "Features",
-      "jellyseerr_feature_description": "Connect to your Seerr instance and request movies directly in the app.",
+      "jellyseerr_feature_description": "Request movies, shows & episodes directly in the app.",
       "downloads_feature_title": "Offline viewing",
-      "downloads_feature_description": "Save your own media to this device to watch offline.",
-      "chromecast_feature_description": "Cast movies and series to your Chromecast devices.",
+      "downloads_feature_description": "Download your own media to this device to watch offline.",
+      "chromecast_feature_description": "Cast movies and shows to your Chromecast devices.",
       "done_button": "Done",
       "go_to_settings_button": "Go to Settings"
     },
@@ -1156,8 +1153,7 @@
     "hide_value": "Hide value",
     "enabled": "Enabled",
     "header_count_one": "{{count}} header",
-    "header_count_other": "{{count}} headers",
-    "header_count": "{{count}} headers"
+    "header_count_other": "{{count}} headers"
   },
   "item": {
     "play_runtime": "Play · {{time}}",

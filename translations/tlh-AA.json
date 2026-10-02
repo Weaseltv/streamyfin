@@ -7,7 +7,6 @@
     "invalid_url": "Daq lugh yIghItlh"
   },
   "login": {
-    "username_required": "tlhIngan DaneH",
     "error_title": "ghIq",
     "login_title": "lut 'el",
     "login_to_title": "lut 'el",
@@ -27,7 +26,6 @@
     "connection_failed": "ngoQlaHbe'",
     "could_not_connect_to_server": "SeHlaw veS Ho'Do'laHbe'. URL 'ej ret ghun mej.",
     "an_unexpected_error_occurred": "num ghIq Doch",
-    "change_server": "Ho'Do' veS yIghoS",
     "invalid_username_or_password": "tlhIngan pagh ngoq De' law'be'",
     "user_does_not_have_permission_to_log_in": "tlhIngan lut 'el je'laHbe'",
     "server_is_taking_too_long_to_respond_try_again_later": "Ho'Do' veS jachrup. pItlh yIHaD",
@@ -43,7 +41,6 @@
     "connect_button": "yIngoq!",
     "previous_servers": "namen Ho'Do' veS",
     "clear_button": "yIQaw'",
-    "server_url": "Ho'Do' veS URL",
     "swipe_to_remove": "teqmeH yISIq",
     "search_for_local_servers": "val Ho'Do' veS yISam",
     "searching": "Sam...",

@@ -7,7 +7,6 @@
     "invalid_url": "Skriv inn en gyldig adresse"
   },
   "login": {
-    "username_required": "Brukernavn kreves",
     "error_title": "Feil",
     "login_title": "Logg inn",
     "login_to_title": "Logg inn i",
@@ -27,7 +26,6 @@
     "connection_failed": "Tilkobling mislyktes",
     "could_not_connect_to_server": "Kunne ikke koble til serveren. Kontroller nettadressen og nettverkstilkoblingen.",
     "an_unexpected_error_occurred": "En uventet feil oppstod",
-    "change_server": "Endre server",
     "invalid_username_or_password": "Ugyldig brukernavn eller passord",
     "user_does_not_have_permission_to_log_in": "Brukeren har ikke tillatelse til å logge inn",
     "server_is_taking_too_long_to_respond_try_again_later": "Serveren tar for lang tid å svare, prøv igjen senere",
@@ -43,7 +41,6 @@
     "connect_button": "Nettverk",
     "previous_servers": "Tidligere servere",
     "clear_button": "Tøm alt",
-    "server_url": "Server-URL",
     "swipe_to_remove": "Sveip for å fjerne",
     "search_for_local_servers": "Søk etter lokale servere",
     "searching": "Søker...",

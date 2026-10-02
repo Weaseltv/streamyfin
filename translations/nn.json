@@ -1,6 +1,5 @@
 {
   "login": {
-    "username_required": "Brukarnamn er obligatorisk",
     "error_title": "Feil",
     "login_title": "Logg inn",
     "login_to_title": "Logg inn på",
@@ -14,7 +13,6 @@
     "connection_failed": "Tilkopling feila",
     "could_not_connect_to_server": "Kunne ikkje kopla til serveren. Sjekk URL-adressa og nettverkstilkoplinga di.",
     "an_unexpected_error_occured": "Det oppstod ein uventa feil",
-    "change_server": "Endre servar",
     "invalid_username_or_password": "Feil brukarnamn eller passord",
     "user_does_not_have_permission_to_log_in": "Brukaren har ikkje løyve til å logga inn",
     "server_is_taking_too_long_to_respond_try_again_later": "Serveren bruker for lang tid på å svara. Prøv igjen seinare.",

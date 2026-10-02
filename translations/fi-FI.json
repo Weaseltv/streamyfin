@@ -7,7 +7,6 @@
     "invalid_url": "Anna kelvollinen osoite"
   },
   "login": {
-    "username_required": "Käyttäjätunnus on pakollinen",
     "error_title": "Virhe",
     "login_title": "Kirjaudu sisään",
     "login_to_title": "Kirjaudu sisään palveluun",
@@ -27,7 +26,6 @@
     "connection_failed": "Yhteys epäonnistui",
     "could_not_connect_to_server": "Yhteyttä palvelimeen ei voitu muodostaa. Tarkista URL-osoite ja verkkoyhteytesi.",
     "an_unexpected_error_occurred": "Odottamaton virhe tapahtui",
-    "change_server": "Vaihda palvelinta",
     "invalid_username_or_password": "Virheellinen käyttäjätunnus tai salasana",
     "user_does_not_have_permission_to_log_in": "Käyttäjällä ei ole oikeuksia kirjautua sisään",
     "server_is_taking_too_long_to_respond_try_again_later": "Palvelin reagoi liian hitaasti, yritä myöhemmin uudelleen",
@@ -43,7 +41,6 @@
     "connect_button": "Yhdistä",
     "previous_servers": "Edelliset palvelimet",
     "clear_button": "Tyhjennä",
-    "server_url": "Palvelimen URL",
     "swipe_to_remove": "Pyyhkäise poistaaksesi",
     "search_for_local_servers": "Etsi paikallisia palvelimia",
     "searching": "Etsitään...",

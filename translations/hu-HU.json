@@ -7,7 +7,6 @@
     "invalid_url": "Adj meg egy érvényes címet"
   },
   "login": {
-    "username_required": "A felhasználónév megadása kötelező",
     "error_title": "Hiba",
     "login_title": "Bejelentkezés",
     "login_to_title": "Bejelentkezés ide",
@@ -27,7 +26,6 @@
     "connection_failed": "Kapcsolódás Sikertelen",
     "could_not_connect_to_server": "Nem sikerült csatlakozni a szerverhez. Kérjük, ellenőrizd az URL-t és a hálózati kapcsolatot.",
     "an_unexpected_error_occurred": "Váratlan Hiba Történt",
-    "change_server": "Szerverváltás",
     "invalid_username_or_password": "Érvénytelen Felhasználónév vagy Jelszó",
     "user_does_not_have_permission_to_log_in": "A felhasználónak nincs jogosultsága a bejelentkezéshez",
     "server_is_taking_too_long_to_respond_try_again_later": "A szerver túl sokáig válaszol, próbáld újra később",
@@ -43,7 +41,6 @@
     "connect_button": "Csatlakozás",
     "previous_servers": "Előző Szerverek",
     "clear_button": "Törlés",
-    "server_url": "Szerver URL",
     "swipe_to_remove": "Húzd el az eltávolításhoz",
     "search_for_local_servers": "Helyi Szerverek Keresése",
     "searching": "Keresés...",

@@ -7,7 +7,6 @@
     "invalid_url": "أدخل عنوانًا صالحًا"
   },
   "login": {
-    "username_required": "مطلوب اسم المستخدم",
     "error_title": "خطأ",
     "login_title": "تسجيل الدخول",
     "login_to_title": "تسجيل الدخول إلى",
@@ -27,7 +26,6 @@
     "connection_failed": "فشل الاتصال",
     "could_not_connect_to_server": "تعذر الاتصال بالخادم. يرجى التحقق من الرابط واتصال الشبكة.",
     "an_unexpected_error_occurred": "حدث خطأ غير متوقع",
-    "change_server": "تغيير الخادم",
     "invalid_username_or_password": "اسم المستخدم أو كلمة المرور غير صالحة",
     "user_does_not_have_permission_to_log_in": "ليس لدى المستخدم صَلاحِيَة تسجيل الدخول",
     "server_is_taking_too_long_to_respond_try_again_later": "يستغرق الخادم وقتًا طويلاً للرد، يرجى المحاولة مرة أخرى لاحقًا",
@@ -43,7 +41,6 @@
     "connect_button": "اتصل",
     "previous_servers": "الخوادم السابقة",
     "clear_button": "مسح",
-    "server_url": "رابط الخادم",
     "swipe_to_remove": "مرر للإزالة",
     "search_for_local_servers": "البحث عن الخوادم المحلية",
     "searching": "جاري البحث...",

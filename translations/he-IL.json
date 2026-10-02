@@ -7,7 +7,6 @@
     "invalid_url": "הזינו כתובת תקינה"
   },
   "login": {
-    "username_required": "נדרש שם משתמש",
     "error_title": "שגיאה",
     "login_title": "התחבר",
     "login_to_title": "התחבר אל",
@@ -27,7 +26,6 @@
     "connection_failed": "ההתחברות נכשלה",
     "could_not_connect_to_server": "לא היה ניתן להתחבר לשרת. אנא בדוק את הקישור ואת חיבור הרשת שלך.",
     "an_unexpected_error_occurred": "קרתה שגיאה לא צפויה",
-    "change_server": "החלף שרת",
     "invalid_username_or_password": "שם משתמש או סיסמה שגויים",
     "user_does_not_have_permission_to_log_in": "לחשבון זה אין גישה להתחבר",
     "server_is_taking_too_long_to_respond_try_again_later": "השרת לוקח יותר מדי זמן כדי להגיב, נסה שוב מאוחר יותר",
@@ -43,7 +41,6 @@
     "connect_button": "התחבר",
     "previous_servers": "שרתים קודמים",
     "clear_button": "נקה הכול",
-    "server_url": "כתובת השרת",
     "swipe_to_remove": "החליקו כדי להסיר",
     "search_for_local_servers": "חפש אחר שרתים ברשת המקומית",
     "searching": "מחפש...",

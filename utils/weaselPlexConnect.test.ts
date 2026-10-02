@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  isWeaselPlexConnectDenied,
   isWeaselPlexConnectReturn,
   WEASELPLEX_CONNECT_RETURN_URL,
   weaselPlexConnectDevice,
@@ -46,5 +47,21 @@ describe("isWeaselPlexConnectReturn", () => {
       false,
     );
     expect(isWeaselPlexConnectReturn("")).toBe(false);
+  });
+});
+
+describe("isWeaselPlexConnectDenied", () => {
+  test("is true only for the return link marked denied by the approve page", () => {
+    expect(
+      isWeaselPlexConnectDenied("weaselfin://connected?result=denied"),
+    ).toBe(true);
+    expect(isWeaselPlexConnectDenied("weaselfin://connected")).toBe(false);
+    expect(isWeaselPlexConnectDenied("weaselfin://connected?result=ok")).toBe(
+      false,
+    );
+    expect(isWeaselPlexConnectDenied("weaselfin://login?result=denied")).toBe(
+      false,
+    );
+    expect(isWeaselPlexConnectDenied(undefined)).toBe(false);
   });
 });

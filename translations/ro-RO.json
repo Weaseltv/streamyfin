@@ -7,7 +7,6 @@
     "invalid_url": "Introdu o adresă validă"
   },
   "login": {
-    "username_required": "Numele de utilizator este obligatoriu",
     "error_title": "Eroare",
     "login_title": "Conectare",
     "login_to_title": "Conectare la",
@@ -27,7 +26,6 @@
     "connection_failed": "Conectare eșuată",
     "could_not_connect_to_server": "Nu s-a putut conecta la server. Verificați adresa URL și conexiunea la internet.",
     "an_unexpected_error_occurred": "A apărut o eroare neașteptată",
-    "change_server": "Schimba",
     "invalid_username_or_password": "Nume de utilizator sau parolă greșită",
     "user_does_not_have_permission_to_log_in": "Utilizatorul nu are permisiunea de a se conecta",
     "server_is_taking_too_long_to_respond_try_again_later": "Serverul răspunde prea greu, încearcă din nou mai târziu.",
@@ -43,7 +41,6 @@
     "connect_button": "Conectare",
     "previous_servers": "Servere anterioare",
     "clear_button": "Șterge",
-    "server_url": "URL server",
     "swipe_to_remove": "Glisează pentru a elimina",
     "search_for_local_servers": "Caută",
     "searching": "Căutare în curs...",

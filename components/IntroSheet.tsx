@@ -81,7 +81,7 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
 
         <View style={{ marginTop: 8 }}>
           <NeonSheetRow
-            label='Seerr'
+            label='Requests'
             subtitle={t("home.intro.jellyseerr_feature_description")}
             icon='inbox'
           />

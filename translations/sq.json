@@ -1,6 +1,5 @@
 {
   "login": {
-    "username_required": "Emri i përdoruesit është i detyrueshëm",
     "error_title": "Gabim",
     "login_title": "Hyrje",
     "login_to_title": "Hyrje në",
@@ -14,7 +13,6 @@
     "connection_failed": "Lidhja dështojë",
     "could_not_connect_to_server": "Nuk u arrit të lidhej me serverin. Ju lutem kontrolloni URL-në dhe lidhjen tuaj të rrjetit.",
     "an_unexpected_error_occured": "Ndodhi një gabim i papritur",
-    "change_server": "Ndrysho serverin",
     "invalid_username_or_password": "Emër përdoruesi ose fjalëkalimi i pavlefshëm",
     "user_does_not_have_permission_to_log_in": "Përdoruesi nuk ka leje për kyçje",
     "server_is_taking_too_long_to_respond_try_again_later": "Serveri po merr shumë kohë për të reaguar, provo përsëri më vonë",

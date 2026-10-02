@@ -1,6 +1,5 @@
 {
   "login": {
-    "username_required": "Uzantnomo estas deviga",
     "error_title": "Eraro",
     "login_title": "Ensaluti",
     "login_to_title": "Ensaluti al",
@@ -14,7 +13,6 @@
     "connection_failed": "Konekto malsukcesis",
     "could_not_connect_to_server": "Ne povis konekti al la servilo. Bonvolu kontroli la URL-on kaj vian retan konekton.",
     "an_unexpected_error_occured": "Neatendita eraro okazis",
-    "change_server": "Ŝanĝi servilon",
     "invalid_username_or_password": "Nevalida uzantnomo aŭ pasvorto",
     "user_does_not_have_permission_to_log_in": "Uzanto ne havas permeson ensaluti",
     "server_is_taking_too_long_to_respond_try_again_later": "Servilo respondas tro malrapide, provu denove poste",
