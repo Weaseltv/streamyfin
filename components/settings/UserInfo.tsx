@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { apiAtom, useJellyfin, userAtom } from "@/providers/JellyfinProvider";
+import { appUpdatePromptAtom } from "@/utils/atoms/appUpdate";
 import { useAccent } from "@/utils/atoms/pageAccent";
 import { serverHost } from "@/utils/serverHost";
 import { getVersionInfo } from "@/utils/version";
@@ -26,6 +28,36 @@ export const UserInfo: React.FC<Props> = ({ accent: accentProp, ...props }) => {
   const { logout } = useJellyfin();
   const { t } = useTranslation();
   const { confirm, dialog } = useConfirmDialog();
+  const { check, checkNow, available: updatesAvailable } = useAppUpdate();
+  const setUpdatePrompt = useSetAtom(appUpdatePromptAtom);
+  // Android phone only: iOS updates through TestFlight.
+  const showUpdates = updatesAvailable && !Platform.isTV;
+  const updateValue = (() => {
+    switch (check.kind) {
+      case "checking":
+        return t("home.settings.user_info.checking_for_updates");
+      case "available":
+        return t("home.settings.user_info.update_to_version", {
+          version: check.versionName,
+        });
+      case "upToDate":
+        return t("home.settings.user_info.up_to_date");
+      case "unsupported":
+        return t("home.settings.user_info.updates_unavailable");
+      case "error":
+        return t("home.settings.user_info.update_check_failed");
+      default:
+        return undefined;
+    }
+  })();
+  const onCheckForUpdates = () => {
+    if (check.kind === "checking") return;
+    if (check.kind === "available") {
+      setUpdatePrompt({ versionName: check.versionName, percent: null });
+    } else {
+      checkNow();
+    }
+  };
 
   // Graduated build identifier — see utils/version.ts:
   // dev → "0.54.1 · branch · commit", develop/CI → "0.54.1 · commit · #run", production → "0.54.1".
@@ -61,6 +93,14 @@ export const UserInfo: React.FC<Props> = ({ accent: accentProp, ...props }) => {
           title={t("home.settings.user_info.app_version")}
           value={version}
         />
+        {showUpdates && (
+          <ListItem
+            icon='cloud-download-outline'
+            title={t("home.settings.user_info.check_for_updates")}
+            value={updateValue}
+            onPress={onCheckForUpdates}
+          />
+        )}
         <ListItem
           icon='power-outline'
           textColor='red'

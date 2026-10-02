@@ -19,6 +19,8 @@ export interface ConfirmDialogProps {
   /** Accent for non-destructive confirms. Defaults to volt. */
   accent?: string;
   loading?: boolean;
+  /** Keep the cancel button live while `loading` (e.g. to stop a download). */
+  cancellableWhileLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -40,6 +42,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   destructive = false,
   accent: accentProp,
   loading = false,
+  cancellableWhileLoading = false,
   onConfirm,
   onCancel,
 }) => {
@@ -125,7 +128,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           >
             <TouchableOpacity
               onPress={onCancel}
-              disabled={loading}
+              disabled={loading && !cancellableWhileLoading}
               accessibilityRole='button'
               activeOpacity={0.7}
               style={{
