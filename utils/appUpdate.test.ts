@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   downloadPercent,
   isUpdatePromptDue,
+  splitReleaseNotes,
   UPDATE_PROMPT_INTERVAL_MS,
 } from "./appUpdate";
 
@@ -38,5 +39,27 @@ describe("downloadPercent", () => {
 
   test("unknown total is 0", () => {
     expect(downloadPercent(50, 0)).toBe(0);
+  });
+});
+
+describe("splitReleaseNotes", () => {
+  test("first entry is the summary, the rest are bullets", () => {
+    expect(
+      splitReleaseNotes(["Faster startup.", "Fixes a crash.", "New icon."]),
+    ).toEqual({
+      summary: "Faster startup.",
+      bullets: ["Fixes a crash.", "New icon."],
+    });
+  });
+
+  test("drops the old publish placeholder and blank entries", () => {
+    expect(splitReleaseNotes(["Agent stable publish"])).toEqual({
+      summary: null,
+      bullets: [],
+    });
+    expect(splitReleaseNotes(["  ", "Only line"])).toEqual({
+      summary: "Only line",
+      bullets: [],
+    });
   });
 });

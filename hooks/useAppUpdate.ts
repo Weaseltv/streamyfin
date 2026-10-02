@@ -12,6 +12,14 @@ import {
 import { writeErrorLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
 
+const promptFor = (result: {
+  versionName: string;
+  releaseNotes: string[];
+}) => ({
+  versionName: result.versionName,
+  releaseNotes: result.releaseNotes,
+});
+
 /**
  * Update checks for the WeaselPlex Android phone app. Null `AppUpdater` (iOS, TV,
  * unlinked) makes every call a no-op. The popup itself is AppUpdatePrompt.
@@ -26,7 +34,11 @@ export const useAppUpdate = () => {
     try {
       const result = await AppUpdater.checkForUpdate();
       if (result.status === "available") {
-        setCheck({ kind: "available", versionName: result.versionName });
+        setCheck({
+          kind: "available",
+          versionName: result.versionName,
+          releaseNotes: result.releaseNotes,
+        });
       } else if (result.status === "unsupported") {
         setCheck({ kind: "unsupported" });
       } else {
@@ -54,7 +66,7 @@ export const useAppUpdate = () => {
     const result = await runCheck();
     if (result?.status === "available") {
       storage.set(UPDATE_PROMPT_SHOWN_AT_KEY, Date.now());
-      setPrompt({ versionName: result.versionName, percent: null });
+      setPrompt({ ...promptFor(result), percent: null });
     }
   }, [runCheck, setPrompt]);
 
@@ -62,7 +74,7 @@ export const useAppUpdate = () => {
   const checkNow = useCallback(async () => {
     const result = await runCheck();
     if (result?.status === "available") {
-      setPrompt({ versionName: result.versionName, percent: null });
+      setPrompt({ ...promptFor(result), percent: null });
     }
   }, [runCheck, setPrompt]);
 

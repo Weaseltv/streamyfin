@@ -4,7 +4,7 @@ import { atom } from "jotai";
 export type AppUpdateCheckState =
   | { kind: "idle" }
   | { kind: "checking" }
-  | { kind: "available"; versionName: string }
+  | { kind: "available"; versionName: string; releaseNotes: string[] }
   | { kind: "upToDate" }
   /** A development build, which can't install a signed release over itself. */
   | { kind: "unsupported" }
@@ -13,6 +13,7 @@ export type AppUpdateCheckState =
 /** The update popup, or null when hidden. */
 export interface AppUpdatePromptState {
   versionName: string;
+  releaseNotes: string[];
   /** Download progress 0–100, or null before the download starts. */
   percent: number | null;
 }

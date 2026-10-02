@@ -11,6 +11,8 @@ export type UpdateCheckResult =
       versionName: string;
       versionCode: number;
       apkSizeBytes: number;
+      /** From the signed manifest: a one-line summary, then one entry per bullet. */
+      releaseNotes: string[];
     }
   | { status: "notPublished" }
   /** Not the signed WeaselPlex release (e.g. a development build). */

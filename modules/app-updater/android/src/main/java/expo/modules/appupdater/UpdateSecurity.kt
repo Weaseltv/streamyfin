@@ -46,6 +46,7 @@ internal data class VerifiedRelease(
   val apkUrl: String,
   val apkSizeBytes: Long,
   val apkSha256: String,
+  val releaseNotes: List<String>,
 )
 
 internal data class ApkMetadata(
@@ -148,7 +149,9 @@ internal object UpdatePolicy {
     ) {
       throw UpdateSecurityException("The manifest release notes are invalid.")
     }
-    return VerifiedRelease(versionCode, versionName, minSdk, apkUrl, apkSizeBytes, apkSha256)
+    return VerifiedRelease(
+      versionCode, versionName, minSdk, apkUrl, apkSizeBytes, apkSha256, noteStrings.filterNotNull(),
+    )
   }
 
   fun validateDownloadedApk(release: VerifiedRelease, apk: ApkMetadata, deviceSdk: Int) {

@@ -89,6 +89,7 @@ class AppUpdaterModule : Module() {
       "versionName" to release.versionName,
       "versionCode" to release.versionCode.toDouble(),
       "apkSizeBytes" to release.apkSizeBytes.toDouble(),
+      "releaseNotes" to release.releaseNotes,
     )
   }
 

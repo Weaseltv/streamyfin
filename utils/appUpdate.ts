@@ -21,3 +21,20 @@ export function downloadPercent(downloaded: number, total: number): number {
   if (total <= 0) return 0;
   return Math.max(0, Math.min(100, Math.floor((downloaded / total) * 100)));
 }
+
+/** What the publish script used to write when given no notes. Never shown. */
+const PLACEHOLDER_NOTE = "Agent stable publish";
+
+/**
+ * Splits signed release notes the way WeaselPlex TV lays out its release text: the
+ * first entry is a one-line summary, every later entry is a bullet point.
+ */
+export function splitReleaseNotes(notes: readonly string[]): {
+  summary: string | null;
+  bullets: string[];
+} {
+  const real = notes
+    .map((note) => note.trim())
+    .filter((note) => note.length > 0 && note !== PLACEHOLDER_NOTE);
+  return { summary: real[0] ?? null, bullets: real.slice(1) };
+}

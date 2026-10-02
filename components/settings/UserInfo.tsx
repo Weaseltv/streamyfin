@@ -53,7 +53,11 @@ export const UserInfo: React.FC<Props> = ({ accent: accentProp, ...props }) => {
   const onCheckForUpdates = () => {
     if (check.kind === "checking") return;
     if (check.kind === "available") {
-      setUpdatePrompt({ versionName: check.versionName, percent: null });
+      setUpdatePrompt({
+        versionName: check.versionName,
+        releaseNotes: check.releaseNotes,
+        percent: null,
+      });
     } else {
       checkNow();
     }

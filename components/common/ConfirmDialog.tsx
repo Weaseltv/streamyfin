@@ -21,6 +21,8 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Keep the cancel button live while `loading` (e.g. to stop a download). */
   cancellableWhileLoading?: boolean;
+  /** Extra content under the message, e.g. release notes. */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -43,6 +45,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   accent: accentProp,
   loading = false,
   cancellableWhileLoading = false,
+  children,
   onConfirm,
   onCancel,
 }) => {
@@ -117,6 +120,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 {message}
               </Text>
             ) : null}
+            {children}
           </View>
           <View
             style={{

@@ -3,13 +3,18 @@ import { useAtom, useAtomValue } from "jotai";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, ScrollView, View } from "react-native";
 import { toast } from "sonner-native";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { Text } from "@/components/common/Text";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import AppUpdater, { errorCode } from "@/modules/app-updater";
 import { pendingAccountSaveAtom, userAtom } from "@/providers/JellyfinProvider";
-import { downloadPercent, UPDATE_PROMPT_SHOWN_AT_KEY } from "@/utils/appUpdate";
+import {
+  downloadPercent,
+  splitReleaseNotes,
+  UPDATE_PROMPT_SHOWN_AT_KEY,
+} from "@/utils/appUpdate";
 import { appUpdatePromptAtom, playerOpenAtom } from "@/utils/atoms/appUpdate";
 import { writeErrorLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
@@ -69,7 +74,7 @@ export const AppUpdatePrompt: React.FC = () => {
       return;
     }
     storage.set(UPDATE_PROMPT_SHOWN_AT_KEY, Date.now());
-    setPrompt({ versionName: current.versionName, percent: 0 });
+    setPrompt({ ...current, percent: 0 });
     const subscription = AppUpdater.addListener(
       "onDownloadProgress",
       ({ downloadedBytes, totalBytes }) =>
@@ -150,6 +155,39 @@ export const AppUpdatePrompt: React.FC = () => {
           setPrompt(null);
         }
       }}
-    />
+    >
+      <ReleaseNotes notes={prompt.releaseNotes} />
+    </ConfirmDialog>
+  );
+};
+
+/** The signed release notes: a summary line, then bullets, as on WeaselPlex TV. */
+const ReleaseNotes: React.FC<{ notes: readonly string[] }> = ({ notes }) => {
+  const { summary, bullets } = splitReleaseNotes(notes);
+  if (!summary) return null;
+  return (
+    <ScrollView style={{ maxHeight: 280, marginTop: 10 }}>
+      <Text variant='body' style={{ fontSize: 14, lineHeight: 20 }}>
+        {summary}
+      </Text>
+      {bullets.map((bullet) => (
+        <View key={bullet} style={{ flexDirection: "row", marginTop: 6 }}>
+          <Text
+            variant='body'
+            muted
+            style={{ width: 14, fontSize: 13, lineHeight: 18 }}
+          >
+            •
+          </Text>
+          <Text
+            variant='body'
+            muted
+            style={{ flex: 1, fontSize: 13, lineHeight: 18 }}
+          >
+            {bullet}
+          </Text>
+        </View>
+      ))}
+    </ScrollView>
   );
 };
