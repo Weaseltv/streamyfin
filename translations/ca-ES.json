@@ -7,7 +7,6 @@
     "invalid_url": "Introdueix una adreça vàlida"
   },
   "login": {
-    "username_required": "Nom d'usuari requerit",
     "error_title": "Error",
     "login_title": "Inicia sessió",
     "login_to_title": "Inicia sessió a",
@@ -27,7 +26,6 @@
     "connection_failed": "Ha fallat la connexió",
     "could_not_connect_to_server": "No s'ha pogut connectar amb el servidor. Comproveu l'URL i la connexió de xarxa.",
     "an_unexpected_error_occurred": "S'ha produït un error inesperat",
-    "change_server": "Canvia el servidor",
     "invalid_username_or_password": "Nom d'usuari o contrasenya incorrectes",
     "user_does_not_have_permission_to_log_in": "L'usuari no té permís per iniciar sessió",
     "server_is_taking_too_long_to_respond_try_again_later": "El servidor triga massa a respondre, torneu-ho a provar més tard",
@@ -43,7 +41,6 @@
     "connect_button": "Connecta",
     "previous_servers": "servidors anteriors",
     "clear_button": "Esborra",
-    "server_url": "URL del servidor",
     "swipe_to_remove": "Llisca per eliminar",
     "search_for_local_servers": "Cercar servidors locals",
     "searching": "Cercant...",

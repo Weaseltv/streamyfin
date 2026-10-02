@@ -7,7 +7,6 @@
     "invalid_url": "Nhập một địa chỉ hợp lệ"
   },
   "login": {
-    "username_required": "Cần nhập tên người dùng",
     "error_title": "Lỗi",
     "login_title": "Đăng nhập",
     "login_to_title": "Đăng nhập vào",
@@ -27,7 +26,6 @@
     "connection_failed": "Kết nối thất bại",
     "could_not_connect_to_server": "Không thể kết nối tới máy chủ. Vui lòng kiểm tra URL và kết nối mạng.",
     "an_unexpected_error_occurred": "Đã xảy ra lỗi không mong muốn",
-    "change_server": "Đổi máy chủ",
     "invalid_username_or_password": "Tên đăng nhập hoặc mật khẩu không đúng",
     "user_does_not_have_permission_to_log_in": "Người dùng không có quyền đăng nhập",
     "server_is_taking_too_long_to_respond_try_again_later": "Máy chủ phản hồi quá lâu, vui lòng thử lại sau",
@@ -43,7 +41,6 @@
     "connect_button": "Kết nối",
     "previous_servers": "Máy chủ trước đó",
     "clear_button": "Xóa",
-    "server_url": "URL máy chủ",
     "swipe_to_remove": "Vuốt để xóa",
     "search_for_local_servers": "Tìm máy chủ trong mạng",
     "searching": "Đang tìm...",

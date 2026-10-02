@@ -7,7 +7,6 @@
     "invalid_url": "請輸入有效的位址"
   },
   "login": {
-    "username_required": "需要用戶名",
     "error_title": "錯誤",
     "login_title": "登入",
     "login_to_title": "登入至",
@@ -27,7 +26,6 @@
     "connection_failed": "連接失敗",
     "could_not_connect_to_server": "無法連接到伺服器。請檢查 URL 和您的網絡連接。",
     "an_unexpected_error_occurred": "發生非預期的錯誤",
-    "change_server": "更改伺服器",
     "invalid_username_or_password": "無效的用戶名或密碼",
     "user_does_not_have_permission_to_log_in": "用戶無權登入",
     "server_is_taking_too_long_to_respond_try_again_later": "伺服器響應時間過長，請稍後再試",
@@ -43,7 +41,6 @@
     "connect_button": "連接",
     "previous_servers": "先前的伺服器",
     "clear_button": "清除",
-    "server_url": "伺服器網址",
     "swipe_to_remove": "滑動以移除",
     "search_for_local_servers": "搜尋本地伺服器",
     "searching": "搜尋中...",

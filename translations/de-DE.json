@@ -7,7 +7,6 @@
     "invalid_url": "Gib eine gültige Adresse ein"
   },
   "login": {
-    "username_required": "Benutzername ist erforderlich",
     "error_title": "Fehler",
     "login_title": "Anmelden",
     "login_to_title": "Anmelden bei",
@@ -27,7 +26,6 @@
     "connection_failed": "Verbindung fehlgeschlagen",
     "could_not_connect_to_server": "Verbindung zum Server fehlgeschlagen. Bitte überprüf die URL und deine Netzwerkverbindung.",
     "an_unexpected_error_occurred": "Ein unerwarteter Fehler ist aufgetreten",
-    "change_server": "Server wechseln",
     "invalid_username_or_password": "Ungültiger Benutzername oder Passwort",
     "user_does_not_have_permission_to_log_in": "Benutzer hat keine Berechtigung, um sich anzumelden",
     "server_is_taking_too_long_to_respond_try_again_later": "Der Server benötigt zu lange, um zu antworten. Bitte versuch es später erneut",
@@ -43,7 +41,6 @@
     "connect_button": "Verbinden",
     "previous_servers": "Vorherige Server",
     "clear_button": "Löschen",
-    "server_url": "Server-URL",
     "swipe_to_remove": "Wischen, um zu entfernen",
     "search_for_local_servers": "Nach lokalen Servern suchen",
     "searching": "Suche...",

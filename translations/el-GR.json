@@ -7,7 +7,6 @@
     "invalid_url": "Εισαγάγετε μια έγκυρη διεύθυνση"
   },
   "login": {
-    "username_required": "Απαιτείται Όνομα Χρήστη",
     "error_title": "Σφάλμα",
     "login_title": "Σύνδεση",
     "login_to_title": "Συνδεθείτε στο",
@@ -27,7 +26,6 @@
     "connection_failed": "Η Σύνδεση Απέτυχε",
     "could_not_connect_to_server": "Δεν ήταν δυνατή η σύνδεση με τον διακομιστή. Παρακαλώ ελέγξτε τη διεύθυνση URL και τη σύνδεση δικτύου σας.",
     "an_unexpected_error_occurred": "Παρουσιάστηκε Απροσδόκητο Σφάλμα",
-    "change_server": "Αλλαγή Διακομιστή",
     "invalid_username_or_password": "Μη έγκυρο όνομα χρήστη ή κωδικός πρόσβασης",
     "user_does_not_have_permission_to_log_in": "Ο χρήστης δεν έχει άδεια να συνδεθεί",
     "server_is_taking_too_long_to_respond_try_again_later": "Ο διακομιστής καθυστερεί πάρα πολύ για να απαντήσει, δοκιμάστε ξανά αργότερα",
@@ -43,7 +41,6 @@
     "connect_button": "Σύνδεση",
     "previous_servers": "Προηγούμενοι Διακομιστές",
     "clear_button": "Εκκαθάριση όλων",
-    "server_url": "Διεύθυνση URL Διακομιστή",
     "swipe_to_remove": "Σύρετε για αφαίρεση",
     "search_for_local_servers": "Αναζήτηση τοπικών διακομιστών",
     "searching": "Αναζήτηση...",

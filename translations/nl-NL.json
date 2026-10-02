@@ -7,7 +7,6 @@
     "invalid_url": "Voer een geldig adres in"
   },
   "login": {
-    "username_required": "Gebruikersnaam is verplicht",
     "error_title": "Fout",
     "login_title": "Aanmelden",
     "login_to_title": "Aanmelden bij",
@@ -27,7 +26,6 @@
     "connection_failed": "Verbinding mislukt",
     "could_not_connect_to_server": "Kon niet verbinden met de server. Controleer de URL en je netwerkverbinding.",
     "an_unexpected_error_occurred": "Er is een onverwachte fout opgetreden",
-    "change_server": "Server wijzigen",
     "invalid_username_or_password": "Onjuiste gebruikersnaam of wachtwoord",
     "user_does_not_have_permission_to_log_in": "Gebruiker heeft geen rechten om aan te melden",
     "server_is_taking_too_long_to_respond_try_again_later": "De server doet er te lang over om te antwoorden, probeer later opnieuw",
@@ -43,7 +41,6 @@
     "connect_button": "Verbinden",
     "previous_servers": "vorige servers",
     "clear_button": "Wissen",
-    "server_url": "Server-URL",
     "swipe_to_remove": "Swipe om te verwijderen.",
     "search_for_local_servers": "Zoek naar lokale servers",
     "searching": "Zoeken...",

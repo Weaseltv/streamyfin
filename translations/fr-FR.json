@@ -7,7 +7,6 @@
     "invalid_url": "Saisissez une adresse valide"
   },
   "login": {
-    "username_required": "Nom d'utilisateur requis",
     "error_title": "Erreur",
     "login_title": "Se connecter",
     "login_to_title": "Se connecter à",
@@ -27,7 +26,6 @@
     "connection_failed": "La connexion a échoué",
     "could_not_connect_to_server": "Impossible de se connecter au serveur. Veuillez vérifier l’URL et votre connexion réseau.",
     "an_unexpected_error_occurred": "Une erreur inattendue s'est produite",
-    "change_server": "Changer de serveur",
     "invalid_username_or_password": "Nom d'utilisateur ou mot de passe invalide",
     "user_does_not_have_permission_to_log_in": "L'utilisateur n'a pas la permission de se connecter",
     "server_is_taking_too_long_to_respond_try_again_later": "Le serveur prend trop de temps à répondre, réessayez plus tard",
@@ -43,7 +41,6 @@
     "connect_button": "Connexion",
     "previous_servers": "Serveurs précédents",
     "clear_button": "Effacer",
-    "server_url": "URL du serveur",
     "swipe_to_remove": "Glisser pour supprimer",
     "search_for_local_servers": "Rechercher des serveurs locaux",
     "searching": "Recherche...",

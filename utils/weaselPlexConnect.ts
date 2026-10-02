@@ -35,6 +35,18 @@ export function weaselPlexConnectUrl(code: string, device: string): string {
 }
 
 /**
+ * True when the approve page sent the app back because the customer tapped
+ * Deny: the return link marked `result=denied`. Nothing was approved.
+ */
+export function isWeaselPlexConnectDenied(url: string | undefined): boolean {
+  if (!url || !isWeaselPlexConnectReturn(url)) return false;
+  const query = url.split("?")[1]?.split("#")[0] ?? "";
+  return query
+    .split("&")
+    .some((pair) => pair.toLowerCase() === "result=denied");
+}
+
+/**
  * True when a system link is the approve page's return link, so the router
  * keeps the customer on the login screen instead of showing "not found".
  */

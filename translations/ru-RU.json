@@ -7,7 +7,6 @@
     "invalid_url": "Введите корректный адрес"
   },
   "login": {
-    "username_required": "Имя пользователя обязательно",
     "error_title": "Ошибка",
     "login_title": "Вход",
     "login_to_title": "Вход в",
@@ -27,7 +26,6 @@
     "connection_failed": "Соединение не удалось",
     "could_not_connect_to_server": "Не удалось подключиться к серверу. Пожалуйста, проверьте URL и ваше интернет-соединение.",
     "an_unexpected_error_occurred": "Возникла непредвиденная ошибка",
-    "change_server": "Поменять сервер",
     "invalid_username_or_password": "Неправильное имя пользователя или пароль",
     "user_does_not_have_permission_to_log_in": "Пользователь не имеет прав на вход",
     "server_is_taking_too_long_to_respond_try_again_later": "Сервер долго не отвечает, попробуйте позже",
@@ -43,7 +41,6 @@
     "connect_button": "Подключиться",
     "previous_servers": "Предыдущие серверы",
     "clear_button": "Очистить",
-    "server_url": "URL-адрес сервера",
     "swipe_to_remove": "Смахните для удаления",
     "search_for_local_servers": "Поиск локальных серверов",
     "searching": "Поиск...",

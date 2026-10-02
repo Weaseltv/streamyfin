@@ -7,7 +7,6 @@
     "invalid_url": "Indtast en gyldig adresse"
   },
   "login": {
-    "username_required": "Brugernavn er påkrævet",
     "error_title": "Fejl",
     "login_title": "Log ind",
     "login_to_title": "Log ind på",
@@ -27,7 +26,6 @@
     "connection_failed": "Forbindelsen mislykkedes",
     "could_not_connect_to_server": "Kunne ikke oprette forbindelse til serveren. Tjek venligst URL'en og din netværksforbindelse.",
     "an_unexpected_error_occurred": "Der opstod en uventet fejl",
-    "change_server": "Skift server",
     "invalid_username_or_password": "Ugyldigt brugernavn eller adgangskode",
     "user_does_not_have_permission_to_log_in": "Brugeren har ikke tilladelse til at logge ind",
     "server_is_taking_too_long_to_respond_try_again_later": "Serveren svarer for langsomt, prøv igen senere",
@@ -43,7 +41,6 @@
     "connect_button": "Forbind",
     "previous_servers": "Tidligere servere",
     "clear_button": "Ryd",
-    "server_url": "Server-URL",
     "swipe_to_remove": "Stryg for at fjerne",
     "search_for_local_servers": "Søg efter lokale servere",
     "searching": "Søger...",

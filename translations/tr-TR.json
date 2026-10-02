@@ -7,7 +7,6 @@
     "invalid_url": "Geçerli bir adres girin"
   },
   "login": {
-    "username_required": "Kullanıcı adı gereklidir",
     "error_title": "Hata",
     "login_title": "Giriş yap",
     "login_to_title": " 'e giriş yap",
@@ -27,7 +26,6 @@
     "connection_failed": "Bağlantı başarısız",
     "could_not_connect_to_server": "Sunucuya bağlanılamadı. Lütfen sunucu adresini ve ağ bağlantınızı kontrol edin.",
     "an_unexpected_error_occurred": "Beklenmedik bir hata oluştu",
-    "change_server": "Sunucu değiştir",
     "invalid_username_or_password": "Geçersiz kullanıcı adı veya şifre",
     "user_does_not_have_permission_to_log_in": "Kullanıcının giriş yapma izni yok",
     "server_is_taking_too_long_to_respond_try_again_later": "Sunucunun yanıt vermesi çok uzun sürüyor, lütfen daha sonra tekrar deneyin",
@@ -43,7 +41,6 @@
     "connect_button": "Bağlan",
     "previous_servers": "Önceki sunucular",
     "clear_button": "Temizle",
-    "server_url": "Sunucu adresi",
     "swipe_to_remove": "Kaldırmak için kaydırın",
     "search_for_local_servers": "Yerel sunucuları ara",
     "searching": "Aranıyor...",

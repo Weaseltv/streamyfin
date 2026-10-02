@@ -7,7 +7,6 @@
     "invalid_url": "Ange en giltig adress"
   },
   "login": {
-    "username_required": "Användarnamn krävs",
     "error_title": "Fel",
     "login_title": "Logga in",
     "login_to_title": "Logga in till",
@@ -27,7 +26,6 @@
     "connection_failed": "Anslutningen Misslyckades",
     "could_not_connect_to_server": "Det gick inte att ansluta till servern. Kontrollera webbadressen och din nätverksanslutning.",
     "an_unexpected_error_occurred": "Ett Oväntat Fel Uppstod",
-    "change_server": "Byt Server",
     "invalid_username_or_password": "Ogiltigt användarnamn eller lösenord",
     "user_does_not_have_permission_to_log_in": "Användaren har inte behörighet att logga in",
     "server_is_taking_too_long_to_respond_try_again_later": "Servern svarar för långsamt, försök igen senare",
@@ -43,7 +41,6 @@
     "connect_button": "Anslut",
     "previous_servers": "Tidigare Servrar",
     "clear_button": "Rensa allt",
-    "server_url": "Serveradress",
     "swipe_to_remove": "Svep för att ta bort",
     "search_for_local_servers": "Sök Efter Lokala Servrar",
     "searching": "Söker...",

@@ -7,7 +7,6 @@
     "invalid_url": "Zadejte platnou adresu"
   },
   "login": {
-    "username_required": "Uživatelské jméno je vyžadováno",
     "error_title": "Chyba",
     "login_title": "Přihlásit se",
     "login_to_title": "Přihlásit se do",
@@ -27,7 +26,6 @@
     "connection_failed": "Připojení se nezdařilo",
     "could_not_connect_to_server": "Nelze se připojit k serveru. Zkontrolujte adresu URL a síťové připojení.",
     "an_unexpected_error_occurred": "Došlo k neočekávané chybě",
-    "change_server": "Změnit server",
     "invalid_username_or_password": "Neplatné uživatelské jméno nebo heslo",
     "user_does_not_have_permission_to_log_in": "Uživatel nemá oprávnění k přihlášení",
     "server_is_taking_too_long_to_respond_try_again_later": "Reakce na server trvá příliš dlouho, zkuste to znovu později",
@@ -43,7 +41,6 @@
     "connect_button": "Připojit",
     "previous_servers": "Předchozí servery",
     "clear_button": "Vymazat vše",
-    "server_url": "URL serveru",
     "swipe_to_remove": "Přejetím odeberete",
     "search_for_local_servers": "Hledat místní servery",
     "searching": "Vyhledávání...",

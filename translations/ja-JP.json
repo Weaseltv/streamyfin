@@ -7,7 +7,6 @@
     "invalid_url": "有効なアドレスを入力してください"
   },
   "login": {
-    "username_required": "ユーザー名は必須です",
     "error_title": "エラー",
     "login_title": "ログイン",
     "login_to_title": "ログイン先",
@@ -27,7 +26,6 @@
     "connection_failed": "接続に失敗しました",
     "could_not_connect_to_server": "サーバーに接続できませんでした。URLとネットワーク接続を確認してください。",
     "an_unexpected_error_occurred": "予期しないエラーが発生しました",
-    "change_server": "サーバーの変更",
     "invalid_username_or_password": "ユーザー名またはパスワードが無効です",
     "user_does_not_have_permission_to_log_in": "ユーザーにログイン権限がありません",
     "server_is_taking_too_long_to_respond_try_again_later": "サーバーの応答に時間がかかりすぎています。しばらくしてからもう一度お試しください。",
@@ -43,7 +41,6 @@
     "connect_button": "接続",
     "previous_servers": "前のサーバー",
     "clear_button": "クリア",
-    "server_url": "サーバーURL",
     "swipe_to_remove": "スワイプして削除",
     "search_for_local_servers": "ローカルサーバーを検索",
     "searching": "検索中...",

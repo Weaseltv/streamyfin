@@ -7,7 +7,6 @@
     "invalid_url": "กรุณาใส่ที่อยู่ที่ถูกต้อง"
   },
   "login": {
-    "username_required": "ต้องระบุชื่อผู้ใช้",
     "error_title": "ข้อผิดพลาด",
     "login_title": "เข้าสู่ระบบ",
     "login_to_title": "เข้าสู่ระบบที่",
@@ -27,7 +26,6 @@
     "connection_failed": "เชื่อมต่อไม่สำเร็จ",
     "could_not_connect_to_server": "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบ URL และการเชื่อมต่อเครือข่ายของคุณ",
     "an_unexpected_error_occurred": "เกิดข้อผิดพลาดที่ไม่คาดคิด",
-    "change_server": "เปลี่ยนเซิร์ฟเวอร์",
     "invalid_username_or_password": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
     "user_does_not_have_permission_to_log_in": "ผู้ใช้ไม่มีสิทธิ์ในการเข้าสู่ระบบ",
     "server_is_taking_too_long_to_respond_try_again_later": "เซิร์ฟเวอร์ตอบสนองช้าเกินไป กรุณาลองใหม่ภายหลัง",
@@ -43,7 +41,6 @@
     "connect_button": "เชื่อมต่อ",
     "previous_servers": "เซิร์ฟเวอร์ก่อนหน้า",
     "clear_button": "ล้างทั้งหมด",
-    "server_url": "URL เซิร์ฟเวอร์",
     "swipe_to_remove": "ปัดเพื่อลบ",
     "search_for_local_servers": "ค้นหาเซิร์ฟเวอร์ในเครือข่าย",
     "searching": "กำลังค้นหา...",

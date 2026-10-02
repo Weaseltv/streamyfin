@@ -7,7 +7,6 @@
     "invalid_url": "Введіть коректну адресу"
   },
   "login": {
-    "username_required": "Імʼя користувача необхідне",
     "error_title": "Помилка",
     "login_title": "Вхід",
     "login_to_title": "Увійти в",
@@ -27,7 +26,6 @@
     "connection_failed": "Помилка зʼєднання",
     "could_not_connect_to_server": "Неможливо підʼєднатися до серверу. Будь ласка перевірте URL і ваше зʼєднання з мережею",
     "an_unexpected_error_occurred": "Сталася несподівана помилка",
-    "change_server": "Змінити сервер",
     "invalid_username_or_password": "Неправильні імʼя користувача або пароль",
     "user_does_not_have_permission_to_log_in": "Користувач не маю дозволу на вхід",
     "server_is_taking_too_long_to_respond_try_again_later": "Сервер відповідає занадто довго, будь-ласка спробуйте пізніше",
@@ -43,7 +41,6 @@
     "connect_button": "Підʼєднатися",
     "previous_servers": "попередні сервери",
     "clear_button": "Очистити",
-    "server_url": "URL сервера",
     "swipe_to_remove": "Проведіть, щоб видалити",
     "search_for_local_servers": "Пошук локальних серверів",
     "searching": "Пошук...",
