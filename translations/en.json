@@ -209,7 +209,13 @@
         "user_info_title": "User info",
         "user": "User",
         "server": "Server",
-        "app_version": "App version"
+        "app_version": "App version",
+        "check_for_updates": "Check for updates",
+        "checking_for_updates": "Checking…",
+        "update_to_version": "Update to {{version}}",
+        "up_to_date": "Up to date",
+        "updates_unavailable": "Not available in this build",
+        "update_check_failed": "Couldn't check"
       },
       "quick_connect": {
         "quick_connect_title": "Quick Connect",
@@ -1181,5 +1187,14 @@
     "offline_title": "Offline mode",
     "offline_detail": "{{host}} is unreachable. Showing your downloads.",
     "downloads_title": "Your downloads"
+  },
+  "app_update": {
+    "title": "{{app}} {{version}} is available.",
+    "update": "Update",
+    "not_now": "Not now",
+    "downloading": "Downloading… {{percent}}%",
+    "failed": "The update couldn't be installed. Try again from Settings.",
+    "unverified": "The update couldn't be verified, so it wasn't installed.",
+    "allow_installs": "To update, allow WeaselPlex to install unknown apps in your phone's Settings."
   }
 }

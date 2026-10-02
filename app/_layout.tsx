@@ -11,6 +11,7 @@ import * as Device from "expo-device";
 import { Image } from "expo-image";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { Platform } from "react-native";
+import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import { ConfirmDeleteHost } from "@/components/common/ConfirmDeleteHost";
 import { GlobalModal } from "@/components/GlobalModal";
 import { PendingAccountSaveModal } from "@/components/PendingAccountSaveModal";
@@ -609,6 +610,8 @@ function Layout() {
                                     {!Platform.isTV && (
                                       <PendingAccountSaveModal />
                                     )}
+                                    {Platform.OS === "android" &&
+                                      !Platform.isTV && <AppUpdatePrompt />}
                                   </ThemeProvider>
                                 </IntroSheetProvider>
                               </BottomSheetModalProvider>

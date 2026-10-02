@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Lets the updater hand a verified WeaselPlex APK to Android's package installer. -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+  <application>
+    <provider
+      android:name="expo.modules.appupdater.AppUpdaterFileProvider"
+      android:authorities="${applicationId}.appupdater.fileprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/app_updater_paths" />
+    </provider>
+  </application>
+</manifest>

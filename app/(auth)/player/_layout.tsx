@@ -1,14 +1,23 @@
 import { Stack } from "expo-router";
+import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
 
 import { useOrientation } from "@/hooks/useOrientation";
+import { playerOpenAtom } from "@/utils/atoms/appUpdate";
 import { useSettings } from "@/utils/atoms/settings";
 
 export default function Layout() {
   const { settings } = useSettings();
   const { lockOrientation, unlockOrientation } = useOrientation();
+  const setPlayerOpen = useSetAtom(playerOpenAtom);
+
+  // Holds back the app-update popup while something is playing.
+  useEffect(() => {
+    setPlayerOpen(true);
+    return () => setPlayerOpen(false);
+  }, [setPlayerOpen]);
 
   useEffect(() => {
     if (settings?.defaultVideoOrientation) {

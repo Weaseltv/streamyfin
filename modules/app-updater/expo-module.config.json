@@ -1,0 +1,8 @@
+{
+  "name": "app-updater",
+  "version": "1.0.0",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["expo.modules.appupdater.AppUpdaterModule"]
+  }
+}
