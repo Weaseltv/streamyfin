@@ -288,8 +288,12 @@ internal object PackageIdentity {
     return singleSignerSha256(info, "installed app")
   }
 
+  @Suppress("DEPRECATION")
   fun inspectApk(context: Context, apk: File): ApkMetadata {
-    val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, signatureFlags())
+    // GET_SIGNATURES as well: before Android 11, getPackageArchiveInfo leaves signingInfo
+    // null for an APK file (seen on Android 10), so singleSignerSha256 falls back to it.
+    val flags = signatureFlags() or PackageManager.GET_SIGNATURES
+    val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, flags)
       ?: throw UpdateSecurityException("Android could not inspect the downloaded APK.")
     return ApkMetadata(
       packageName = info.packageName,
@@ -312,7 +316,8 @@ internal object PackageIdentity {
   private fun singleSignerSha256(info: PackageInfo, label: String): String {
     val signers: List<Signature> =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        info.signingInfo?.apkContentsSigners?.toList().orEmpty()
+        info.signingInfo?.apkContentsSigners?.toList()?.takeIf { it.isNotEmpty() }
+          ?: info.signatures?.toList().orEmpty()
       } else {
         info.signatures?.toList().orEmpty()
       }
