@@ -1148,7 +1148,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 invalidateTrackCaches()
                 if (value > 0) {
                     Log.i(TAG, "Track list updated: $value tracks available")
-                    notifyMain { delegate?.onTracksReady() }
+                    // Initial identity selection must follow FILE_LOADED's
+                    // setup; later track arrivals can refresh the menu.
+                    if (mediaReady) notifyMain { delegate?.onTracksReady() }
                 }
             }
             "video-params/w" -> {
@@ -1252,11 +1254,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 initialAudioId?.let { if (it > 0) setAudioTrack(it) }
                 initialSubtitleId?.let { setSubtitleTrack(it) } ?: disableSubtitles()
 
-                // The disable above can race a JS-side identity selection that
-                // landed before FILE_LOADED (JS no longer passes an initial sid).
-                // Re-emit tracksReady so the idempotent JS re-apply always runs
-                // after it — for embedded-only files this is the only
-                // post-FILE_LOADED fire.
+                // The first tracks-ready callback follows native initial
+                // setup. JS selects by identity once; later arrivals preserve
+                // a deliberate menu choice.
                 notifyMain { delegate?.onTracksReady() }
 
                 // Files already fetched are attached after the embedded-track
@@ -1283,6 +1283,12 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 }
             }
             MPVLib.MPV_EVENT_PLAYBACK_RESTART -> {
+                // A pre-load pause observation may update the cache while its
+                // main callback is correctly discarded for the old source.
+                // Publish an authoritative state at the first decoded frame,
+                // even if the property value itself has not changed again.
+                _isPaused = mpv?.getPropertyBoolean("pause") ?: _isPaused
+                notifyMain { delegate?.onPauseChanged(_isPaused) }
                 // Video playback has started/restarted (including after seek)
                 disarmStartWatchdog()
                 _isSeeking = false
