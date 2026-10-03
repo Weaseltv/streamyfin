@@ -29,7 +29,7 @@ import { PlaySettingsProvider } from "@/providers/PlaySettingsProvider";
 import { ServerUrlProvider } from "@/providers/ServerUrlProvider";
 import { WebSocketProvider } from "@/providers/WebSocketProvider";
 import { WifiSsidProvider } from "@/providers/WifiSsidProvider";
-import { useSettings } from "@/utils/atoms/settings";
+import { useSetting } from "@/utils/atoms/settings";
 import {
   BACKGROUND_FETCH_TASK,
   BACKGROUND_FETCH_TASK_SESSIONS,
@@ -303,7 +303,7 @@ const mmkvPersister = createSyncStoragePersister({
 });
 
 function Layout() {
-  const { settings } = useSettings();
+  const preferedLanguage = useSetting("preferedLanguage");
   const [user] = useAtom(userAtom);
   const [api] = useAtom(apiAtom);
   const _segments = useSegments();
@@ -316,9 +316,9 @@ function Layout() {
 
   useEffect(() => {
     i18n.changeLanguage(
-      settings?.preferedLanguage ?? getLocales()[0].languageCode ?? "en",
+      preferedLanguage ?? getLocales()[0].languageCode ?? "en",
     );
-  }, [settings?.preferedLanguage, i18n]);
+  }, [preferedLanguage, i18n]);
 
   useNotificationObserver();
 

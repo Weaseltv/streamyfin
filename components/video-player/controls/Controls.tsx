@@ -5,6 +5,7 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { useKeyEventListener } from "expo-key-event";
 import { useLocalSearchParams } from "expo-router";
+import { useAtom } from "jotai";
 import {
   type FC,
   useCallback,
@@ -34,7 +35,7 @@ import type { TechnicalInfo } from "@/modules/mpv-player";
 import { DownloadedItem } from "@/providers/Downloads/types";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSetPlayerAccent } from "@/utils/atoms/pageAccent";
-import { useSettings } from "@/utils/atoms/settings";
+import { autoPlayEpisodeCountAtom, useSettings } from "@/utils/atoms/settings";
 import { hasChapterMarkers } from "@/utils/chapters";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { ticksToMs } from "@/utils/time";
@@ -132,7 +133,10 @@ export const Controls: FC<Props> = ({
   transcodeReasons,
 }) => {
   const offline = useOfflineMode();
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
+  const [autoPlayEpisodeCount, setAutoPlayEpisodeCount] = useAtom(
+    autoPlayEpisodeCountAtom,
+  );
   useSetPlayerAccent(item ? typeAccent(item) : undefined);
   const router = useRouter();
   const lightHapticFeedback = useHaptic("light");
@@ -430,7 +434,7 @@ export const Controls: FC<Props> = ({
     !!nextItem &&
     settings.autoPlayNextEpisode !== false &&
     (settings.maxAutoPlayEpisodeCount.value === -1 ||
-      settings.autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value);
+      autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value);
 
   // Show during credits when nothing plays after them, or in the last seconds.
   const showNextEpisode =
@@ -446,7 +450,7 @@ export const Controls: FC<Props> = ({
     !!nextItem &&
     settings.autoPlayNextEpisode !== false &&
     settings.maxAutoPlayEpisodeCount.value !== -1 &&
-    settings.autoPlayEpisodeCount >= settings.maxAutoPlayEpisodeCount.value;
+    autoPlayEpisodeCount >= settings.maxAutoPlayEpisodeCount.value;
 
   const [stillWatchingVisible, setStillWatchingVisible] = useState(false);
   // The cap-hitting autoplay updates the episode count synchronously while
@@ -558,9 +562,7 @@ export const Controls: FC<Props> = ({
         // if we are not autoplaying, we won't update anything, we just go to the next item
         goToItemCommon(nextItem);
         if (resetWatchCount) {
-          updateSettings({
-            autoPlayEpisodeCount: 0,
-          });
+          setAutoPlayEpisodeCount(0);
         }
         return;
       }
@@ -573,23 +575,23 @@ export const Controls: FC<Props> = ({
 
       // Same boundary as the countdown's willShowNextEpisode gate — the
       // countdown must never complete without actually navigating.
-      if (
-        settings.autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value
-      ) {
+      if (autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value) {
         goToItemCommon(nextItem);
       }
 
       // Check if the autoPlayEpisodeCount is less than maxAutoPlayEpisodeCount for the autoPlay
-      if (
-        settings.autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value
-      ) {
-        // update the autoPlayEpisodeCount in settings
-        updateSettings({
-          autoPlayEpisodeCount: settings.autoPlayEpisodeCount + 1,
-        });
+      if (autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value) {
+        // Advance the session counter without writing preferences
+        setAutoPlayEpisodeCount((count) => count + 1);
       }
     },
-    [nextItem, goToItemCommon],
+    [
+      nextItem,
+      goToItemCommon,
+      autoPlayEpisodeCount,
+      settings.maxAutoPlayEpisodeCount.value,
+      setAutoPlayEpisodeCount,
+    ],
   );
 
   // Add a memoized handler for autoplay next episode

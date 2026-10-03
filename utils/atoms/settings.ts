@@ -7,8 +7,9 @@ import {
   SubtitlePlaybackMode,
 } from "@jellyfin/sdk/lib/generated-client";
 import { t } from "i18next";
-import { atom, useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
+import { atom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { selectAtom } from "jotai/utils";
+import { useCallback, useEffect, useMemo } from "react";
 import { Platform } from "react-native";
 import { BITRATES, type Bitrate } from "@/components/BitrateSelector";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
@@ -342,7 +343,6 @@ export type Settings = {
   hiddenLibraries?: string[];
   enableH265ForChromecast: boolean;
   maxAutoPlayEpisodeCount: MaxAutoPlayEpisodeCount;
-  autoPlayEpisodeCount: number;
   autoPlayNextEpisode: boolean;
   /** Ask whether to resume or start over when playing an in-progress item. */
   showResumeDialog: boolean;
@@ -485,7 +485,6 @@ export const defaultValues: Settings = {
   hiddenLibraries: [],
   enableH265ForChromecast: false,
   maxAutoPlayEpisodeCount: { key: "3", value: 3 },
-  autoPlayEpisodeCount: 0,
   autoPlayNextEpisode: true,
   showResumeDialog: true,
   // Playback speed defaults
@@ -556,6 +555,8 @@ const loadSettings = (): Partial<Settings> => {
     const loadedValues: Partial<Settings> =
       jsonValue != null ? JSON.parse(jsonValue) : {};
 
+    // A playback-chain counter is session state, not a persisted preference.
+    delete (loadedValues as Record<string, unknown>).autoPlayEpisodeCount;
     return loadedValues;
   } catch (error) {
     console.error("Failed to load settings:", error);
@@ -563,16 +564,16 @@ const loadSettings = (): Partial<Settings> => {
   }
 };
 
-const EXCLUDE_FROM_SAVE = ["home"];
+const EXCLUDE_FROM_SAVE = ["home", "autoPlayEpisodeCount"];
 
 const saveSettings = (settings: Settings) => {
   try {
-    for (const key of Object.keys(settings)) {
-      if (EXCLUDE_FROM_SAVE.includes(key)) {
-        delete settings[key as keyof Settings];
-      }
-    }
-    const jsonValue = JSON.stringify(settings);
+    const persisted = Object.fromEntries(
+      Object.entries(settings).filter(
+        ([key]) => !EXCLUDE_FROM_SAVE.includes(key),
+      ),
+    );
+    const jsonValue = JSON.stringify(persisted);
     storage.set("settings", jsonValue);
   } catch (error) {
     console.error("Failed to save settings:", error);
@@ -580,6 +581,9 @@ const saveSettings = (settings: Settings) => {
 };
 
 export const settingsAtom = atom<Partial<Settings> | null>(null);
+
+/** Number of automatically advanced episodes in the current playback chain. */
+export const autoPlayEpisodeCountAtom = atom(0);
 const loadPluginSettings = () => {
   try {
     return storage.get<PluginLockableSettings>(STREAMYFIN_PLUGIN_SETTINGS);
@@ -610,6 +614,15 @@ export const effectiveSettingsAtom = atom<Settings>((get) =>
   ),
 );
 
+/** Read one effective setting without subscribing to unrelated preferences. */
+export function useSetting<K extends keyof Settings>(key: K): Settings[K] {
+  const selected = useMemo(
+    () => selectAtom(effectiveSettingsAtom, (settings) => settings[key]),
+    [key],
+  );
+  return useAtomValue(selected);
+}
+
 const PLUGIN_APPLIED_DEFAULTS = "STREAMYFIN_PLUGIN_APPLIED_DEFAULTS";
 
 const loadAppliedPluginDefaults = (): AppliedPluginDefaults => {
@@ -620,110 +633,105 @@ const loadAppliedPluginDefaults = (): AppliedPluginDefaults => {
   }
 };
 
-export const useSettings = () => {
-  const api = useAtomValue(apiAtom);
-  const [_settings, setSettings] = useAtom(settingsAtom);
-  const [pluginSettings, _setPluginSettings] = useAtom(pluginSettingsAtom);
+const updateSettingsAtom = atom(null, (get, set, update: Partial<Settings>) => {
+  const current = get(settingsAtom);
+  if (!current) return;
+  const plugin = get(pluginSettingsAtom);
+  const sanitized = Object.fromEntries(
+    Object.entries(update).filter(
+      ([key]) => plugin?.[key as keyof Settings]?.locked !== true,
+    ),
+  ) as Partial<Settings>;
+  if (
+    !Object.entries(sanitized).some(
+      ([key, value]) => current[key as keyof Settings] !== value,
+    )
+  )
+    return;
+  const next = { ...defaultValues, ...current, ...sanitized } as Settings;
+  set(settingsAtom, next);
+  saveSettings(next);
+});
+
+const setPluginSettingsAtom = atom(
+  null,
+  (get, set, next: PluginLockableSettings | undefined) => {
+    // This config is JSON from the server. Preserve object identity and avoid
+    // storage/render fan-out when a periodic refresh returns the same values.
+    if (JSON.stringify(get(pluginSettingsAtom)) === JSON.stringify(next))
+      return;
+    storage.setAny(STREAMYFIN_PLUGIN_SETTINGS, next);
+    set(pluginSettingsAtom, next);
+  },
+);
+
+export const useSettingsActions = () => {
+  const store = useStore();
+  const updateSettings = useSetAtom(updateSettingsAtom);
+  const setPluginSettings = useSetAtom(setPluginSettingsAtom);
 
   useEffect(() => {
-    if (_settings === null) {
-      const loadedSettings = loadSettings();
-      setSettings(loadedSettings);
-    }
-  }, [_settings, setSettings]);
-
-  const setPluginSettings = useCallback(
-    (settings: PluginLockableSettings | undefined) => {
-      storage.setAny(STREAMYFIN_PLUGIN_SETTINGS, settings);
-      _setPluginSettings(settings);
-    },
-    [_setPluginSettings],
-  );
+    if (store.get(settingsAtom) === null)
+      store.set(settingsAtom, loadSettings());
+  }, [store]);
 
   const refreshStreamyfinPluginSettings = useCallback(async () => {
-    if (!api) {
-      return;
-    }
-    const newPluginSettings = await api.getStreamyfinPluginConfig().then(
+    const api = store.get(apiAtom);
+    if (!api) return;
+    const nextPlugin = await api.getStreamyfinPluginConfig().then(
       ({ data }) => {
         writeInfoLog("Got plugin settings", data?.settings);
         return data?.settings;
       },
-      (_err) => undefined,
+      () => undefined,
     );
-    setPluginSettings(newPluginSettings);
-
-    // Locked values are pinned at read time by resolveEffectiveSettings and
-    // never written to storage. Unlocked values are only the admin's *default*,
-    // so they are seeded into storage once here — after which the setting
-    // behaves like any other and the user's choice sticks.
-    if (newPluginSettings && _settings) {
+    // An account/server switch may complete while this request is in flight.
+    if (store.get(apiAtom) !== api) return;
+    setPluginSettings(nextPlugin);
+    const current = store.get(settingsAtom);
+    if (nextPlugin && current) {
       const applied = loadAppliedPluginDefaults();
       const pending = pendingPluginDefaults(
-        newPluginSettings,
+        nextPlugin,
         applied,
         normalizePluginValue,
       );
-
-      const streamyStatsUrl = newPluginSettings.streamyStatsServerUrl;
       const enableStreamystats =
-        streamyStatsUrl?.value && _settings.searchEngine !== "Streamystats";
-
+        nextPlugin.streamyStatsServerUrl?.value &&
+        current.searchEngine !== "Streamystats";
       if (Object.keys(pending).length > 0 || enableStreamystats) {
-        const newSettings = {
+        const next = {
           ...defaultValues,
-          ..._settings,
+          ...current,
           ...pending,
           ...(enableStreamystats ? { searchEngine: "Streamystats" } : {}),
         } as Settings;
-        setSettings(newSettings);
-        saveSettings(newSettings);
+        store.set(settingsAtom, next);
+        saveSettings(next);
         if (Object.keys(pending).length > 0) {
           storage.setAny(PLUGIN_APPLIED_DEFAULTS, { ...applied, ...pending });
         }
       }
     }
+    return nextPlugin;
+  }, [store, setPluginSettings]);
 
-    return newPluginSettings;
-  }, [api, _settings]);
+  return useMemo(
+    () => ({
+      updateSettings,
+      setPluginSettings,
+      refreshStreamyfinPluginSettings,
+    }),
+    [updateSettings, setPluginSettings, refreshStreamyfinPluginSettings],
+  );
+};
 
-  const updateSettings = (update: Partial<Settings>) => {
-    if (!_settings) {
-      return;
-    }
-    // Admin-locked settings are enforced at write time too: a control that
-    // isn't disabled in the UI must not persist a value the admin pinned.
-    // The read memo already overrides locked keys, but without this guard the
-    // write would silently land in user storage and resurface once unlocked.
-    const sanitizedUpdate = Object.fromEntries(
-      Object.entries(update).filter(
-        ([key]) => pluginSettings?.[key as keyof Settings]?.locked !== true,
-      ),
-    ) as Partial<Settings>;
-
-    const hasChanges = Object.entries(sanitizedUpdate).some(
-      ([key, value]) => _settings[key as keyof Settings] !== value,
-    );
-
-    if (hasChanges) {
-      // Merge default settings, current settings, and updates to ensure all required properties exist
-      const newSettings = {
-        ...defaultValues,
-        ..._settings,
-        ...sanitizedUpdate,
-      } as Settings;
-      setSettings(newSettings);
-      saveSettings(newSettings);
-    }
-  };
-
+export const useSettings = () => {
   const settings = useAtomValue(effectiveSettingsAtom);
-
-  return {
-    settings,
-    updateSettings,
-    pluginSettings,
-    setPluginSettings,
-    refreshStreamyfinPluginSettings,
-  };
+  const pluginSettings = useAtomValue(pluginSettingsAtom);
+  const actions = useSettingsActions();
+  return useMemo(
+    () => ({ settings, pluginSettings, ...actions }),
+    [settings, pluginSettings, actions],
+  );
 };
