@@ -146,12 +146,10 @@ export const Controls: FC<Props> = ({
     isOffline: offline,
   });
 
-  const {
-    trickPlayUrl,
-    calculateTrickplayUrl,
-    trickplayInfo,
-    prefetchAllTrickplayImages,
-  } = useTrickplay(item);
+  const { trickPlayUrl, calculateTrickplayUrl, trickplayInfo } = useTrickplay(
+    item,
+    !isBuffering,
+  );
 
   const min = useSharedValue(0);
   // Regular value for use during render (avoids Reanimated warning)
@@ -162,10 +160,6 @@ export const Controls: FC<Props> = ({
   const controlsOpacity = useSharedValue(showControls ? 1 : 0);
   const headerTranslateY = useSharedValue(showControls ? 0 : -50);
   const bottomTranslateY = useSharedValue(showControls ? 0 : 50);
-
-  useEffect(() => {
-    prefetchAllTrickplayImages();
-  }, [prefetchAllTrickplayImages]);
 
   // Animate controls visibility
   useEffect(() => {
