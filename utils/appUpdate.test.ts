@@ -9,23 +9,54 @@ import {
 const now = 1_800_000_000_000;
 
 describe("isUpdatePromptDue", () => {
+  const sameVersion = (shownAt: number | undefined) => ({
+    shownAt,
+    versionCode: 10,
+  });
+
   test("never shown is due", () => {
-    expect(isUpdatePromptDue(undefined, now)).toBe(true);
-    expect(isUpdatePromptDue(0, now)).toBe(true);
+    expect(
+      isUpdatePromptDue(
+        { shownAt: undefined, versionCode: undefined },
+        10,
+        now,
+      ),
+    ).toBe(true);
+    expect(isUpdatePromptDue(sameVersion(0), 10, now)).toBe(true);
   });
 
-  test("shown within the interval waits", () => {
-    expect(isUpdatePromptDue(now - UPDATE_PROMPT_INTERVAL_MS + 1, now)).toBe(
-      false,
-    );
+  test("a time from before the version was stored is due", () => {
+    expect(
+      isUpdatePromptDue(
+        { shownAt: now - 1000, versionCode: undefined },
+        10,
+        now,
+      ),
+    ).toBe(true);
   });
 
-  test("shown at or past the interval is due again", () => {
-    expect(isUpdatePromptDue(now - UPDATE_PROMPT_INTERVAL_MS, now)).toBe(true);
+  test("the same release within the interval waits", () => {
+    expect(
+      isUpdatePromptDue(
+        sameVersion(now - UPDATE_PROMPT_INTERVAL_MS + 1),
+        10,
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  test("the same release at or past the interval is due again", () => {
+    expect(
+      isUpdatePromptDue(sameVersion(now - UPDATE_PROMPT_INTERVAL_MS), 10, now),
+    ).toBe(true);
+  });
+
+  test("a newer release is due straight away", () => {
+    expect(isUpdatePromptDue(sameVersion(now - 60_000), 11, now)).toBe(true);
   });
 
   test("a clock that moved backwards is due", () => {
-    expect(isUpdatePromptDue(now + 60_000, now)).toBe(true);
+    expect(isUpdatePromptDue(sameVersion(now + 60_000), 10, now)).toBe(true);
   });
 });
 

@@ -4,6 +4,7 @@ import AppUpdater, { type UpdateCheckResult } from "@/modules/app-updater";
 import {
   isUpdatePromptDue,
   UPDATE_PROMPT_SHOWN_AT_KEY,
+  UPDATE_PROMPT_VERSION_KEY,
 } from "@/utils/appUpdate";
 import {
   appUpdateCheckAtom,
@@ -52,22 +53,22 @@ export const useAppUpdate = () => {
     }
   }, [setCheck]);
 
-  /** On open: offer an update at most once every 12 hours. */
+  /**
+   * On open: offer a newer release straight away, and the same release again at most
+   * once every 12 hours.
+   */
   const checkOnOpen = useCallback(async () => {
     if (!AppUpdater) return;
-    if (
-      !isUpdatePromptDue(
-        storage.getNumber(UPDATE_PROMPT_SHOWN_AT_KEY),
-        Date.now(),
-      )
-    ) {
-      return;
-    }
     const result = await runCheck();
-    if (result?.status === "available") {
-      storage.set(UPDATE_PROMPT_SHOWN_AT_KEY, Date.now());
-      setPrompt({ ...promptFor(result), percent: null });
-    }
+    if (result?.status !== "available") return;
+    const last = {
+      shownAt: storage.getNumber(UPDATE_PROMPT_SHOWN_AT_KEY),
+      versionCode: storage.getNumber(UPDATE_PROMPT_VERSION_KEY),
+    };
+    if (!isUpdatePromptDue(last, result.versionCode, Date.now())) return;
+    storage.set(UPDATE_PROMPT_SHOWN_AT_KEY, Date.now());
+    storage.set(UPDATE_PROMPT_VERSION_KEY, result.versionCode);
+    setPrompt({ ...promptFor(result), percent: null });
   }, [runCheck, setPrompt]);
 
   /** From Settings: check now, and offer the update straight away if there is one. */

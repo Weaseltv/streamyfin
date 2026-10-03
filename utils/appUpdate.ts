@@ -4,16 +4,23 @@ export const UPDATE_PROMPT_INTERVAL_MS = 12 * 60 * 60 * 1000;
 /** MMKV key holding when the update popup last showed (epoch ms). */
 export const UPDATE_PROMPT_SHOWN_AT_KEY = "appUpdate.promptShownAt";
 
+/** MMKV key holding the versionCode the update popup last offered. */
+export const UPDATE_PROMPT_VERSION_KEY = "appUpdate.promptVersionCode";
+
 /**
- * Whether the launch-time check may show the update popup again. A clock that moved
- * backwards counts as due, so the popup can't be silenced indefinitely.
+ * Whether the launch-time check may show the update popup for [versionCode]. A release
+ * newer than the last one offered shows straight away; the same release shows again
+ * only after 12 hours, as on WeaselPlex TV. A clock that moved backwards counts as due,
+ * so the popup can't be silenced indefinitely.
  */
 export function isUpdatePromptDue(
-  lastShownAt: number | undefined,
+  last: { shownAt: number | undefined; versionCode: number | undefined },
+  versionCode: number,
   now: number,
 ): boolean {
-  if (!lastShownAt) return true;
-  return now < lastShownAt || now - lastShownAt >= UPDATE_PROMPT_INTERVAL_MS;
+  if (!last.shownAt || last.versionCode === undefined) return true;
+  if (versionCode > last.versionCode) return true;
+  return now < last.shownAt || now - last.shownAt >= UPDATE_PROMPT_INTERVAL_MS;
 }
 
 /** Whole-number download percentage, clamped to 0–100. */
