@@ -78,6 +78,7 @@ export default React.forwardRef<MpvPlayerViewRef, MpvPlayerViewProps>(
               );
             }
           : undefined,
+      getSubtitleSelectionOwner: () => nativeRef.current,
       getSubtitleTracks: async () => {
         return await nativeRef.current?.getSubtitleTracks();
       },
