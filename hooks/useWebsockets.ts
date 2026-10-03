@@ -4,7 +4,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { useWebSocketMessage } from "@/providers/WebSocketProvider";
 
 interface UseWebSocketProps {
-  isPlaying: boolean;
+  getIsPlaying: () => boolean;
   togglePlay: () => void;
   stopPlayback: () => void;
   offline: boolean;
@@ -43,7 +43,7 @@ interface UseWebSocketProps {
 }
 
 export const useWebSocket = ({
-  isPlaying,
+  getIsPlaying,
   togglePlay,
   stopPlayback,
   offline,
@@ -100,12 +100,12 @@ export const useWebSocket = ({
       router.canGoBack() && router.back();
     } else if (command === "Pause") {
       console.log("Command ~ Pause");
-      if (isPlaying) {
+      if (getIsPlaying()) {
         togglePlay();
       }
     } else if (command === "Unpause") {
       console.log("Command ~ Unpause");
-      if (!isPlaying) {
+      if (!getIsPlaying()) {
         togglePlay();
       }
     } else if (command === "NextTrack") {

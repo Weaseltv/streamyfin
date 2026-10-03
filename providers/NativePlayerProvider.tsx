@@ -1609,13 +1609,19 @@ const NativePlayerProviderInner: React.FC<{
     if (!command) return;
 
     switch (command) {
-      case "PlayPause":
-        void (session.isPlaying ? nativePlayerPause() : nativePlayerPlay());
+      case "PlayPause": {
+        // Same-tick commands must see the result of the prior command before
+        // native playback events or a React commit arrive.
+        session.isPlaying = !session.isPlaying;
+        void (session.isPlaying ? nativePlayerPlay() : nativePlayerPause());
         break;
+      }
       case "Pause":
+        session.isPlaying = false;
         void nativePlayerPause();
         break;
       case "Unpause":
+        session.isPlaying = true;
         void nativePlayerPlay();
         break;
       case "Stop":
