@@ -1,8 +1,7 @@
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
-import { useWebSocketContext } from "@/providers/WebSocketProvider";
+import { useWebSocketMessage } from "@/providers/WebSocketProvider";
 
 interface UseWebSocketProps {
   isPlaying: boolean;
@@ -80,15 +79,11 @@ export const useWebSocket = ({
   playTrailers,
 }: UseWebSocketProps) => {
   const router = useRouter();
-  const { lastMessage } = useWebSocketContext();
   const { t } = useTranslation();
-  const { clearLastMessage } = useWebSocketContext();
 
-  useEffect(() => {
-    if (!lastMessage) return;
+  useWebSocketMessage("*", (_data, lastMessage) => {
     if (offline) return;
 
-    const _messageType = lastMessage.MessageType;
     const command: string | undefined =
       lastMessage?.Data?.Command || lastMessage?.Data?.Name;
 
@@ -271,45 +266,5 @@ export const useWebSocket = ({
       const body = args?.Text;
       Alert.alert(t("player.message_from_server", { message: title }), body);
     }
-    clearLastMessage();
-  }, [
-    lastMessage,
-    offline,
-    isPlaying,
-    togglePlay,
-    stopPlayback,
-    router,
-    nextTrack,
-    previousTrack,
-    rewindPlayback,
-    fastForwardPlayback,
-    seekPlayback,
-    volumeUp,
-    volumeDown,
-    toggleMute,
-    toggleOsd,
-    toggleFullscreen,
-    goHome,
-    goToSettings,
-    setAudioStreamIndex,
-    setSubtitleStreamIndex,
-    moveUp,
-    moveDown,
-    moveLeft,
-    moveRight,
-    select,
-    pageUp,
-    pageDown,
-    setVolume,
-    setRepeatMode,
-    setShuffleMode,
-    togglePictureInPicture,
-    takeScreenshot,
-    sendString,
-    sendKey,
-    playMediaSource,
-    playTrailers,
-    t,
-    clearLastMessage,
-  ]);
+  });
 };
