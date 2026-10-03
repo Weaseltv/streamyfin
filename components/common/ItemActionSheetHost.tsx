@@ -1,6 +1,6 @@
 import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useFavorite } from "@/hooks/useFavorite";
@@ -52,6 +52,7 @@ function ItemActionSheet({
   close: () => void;
 }) {
   const { item, isOffline } = request;
+  const atomStore = useStore();
   const { t } = useTranslation();
   const { showActionSheetWithOptions } = useActionSheet();
   const markAsPlayedStatus = useMarkAsPlayed([item]);
@@ -112,6 +113,9 @@ function ItemActionSheet({
       { options, cancelButtonIndex, destructiveButtonIndex },
       async (selectedIndex) => {
         try {
+          // A global action-sheet overlay can outlive this component on
+          // logout/account switch. Never invoke its old account's mutation.
+          if (ownerKeyFor(atomStore.get(userAtom)) !== request.ownerKey) return;
           if (
             selectedIndex === undefined ||
             selectedIndex === cancelButtonIndex
@@ -124,6 +128,8 @@ function ItemActionSheet({
       },
     );
   }, [
+    atomStore,
+    request.ownerKey,
     showActionSheetWithOptions,
     close,
     isFavorite,
