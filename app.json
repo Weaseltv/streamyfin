@@ -146,7 +146,10 @@
               }
             },
             "useAndroidX": true,
-            "enableJetifier": true
+            "enableJetifier": true,
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# Playback services and Cast entry points must survive release shrinking.\n-keep class com.doublesymmetry.trackplayer.** { *; }\n-keep class com.reactnative.googlecast.** { *; }\n-keep class * extends com.google.android.gms.cast.framework.OptionsProvider { *; }\n"
           }
         }
       ],
