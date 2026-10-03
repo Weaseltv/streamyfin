@@ -55,6 +55,7 @@ import { Sizes } from "@/constants/neon";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
+import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
 import { useFilterReset } from "@/hooks/useFilterReset";
 import { useOrientation } from "@/hooks/useOrientation";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
@@ -90,6 +91,9 @@ import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 
 const GRID_GAP = 10;
+const GridSeparator = () => (
+  <View style={{ width: GRID_GAP, height: GRID_GAP }} />
+);
 
 const TV_ITEM_GAP = 20;
 const TV_HORIZONTAL_PADDING = 60;
@@ -554,6 +558,11 @@ const Page = () => {
     ],
   );
 
+  const { data: availableFilters } = useAvailableItemFilters(
+    libraryId,
+    !Platform.isTV,
+  );
+
   const { data, isFetching, fetchNextPage, hasNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: [
@@ -819,16 +828,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='genreFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Genres || [];
-                  }}
+                  options={availableFilters?.Genres ?? []}
                   set={setGenres}
                   values={selectedGenres}
                   title={t("library.filters.genres")}
@@ -843,16 +843,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='yearFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Years || [];
-                  }}
+                  options={availableFilters?.Years ?? []}
                   set={setYears}
                   values={selectedYears}
                   title={t("library.filters.years")}
@@ -867,16 +858,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='tagsFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Tags || [];
-                  }}
+                  options={availableFilters?.Tags ?? []}
                   set={setTags}
                   values={selectedTags}
                   title={t("library.filters.tags")}
@@ -946,6 +928,7 @@ const Page = () => {
     [
       libraryId,
       api,
+      availableFilters,
       user?.Id,
       accent,
       library?.Name,
@@ -1145,6 +1128,11 @@ const Page = () => {
     });
   }, [showOptions, t, tvFilterByOptions, setFilter, _setFilterBy]);
 
+  const gridExtraData = useMemo(
+    () => [orientation, nrOfCols, cardWidth],
+    [orientation, nrOfCols, cardWidth],
+  );
+
   if (Platform.isTV && (isLoading || isLibraryLoading))
     return (
       <View className='w-full h-full flex items-center justify-center'>
@@ -1178,12 +1166,12 @@ const Page = () => {
           }
           data={flatData}
           renderItem={renderItem}
-          extraData={[orientation, nrOfCols, cardWidth]}
+          extraData={gridExtraData}
           keyExtractor={keyExtractor}
           numColumns={nrOfCols}
           onEndReached={() => {
-            if (hasNextPage) {
-              fetchNextPage();
+            if (hasNextPage && !isFetching) {
+              void fetchNextPage({ cancelRefetch: false });
             }
           }}
           onEndReachedThreshold={1}
@@ -1195,9 +1183,7 @@ const Page = () => {
             paddingLeft: insets.left + Sizes.gutter,
             paddingRight: insets.right + Sizes.gutter,
           }}
-          ItemSeparatorComponent={() => (
-            <View style={{ width: GRID_GAP, height: GRID_GAP }} />
-          )}
+          ItemSeparatorComponent={GridSeparator}
         />
       </View>
     );
@@ -1219,7 +1205,7 @@ const Page = () => {
           layoutMeasurement.height + contentOffset.y >=
           contentSize.height - 500;
         if (isNearBottom && hasNextPage && !isFetching) {
-          fetchNextPage();
+          void fetchNextPage({ cancelRefetch: false });
         }
       }}
       scrollEventThrottle={400}
