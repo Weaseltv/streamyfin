@@ -1,6 +1,6 @@
 import { useIsFocused } from "expo-router";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { NeonBoard } from "@/constants/Colors";
 
 /**
@@ -15,8 +15,11 @@ export const usePageAccent = () => useAtomValue(pageAccentAtom);
 
 /** An explicit accent, or the accent of the page on screen. */
 export const useAccent = (accent?: string | null) => {
-  const pageAccent = usePageAccent();
-  return accent ?? pageAccent;
+  const selected = useMemo(
+    () => atom((get) => accent ?? get(pageAccentAtom)),
+    [accent],
+  );
+  return useAtomValue(selected);
 };
 
 /**
