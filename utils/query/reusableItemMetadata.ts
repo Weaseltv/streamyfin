@@ -4,11 +4,25 @@ import {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import type { QueryClient } from "@tanstack/react-query";
 
-// Keep the existing detail fields, but fetch People through its focused query.
+// TV keeps its established inline fields. Phone detail and playback share the
+// fields their visible controls, downloads and player actually consume; People
+// is still supplied by the separately focused People query.
 export const ALL_DETAIL_ITEM_FIELDS = Object.values(ItemFields);
-export const DETAIL_ITEM_FIELDS = ALL_DETAIL_ITEM_FIELDS.filter(
-  (field) => field !== ItemFields.People,
-);
+export const DETAIL_ITEM_FIELDS: ItemFields[] = [
+  ItemFields.MediaSources,
+  ItemFields.MediaStreams,
+  ItemFields.MediaSourceCount,
+  ItemFields.Overview,
+  ItemFields.Genres,
+  ItemFields.RemoteTrailers,
+  ItemFields.Chapters,
+  ItemFields.Trickplay,
+  ItemFields.ProviderIds,
+  ItemFields.ParentId,
+  ItemFields.PrimaryImageAspectRatio,
+  ItemFields.CanDownload,
+  ItemFields.PlayAccess,
+];
 
 /** Reuse only a recent, valid full DTO; playback negotiation remains fresh. */
 export function getReusableItemMetadata(
