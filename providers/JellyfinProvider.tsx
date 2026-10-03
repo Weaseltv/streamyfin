@@ -46,6 +46,7 @@ import {
 import { store } from "@/utils/store";
 import { clearTVDiscoverySafely } from "@/utils/tvDiscovery/sync";
 import { APP_VERSION } from "@/utils/version";
+import { clearWeaselSeerrRefusal } from "@/utils/weaselSeerrRefusal";
 
 interface Server {
   address: string;
@@ -543,6 +544,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           writeErrorLog("Failed to delete expo push token for device"),
         );
 
+      // WeaselPlex: a refused Seerr connect is forgotten on sign-out, so the
+      // next sign-in tries straight away.
+      if (user?.Id) clearWeaselSeerrRefusal(user.Id);
       await clearSessionState();
     },
     onError: (error) => {
