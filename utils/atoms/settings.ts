@@ -8,7 +8,8 @@ import {
 } from "@jellyfin/sdk/lib/generated-client";
 import { t } from "i18next";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
+import { selectAtom } from "jotai/utils";
+import { useCallback, useEffect, useMemo } from "react";
 import { Platform } from "react-native";
 import { BITRATES, type Bitrate } from "@/components/BitrateSelector";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
@@ -609,6 +610,15 @@ export const effectiveSettingsAtom = atom<Settings>((get) =>
     normalizePluginValue,
   ),
 );
+
+/** Read one effective setting without subscribing to unrelated preferences. */
+export function useSetting<K extends keyof Settings>(key: K): Settings[K] {
+  const selected = useMemo(
+    () => selectAtom(effectiveSettingsAtom, (settings) => settings[key]),
+    [key],
+  );
+  return useAtomValue(selected);
+}
 
 const PLUGIN_APPLIED_DEFAULTS = "STREAMYFIN_PLUGIN_APPLIED_DEFAULTS";
 
