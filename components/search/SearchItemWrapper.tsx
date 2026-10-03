@@ -1,6 +1,6 @@
 import { FlashList } from "@shopify/flash-list";
 import type React from "react";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useCallback } from "react";
 import { View } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { RAIL_GAP } from "@/components/home/ItemCard";
@@ -28,6 +28,13 @@ export const SearchItemWrapper = <T,>({
   onEndReached,
 }: PropsWithChildren<SearchItemWrapperProps<T>>) => {
   const accent = useAccent(accentProp);
+  const renderResult = useCallback(
+    ({ item }: { item: T }) =>
+      item ? (
+        <View style={{ marginRight: RAIL_GAP }}>{renderItem(item)}</View>
+      ) : null,
+    [renderItem],
+  );
   if (!items || items.length === 0) return null;
 
   return (
@@ -46,11 +53,7 @@ export const SearchItemWrapper = <T,>({
         data={items}
         onEndReachedThreshold={1}
         onEndReached={onEndReached}
-        renderItem={({ item }) =>
-          item ? (
-            <View style={{ marginRight: RAIL_GAP }}>{renderItem(item)}</View>
-          ) : null
-        }
+        renderItem={renderResult}
       />
     </View>
   );

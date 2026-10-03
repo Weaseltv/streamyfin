@@ -93,9 +93,14 @@ export default function SearchPage() {
 
   const { query: debouncedSearch, submit: submitSearch } = useSearchQuery(
     search,
-    searchType === "Discover" && !Platform.isTV
-      ? { delay: 400, minimumLength: 2 }
-      : undefined,
+    Platform.isTV
+      ? undefined
+      : {
+          delay: searchType === "Discover" ? 400 : 350,
+          // A one-letter route search is an explicit request, like Search.
+          minimumLength:
+            q?.trim().length === 1 && search.trim() === q.trim() ? 1 : 2,
+        },
   );
 
   // Library search is cyan, the Requests side mint.
@@ -309,10 +314,10 @@ export default function SearchPage() {
 
   const onChangeSearch = useCallback(
     (text: string) => {
-      router.setParams({ q: "" });
+      if (q && text !== q) router.setParams({ q: "" });
       setSearch(text);
     },
-    [router],
+    [q, router],
   );
 
   useEffect(() => {
@@ -362,6 +367,20 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
+  const [secondaryQuery, setSecondaryQuery] = useState("");
+  useEffect(() => {
+    if (searchType !== "Library" || !debouncedSearch) return;
+    // A slow or failed primary endpoint cannot starve the remaining categories.
+    const timeout = setTimeout(() => setSecondaryQuery(debouncedSearch), 650);
+    return () => clearTimeout(timeout);
+  }, [debouncedSearch, searchType]);
+  const librarySearchEnabled = searchType === "Library" && !!debouncedSearch;
+  const secondaryEnabled =
+    librarySearchEnabled &&
+    (Platform.isTV ||
+      ((movies !== undefined || e1) && (series !== undefined || e2)) ||
+      secondaryQuery === debouncedSearch);
+
   const {
     data: episodes,
     isFetching: l3,
@@ -375,7 +394,7 @@ export default function SearchPage() {
         types: ["Episode"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -391,7 +410,7 @@ export default function SearchPage() {
         types: ["BoxSet"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -407,7 +426,7 @@ export default function SearchPage() {
         types: ["Person"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   // Music search queries - always use Jellyfin since Streamystats doesn't support music
@@ -424,7 +443,7 @@ export default function SearchPage() {
         types: ["MusicArtist"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -440,7 +459,7 @@ export default function SearchPage() {
         types: ["MusicAlbum"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -456,7 +475,7 @@ export default function SearchPage() {
         types: ["Audio"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -472,7 +491,7 @@ export default function SearchPage() {
         types: ["Playlist"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const noResults = useMemo(() => {
@@ -500,8 +519,31 @@ export default function SearchPage() {
   ]);
 
   const loading = useMemo(() => {
-    return l1 || l2 || l3 || l7 || l8 || l9 || l10 || l11 || l12;
-  }, [l1, l2, l3, l7, l8, l9, l10, l11, l12]);
+    return (
+      (librarySearchEnabled && !secondaryEnabled) ||
+      l1 ||
+      l2 ||
+      l3 ||
+      l7 ||
+      l8 ||
+      l9 ||
+      l10 ||
+      l11 ||
+      l12
+    );
+  }, [
+    librarySearchEnabled,
+    secondaryEnabled,
+    l1,
+    l2,
+    l3,
+    l7,
+    l8,
+    l9,
+    l10,
+    l11,
+    l12,
+  ]);
 
   /**
    * Retry handlers for whichever categories failed. Categories resolve
@@ -559,6 +601,127 @@ export default function SearchPage() {
       router.push(navigation as any);
     },
     [from, router],
+  );
+
+  const renderMovieResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter
+        key={item.Id}
+        item={item}
+        style={{ width: Sizes.posterSmall.w }}
+      >
+        <MoviePoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderSeriesResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter
+        key={item.Id}
+        item={item}
+        style={{ width: Sizes.posterSmall.w }}
+      >
+        <SeriesPoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderEpisodeResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter
+        item={item}
+        key={item.Id}
+        style={{ width: Sizes.thumbSmall.w }}
+      >
+        <ContinueWatchingPoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderCollectionResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter
+        key={item.Id}
+        item={item}
+        style={{ width: Sizes.posterSmall.w }}
+      >
+        <MoviePoster item={item} size='small' badge={null} />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderActorResult = useCallback(
+    (item: BaseItemDto) => (
+      <PersonAvatar
+        key={item.Id}
+        person={item as BaseItemPerson}
+        onPress={() => handleItemPress(item)}
+      />
+    ),
+    [handleItemPress],
+  );
+
+  const renderArtistResult = useCallback(
+    (item: BaseItemDto) => (
+      <PersonAvatar
+        key={item.Id}
+        person={item as BaseItemPerson}
+        onPress={() => handleItemPress(item)}
+      />
+    ),
+    [handleItemPress],
+  );
+
+  const renderAlbumResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        key={item.Id}
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='disc'
+        meta={item.AlbumArtist || item.Artists?.join(", ")}
+      />
+    ),
+    [api],
+  );
+
+  const renderSongResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        key={item.Id}
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='music'
+        meta={item.Artists?.join(", ") || item.AlbumArtist}
+      />
+    ),
+    [api],
+  );
+
+  const renderPlaylistResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        key={item.Id}
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='list'
+        meta={
+          item.ChildCount !== undefined && item.ChildCount !== null
+            ? t("search.x_items", { count: item.ChildCount })
+            : undefined
+        }
+      />
+    ),
+    [api, t],
   );
 
   // Jellyseerr search for TV
@@ -825,132 +988,56 @@ export default function SearchPage() {
               header={t("search.movies")}
               accent={NeonBoard.orange}
               items={movies}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <MoviePoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderMovieResult}
             />
             <SearchItemWrapper
               items={series}
               header={t("search.series")}
               accent={NeonBoard.yellow}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <SeriesPoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderSeriesResult}
             />
             <SearchItemWrapper
               items={episodes}
               header={t("search.episodes")}
               accent={NeonBoard.yellow}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  item={item}
-                  key={item.Id}
-                  style={{ width: Sizes.thumbSmall.w }}
-                >
-                  <ContinueWatchingPoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderEpisodeResult}
             />
             <SearchItemWrapper
               items={collections}
               header={t("search.collections")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <MoviePoster item={item} size='small' badge={null} />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderCollectionResult}
             />
             <SearchItemWrapper
               items={actors}
               header={t("search.actors")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <PersonAvatar
-                  key={item.Id}
-                  person={item as BaseItemPerson}
-                  onPress={() => handleItemPress(item)}
-                />
-              )}
+              renderItem={renderActorResult}
             />
             {/* Music search results */}
             <SearchItemWrapper
               items={artists}
               header={t("search.artists")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <PersonAvatar
-                  key={item.Id}
-                  person={item as BaseItemPerson}
-                  onPress={() => handleItemPress(item)}
-                />
-              )}
+              renderItem={renderArtistResult}
             />
             <SearchItemWrapper
               items={albums}
               header={t("search.albums")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='disc'
-                  meta={item.AlbumArtist || item.Artists?.join(", ")}
-                />
-              )}
+              renderItem={renderAlbumResult}
             />
             <SearchItemWrapper
               items={songs}
               header={t("search.songs")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='music'
-                  meta={item.Artists?.join(", ") || item.AlbumArtist}
-                />
-              )}
+              renderItem={renderSongResult}
             />
             <SearchItemWrapper
               items={playlists}
               header={t("search.playlists")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='list'
-                  meta={
-                    item.ChildCount !== undefined && item.ChildCount !== null
-                      ? t("search.x_items", { count: item.ChildCount })
-                      : undefined
-                  }
-                />
-              )}
+              renderItem={renderPlaylistResult}
             />
           </View>
         ) : (
