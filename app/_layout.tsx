@@ -315,9 +315,9 @@ function Layout() {
   }, []);
 
   useEffect(() => {
-    i18n.changeLanguage(
-      settings?.preferedLanguage ?? getLocales()[0].languageCode ?? "en",
-    );
+    const language =
+      settings?.preferedLanguage ?? getLocales()[0].languageCode ?? "en";
+    if (i18n.language !== language) void i18n.changeLanguage(language);
   }, [settings?.preferedLanguage, i18n]);
 
   useNotificationObserver();
