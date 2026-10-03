@@ -1,3 +1,4 @@
+import { ItemActionSheetHost } from "@/components/common/ItemActionSheetHost";
 import "@/augmentations";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -488,6 +489,9 @@ function Layout() {
                                 <IntroSheetProvider>
                                   <ThemeProvider value={DarkTheme}>
                                     <SystemBars style='light' hidden={false} />
+                                    <ItemActionSheetHost
+                                      key={user?.Id ?? "signed-out"}
+                                    />
                                     <Stack initialRouteName='(auth)/(tabs)'>
                                       <Stack.Screen
                                         name='(auth)/(tabs)'

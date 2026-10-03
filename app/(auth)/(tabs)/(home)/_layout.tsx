@@ -7,6 +7,7 @@ import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 
 // Keeps cold boot on the Home tab.
 //
@@ -36,226 +37,228 @@ export default function IndexLayout() {
   const { t } = useTranslation();
 
   return (
-    <Stack screenOptions={stackScreenOptions}>
-      <Stack.Screen
-        name='index'
-        options={{ ...neonRootScreenOptions, title: t("tabs.home") }}
-      />
-      <Stack.Screen
-        name='downloads/index'
-        options={{
-          headerShown: !Platform.isTV,
-          title: t("home.downloads.downloads_title"),
-          header: ({ navigation }) => (
-            <NeonHeader
-              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
-              downloads={false}
-            />
-          ),
-        }}
-      />
-      <Stack.Screen
-        name='sessions/index'
-        options={{
-          title: t("home.sessions.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings'
-        options={{
-          title: t("home.settings.settings_title"),
-          headerShown: !Platform.isTV,
-          // The brand row with a back chevron; the page head below carries
-          // the SETTINGS title.
-          header: ({ navigation }) => (
-            <NeonHeader
-              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
-              downloads={false}
-              settings={false}
-            />
-          ),
-        }}
-      />
-      <Stack.Screen
-        name='companion-login'
-        options={{
-          title: t("companion_login.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='quick-connect-scan'
-        options={{
-          title: t("home.settings.quick_connect.scan_qr"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/playback-controls/page'
-        options={{
-          title: t("home.settings.playback_controls.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/audio-subtitles/page'
-        options={{
-          title: t("home.settings.audio_subtitles.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/appearance/page'
-        options={{
-          title: t("home.settings.appearance.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/music/page'
-        options={{
-          title: t("home.settings.music.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/appearance/hide-libraries/page'
-        options={{
-          title: t("home.settings.other.hide_libraries"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/plugins/page'
-        options={{
-          title: t("home.settings.plugins.plugins_title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/plugins/marlin-search/page'
-        options={{
-          title: "Marlin Search",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/plugins/jellyseerr/page'
-        options={{
-          title: "Jellyseerr",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/plugins/streamystats/page'
-        options={{
-          title: "Streamystats",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/plugins/kefinTweaks/page'
-        options={{
-          title: "KefinTweaks",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/intro/page'
-        options={{
-          title: t("home.settings.intro.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/logs/page'
-        options={{
-          title: t("home.settings.logs.logs_title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='settings/network/page'
-        options={{
-          title: t("home.settings.network.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
-        name='library/[libraryId]'
-        options={{
-          title: "",
-          headerShown: !Platform.isTV,
-          header: ({ navigation }) => (
-            <NeonHeader
-              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
-              downloads={false}
-            />
-          ),
-        }}
-      />
-      {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
-        <Stack.Screen key={name} name={name} options={options} />
-      ))}
-      <Stack.Screen
-        name='collections/[collectionId]'
-        options={{
-          title: "",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-    </Stack>
+    <ItemNavigationProvider origin='(home)'>
+      <Stack screenOptions={stackScreenOptions}>
+        <Stack.Screen
+          name='index'
+          options={{ ...neonRootScreenOptions, title: t("tabs.home") }}
+        />
+        <Stack.Screen
+          name='downloads/index'
+          options={{
+            headerShown: !Platform.isTV,
+            title: t("home.downloads.downloads_title"),
+            header: ({ navigation }) => (
+              <NeonHeader
+                onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+                downloads={false}
+              />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name='sessions/index'
+          options={{
+            title: t("home.sessions.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings'
+          options={{
+            title: t("home.settings.settings_title"),
+            headerShown: !Platform.isTV,
+            // The brand row with a back chevron; the page head below carries
+            // the SETTINGS title.
+            header: ({ navigation }) => (
+              <NeonHeader
+                onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+                downloads={false}
+                settings={false}
+              />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name='companion-login'
+          options={{
+            title: t("companion_login.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='quick-connect-scan'
+          options={{
+            title: t("home.settings.quick_connect.scan_qr"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/playback-controls/page'
+          options={{
+            title: t("home.settings.playback_controls.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/audio-subtitles/page'
+          options={{
+            title: t("home.settings.audio_subtitles.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/appearance/page'
+          options={{
+            title: t("home.settings.appearance.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/music/page'
+          options={{
+            title: t("home.settings.music.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/appearance/hide-libraries/page'
+          options={{
+            title: t("home.settings.other.hide_libraries"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/plugins/page'
+          options={{
+            title: t("home.settings.plugins.plugins_title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/plugins/marlin-search/page'
+          options={{
+            title: "Marlin Search",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/plugins/jellyseerr/page'
+          options={{
+            title: "Jellyseerr",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/plugins/streamystats/page'
+          options={{
+            title: "Streamystats",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/plugins/kefinTweaks/page'
+          options={{
+            title: "KefinTweaks",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/intro/page'
+          options={{
+            title: t("home.settings.intro.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/logs/page'
+          options={{
+            title: t("home.settings.logs.logs_title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='settings/network/page'
+          options={{
+            title: t("home.settings.network.title"),
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name='library/[libraryId]'
+          options={{
+            title: "",
+            headerShown: !Platform.isTV,
+            header: ({ navigation }) => (
+              <NeonHeader
+                onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+                downloads={false}
+              />
+            ),
+          }}
+        />
+        {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
+          <Stack.Screen key={name} name={name} options={options} />
+        ))}
+        <Stack.Screen
+          name='collections/[collectionId]'
+          options={{
+            title: "",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+      </Stack>
+    </ItemNavigationProvider>
   );
 }
