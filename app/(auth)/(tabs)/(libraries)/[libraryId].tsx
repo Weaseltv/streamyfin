@@ -52,12 +52,12 @@ import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
 import { libraryAccent, NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { Freshness } from "@/constants/queryFreshness";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
 import { useFilterReset } from "@/hooks/useFilterReset";
 import { useOrientation } from "@/hooks/useOrientation";
-import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -145,15 +145,6 @@ const Page = () => {
     const handle = setTimeout(() => setSearchTerm(trimmed), 300);
     return () => clearTimeout(handle);
   }, [searchQuery]);
-
-  // Fallback refresh for newly added content when returning to the library
-  // (primary path is the LibraryChanged WebSocket event). Scoped to this
-  // library's own items; Home and other libraries refresh on their own focus.
-  const refreshKeys = useMemo(
-    () => [["library-items", libraryId]],
-    [libraryId],
-  );
-  useRefreshLibraryOnFocus(refreshKeys);
 
   // True only while this screen is focused AND its filters have been restored
   // into the shared atoms. The atoms are global, so while this screen sits
@@ -588,6 +579,20 @@ const Page = () => {
         return undefined;
       },
       initialPageParam: 0,
+      // Re-enabling after filter restoration fetches only stale/invalidated
+      // data; a second focus invalidation would replay every loaded page.
+      // Playback/favorite filters and sorts still refresh on every return.
+      staleTime:
+        filterBy.length > 0 ||
+        sortBy.some((value) =>
+          [
+            SortByOption.DatePlayed,
+            SortByOption.PlayCount,
+            SortByOption.Random,
+          ].includes(value),
+        )
+          ? 0
+          : Freshness.catalog,
       enabled: !!api && !!user?.Id && !!library && filtersReady,
     });
 
