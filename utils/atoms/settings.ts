@@ -343,7 +343,6 @@ export type Settings = {
   hiddenLibraries?: string[];
   enableH265ForChromecast: boolean;
   maxAutoPlayEpisodeCount: MaxAutoPlayEpisodeCount;
-  autoPlayEpisodeCount: number;
   autoPlayNextEpisode: boolean;
   /** Ask whether to resume or start over when playing an in-progress item. */
   showResumeDialog: boolean;
@@ -486,7 +485,6 @@ export const defaultValues: Settings = {
   hiddenLibraries: [],
   enableH265ForChromecast: false,
   maxAutoPlayEpisodeCount: { key: "3", value: 3 },
-  autoPlayEpisodeCount: 0,
   autoPlayNextEpisode: true,
   showResumeDialog: true,
   // Playback speed defaults
@@ -557,6 +555,8 @@ const loadSettings = (): Partial<Settings> => {
     const loadedValues: Partial<Settings> =
       jsonValue != null ? JSON.parse(jsonValue) : {};
 
+    // A playback-chain counter is session state, not a persisted preference.
+    delete (loadedValues as Record<string, unknown>).autoPlayEpisodeCount;
     return loadedValues;
   } catch (error) {
     console.error("Failed to load settings:", error);
@@ -564,7 +564,7 @@ const loadSettings = (): Partial<Settings> => {
   }
 };
 
-const EXCLUDE_FROM_SAVE = ["home"];
+const EXCLUDE_FROM_SAVE = ["home", "autoPlayEpisodeCount"];
 
 const saveSettings = (settings: Settings) => {
   try {
@@ -581,6 +581,9 @@ const saveSettings = (settings: Settings) => {
 };
 
 export const settingsAtom = atom<Partial<Settings> | null>(null);
+
+/** Number of automatically advanced episodes in the current playback chain. */
+export const autoPlayEpisodeCountAtom = atom(0);
 const loadPluginSettings = () => {
   try {
     return storage.get<PluginLockableSettings>(STREAMYFIN_PLUGIN_SETTINGS);
