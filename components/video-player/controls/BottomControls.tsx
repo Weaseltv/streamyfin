@@ -5,7 +5,7 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { type FC, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Slider } from "react-native-awesome-slider";
 import { type SharedValue } from "react-native-reanimated";
 import { ChapterList } from "@/components/chapters/ChapterList";
@@ -134,7 +134,12 @@ export const BottomControls: FC<BottomControlsProps> = ({
           position: "absolute",
           right: insets.right,
           left: insets.left,
-          bottom: Math.max(insets.bottom - 17, 0),
+          // Keep Android phone controls above the navigation-bar inset.
+          // The time row already has its own 8 dp bottom margin.
+          bottom:
+            Platform.OS === "android" && !Platform.isTV
+              ? insets.bottom
+              : Math.max(insets.bottom - 17, 0),
         },
       ]}
       className={"flex flex-col px-2"}
