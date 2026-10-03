@@ -7,9 +7,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Trace
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicLong
 import android.system.Os
 import android.util.Log
 import android.view.Surface
@@ -36,8 +36,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
          * them went straight into synchronous JNI (a seek, a track switch, a
          * track list read of ~10 property reads per track). One serial thread
          * keeps them in the order JS issued them and off the UI thread.
-         * Surface attach/detach/resize stay on the UI thread with the
-         * SurfaceView.
+         * Main owns SurfaceView callbacks; the JNI work they request is
+         * serialized here too. No UI callback waits for this queue.
          *
          * Process-wide rather than per player: the previous player's teardown
          * (stop, which releases the decoder) always finishes before the next
@@ -103,8 +103,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     
     private val mainHandler = Handler(Looper.getMainLooper())
     
-    private var surface: Surface? = null
-    private var isRunning = false
+    @Volatile private var surface: Surface? = null
+    @Volatile private var isRunning = false
 
     // This renderer's own mpv handle. Per-instance (not singleton) — each
     // player screen gets a fresh mpv handle and drops the reference on stop.
@@ -115,11 +115,11 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var mpv: MPVLib? = null
 
     // Cached state
-    private var cachedPosition: Double = 0.0
-    private var cachedDuration: Double = 0.0
-    private var cachedCacheSeconds: Double = 0.0
-    private var _isPaused: Boolean = true
-    private var _isLoading: Boolean = false
+    @Volatile private var cachedPosition: Double = 0.0
+    @Volatile private var cachedDuration: Double = 0.0
+    @Volatile private var cachedCacheSeconds: Double = 0.0
+    @Volatile private var _isPaused: Boolean = true
+    @Volatile private var _isLoading: Boolean = false
     /**
      * Set by load() right before it stops the previous file, cleared when the
      * new file's FILE_LOADED arrives. The END_FILE mpv emits for the old file
@@ -142,17 +142,17 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     // 30s is generous on purpose: a server transcode can take 10-20s to
     // produce its first segment.
     private val startWatchdog = Runnable {
-        if (!isRunning || !_isLoading) return@Runnable
-        Log.w(TAG, "Playback did not start within ${START_DEADLINE_MS / 1000}s")
-        _isLoading = false
-        _isSeeking = false
-        // The END_FILE from this stop must stay silent (see the heuristic
-        // below); this is the only report.
-        expectingEndFile = true
-        openingFile = false
-        mpv?.command(arrayOf("stop"))
-        delegate?.onLoadingChanged(false)
-        delegate?.onPlaybackFailed("Playback did not start")
+        runCommand("watchdog") {
+            if (!isRunning || !_isLoading) return@runCommand
+            _isLoading = false
+            _isSeeking = false
+            expectingEndFile = true
+            mpv?.command(arrayOf("stop"))
+            notifyMain {
+                delegate?.onLoadingChanged(false)
+                delegate?.onPlaybackFailed("Playback did not start")
+            }
+        }
     }
 
     /** Live streams have no duration but do advance; only the empty 0/0 tick is not a position. */
@@ -187,8 +187,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var _isSeeking: Boolean = false
     
     // Video dimensions
-    private var _videoWidth: Int = 0
-    private var _videoHeight: Int = 0
+    @Volatile private var _videoWidth: Int = 0
+    @Volatile private var _videoHeight: Int = 0
     
     val videoWidth: Int
         get() = _videoWidth
@@ -204,14 +204,76 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var pendingSelectedExternalSubtitle: Int = -1
     /** Survives the FILE_LOADED drain, like `activeExternalSubtitles`, for recovery reloads. */
     private var activeSelectedExternalSubtitle: Int = -1
-    /**
-     * One thread, so sidecars reach mpv in list order. The pinned libmpv-android
-     * exposes only the synchronous `command`, and `mpv_command` is safe to call
-     * off the event thread, so this is how the adds get off the critical path.
-     */
-    private val subtitleExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "mpv-subtitle-add").apply { isDaemon = true }
+    @Volatile private var subtitleLoader: SubtitleLoader? = null
+    private var subtitleBaseUrl: String? = null
+    private var mediaReady = false
+    private val sidecarResults = mutableMapOf<Int, CompletableFuture<Boolean>>()
+    private val readySidecars = mutableMapOf<Int, String>()
+    // Native filenames may now be temporary local files. Keep original source
+    // ordinals/URLs visible to JS; a selected-last sidecar is a sparse set.
+    private val sidecarOrdinals = mutableMapOf<String, Int>()
+
+    private fun cancelSidecars() {
+        subtitleLoader?.close()
+        subtitleLoader = null
+        sidecarResults.values.forEach { it.complete(false) }
+        sidecarResults.clear()
+        readySidecars.clear()
+        sidecarOrdinals.clear()
+        mediaReady = false
     }
+
+    fun ensureExternalSubtitle(url: String, ordinal: Int): CompletableFuture<Boolean> {
+        if (!acceptingCommands || nativeSourceTicket != sourceTicket.get() ||
+            ordinal !in activeExternalSubtitles.indices || activeExternalSubtitles[ordinal] != url) {
+            return CompletableFuture.completedFuture(false)
+        }
+        if (getSubtitleTracks().any { it["externalOrdinal"] == ordinal }) {
+            return CompletableFuture.completedFuture(true)
+        }
+        sidecarResults[ordinal]?.let { return it }
+        val result = CompletableFuture<Boolean>()
+        sidecarResults[ordinal] = result
+        val lifecycle = lifecycleTicket.get()
+        val source = sourceTicket.get()
+        val loader = subtitleLoader ?: SubtitleLoader(context).also { subtitleLoader = it }
+        loader.fetch(url, currentHeaders, subtitleBaseUrl ?: currentUrl) { path ->
+            commandExecutor.execute {
+                if (!acceptingCommands || lifecycleTicket.get() != lifecycle ||
+                    sourceTicket.get() != source || subtitleLoader !== loader || path == null) {
+                    result.complete(false)
+                    if (sidecarResults[ordinal] === result) sidecarResults.remove(ordinal)
+                    return@execute
+                }
+                readySidecars[ordinal] = path
+                if (mediaReady) addReadySidecar(ordinal)
+            }
+        }
+        return result
+    }
+
+    private fun addReadySidecar(ordinal: Int) {
+        val path = readySidecars.remove(ordinal) ?: return
+        val result = sidecarResults[ordinal] ?: return
+        traced("subAdd") {
+            sidecarOrdinals[path.removePrefix("file://")] = ordinal
+            val previousSid = getCurrentSubtitleTrack()
+            mpv?.command(arrayOf("sub-add", path, "auto"))
+            // "auto" can invoke default selection in special cases. Preserve
+            // the current choice; only the latest JS selection may change it.
+            if (previousSid > 0) setSubtitleTrack(previousSid) else disableSubtitles()
+            invalidateTrackCaches()
+            val added = getSubtitleTracks().any { it["externalOrdinal"] == ordinal }
+            result.complete(added)
+            if (!added) sidecarResults.remove(ordinal)
+            notifyMain { delegate?.onTracksReady() }
+        }
+        if (!result.isDone) {
+            result.complete(false)
+            sidecarResults.remove(ordinal)
+        }
+    }
+
     // Persistent record of the external subtitle URLs attached to the
     // current item. pendingExternalSubtitles above is a one-shot staging
     // list: load() fills it and the FILE_LOADED handler drains it via
@@ -221,43 +283,82 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     // the decoder reset.
     private var activeExternalSubtitles: List<String> = emptyList()
 
-    /**
-     * Run [block] on the command thread. It is bound to the handle that is
-     * current now: if stop()/start() replaced the handle before it runs, it is
-     * dropped rather than applied to the next item's engine.
-     */
-    fun runCommand(name: String, block: () -> Unit) {
-        val handle = mpv ?: return
+    // Lifecycle and source tickets are invalidated synchronously on main.
+    // A start can still be queued (mpv == null), so commands bind to tickets,
+    // not to a handle snapshot taken before initialization has run.
+    private val lifecycleTicket = AtomicLong(0)
+    private val sourceTicket = AtomicLong(0)
+    @Volatile private var acceptingCommands = false
+    @Volatile private var nativeSourceTicket = 0L
+    private var currentObserver: MPVLib.EventObserver? = null
+
+    private fun traced(name: String, block: () -> Unit) {
+        Trace.beginSection("mpv:$name")
+        try { block() } catch (e: Exception) {
+            Log.e(TAG, "mpv command $name failed: ${e.javaClass.simpleName}")
+        } finally { Trace.endSection() }
+    }
+
+    fun runCommand(name: String, includeSource: Boolean = true, block: () -> Unit) {
+        val lifecycle = lifecycleTicket.get()
+        val source = sourceTicket.get()
         commandExecutor.execute {
-            if (mpv !== handle) return@execute
-            Trace.beginSection("mpv:$name")
-            try {
-                block()
-            } catch (e: Exception) {
-                Log.e(TAG, "mpv command $name failed: ${e.message}")
-            } finally {
-                Trace.endSection()
-            }
+            if (!acceptingCommands || lifecycleTicket.get() != lifecycle ||
+                (includeSource && sourceTicket.get() != source) || mpv == null) return@execute
+            traced(name, block)
         }
     }
 
-    /** Like [runCommand], for reads: [deliver] always gets a value, [fallback] if the handle went away. */
+    fun runLoad(block: () -> Unit) {
+        sourceTicket.incrementAndGet()
+        resetPendingSeek()
+        runCommand("load", block = block)
+    }
+
     fun <T> runQuery(name: String, fallback: T, block: () -> T, deliver: (T) -> Unit) {
-        val handle = mpv ?: return deliver(fallback)
+        val lifecycle = lifecycleTicket.get()
+        val source = sourceTicket.get()
         commandExecutor.execute {
             var result = fallback
-            if (mpv === handle) {
-                Trace.beginSection("mpv:$name")
-                try {
-                    result = block()
-                } catch (e: Exception) {
-                    Log.e(TAG, "mpv query $name failed: ${e.message}")
-                } finally {
-                    Trace.endSection()
-                }
+            if (acceptingCommands && lifecycleTicket.get() == lifecycle &&
+                sourceTicket.get() == source && mpv != null) {
+                traced(name) { result = block() }
             }
             deliver(result)
         }
+    }
+
+    private fun notifyMain(includeSource: Boolean = true, block: () -> Unit) {
+        val lifecycle = lifecycleTicket.get()
+        val source = nativeSourceTicket
+        mainHandler.post {
+            if (acceptingCommands && lifecycleTicket.get() == lifecycle &&
+                (!includeSource || sourceTicket.get() == source)) block()
+        }
+    }
+
+    // Library dispatch holds its observer lock. Never wait or call JNI there:
+    // snapshot the event and enqueue it for the same lifecycle/source owner.
+    private fun observerFor(handle: MPVLib, lifecycle: Long) = object : MPVLib.EventObserver {
+        private fun dispatch(block: () -> Unit) {
+            val source = nativeSourceTicket
+            commandExecutor.execute {
+                if (acceptingCommands && lifecycleTicket.get() == lifecycle &&
+                    sourceTicket.get() == source && mpv === handle) block()
+            }
+        }
+        override fun eventProperty(property: String) = dispatch { this@MPVLayerRenderer.eventProperty(property) }
+        override fun eventProperty(property: String, value: Long) = dispatch { this@MPVLayerRenderer.eventProperty(property, value) }
+        override fun eventProperty(property: String, value: Boolean) = dispatch { this@MPVLayerRenderer.eventProperty(property, value) }
+        override fun eventProperty(property: String, value: String) = dispatch { this@MPVLayerRenderer.eventProperty(property, value) }
+        override fun eventProperty(property: String, value: Double) = dispatch { this@MPVLayerRenderer.eventProperty(property, value) }
+        override fun event(eventId: Int) = dispatch { this@MPVLayerRenderer.event(eventId) }
+    }
+
+    private fun resetPendingSeek() = synchronized(seekLock) {
+        pendingSeekAbsolute = null
+        pendingSeekRelative = 0.0
+        seekQueued = false
     }
 
     // Seek coalescing. A scrub or a burst of skip taps used to issue one
@@ -295,11 +396,6 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         synchronized(seekLock) {
             if (seekQueued) return
             seekQueued = true
-        }
-        val handle = mpv
-        if (handle == null) {
-            synchronized(seekLock) { seekQueued = false }
-            return
         }
         runCommand("seek") {
             val (absolute, relative) = synchronized(seekLock) {
@@ -350,14 +446,24 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     val isTv: Boolean = isTvDevice()
 
     fun start(voDriver: String = "gpu-next") {
-        if (isRunning) return
+        if (acceptingCommands) return
+        val lifecycle = lifecycleTicket.incrementAndGet()
+        acceptingCommands = true
+        commandExecutor.execute {
+            if (!acceptingCommands || lifecycleTicket.get() != lifecycle) return@execute
+            traced("start") { startNative(voDriver, lifecycle) }
+        }
+    }
 
+    private fun startNative(voDriver: String, lifecycle: Long) {
         try {
             // Per-instance handle — see class-level comment. Each player gets
             // its own mpv; we drop the reference in stop().
             val mpv = MPVLib.create(context)
             this.mpv = mpv
-            mpv.addObserver(this)
+            val observer = observerFor(mpv, lifecycle)
+            currentObserver = observer
+            mpv.addObserver(observer)
 
             // mpv config directory — used by the config-dir option below and
             // as XDG_CONFIG_HOME for fontconfig.
@@ -469,81 +575,55 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             Log.i(TAG, "MPV renderer started")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start MPV renderer: ${e.message}")
-            delegate?.onError("Failed to start renderer: ${e.message}")
+            notifyMain(false) { delegate?.onError("Failed to start renderer") }
         }
     }
     
     fun stop() {
-        if (!isRunning) return
+        // Invalidate first, including a start that has not allocated yet.
+        acceptingCommands = false
+        lifecycleTicket.incrementAndGet()
+        sourceTicket.incrementAndGet()
         isRunning = false
+        surface = null
         disarmStartWatchdog()
-
-        val m = mpv
-        mpv = null
-
-        // Clear cached media state on the main thread so the next player
-        // screen doesn't observe stale position/duration values during the
-        // (async) teardown below.
-        currentUrl = null
-        currentHeaders = null
-        pendingExternalSubtitles = emptyList()
-        activeExternalSubtitles = emptyList()
-        pendingSelectedExternalSubtitle = -1
-        activeSelectedExternalSubtitle = -1
-        initialSubtitleId = null
-        initialAudioId = null
+        subtitleLoader?.cancel()
+        resetPendingSeek()
         cachedPosition = 0.0
         cachedDuration = 0.0
         cachedCacheSeconds = 0.0
-        invalidateTrackCaches()
-
-        if (m == null) return
-
-        // Teardown runs on the command thread. mpv's "stop" command
-        // flushes the demuxer queue and releases the MediaCodec hardware
-        // decoder — synchronous JNI work that can block for hundreds of ms
-        // on TV hardware. Running it on the main thread produced a visible
-        // delay/stutter between pressing "exit" and the confirm alert
-        // appearing. The local `m` keeps the MPVLib instance alive until the
-        // task runs even though we've already nulled `mpv`; commands still
-        // queued for this handle drop themselves (see runCommand).
+        _isPaused = true
         commandExecutor.execute {
-            // Drop force-window BEFORE issuing stop. With keep-open=always +
-            // force-window=yes, mpv tears down the decoder at stop time but
-            // tries to keep the VO alive — which fires an internal
-            // video-reconfig. On libmpv 1.0's gpu-next/android backend that
-            // reconfig path crashes with "Missing surface pointer" because we
-            // detach the Surface below before mpv's worker reaches the
-            // reconfig step (command() is async). Setting force-window=no
-            // first makes mpv tear VO down cleanly instead of attempting a
-            // doomed re-init, eliminating the fatal VO error and the
-            // "playback won't restart" aftermath.
-            try {
-                m.setOptionString("force-window", "no")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error clearing force-window: ${e.message}")
-            }
-            try {
-                // Stop playback — flushes demuxer queue and signals MediaCodec
-                // to release its hardware decoders. This is the bulk of what
-                // we can reclaim without calling destroy().
-                m.command(arrayOf("stop"))
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping mpv playback: ${e.message}")
-            }
-            try {
-                m.removeObserver(this)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error removing mpv observer: ${e.message}")
-            }
-            try {
-                m.detachSurface()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error detaching mpv surface: ${e.message}")
+            traced("stop") {
+                // Read on the worker: an in-flight init may have created the
+                // handle after main requested close. FIFO cleanup still owns it.
+                val handle = mpv
+                val observer = currentObserver
+                mpv = null
+                currentObserver = null
+                currentUrl = null
+                currentHeaders = null
+                cancelSidecars()
+                subtitleBaseUrl = null
+                pendingExternalSubtitles = emptyList()
+                activeExternalSubtitles = emptyList()
+                pendingSelectedExternalSubtitle = -1
+                activeSelectedExternalSubtitle = -1
+                initialSubtitleId = null
+                initialAudioId = null
+                isRunning = false
+                invalidateTrackCaches()
+                if (handle != null) {
+                    // Do not destroy: retained-engine policy is unchanged.
+                    try { handle.setOptionString("force-window", "no") } catch (_: Exception) {}
+                    try { handle.command(arrayOf("stop")) } catch (_: Exception) {}
+                    if (observer != null) try { handle.removeObserver(observer) } catch (_: Exception) {}
+                    try { handle.detachSurface() } catch (_: Exception) {}
+                }
             }
         }
     }
-    
+
     /**
      * Attach surface and ensure video output is active.
      *
@@ -554,47 +634,33 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
      */
     fun attachSurface(surface: Surface) {
         this.surface = surface
-        Log.i(TAG, "[PiP] attachSurface — isRunning=$isRunning, vo=$voDriver, surface=${surface.hashCode()}")
-        if (isRunning) {
+        runCommand("attachSurface", false) {
+            // A holder may destroy/recreate its surface while this is queued.
+            if (this.surface !== surface || !surface.isValid) return@runCommand
             mpv?.attachSurface(surface)
             mpv?.setOptionString("force-window", "yes")
-            // Read back vo to confirm it's still active
-            val activeVo = try { mpv?.getPropertyString("vo") } catch (e: Exception) { null }
-            Log.i(TAG, "[PiP] attachSurface — attached, activeVo=$activeVo")
+            lastSurfaceSize = null
         }
     }
 
-    /**
-     * Detach surface without killing the VO pipeline.
-     *
-     * The previous approach (vo=null / force-window=no) destroyed the entire video
-     * output pipeline on every surface transition. During PiP mode, the rapid
-     * destroy/recreate cycle caused a black screen because setOptionString("vo", ...)
-     * did not properly re-initialize rendering into the new PiP surface.
-     *
-     * By keeping the VO alive, frames are simply dropped while no surface is
-     * attached, and rendering resumes immediately when the new surface arrives.
-     */
     fun detachSurface() {
-        this.surface = null
-        Log.i(TAG, "[PiP] detachSurface — isRunning=$isRunning, vo=$voDriver")
-        if (isRunning) {
+        surface = null
+        runCommand("detachSurface", false) {
             mpv?.detachSurface()
-            val activeVo = try { mpv?.getPropertyString("vo") } catch (e: Exception) { null }
-            Log.i(TAG, "[PiP] detachSurface — detached, activeVo=$activeVo (should still be $voDriver)")
+            lastSurfaceSize = null
         }
     }
-    
-    /**
-     * Updates the surface size. Called from surfaceChanged.
-     * Based on Findroid's implementation.
-     */
+
+    @Volatile private var desiredSurfaceSize: Pair<Int, Int>? = null
+    private var lastSurfaceSize: Pair<Int, Int>? = null
     fun updateSurfaceSize(width: Int, height: Int) {
-        if (isRunning) {
-            mpv?.setPropertyString("android-surface-size", "${width}x$height")
-            Log.i(TAG, "[PiP] updateSurfaceSize — ${width}x${height}")
-        } else {
-            Log.w(TAG, "[PiP] updateSurfaceSize — called but renderer not running")
+        if (width <= 0 || height <= 0) return
+        desiredSurfaceSize = width to height
+        runCommand("surfaceSize", false) {
+            val size = desiredSurfaceSize ?: return@runCommand
+            if (size == lastSurfaceSize) return@runCommand
+            mpv?.setPropertyString("android-surface-size", "${size.first}x${size.second}")
+            lastSurfaceSize = size
         }
     }
 
@@ -655,7 +721,8 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             initialAudioId = savedAid,
             initialSubtitleId = savedSid,
             externalSubtitles = activeExternalSubtitles,
-            initialExternalSubtitleIndex = activeSelectedExternalSubtitle
+            initialExternalSubtitleIndex = activeSelectedExternalSubtitle,
+            externalSubtitleBaseUrl = subtitleBaseUrl
         )
 
         // Hold the paused state explicitly — we only get here while paused,
@@ -669,6 +736,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         startPosition: Double? = null,
         externalSubtitles: List<String>? = null,
         initialExternalSubtitleIndex: Int = -1,
+        externalSubtitleBaseUrl: String? = null,
         initialSubtitleId: Int? = null,
         initialAudioId: Int? = null,
         cacheEnabled: String? = null,
@@ -676,6 +744,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         demuxerMaxBytes: Int? = null,
         demuxerMaxBackBytes: Int? = null
     ) {
+        nativeSourceTicket = sourceTicket.get()
+        cancelSidecars()
+        subtitleBaseUrl = externalSubtitleBaseUrl
         currentUrl = url
         currentHeaders = headers
         pendingExternalSubtitles = externalSubtitles ?: emptyList()
@@ -690,7 +761,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         isReadyToSeek = false
         // The stop below makes mpv emit END_FILE for whatever was playing.
         expectingEndFile = true
-        mainHandler.post { delegate?.onLoadingChanged(true) }
+        notifyMain { delegate?.onLoadingChanged(true) }
 
         // Stop previous playback
         mpv?.command(arrayOf("stop"))
@@ -731,6 +802,14 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             disableSubtitles()
         }
         
+        // Only the selected sidecar starts IO. Readiness never waits for it;
+        // later choices explicitly request their own original ordinal.
+        if (initialExternalSubtitleIndex in activeExternalSubtitles.indices) {
+            ensureExternalSubtitle(activeExternalSubtitles[initialExternalSubtitleIndex], initialExternalSubtitleIndex)
+        }
+
+        // A close/new source may have arrived during the earlier JNI calls.
+        if (!acceptingCommands || nativeSourceTicket != sourceTicket.get()) return
         // Load the file
         mpv?.command(arrayOf("loadfile", url, "replace"))
         armStartWatchdog()
@@ -819,8 +898,10 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             // resolver matches embedded tracks by language/title, not ff-index.
             val external = mpv?.getPropertyBoolean("track-list/$i/external") ?: false
             track["external"] = external
-            mpv?.getPropertyString("track-list/$i/external-filename")?.let {
-                track["externalFilename"] = it
+            mpv?.getPropertyString("track-list/$i/external-filename")?.let { filename ->
+                val ordinal = sidecarOrdinals[filename.removePrefix("file://")]
+                track["externalFilename"] = ordinal?.let { activeExternalSubtitles.getOrNull(it) } ?: filename
+                if (ordinal != null) track["externalOrdinal"] = ordinal
             }
             mpv?.getPropertyInt("track-list/$i/ff-index")?.let { track["ffIndex"] = it }
 
@@ -1067,7 +1148,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 invalidateTrackCaches()
                 if (value > 0) {
                     Log.i(TAG, "Track list updated: $value tracks available")
-                    mainHandler.post { delegate?.onTracksReady() }
+                    notifyMain { delegate?.onTracksReady() }
                 }
             }
             "video-params/w" -> {
@@ -1090,7 +1171,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private fun notifyVideoDimensionsIfReady() {
         if (_videoWidth > 0 && _videoHeight > 0) {
             Log.i(TAG, "Video dimensions: ${_videoWidth}x${_videoHeight}")
-            mainHandler.post { delegate?.onVideoDimensionsChanged(_videoWidth, _videoHeight) }
+            notifyMain { delegate?.onVideoDimensionsChanged(_videoWidth, _videoHeight) }
         }
     }
     
@@ -1102,13 +1183,13 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                     // A user pause is not a stall; re-arm on resume if the
                     // stream still has not produced anything.
                     if (value) disarmStartWatchdog() else if (_isLoading) armStartWatchdog()
-                    mainHandler.post { delegate?.onPauseChanged(value) }
+                    notifyMain { delegate?.onPauseChanged(value) }
                 }
             }
             "paused-for-cache" -> {
                 if (value != _isLoading) {
                     _isLoading = value
-                    mainHandler.post { delegate?.onLoadingChanged(value) }
+                    notifyMain { delegate?.onLoadingChanged(value) }
                 }
             }
         }
@@ -1126,7 +1207,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 // hasMediaPosition(). Forwarding it overwrote the resume point
                 // and the stop report then wiped it on the server.
                 if (hasMediaPosition()) {
-                    mainHandler.post { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
+                    notifyMain { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
                 }
             }
             "time-pos" -> {
@@ -1136,7 +1217,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 val shouldUpdate = (_isSeeking || (now - lastProgressUpdateTime >= 1000)) && hasMediaPosition()
                 if (shouldUpdate) {
                     lastProgressUpdateTime = now
-                    mainHandler.post { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
+                    notifyMain { delegate?.onPositionChanged(cachedPosition, cachedDuration, cachedCacheSeconds) }
                 }
             }
             "demuxer-cache-duration" -> {
@@ -1158,49 +1239,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 expectingEndFile = false
                 openingFile = false
                 invalidateTrackCaches()
-                // Add external subtitles now that file is loaded.
-                //
-                // Every sidecar used to be added right here with the blocking
-                // `command`, on mpv's own event thread, before readiness was
-                // signalled — so a title with 30 sidecar languages did 30 serial
-                // network fetches before the player was usable, even with
-                // subtitles switched off.
-                //
-                // They now go through a single-thread executor, so they still
-                // reach mpv in list order. That order is load-bearing: JS's
-                // resolveSubtitleTrack falls back to matching an external sub
-                // by its ordinal among the player's externals, which stays
-                // correct as long as the loaded set is a *prefix* of the full
-                // list. Only the selected sidecar is waited on, so the
-                // selection re-apply below can find it.
-                if (pendingExternalSubtitles.isNotEmpty()) {
-                    val subtitles = pendingExternalSubtitles
-                    val selected = pendingSelectedExternalSubtitle
-                    val handle = mpv
-                    pendingExternalSubtitles = emptyList()
-                    pendingSelectedExternalSubtitle = -1
-                    val selectedAdded = CountDownLatch(1)
-
-                    subtitles.forEachIndexed { index, subUrl ->
-                        subtitleExecutor.execute {
-                            // A stop() or a new load() since this was queued means
-                            // the handle is gone or belongs to a different item.
-                            if (isRunning && mpv === handle && handle != null) {
-                                android.util.Log.d("MPVRenderer", "Adding external subtitle [$index]")
-                                // "auto" flag = add without auto-selecting.
-                                handle.command(arrayOf("sub-add", subUrl, "auto"))
-                            }
-                            if (index == selected) selectedAdded.countDown()
-                        }
-                    }
-
-                    if (selected in subtitles.indices) {
-                        // Bounded: a dead sidecar must not hold readiness hostage.
-                        // On timeout the video proceeds; the re-apply simply
-                        // reports notFound until the add lands.
-                        selectedAdded.await(10, TimeUnit.SECONDS)
-                    }
-                }
+                mediaReady = true
+                pendingExternalSubtitles = emptyList()
+                pendingSelectedExternalSubtitle = -1
 
                 // Apply the initial audio/subtitle selection now that the file's
                 // tracks are enumerated. Setting sid/aid before `loadfile` does not
@@ -1216,16 +1257,20 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 // Re-emit tracksReady so the idempotent JS re-apply always runs
                 // after it — for embedded-only files this is the only
                 // post-FILE_LOADED fire.
-                mainHandler.post { delegate?.onTracksReady() }
+                notifyMain { delegate?.onTracksReady() }
+
+                // Files already fetched are attached after the embedded-track
+                // setup. Late IO completion schedules the same operation.
+                readySidecars.keys.toList().forEach { addReadySidecar(it) }
 
                 if (!isReadyToSeek) {
                     isReadyToSeek = true
-                    mainHandler.post { delegate?.onReadyToSeek() }
+                    notifyMain { delegate?.onReadyToSeek() }
                 }
                 
                 if (_isLoading) {
                     _isLoading = false
-                    mainHandler.post { delegate?.onLoadingChanged(false) }
+                    notifyMain { delegate?.onLoadingChanged(false) }
                 }
             }
             MPVLib.MPV_EVENT_SEEK -> {
@@ -1234,7 +1279,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 armStartWatchdog()
                 if (!_isLoading) {
                     _isLoading = true
-                    mainHandler.post { delegate?.onLoadingChanged(true) }
+                    notifyMain { delegate?.onLoadingChanged(true) }
                 }
             }
             MPVLib.MPV_EVENT_PLAYBACK_RESTART -> {
@@ -1243,7 +1288,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 _isSeeking = false
                 if (_isLoading) {
                     _isLoading = false
-                    mainHandler.post { delegate?.onLoadingChanged(false) }
+                    notifyMain { delegate?.onLoadingChanged(false) }
                 }
             }
             MPVLib.MPV_EVENT_END_FILE -> {
@@ -1264,7 +1309,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                     openingFile = false
                     Log.w(TAG, "Playback could not open the stream")
                     _isLoading = false
-                    mainHandler.post {
+                    notifyMain {
                         delegate?.onLoadingChanged(false)
                         delegate?.onPlaybackFailed("Playback could not start")
                     }
@@ -1281,7 +1326,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 if (looksLikeFailure) {
                     Log.w(TAG, "Playback ended unexpectedly at ${"%.1f".format(position)}s of ${"%.1f".format(duration)}s")
                     _isLoading = false
-                    mainHandler.post {
+                    notifyMain {
                         // mpv does not flip pause on a fatal error, so the
                         // spinner would otherwise outlive the failure.
                         delegate?.onLoadingChanged(false)
