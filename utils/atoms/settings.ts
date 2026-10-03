@@ -665,10 +665,8 @@ const setPluginSettingsAtom = atom(
   },
 );
 
-export const useSettings = () => {
+export const useSettingsActions = () => {
   const store = useStore();
-  const settings = useAtomValue(effectiveSettingsAtom);
-  const pluginSettings = useAtomValue(pluginSettingsAtom);
   const updateSettings = useSetAtom(updateSettingsAtom);
   const setPluginSettings = useSetAtom(setPluginSettingsAtom);
 
@@ -720,18 +718,20 @@ export const useSettings = () => {
 
   return useMemo(
     () => ({
-      settings,
       updateSettings,
-      pluginSettings,
       setPluginSettings,
       refreshStreamyfinPluginSettings,
     }),
-    [
-      settings,
-      updateSettings,
-      pluginSettings,
-      setPluginSettings,
-      refreshStreamyfinPluginSettings,
-    ],
+    [updateSettings, setPluginSettings, refreshStreamyfinPluginSettings],
+  );
+};
+
+export const useSettings = () => {
+  const settings = useAtomValue(effectiveSettingsAtom);
+  const pluginSettings = useAtomValue(pluginSettingsAtom);
+  const actions = useSettingsActions();
+  return useMemo(
+    () => ({ settings, pluginSettings, ...actions }),
+    [settings, pluginSettings, actions],
   );
 };

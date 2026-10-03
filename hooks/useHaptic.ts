@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { Platform } from "react-native";
 import { useSetting } from "@/utils/atoms/settings";
 
+const noHaptic = () => {};
 const Haptics = !Platform.isTV ? require("expo-haptics") : null;
 
 export type HapticFeedbackType =
@@ -64,7 +65,7 @@ export const useHaptic = (feedbackType: HapticFeedbackType = "selection") => {
   }, [createHapticHandler, createNotificationFeedback]);
 
   if (disableHapticFeedback) {
-    return () => {};
+    return noHaptic;
   }
-  return isDisabled ? () => {} : hapticHandlers[feedbackType];
+  return isDisabled ? noHaptic : hapticHandlers[feedbackType];
 };
