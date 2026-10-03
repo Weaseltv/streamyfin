@@ -20,11 +20,15 @@ const getHBCBinary = () => {
 };
 
 module.exports = (api) => {
-  api.cache(true);
+  api.cache.using(() => process.env.NODE_ENV === "production");
+  const production = process.env.NODE_ENV === "production";
   return {
     presets: ["babel-preset-expo"],
     plugins: [
       "nativewind/babel",
+      ...(production
+        ? [require.resolve("./scripts/babel/release-console.cjs")]
+        : []),
       ["react-native-worklets/plugin", { hermesBytecode: true, getHBCBinary }],
     ],
   };

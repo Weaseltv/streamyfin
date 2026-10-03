@@ -6,7 +6,7 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { t } from "i18next";
-import { orderBy } from "lodash";
+import orderBy from "lodash/orderBy";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, View } from "react-native";
