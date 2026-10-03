@@ -1,3 +1,4 @@
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -27,6 +28,13 @@ import {
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
+
+const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
+  [...(data ?? [])].sort(
+    (a, b) =>
+      (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
+      (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
+  );
 
 const page: React.FC = () => {
   const navigation = useNavigation();
@@ -114,12 +122,7 @@ const page: React.FC = () => {
       });
       return res?.data.Items || [];
     },
-    select: (data) =>
-      [...(data || [])].sort(
-        (a, b) =>
-          (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
-          (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
-      ),
+    select: sortEpisodeSummary,
     staleTime: isOffline ? Infinity : 60 * 1000,
     refetchInterval: !isOffline && Platform.isTV ? 60 * 1000 : undefined,
     enabled: isOffline || (!!api && !!user?.Id),
