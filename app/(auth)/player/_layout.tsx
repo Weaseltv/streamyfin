@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
@@ -7,11 +8,16 @@ import { SystemBars } from "react-native-edge-to-edge";
 import { useOrientation } from "@/hooks/useOrientation";
 import { playerOpenAtom } from "@/utils/atoms/appUpdate";
 import { useSettings } from "@/utils/atoms/settings";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 
 export default function Layout() {
   const { settings } = useSettings();
   const { lockOrientation, unlockOrientation } = useOrientation();
   const setPlayerOpen = useSetAtom(playerOpenAtom);
+  const refreshQueue = playbackRefreshQueue(useQueryClient());
+  useEffect(() => {
+    refreshQueue.open();
+  }, [refreshQueue]);
 
   // Holds back the app-update popup while something is playing.
   useEffect(() => {

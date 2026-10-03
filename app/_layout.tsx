@@ -43,6 +43,7 @@ import {
   writeToLog,
 } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
 const CastDialogHost = Platform.isTV
@@ -488,7 +489,28 @@ function Layout() {
                                 <IntroSheetProvider>
                                   <ThemeProvider value={DarkTheme}>
                                     <SystemBars style='light' hidden={false} />
-                                    <Stack initialRouteName='(auth)/(tabs)'>
+                                    <Stack
+                                      initialRouteName='(auth)/(tabs)'
+                                      screenListeners={({ navigation }) => ({
+                                        transitionEnd: () => {
+                                          // Also covers a route replacement/logout: release only
+                                          // after a real native transition and when no player remains.
+                                          if (
+                                            !navigation
+                                              .getState()
+                                              .routes.some(
+                                                (route) =>
+                                                  route.name ===
+                                                  "(auth)/player",
+                                              )
+                                          ) {
+                                            playbackRefreshQueue(
+                                              queryClient,
+                                            ).close();
+                                          }
+                                        },
+                                      })}
+                                    >
                                       <Stack.Screen
                                         name='(auth)/(tabs)'
                                         options={{
