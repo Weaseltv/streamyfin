@@ -74,7 +74,8 @@ export const usePlayerControls = () => {
 
   return useMemo(
     () => ({
-      getSubtitleSelectionOwner: () => playerRef.current,
+      getSubtitleSelectionOwner: () =>
+        playerRef.current?.getSubtitleSelectionOwner?.() ?? playerRef.current,
       ensureExternalSubtitle:
         Platform.OS === "android"
           ? async (url: string, ordinal: number) =>

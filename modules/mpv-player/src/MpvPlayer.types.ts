@@ -131,6 +131,8 @@ export interface MpvPlayerViewRef {
   isPictureInPictureActive: () => Promise<boolean>;
   // Subtitle controls
   getSubtitleTracks: () => Promise<SubtitleTrack[]>;
+  /** Stable native view identity across imperative wrapper refreshes. */
+  getSubtitleSelectionOwner?: () => object | null | undefined;
   ensureExternalSubtitle?: (url: string, ordinal: number) => Promise<boolean>;
   setSubtitleTrack: (trackId: number) => Promise<void>;
   disableSubtitles: () => Promise<void>;
