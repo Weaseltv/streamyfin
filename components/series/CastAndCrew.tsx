@@ -64,6 +64,7 @@ export const PersonAvatar: React.FC<{
       >
         {url ? (
           <Image
+            recyclingKey={person.Id}
             id={person.Id ?? undefined}
             source={{ uri: url }}
             style={{ width: AVATAR, height: AVATAR }}
