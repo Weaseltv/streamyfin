@@ -1,6 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
+import { ExpoAvRoutePickerView } from "@douglowder/expo-av-route-picker-view";
+import { Feather } from "@expo/vector-icons";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -8,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Slider } from "react-native-awesome-slider";
@@ -25,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
+import { SHEET_MAX_HEIGHT_RATIO } from "@/constants/Values";
 
 const castDialogOpenAtom = atom(false);
 
@@ -56,17 +59,89 @@ const mediaTitle = (metadata: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+/** Row geometry shared by every entry so the list reads as one set. */
+const ROW_HEIGHT = 60;
+const ROW_ICON_COLUMN = 56;
+const ROW_ICON_SIZE = 24;
+const SHEET_RADIUS = 20;
+
+interface RowProps {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress?: () => void;
+  /** Dim the row (a device we are still trying to reach). */
+  muted?: boolean;
+  /** Label and glyph in the accent, for the device we are casting to. */
+  active?: boolean;
+  /** Something on the right (a spinner, a check). */
+  right?: ReactNode;
+  /** A native control laid over the whole row (the AirPlay picker). */
+  overlay?: ReactNode;
+}
+
+const DeviceRow: React.FC<RowProps> = ({
+  icon,
+  label,
+  onPress,
+  muted = false,
+  active = false,
+  right,
+  overlay,
+}) => {
+  const tone = active ? NeonBoard.cyan : muted ? NeonBoard.low : NeonBoard.text;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole='button'
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        minHeight: ROW_HEIGHT,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingRight: Sizes.gutter,
+        backgroundColor: pressed ? NeonBoard.card2 : "transparent",
+      })}
+    >
+      <View
+        style={{
+          width: ROW_ICON_COLUMN,
+          paddingLeft: Sizes.gutter,
+          alignItems: "flex-start",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name={icon} size={ROW_ICON_SIZE} color={tone} />
+      </View>
+      <View style={{ flex: 1, paddingLeft: 4, paddingRight: 12 }}>
+        <Text
+          variant='body'
+          numberOfLines={2}
+          style={{ fontSize: 17, lineHeight: 22, color: tone }}
+        >
+          {label}
+        </Text>
+      </View>
+      {right}
+      {overlay}
+    </Pressable>
+  );
+};
+
 /**
- * Cast device picker and the connected-session sheet.
+ * Cast device picker and the connected-session sheet, laid out like the
+ * YouTube one: a grabber, a "Select a device" head with a spinner while the
+ * scan runs, then one icon + name row per device. On iOS the first row hands
+ * off to the system AirPlay & Bluetooth picker.
  *
- * The system Cast dialog paints the status ("No media selected", or the
- * media title) in a fixed-height label and lays the divider across the
- * bottom of those glyphs. This sheet gives that line its own padding and
- * lets it wrap, on both phones.
+ * Only Google Cast receivers can appear here. Roku TVs are not Cast
+ * receivers (YouTube reaches them through its own DIAL pairing), so they
+ * will never be listed by the Cast SDK.
  */
 export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const devices = useDevices();
   const castDevice = useCastDevice();
   const session = useCastSession();
@@ -86,7 +161,13 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
 
   useEffect(() => {
     if (!visible) return;
-    GoogleCast.getDiscoveryManager()?.startDiscovery();
+    const discovery = GoogleCast.getDiscoveryManager();
+    if (Platform.OS === "ios") {
+      // An active scan while the sheet is open so new receivers show up in
+      // seconds rather than on the passive scan's slow cadence.
+      discovery?.setPassiveScan(false).catch(() => undefined);
+    }
+    discovery?.startDiscovery().catch(() => undefined);
     if (Platform.OS !== "android") return;
     CastContext.getPlayServicesState().then((state) => {
       if (state && state !== PlayServicesState.SUCCESS) {
@@ -116,16 +197,14 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
     };
   }, [visible, session, volumeProgress]);
 
-  const connecting = devices.find((device) => device.deviceId === connectingId);
-  const sessionOpen = Boolean(castDevice || connecting);
-  const heading =
-    castDevice?.friendlyName || connecting?.friendlyName || t("cast.cast_to");
+  const connected = Boolean(castDevice);
   const title = mediaTitle(mediaStatus?.mediaInfo?.metadata);
   const ordered = [...devices].sort((a, b) =>
     a.friendlyName.localeCompare(b.friendlyName),
   );
 
   const pick = async (deviceId: string) => {
+    if (connectingId) return;
     setConnectingId(deviceId);
     try {
       const ok = await GoogleCast.getSessionManager().startSession(deviceId);
@@ -152,12 +231,17 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
     session?.setMute(next);
   };
 
+  const heading = connected
+    ? t("cast.casting_to", { device: castDevice?.friendlyName })
+    : t("cast.select_device");
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType='slide'
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <View
@@ -175,91 +259,73 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
         />
         <View
           style={{
-            maxHeight: "90%",
+            maxHeight: windowHeight * SHEET_MAX_HEIGHT_RATIO,
             backgroundColor: NeonBoard.card,
-            borderTopWidth: 1,
-            borderTopColor: NeonBoard.line2,
+            borderTopLeftRadius: SHEET_RADIUS,
+            borderTopRightRadius: SHEET_RADIUS,
             paddingBottom: Math.max(insets.bottom, Sizes.gutter),
+            overflow: "hidden",
           }}
         >
+          {/* Grabber */}
+          <View style={{ alignItems: "center", paddingTop: 10 }}>
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: NeonBoard.line2,
+              }}
+            />
+          </View>
+
+          {/* Head: title plus a spinner for as long as the scan runs. */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              paddingLeft: Sizes.gutter,
-              paddingRight: 8,
-              paddingTop: 8,
+              paddingHorizontal: Sizes.gutter,
+              paddingTop: 22,
+              paddingBottom: 14,
+              gap: 14,
             }}
           >
-            <View style={{ flex: 1, paddingVertical: 12, paddingRight: 8 }}>
-              <Text
-                variant='rowTitle'
-                numberOfLines={3}
-                style={{ lineHeight: 22 }}
-              >
-                {heading}
-              </Text>
-            </View>
-            <Pressable
-              onPress={onClose}
-              hitSlop={8}
-              accessibilityRole='button'
-              style={{ paddingHorizontal: 12, paddingVertical: 12 }}
+            <Text
+              variant='rowTitle'
+              numberOfLines={2}
+              style={{ fontSize: 19, lineHeight: 24, flexShrink: 1 }}
             >
-              <Text variant='body' accent={NeonBoard.cyan}>
-                {t("common.cancel")}
-              </Text>
-            </Pressable>
+              {heading}
+            </Text>
+            {connected ? null : (
+              <ActivityIndicator size='small' color={NeonBoard.mid} />
+            )}
           </View>
 
-          {sessionOpen ? (
+          {connected ? (
             <View>
               <View
                 style={{
-                  paddingHorizontal: Sizes.gutter + 8,
-                  paddingTop: 4,
-                  paddingBottom: 16,
+                  paddingHorizontal: Sizes.gutter,
+                  paddingBottom: 14,
                 }}
               >
-                {connecting && !castDevice ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <ActivityIndicator color={NeonBoard.mid} />
-                    <Text variant='body' muted>
-                      {t("cast.connecting")}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text
-                    variant='body'
-                    muted={!title}
-                    numberOfLines={4}
-                    style={{ textAlign: "center", lineHeight: 20 }}
-                  >
-                    {title ?? t("cast.no_media_selected")}
-                  </Text>
-                )}
+                <Text
+                  variant='body'
+                  muted={!title}
+                  numberOfLines={4}
+                  style={{ lineHeight: 20 }}
+                >
+                  {title ?? t("cast.no_media_selected")}
+                </Text>
               </View>
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: NeonBoard.line,
-                  marginHorizontal: Sizes.gutter,
-                }}
-              />
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 12,
                   paddingHorizontal: Sizes.gutter,
-                  paddingVertical: 16,
+                  paddingVertical: 12,
                 }}
               >
                 <Pressable
@@ -268,10 +334,11 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
                   hitSlop={8}
                   accessibilityRole='button'
                   accessibilityLabel={muted ? t("cast.unmute") : t("cast.mute")}
+                  style={{ width: ROW_ICON_COLUMN - Sizes.gutter }}
                 >
-                  <Ionicons
-                    name={muted ? "volume-mute" : "volume-medium"}
-                    size={22}
+                  <Feather
+                    name={muted ? "volume-x" : "volume-2"}
+                    size={ROW_ICON_SIZE}
                     color={session ? NeonBoard.text : NeonBoard.low}
                   />
                 </Pressable>
@@ -279,7 +346,7 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
                   <Slider
                     theme={{
                       maximumTrackTintColor: NeonBoard.line2,
-                      minimumTrackTintColor: NeonBoard.volt,
+                      minimumTrackTintColor: NeonBoard.text,
                     }}
                     progress={volumeProgress}
                     minimumValue={volumeMin}
@@ -287,7 +354,7 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
                     disable={!session}
                     onSlidingComplete={(value) => session?.setVolume(value)}
                     sliderHeight={4}
-                    containerStyle={{ borderRadius: 0 }}
+                    containerStyle={{ borderRadius: 2 }}
                     renderBubble={() => null}
                     renderThumb={() => (
                       <View
@@ -302,75 +369,92 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
                   />
                 </GestureHandlerRootView>
               </View>
-              {castDevice ? (
-                <Pressable
-                  onPress={stop}
-                  disabled={stopping}
-                  accessibilityRole='button'
-                  style={{
-                    marginHorizontal: Sizes.gutter,
-                    marginTop: 8,
-                    minHeight: Sizes.button,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingHorizontal: 20,
-                    paddingVertical: 14,
-                    borderWidth: 1,
-                    borderColor: NeonBoard.line2,
-                    opacity: stopping ? 0.6 : 1,
-                  }}
-                >
-                  <Text
-                    variant='button'
-                    accent={NeonBoard.cyan}
-                    style={{ lineHeight: 18 }}
-                  >
-                    {t("cast.stop_casting")}
-                  </Text>
-                </Pressable>
-              ) : null}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: NeonBoard.line,
+                  marginVertical: 6,
+                }}
+              />
+              <DeviceRow
+                icon='tv'
+                label={castDevice?.friendlyName ?? ""}
+                active
+                right={
+                  <Feather name='check' size={20} color={NeonBoard.cyan} />
+                }
+              />
+              <DeviceRow
+                icon='x-circle'
+                label={t("cast.stop_casting")}
+                onPress={stop}
+                muted={stopping}
+                right={
+                  stopping ? (
+                    <ActivityIndicator size='small' color={NeonBoard.mid} />
+                  ) : null
+                }
+              />
             </View>
           ) : (
-            <ScrollView style={{ maxHeight: 420 }} bounces={false}>
+            <ScrollView bounces={false}>
+              {Platform.OS === "ios" ? (
+                <DeviceRow
+                  icon='airplay'
+                  label={t("cast.airplay_bluetooth")}
+                  overlay={
+                    // AVRoutePickerView fills whatever frame it is given, so
+                    // stretching it over the row makes the whole row open the
+                    // system picker while our own glyph and label stay visible.
+                    <ExpoAvRoutePickerView
+                      tintColor='transparent'
+                      activeTintColor='transparent'
+                      prioritizesVideoDevices
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                      }}
+                    />
+                  }
+                />
+              ) : null}
+              {ordered.map((device) => {
+                const connecting = connectingId === device.deviceId;
+                return (
+                  <DeviceRow
+                    key={device.deviceId}
+                    icon='tv'
+                    label={device.friendlyName}
+                    onPress={() => pick(device.deviceId)}
+                    muted={Boolean(connectingId) && !connecting}
+                    right={
+                      connecting ? (
+                        <ActivityIndicator size='small' color={NeonBoard.mid} />
+                      ) : null
+                    }
+                  />
+                );
+              })}
               {ordered.length === 0 ? (
                 <View
                   style={{
-                    paddingHorizontal: Sizes.gutter + 8,
-                    paddingTop: 8,
-                    paddingBottom: 24,
-                    gap: 8,
+                    paddingHorizontal: Sizes.gutter,
+                    paddingTop: Platform.OS === "ios" ? 10 : 2,
+                    paddingBottom: 18,
+                    gap: 4,
                   }}
                 >
-                  <Text variant='body'>{t("cast.searching")}</Text>
+                  <Text variant='body' muted>
+                    {t("cast.searching")}
+                  </Text>
                   <Text variant='meta' muted>
                     {t("cast.no_devices")}
                   </Text>
                 </View>
-              ) : (
-                ordered.map((device) => (
-                  <Pressable
-                    key={device.deviceId}
-                    onPress={() => pick(device.deviceId)}
-                    accessibilityRole='button'
-                    style={{
-                      minHeight: Sizes.row,
-                      paddingVertical: 12,
-                      paddingHorizontal: Sizes.gutter,
-                      justifyContent: "center",
-                      borderTopWidth: 1,
-                      borderTopColor: NeonBoard.line,
-                    }}
-                  >
-                    <Text
-                      variant='rowTitle'
-                      numberOfLines={2}
-                      style={{ lineHeight: 22 }}
-                    >
-                      {device.friendlyName}
-                    </Text>
-                  </Pressable>
-                ))
-              )}
+              ) : null}
             </ScrollView>
           )}
         </View>

@@ -1170,6 +1170,9 @@
   },
   "cast": {
     "cast_to": "Cast to",
+    "select_device": "Select a device",
+    "casting_to": "Casting to {{device}}",
+    "airplay_bluetooth": "AirPlay & Bluetooth devices",
     "no_media_selected": "No media selected",
     "stop_casting": "Stop casting",
     "searching": "Looking for devices…",
