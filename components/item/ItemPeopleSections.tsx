@@ -11,6 +11,7 @@ import { MoreMoviesWithActor } from "@/components/MoreMoviesWithActor";
 import { CastAndCrew } from "@/components/series/CastAndCrew";
 import { useItemPeopleQuery } from "@/hooks/useItemPeopleQuery";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { cancelItemPeopleWork } from "@/utils/query/cancelItemPeopleWork";
 
 interface Props extends ViewProps {
   item: BaseItemDto;
@@ -32,14 +33,7 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
         setEnabled(false);
         // A frozen React tree may not commit that state update yet. Cancel
         // in the focus callback itself so network work stops independently.
-        void queryClient.cancelQueries({
-          queryKey: ["item", item.Id, "people"],
-          exact: true,
-        });
-        void queryClient.cancelQueries({
-          queryKey: ["actor", "movies"],
-          predicate: (query) => query.queryKey[3] === item.Id,
-        });
+        void cancelItemPeopleWork(queryClient, item.Id);
       };
     }, [isOffline, item.Id, queryClient]),
   );
