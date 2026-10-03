@@ -11,7 +11,6 @@ import { HeaderButtonGroup } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Image } from "@/components/common/ServerImage";
 import { DownloadItems } from "@/components/DownloadItem";
-import { ParallaxScrollView } from "@/components/ParallaxPage";
 import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
@@ -193,9 +192,10 @@ const page: React.FC = () => {
 
   return (
     <OfflineModeProvider isOffline={isOffline}>
-      <ParallaxScrollView
-        headerHeight={210}
-        overlap={40}
+      <SeasonPicker
+        item={item}
+        initialSeasonIndex={Number(seasonIndex)}
+        currentEpisodeId={nextUpId}
         headerImage={
           backdropUrl ? (
             <Image
@@ -217,21 +217,17 @@ const page: React.FC = () => {
             />
           )
         }
-      >
-        <View className='flex flex-col'>
-          <SeriesHeader
-            item={item}
-            seasons={seasonCount}
-            episodes={allEpisodes?.length}
-          />
-          {!isOffline && <NextUp seriesId={seriesId} />}
-          <SeasonPicker
-            item={item}
-            initialSeasonIndex={Number(seasonIndex)}
-            currentEpisodeId={nextUpId}
-          />
-        </View>
-      </ParallaxScrollView>
+        pageHeader={
+          <View className='flex flex-col'>
+            <SeriesHeader
+              item={item}
+              seasons={seasonCount}
+              episodes={allEpisodes?.length}
+            />
+            {!isOffline && <NextUp seriesId={seriesId} />}
+          </View>
+        }
+      />
     </OfflineModeProvider>
   );
 };
