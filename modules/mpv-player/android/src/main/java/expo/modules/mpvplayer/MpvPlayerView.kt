@@ -1,5 +1,7 @@
 package expo.modules.mpvplayer
 
+import java.util.concurrent.CompletableFuture
+
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -26,6 +28,7 @@ data class VideoLoadConfig(
     val externalSubtitles: List<String>? = null,
     /** Index into `externalSubtitles` of the initially-selected sidecar (-1 = none). */
     val initialExternalSubtitleIndex: Int = -1,
+    val externalSubtitleBaseUrl: String? = null,
     val startPosition: Double? = null,
     val autoplay: Boolean = true,
     val initialSubtitleId: Int? = null,
@@ -281,13 +284,14 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         // queues the new one, both blocking JNI. The play() below is queued
         // behind it on the same thread, so the order is kept.
         val r = renderer
-        r?.runCommand("load") {
+        r?.runLoad {
             r.load(
                 url = config.url,
                 headers = config.headers,
                 startPosition = config.startPosition,
                 externalSubtitles = config.externalSubtitles,
                 initialExternalSubtitleIndex = config.initialExternalSubtitleIndex,
+                externalSubtitleBaseUrl = config.externalSubtitleBaseUrl,
                 initialSubtitleId = config.initialSubtitleId,
                 initialAudioId = config.initialAudioId,
                 cacheEnabled = config.cacheEnabled,
@@ -430,6 +434,15 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     }
 
     // MARK: - Subtitle Controls
+
+    fun ensureExternalSubtitle(url: String, ordinal: Int, deliver: (Boolean) -> Unit) {
+        val r = renderer ?: return deliver(false)
+        r.runQuery<CompletableFuture<Boolean>?>("ensureSubtitle", null,
+            { r.ensureExternalSubtitle(url, ordinal) }) { result ->
+            if (result == null) deliver(false)
+            else result.whenComplete { value, _ -> deliver(value == true) }
+        }
+    }
 
     fun getSubtitleTracks(deliver: (List<Map<String, Any>>) -> Unit) {
         query("getSubtitleTracks", emptyList(), { it.getSubtitleTracks() }, deliver)

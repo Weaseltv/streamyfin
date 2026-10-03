@@ -57,6 +57,8 @@ export type VideoSource = {
   url: string;
   headers?: Record<string, string>;
   externalSubtitles?: string[];
+  /** Server origin for custom subtitle headers, including CDN video sources. */
+  externalSubtitleBaseUrl?: string;
   /**
    * Position in `externalSubtitles` of the initially-selected sidecar, or -1
    * when none is. Native waits on that one alone before signalling readiness
@@ -129,6 +131,7 @@ export interface MpvPlayerViewRef {
   isPictureInPictureActive: () => Promise<boolean>;
   // Subtitle controls
   getSubtitleTracks: () => Promise<SubtitleTrack[]>;
+  ensureExternalSubtitle?: (url: string, ordinal: number) => Promise<boolean>;
   setSubtitleTrack: (trackId: number) => Promise<void>;
   disableSubtitles: () => Promise<void>;
   getCurrentSubtitleTrack: () => Promise<number>;
@@ -166,6 +169,8 @@ export type SubtitleTrack = {
   external?: boolean;
   /** For external tracks: the exact URL/path it was loaded from (mpv `external-filename`). */
   externalFilename?: string;
+  /** Original source-list ordinal; Android may prepare a sparse sidecar set. */
+  externalOrdinal?: number;
   /** FFmpeg stream index (mpv `ff-index`); not guaranteed for non-lavf demuxers. */
   ffIndex?: number;
   selected?: boolean;

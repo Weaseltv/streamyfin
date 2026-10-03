@@ -260,7 +260,10 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
             if (row.kind === "burnedIn") return;
             rememberRef.current("subtitle", row);
             if (row.kind === "off") {
-              playerControls.setSubtitleTrack(-1);
+              void applyMpvSubtitleSelection(playerControls, {
+                subtitleStreams: allSubs,
+                jellyfinSubtitleIndex: -1,
+              });
               router.setParams({ subtitleIndex: "-1" });
               return;
             }
@@ -314,7 +317,10 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
             return;
           }
           if (row.kind === "off") {
-            playerControls.setSubtitleTrack(-1);
+            void applyMpvSubtitleSelection(playerControls, {
+              subtitleStreams: allSubs,
+              jellyfinSubtitleIndex: -1,
+            });
             router.setParams({ subtitleIndex: "-1" });
             return;
           }

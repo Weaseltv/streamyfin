@@ -43,6 +43,7 @@ class MpvPlayerModule : Module() {
                     url = urlString,
                     headers = source["headers"] as? Map<String, String>,
                     externalSubtitles = source["externalSubtitles"] as? List<String>,
+                    externalSubtitleBaseUrl = source["externalSubtitleBaseUrl"] as? String,
                     initialExternalSubtitleIndex =
                         (source["initialExternalSubtitleIndex"] as? Number)?.toInt() ?: -1,
                     startPosition = (source["startPosition"] as? Number)?.toDouble(),
@@ -141,6 +142,10 @@ class MpvPlayerModule : Module() {
             }
 
             // Subtitle functions
+            AsyncFunction("ensureExternalSubtitle") { view: MpvPlayerView, url: String, ordinal: Int, promise: Promise ->
+                view.ensureExternalSubtitle(url, ordinal) { promise.resolve(it) }
+            }
+
             AsyncFunction("getSubtitleTracks") { view: MpvPlayerView, promise: Promise ->
                 view.getSubtitleTracks { promise.resolve(it) }
             }
