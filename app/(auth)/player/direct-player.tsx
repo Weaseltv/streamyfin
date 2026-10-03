@@ -936,9 +936,9 @@ export default function DirectPlayerPage() {
     // of truth with identity matching (online: basePath + DeliveryUrl unless
     // IsExternalUrl; offline: local file path stored in DeliveryUrl).
     // Keep the stream beside its URL so native can be told which entry is the
-    // selected one. It waits on that sidecar alone and backgrounds the rest,
-    // rather than blocking readiness behind every language (same contract as
-    // buildNativePlayerConfig for the iOS native player).
+    // selected one. Android prepares that sidecar asynchronously and fetches
+    // other languages only when selected; playback readiness does not wait
+    // for the download. iOS keeps its existing selected-first contract.
     const externalSubEntries = (mediaSource?.MediaStreams ?? [])
       .filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External")
       .flatMap((s) => {

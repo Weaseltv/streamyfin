@@ -107,9 +107,9 @@ export interface MpvPlayerViewRef {
   play: () => Promise<void>;
   pause: () => Promise<void>;
   /**
-   * Synchronously destroy the mpv instance + decoder + surface buffers.
-   * Call before navigating away from the player screen so memory is
-   * freed before the next screen mounts. Safe to call multiple times.
+   * Invalidate queued work and schedule playback/surface cleanup. Native
+   * engine handles remain retained under the Android safety policy. The
+   * promise acknowledges scheduling, not native memory reclamation.
    */
   destroy: () => Promise<void>;
   // Pre-libmpv-1.0 alias (kept for source-history reference):
