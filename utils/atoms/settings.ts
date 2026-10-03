@@ -580,7 +580,8 @@ const saveSettings = (settings: Settings) => {
   }
 };
 
-export const settingsAtom = atom<Partial<Settings> | null>(null);
+// Seed saved preferences before first locale render.
+export const settingsAtom = atom<Partial<Settings> | null>(loadSettings());
 
 /** Number of automatically advanced episodes in the current playback chain. */
 export const autoPlayEpisodeCountAtom = atom(0);
