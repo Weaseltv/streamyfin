@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
 const { transformSync } = require("@babel/core");
 const plugin = require("../scripts/babel/release-console.cjs");
-const transform = (code: string): string =>
+const transform = (
+  code: string,
+  filename = resolve("app/routine-console.ts"),
+): string =>
   transformSync(code, {
+    filename,
     configFile: false,
     babelrc: false,
     parserOpts: { allowReturnOutsideFunction: true },
@@ -40,5 +45,19 @@ describe("release console output", () => {
       "const console = { log: () => 42 }; return console.log();",
     );
     expect(new Function(code)()).toBe(42);
+  });
+  test("leaves dependency and generated-client logging untouched", () => {
+    for (const filename of [
+      resolve("node_modules/example/index.js"),
+      resolve("utils/jellyseerr/generated.ts"),
+      resolve("../outside-module.js"),
+    ]) {
+      const code = transform('console.log("retained");', filename);
+      const output: string[] = [];
+      new Function("console", code)({
+        log: (value: string) => output.push(value),
+      });
+      expect(output).toEqual(["retained"]);
+    }
   });
 });
