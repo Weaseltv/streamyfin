@@ -2,9 +2,10 @@ import type {
   BaseItemDto,
   BaseItemPerson,
 } from "@jellyfin/sdk/lib/generated-client/models";
+import { useFocusEffect } from "expo-router";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { InteractionManager, View, type ViewProps } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { View, type ViewProps } from "react-native";
 import { MoreMoviesWithActor } from "@/components/MoreMoviesWithActor";
 import { CastAndCrew } from "@/components/series/CastAndCrew";
 import { useItemPeopleQuery } from "@/hooks/useItemPeopleQuery";
@@ -18,13 +19,16 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
   const isOffline = useOfflineMode();
   const [enabled, setEnabled] = useState(false);
 
-  useEffect(() => {
-    if (isOffline) return;
-    const task = InteractionManager.runAfterInteractions(() =>
-      setEnabled(true),
-    );
-    return () => task.cancel();
-  }, [isOffline]);
+  // In this RN version InteractionManager is a setImmediate stub. Use
+  // actual screen focus, and stop lower-section work when the screen blurs.
+  // This is a focus gate, not a guarantee that the native animation has ended.
+  useFocusEffect(
+    useCallback(() => {
+      if (isOffline) return;
+      setEnabled(true);
+      return () => setEnabled(false);
+    }, [isOffline]),
+  );
 
   const { data, isLoading } = useItemPeopleQuery(
     item.Id,
