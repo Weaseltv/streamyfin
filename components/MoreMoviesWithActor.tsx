@@ -12,6 +12,7 @@ import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { ItemCard } from "@/components/home/ItemCard";
 import { ItemCardText } from "@/components/ItemCardText";
 import { typeAccent } from "@/constants/Colors";
+import { Freshness } from "@/constants/queryFreshness";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
@@ -33,20 +34,23 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
 
   const { data: items, isLoading } = useQuery({
     queryKey: ["actor", "movies", actorId, currentItem.Id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!api || !user?.Id) return [];
-      const response = await getItemsApi(api).getItems({
-        userId: user.Id,
-        personIds: [actorId],
-        limit: 20,
-        sortOrder: ["Descending"],
-        includeItemTypes: ["Movie", "Series"],
-        recursive: true,
-        fields: ["ParentId", "PrimaryImageAspectRatio"],
-        sortBy: ["PremiereDate"],
-        collapseBoxSetItems: false,
-        excludeItemIds: [currentItem.SeriesId || "", currentItem.Id || ""],
-      });
+      const response = await getItemsApi(api).getItems(
+        {
+          userId: user.Id,
+          personIds: [actorId],
+          limit: 20,
+          sortOrder: ["Descending"],
+          includeItemTypes: ["Movie", "Series"],
+          recursive: true,
+          fields: ["ParentId", "PrimaryImageAspectRatio"],
+          sortBy: ["PremiereDate"],
+          collapseBoxSetItems: false,
+          excludeItemIds: [currentItem.SeriesId || "", currentItem.Id || ""],
+        },
+        { signal },
+      );
 
       // Remove duplicates based on item ID
       const uniqueItems =
@@ -61,6 +65,7 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
       return uniqueItems;
     },
     enabled: !!api && !!user?.Id && !!actorId,
+    staleTime: Freshness.catalog,
   });
 
   const renderItem = useCallback(
