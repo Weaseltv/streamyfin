@@ -78,3 +78,12 @@ The same publish path serves WeaselPlex, so these rules apply here too.
 
 WeaselPlex iOS TestFlight/validation on HostMyApple must keep >= 20 GB free. Before and after M4 work, run the weaseltv-apps pruners against `~/CodexRuns/weaselplex-ios` (see weaseltv-apps `AGENTS.md` "M4 disk hygiene"). Do not leave multi-GB `derived-data-release` roots behind.
 
+
+## VPS and ThinkCentre disk hygiene (added 2026-10-03)
+
+Every Android build leaves gigabytes behind (`android/`, `node_modules`, Gradle outputs: about 6 GB per phone release worktree). On 2026-10-03 the T3 VPS was down to 40 GB free from old release folders. Before you finish any task that built Android on either host, delete what you built:
+
+- **Release worktrees, once the release is published and verified:** `git -C ~/work/weaselfin/streamyfin worktree remove --force ~/work/weaselfin/releases/weaselplex-phone-X.Y`. The tag keeps the source, the operator archive keeps the published APK, and the signed APK and notes stay in `~/work/weaselfin/releases/out/`.
+- **Everything else you built:** `android/` in your task worktree (it's gitignored and `expo prebuild` regenerates it), throwaway clones in `/tmp`, emulator test APKs.
+- **`~/work/weaselfin/releases/out/`:** keep only the last two releases of each app.
+- Then run `df -h ~`, and say in your report if less than 30 GB is free.
