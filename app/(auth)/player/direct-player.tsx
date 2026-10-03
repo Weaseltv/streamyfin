@@ -126,6 +126,7 @@ export default function DirectPlayerPage() {
   const [isBuffering, setIsBuffering] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [tracksReady, setTracksReady] = useState(false);
+  const androidInitialSubtitleApplied = useRef(false);
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
   const [currentPlaybackSpeed, setCurrentPlaybackSpeed] = useState(1.0);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
@@ -1271,6 +1272,10 @@ export default function DirectPlayerPage() {
     ],
   );
 
+  useEffect(() => {
+    androidInitialSubtitleApplied.current = false;
+  }, [stream?.url]);
+
   // TV subtitle track change handler
   /**
    * Resolve a Jellyfin subtitle index against MPV's *real* track list and apply
@@ -1368,8 +1373,14 @@ export default function DirectPlayerPage() {
         return;
       }
 
+      const generation = streamGenerationRef.current;
       setCurrentSubtitleIndex(index);
       const result = await applySubtitleSelection(index);
+      if (
+        isPlaybackStoppedRef.current ||
+        streamGenerationRef.current !== generation
+      )
+        return;
       // Safety net: a menu-listed sub the player can't select (server-burned
       // Encode, sidecar never sub-added) needs the server to re-process the
       // stream with it.
@@ -1755,9 +1766,13 @@ export default function DirectPlayerPage() {
                 }}
                 onTracksReady={() => {
                   setTracksReady(true);
-                  // Fired after embedded tracks enumerate and again after each
-                  // external sub-add; re-resolve so the final fire (full track
-                  // list) selects the right track by identity.
+                  // Android's initial selection awaits its own preparation.
+                  // Later sidecar arrivals preserve the current native sid;
+                  // re-applying here could overwrite a newer menu intent.
+                  if (Platform.OS === "android") {
+                    if (androidInitialSubtitleApplied.current) return;
+                    androidInitialSubtitleApplied.current = true;
+                  }
                   void applySubtitleSelection(currentSubtitleIndex);
                 }}
               />

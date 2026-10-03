@@ -118,7 +118,9 @@ export type SubtitleSelection =
   | { kind: "disable" }
   /** Target is server-burned (Encode) — only a stream refresh can show/hide it. */
   | { kind: "burnedIn" }
-  | { kind: "notFound" };
+  | { kind: "notFound" }
+  /** A newer selection owns the player; do not start a fallback stream. */
+  | { kind: "superseded" };
 
 /** Decode percent-encoding and strip a leading `file://` scheme for tolerant comparison. */
 const normalizeUrl = (url: string): string => {
@@ -593,11 +595,11 @@ export const applyMpvSubtitleSelection = async (
       );
       if (url && ordinal >= 0)
         await player.ensureExternalSubtitle(url, ordinal);
-      if (!isCurrent()) return { kind: "notFound" };
+      if (!isCurrent()) return { kind: "superseded" };
     }
 
     const tracks = (await player.getSubtitleTracks()) ?? [];
-    if (!isCurrent()) return { kind: "notFound" };
+    if (!isCurrent()) return { kind: "superseded" };
     const selection = resolveSubtitleTrack({
       subtitleStreams: params.subtitleStreams,
       jellyfinSubtitleIndex: params.jellyfinSubtitleIndex,
@@ -621,7 +623,7 @@ export const applyMpvSubtitleSelection = async (
     // notFound → leave current selection (e.g. image subs burned in while transcoding)
     return selection;
   } catch {
-    return { kind: "notFound" };
+    return { kind: isCurrent() ? "notFound" : "superseded" };
   }
 };
 
