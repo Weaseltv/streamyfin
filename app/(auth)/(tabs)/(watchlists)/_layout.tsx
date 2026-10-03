@@ -18,71 +18,77 @@ import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 export const unstable_settings = Platform.isTV ? {} : { anchor: "index" };
 
 export default function WatchlistsLayout() {
+  return (
+    <ItemNavigationProvider origin='(watchlists)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { t } = useTranslation();
   const router = useRouter();
   const streamystatsEnabled = useStreamystatsEnabled();
 
   return (
-    <ItemNavigationProvider origin='(watchlists)'>
-      <Stack screenOptions={stackScreenOptions}>
-        <Stack.Screen
-          name='index'
-          options={{
-            title: t("watchlists.title"),
-            headerShown: !Platform.isTV,
-            header: () => (
-              <NeonHeader
-                right={
-                  streamystatsEnabled ? (
-                    <HeaderIconButton
-                      name='add'
-                      accessibilityLabel={t("watchlists.create_title")}
-                      onPress={() =>
-                        router.push("/(auth)/(tabs)/(watchlists)/create")
-                      }
-                    />
-                  ) : null
-                }
-              />
-            ),
-          }}
-        />
-        <Stack.Screen
-          name='[watchlistId]'
-          options={{
-            title: "",
-            headerShown: !Platform.isTV,
-            headerBlurEffect: "none",
-            headerTransparent: false,
-            headerShadowVisible: false,
-          }}
-        />
-        <Stack.Screen
-          name='create'
-          options={{
-            title: t("watchlists.create_title"),
-            presentation: "modal",
-            headerShown: !Platform.isTV,
-            headerStyle: { backgroundColor: NeonBoard.card },
-            headerTintColor: NeonBoard.text,
-            contentStyle: { backgroundColor: NeonBoard.card },
-          }}
-        />
-        <Stack.Screen
-          name='edit/[watchlistId]'
-          options={{
-            title: t("watchlists.edit_title"),
-            presentation: "modal",
-            headerShown: !Platform.isTV,
-            headerStyle: { backgroundColor: NeonBoard.card },
-            headerTintColor: NeonBoard.text,
-            contentStyle: { backgroundColor: NeonBoard.card },
-          }}
-        />
-        {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
-          <Stack.Screen key={name} name={name} options={options} />
-        ))}
-      </Stack>
-    </ItemNavigationProvider>
+    <Stack screenOptions={stackScreenOptions}>
+      <Stack.Screen
+        name='index'
+        options={{
+          title: t("watchlists.title"),
+          headerShown: !Platform.isTV,
+          header: () => (
+            <NeonHeader
+              right={
+                streamystatsEnabled ? (
+                  <HeaderIconButton
+                    name='add'
+                    accessibilityLabel={t("watchlists.create_title")}
+                    onPress={() =>
+                      router.push("/(auth)/(tabs)/(watchlists)/create")
+                    }
+                  />
+                ) : null
+              }
+            />
+          ),
+        }}
+      />
+      <Stack.Screen
+        name='[watchlistId]'
+        options={{
+          title: "",
+          headerShown: !Platform.isTV,
+          headerBlurEffect: "none",
+          headerTransparent: false,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name='create'
+        options={{
+          title: t("watchlists.create_title"),
+          presentation: "modal",
+          headerShown: !Platform.isTV,
+          headerStyle: { backgroundColor: NeonBoard.card },
+          headerTintColor: NeonBoard.text,
+          contentStyle: { backgroundColor: NeonBoard.card },
+        }}
+      />
+      <Stack.Screen
+        name='edit/[watchlistId]'
+        options={{
+          title: t("watchlists.edit_title"),
+          presentation: "modal",
+          headerShown: !Platform.isTV,
+          headerStyle: { backgroundColor: NeonBoard.card },
+          headerTintColor: NeonBoard.text,
+          contentStyle: { backgroundColor: NeonBoard.card },
+        }}
+      />
+      {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
+        <Stack.Screen key={name} name={name} options={options} />
+      ))}
+    </Stack>
   );
 }
