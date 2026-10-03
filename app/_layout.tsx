@@ -1,4 +1,8 @@
 import { ItemActionSheetHost } from "@/components/common/ItemActionSheetHost";
+import {
+  startupReadySessionAtom,
+  startupSessionKey,
+} from "@/utils/atoms/startupReady";
 import "@/augmentations";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -65,7 +69,7 @@ import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as TaskManager from "expo-task-manager";
-import { Provider as JotaiProvider, useAtom } from "jotai";
+import { Provider as JotaiProvider, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, LogBox } from "react-native";
@@ -318,78 +322,129 @@ function Layout() {
 
   useNotificationObserver();
 
-  const [expoPushToken, setExpoPushToken] = useState<ExpoPushToken>();
+  const sessionKey = startupSessionKey(api?.basePath, user?.Id);
+  const startupReady = useAtomValue(startupReadySessionAtom);
+  const sessionRef = useRef(sessionKey);
+  sessionRef.current = sessionKey;
+  const registrationAttempts = useRef(new Set<string>());
+  const postedTokens = useRef(new Set<string>());
+  const [expoPushToken, setExpoPushToken] = useState<{
+    token: ExpoPushToken;
+    sessionKey: string;
+  }>();
   const notificationListener = useRef<EventSubscription>(null);
   const responseListener = useRef<EventSubscription>(null);
 
   useEffect(() => {
-    if (!Platform.isTV && expoPushToken && api && user) {
+    if (
+      !Platform.isTV &&
+      expoPushToken &&
+      api &&
+      user?.Id &&
+      sessionKey &&
+      expoPushToken.sessionKey === sessionKey
+    ) {
+      const postKey = JSON.stringify([sessionKey, expoPushToken.token.data]);
+      if (postedTokens.current.has(postKey)) return;
+      postedTokens.current.add(postKey);
       api
         ?.post("/Streamyfin/device", {
-          token: expoPushToken.data,
+          token: expoPushToken.token.data,
           deviceId: getOrSetDeviceId(),
           userId: user.Id,
         })
-        .catch((_) =>
-          writeErrorLog("Failed to push expo push token to plugin"),
-        );
-    }
-  }, [api, expoPushToken, user]);
-
-  const registerNotifications = useCallback(async () => {
-    if (Platform.OS === "android") {
-      await Notifications?.setNotificationChannelAsync("default", {
-        name: "default",
-      });
-
-      // Create dedicated channel for download notifications
-      await Notifications?.setNotificationChannelAsync("downloads", {
-        name: "Downloads",
-        importance: Notifications.AndroidImportance.DEFAULT,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FF231F7C",
-      });
-    }
-
-    const granted = await checkAndRequestPermissions();
-    if (!granted) {
-      console.log(
-        "Notification permissions not granted, skipping background fetch and push token registration.",
-      );
-      return;
-    }
-
-    if (!Platform.isTV && user && user.Policy?.IsAdministrator) {
-      await registerBackgroundFetchAsyncSessions();
-    }
-
-    // only create push token for real devices (pointless for emulators)
-    if (Device.isDevice) {
-      Notifications?.getExpoPushTokenAsync({
-        // Read from config so this can never drift from app.json again. The literal
-        // here was UPSTREAM's project id: push tokens were being minted against
-        // Streamyfin's EAS project, not ours.
-        projectId:
-          Constants.expoConfig?.extra?.eas?.projectId ??
-          "f86e16f3-c729-4e85-9acc-34a37f67ef07",
-      })
-        .then((token: ExpoPushToken) => {
-          if (token) {
-            console.log("Expo push token obtained:", token.data);
-            setExpoPushToken(token);
-          }
-        })
-        .catch((reason: any) => {
-          console.error("Failed to get push token:", reason);
-          writeErrorLog("Failed to get Expo push token", reason);
+        .catch(() => {
+          postedTokens.current.delete(postKey);
+          writeErrorLog("Failed to push expo push token to plugin");
         });
     }
-  }, [user]);
+  }, [api, expoPushToken, sessionKey, user?.Id]);
+
+  useEffect(() => {
+    const createChannels = async () => {
+      if (Platform.OS === "android") {
+        await Notifications?.setNotificationChannelAsync("default", {
+          name: "default",
+        });
+
+        // Create dedicated channel for download notifications
+        await Notifications?.setNotificationChannelAsync("downloads", {
+          name: "Downloads",
+          importance: Notifications.AndroidImportance.DEFAULT,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#FF231F7C",
+        });
+      }
+    };
+    if (!Platform.isTV)
+      void createChannels().catch(() =>
+        writeErrorLog("Failed to create notification channels"),
+      );
+  }, []);
+
+  const isAdministrator = !!user?.Policy?.IsAdministrator;
+  const registerNotifications = useCallback(
+    async (owner: string) => {
+      const isCurrent = () => sessionRef.current === owner;
+      const granted = await checkAndRequestPermissions();
+      if (!isCurrent()) return;
+      if (!granted) {
+        console.log(
+          "Notification permissions not granted, skipping background fetch and push token registration.",
+        );
+        return;
+      }
+
+      if (!Platform.isTV && isAdministrator) {
+        await registerBackgroundFetchAsyncSessions();
+      }
+
+      if (!isCurrent()) return;
+      // only create push token for real devices (pointless for emulators)
+      if (Device.isDevice) {
+        Notifications?.getExpoPushTokenAsync({
+          // Read from config so this can never drift from app.json again. The literal
+          // here was UPSTREAM's project id: push tokens were being minted against
+          // Streamyfin's EAS project, not ours.
+          projectId:
+            Constants.expoConfig?.extra?.eas?.projectId ??
+            "f86e16f3-c729-4e85-9acc-34a37f67ef07",
+        })
+          .then((token: ExpoPushToken) => {
+            if (token) {
+              if (isCurrent()) setExpoPushToken({ token, sessionKey: owner });
+            }
+          })
+          .catch((reason: any) => {
+            console.error("Failed to get push token:", reason);
+            writeErrorLog("Failed to get Expo push token", reason);
+          });
+      }
+    },
+    [isAdministrator],
+  );
+
+  useEffect(() => {
+    if (Platform.isTV || !sessionKey || startupReady !== sessionKey) return;
+    const attemptKey = JSON.stringify([
+      sessionKey,
+      !!user?.Policy?.IsAdministrator,
+    ]);
+    if (registrationAttempts.current.has(attemptKey)) return;
+    registrationAttempts.current.add(attemptKey);
+    void registerNotifications(sessionKey).catch(() => {
+      registrationAttempts.current.delete(attemptKey);
+      writeErrorLog("Failed to register notifications");
+    });
+  }, [
+    sessionKey,
+    startupReady,
+    user?.Policy?.IsAdministrator,
+    registerNotifications,
+  ]);
 
   useEffect(() => {
     if (!Platform.isTV) {
-      void registerNotifications();
-
       notificationListener.current =
         Notifications?.addNotificationReceivedListener(
           (notification: Notification) => {
@@ -448,7 +503,7 @@ function Layout() {
         responseListener.current?.remove();
       };
     }
-  }, [user]);
+  }, [router]);
 
   return (
     <PersistQueryClientProvider
