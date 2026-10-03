@@ -1,24 +1,47 @@
 import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { atom, useAtom, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useDownload } from "@/providers/DownloadProvider";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 
-type Request = { item: BaseItemDto; isOffline: boolean };
+type Request = {
+  item: BaseItemDto;
+  isOffline: boolean;
+  ownerKey: string | null;
+};
+const ownerKeyFor = (
+  user: { Id?: string | null; ServerId?: string | null } | null,
+) => (user?.Id ? `${user.ServerId ?? ""}:${user.Id}` : null);
 const itemActionAtom = atom<Request | null>(null);
-export const useRequestItemActions = () => useSetAtom(itemActionAtom);
+// Read account identity at the long press without adding a user subscription
+// to every card. Never reopen a previous account's pending sheet after logout.
+const requestItemActionsAtom = atom(
+  null,
+  (get, set, request: Omit<Request, "ownerKey">) => {
+    set(itemActionAtom, { ...request, ownerKey: ownerKeyFor(get(userAtom)) });
+  },
+);
+export const useRequestItemActions = () => useSetAtom(requestItemActionsAtom);
 
 export function ItemActionSheetHost() {
   const [request, setRequest] = useAtom(itemActionAtom);
+  const user = useAtomValue(userAtom);
+  const ownerKey = ownerKeyFor(user);
+  useEffect(() => {
+    setRequest((current) => (current?.ownerKey === ownerKey ? current : null));
+  }, [ownerKey, setRequest]);
   const close = useCallback(
     () => setRequest((current) => (current === request ? null : current)),
     [request, setRequest],
   );
-  return request ? <ItemActionSheet request={request} close={close} /> : null;
+  return request && request.ownerKey === ownerKey ? (
+    <ItemActionSheet request={request} close={close} />
+  ) : null;
 }
 
 function ItemActionSheet({
