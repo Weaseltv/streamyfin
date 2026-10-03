@@ -52,7 +52,7 @@ interface Server {
 }
 
 /** Server URLs compare equal regardless of trailing slashes. */
-const sameServerUrl = (a: string | undefined, b: string) =>
+const sameServerUrl = (a: string | null | undefined, b: string) =>
   (a ?? "").replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 const initialApi = (() => {
@@ -762,8 +762,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
             jellyfin,
             serverUrl,
             token,
+            store.get(apiAtom),
           );
-          setApi(apiInstance);
+          if (store.get(apiAtom) !== apiInstance) setApi(apiInstance);
 
           if (storedUser?.Id) {
             setUser(storedUser);
@@ -780,7 +781,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
               // The response can resolve long after startup (no axios timeout).
               // If the session changed meanwhile (logout, account switch), drop
               // it instead of repopulating a stale user / re-saving credentials.
-              if (getTokenFromStorage() !== token) return;
+              if (
+                getTokenFromStorage() !== token ||
+                !sameServerUrl(getServerUrlFromStorage(), serverUrl)
+              )
+                return;
               setUser(response.data);
 
               // Migrate current session to secure storage if not already saved
