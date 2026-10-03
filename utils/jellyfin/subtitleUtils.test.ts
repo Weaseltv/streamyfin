@@ -551,3 +551,119 @@ describe("resolveSubtitleTrack — externals still loading (prefix of the list)"
     ).toEqual({ kind: "notFound" });
   });
 });
+
+describe("Android sidecars loaded out of order", () => {
+  const streams = [ext(3), ext(7), ext(12)];
+  test("selected-last resolves in a sparse set and missing earlier languages stay missing", () => {
+    const tracks = [track({ id: 9, external: true, externalOrdinal: 2 })];
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 12,
+        playerTracks: tracks,
+      }),
+    ).toEqual({ kind: "select", trackId: 9 });
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 3,
+        playerTracks: tracks,
+      }),
+    ).toEqual({ kind: "notFound" });
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 7,
+        playerTracks: tracks,
+      }),
+    ).toEqual({ kind: "notFound" });
+  });
+  test("reordered tracks use original ordinals, including duplicate filename identities", () => {
+    const tracks = [
+      track({ id: 9, external: true, externalOrdinal: 2 }),
+      track({ id: 4, external: true, externalOrdinal: 0 }),
+    ];
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 3,
+        playerTracks: tracks,
+      }),
+    ).toEqual({ kind: "select", trackId: 4 });
+    expect(
+      resolveSubtitleTrack({
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: 12,
+        playerTracks: tracks,
+      }),
+    ).toEqual({ kind: "select", trackId: 9 });
+  });
+  test("turning subtitles off while a sidecar is preparing cannot later select it", async () => {
+    let finish!: (value: boolean) => void;
+    const preparing = new Promise<boolean>((resolve) => {
+      finish = resolve;
+    });
+    const calls: number[] = [];
+    const player = {
+      ensureExternalSubtitle: () => preparing,
+      getSubtitleTracks: async () => [
+        { id: 9, external: true, externalOrdinal: 2 },
+      ],
+      setSubtitleTrack: (id: number) => {
+        calls.push(id);
+      },
+      disableSubtitles: () => {
+        calls.push(-1);
+      },
+    };
+    const first = applyMpvSubtitleSelection(player, {
+      subtitleStreams: streams,
+      jellyfinSubtitleIndex: 12,
+      getExpectedExternalUrl: (stream) =>
+        `http://server/sub/${stream.Index}.srt`,
+    });
+    expect(
+      await applyMpvSubtitleSelection(player, {
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: -1,
+      }),
+    ).toEqual({ kind: "disable" });
+    finish(true);
+    expect(await first).toEqual({ kind: "notFound" });
+    expect(calls).toEqual([-1]);
+  });
+});
+
+test("different control adapters share the native ref's pending selection", async () => {
+  let finish!: (value: boolean) => void;
+  const preparing = new Promise<boolean>((resolve) => {
+    finish = resolve;
+  });
+  const calls: number[] = [];
+  const native = {
+    ensureExternalSubtitle: () => preparing,
+    getSubtitleTracks: async () => [
+      { id: 5, external: true, externalOrdinal: 0 },
+    ],
+    setSubtitleTrack: (id: number) => {
+      calls.push(id);
+    },
+    disableSubtitles: () => {
+      calls.push(-1);
+    },
+  };
+  const adapter = { ...native, getSubtitleSelectionOwner: () => native };
+  const streams = [ext(3)];
+  const first = applyMpvSubtitleSelection(native, {
+    subtitleStreams: streams,
+    jellyfinSubtitleIndex: 3,
+    getExpectedExternalUrl: () => "http://server/3.srt",
+  });
+  await applyMpvSubtitleSelection(adapter, {
+    subtitleStreams: streams,
+    jellyfinSubtitleIndex: -1,
+  });
+  finish(true);
+  await first;
+  expect(calls).toEqual([-1]);
+});

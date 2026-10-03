@@ -984,6 +984,7 @@ export default function DirectPlayerPage() {
     // Add external subtitles only for online playback
     if (externalSubs.length > 0) {
       source.externalSubtitles = externalSubs;
+      source.externalSubtitleBaseUrl = api?.basePath;
       source.initialExternalSubtitleIndex = initialExternalSubtitleIndex;
     }
 
