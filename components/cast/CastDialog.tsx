@@ -30,6 +30,10 @@ import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
 import { SHEET_MAX_HEIGHT_RATIO } from "@/constants/Values";
+import {
+  hideNowPlayingPlaceholder,
+  showNowPlayingPlaceholder,
+} from "@/modules/now-playing-placeholder";
 
 const castDialogOpenAtom = atom(false);
 
@@ -92,6 +96,8 @@ const ROW_HEIGHT = 60;
 const ROW_ICON_COLUMN = 56;
 const ROW_ICON_SIZE = 24;
 const SHEET_RADIUS = 20;
+/** The sheet opens to about 60% of the screen, like YouTube's, never shorter. */
+const SHEET_MIN_HEIGHT_RATIO = 0.6;
 
 interface RowProps {
   icon: keyof typeof Feather.glyphMap;
@@ -208,6 +214,17 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
     if (castDevice) setConnectingId(null);
   }, [castDevice]);
 
+  // The AirPlay picker's head shows the Now Playing artwork, which is an
+  // empty square while nothing plays. Fill it with the app icon while the
+  // sheet is open; the module leaves real playback metadata untouched.
+  useEffect(() => {
+    if (Platform.OS !== "ios" || !visible) return;
+    showNowPlayingPlaceholder();
+    return () => {
+      hideNowPlayingPlaceholder();
+    };
+  }, [visible]);
+
   useEffect(() => {
     if (!visible || !session) return;
     let cancelled = false;
@@ -287,6 +304,7 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
         />
         <View
           style={{
+            minHeight: windowHeight * SHEET_MIN_HEIGHT_RATIO,
             maxHeight: windowHeight * SHEET_MAX_HEIGHT_RATIO,
             backgroundColor: NeonBoard.card,
             borderTopLeftRadius: SHEET_RADIUS,

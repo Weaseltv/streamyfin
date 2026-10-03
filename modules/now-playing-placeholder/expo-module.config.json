@@ -1,0 +1,8 @@
+{
+  "name": "now-playing-placeholder",
+  "version": "1.0.0",
+  "platforms": ["ios"],
+  "ios": {
+    "modules": ["NowPlayingPlaceholderModule"]
+  }
+}
