@@ -39,7 +39,10 @@ import useRouter from "@/hooks/useAppRouter";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
-import { useDownload } from "@/providers/DownloadProvider";
+import {
+  useCompletedDownloads,
+  useDownloadActions,
+} from "@/providers/DownloadProvider";
 import { useIntroSheet } from "@/providers/IntroSheetProvider";
 import {
   apiAtom,
@@ -98,7 +101,8 @@ const HomeMobile = () => {
   const { settings, refreshStreamyfinPluginSettings } = useSettings();
   const navigation = useNavigation();
   const scrollRef = useRef<FlashListRef<Section>>(null);
-  const { downloadedItems, cleanCacheDirectory } = useDownload();
+  const downloadedItems = useCompletedDownloads();
+  const { cleanCacheDirectory } = useDownloadActions();
   const prevIsConnected = useRef<boolean | null>(false);
   const {
     isConnected,

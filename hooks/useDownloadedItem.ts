@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useCompletedDownloads } from "@/providers/DownloadProvider";
 
 /** True when the item is fully downloaded (reactive to the downloads list). */
 export const useDownloadedItem = (id?: string | null): boolean => {
-  const { downloadedItems } = useDownload();
+  const downloadedItems = useCompletedDownloads();
   return useMemo(
     () => !!id && downloadedItems.some((d) => d.item.Id === id),
     [downloadedItems, id],
