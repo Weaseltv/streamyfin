@@ -1042,6 +1042,7 @@ const MusicCard: React.FC<{
       >
         {url ? (
           <Image
+            recyclingKey={item.Id}
             source={{ uri: url }}
             style={{ width: "100%", height: "100%" }}
             contentFit='cover'
