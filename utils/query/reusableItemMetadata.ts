@@ -5,7 +5,8 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 
 // Keep the existing detail fields, but fetch People through its focused query.
-export const DETAIL_ITEM_FIELDS = Object.values(ItemFields).filter(
+export const ALL_DETAIL_ITEM_FIELDS = Object.values(ItemFields);
+export const DETAIL_ITEM_FIELDS = ALL_DETAIL_ITEM_FIELDS.filter(
   (field) => field !== ItemFields.People,
 );
 

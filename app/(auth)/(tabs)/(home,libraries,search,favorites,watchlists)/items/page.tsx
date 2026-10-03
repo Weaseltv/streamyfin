@@ -12,7 +12,10 @@ import { Text } from "@/components/common/Text";
 import { ItemContent } from "@/components/ItemContent";
 import { useItemQuery } from "@/hooks/useItemQuery";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
-import { DETAIL_ITEM_FIELDS } from "@/utils/query/reusableItemMetadata";
+import {
+  ALL_DETAIL_ITEM_FIELDS,
+  DETAIL_ITEM_FIELDS,
+} from "@/utils/query/reusableItemMetadata";
 
 const ItemContentSkeletonTV = Platform.isTV
   ? require("@/components/ItemContentSkeleton.tv").ItemContentSkeletonTV
@@ -31,7 +34,11 @@ const Page: React.FC = () => {
     data: item,
     isError,
     isLoading,
-  } = useItemQuery(id, isOffline, DETAIL_ITEM_FIELDS);
+  } = useItemQuery(
+    id,
+    isOffline,
+    Platform.isTV ? ALL_DETAIL_ITEM_FIELDS : DETAIL_ITEM_FIELDS,
+  );
 
   const opacity = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => {
