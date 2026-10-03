@@ -312,9 +312,8 @@ function Layout() {
   }, []);
 
   useEffect(() => {
-    i18n.changeLanguage(
-      preferedLanguage ?? getLocales()[0].languageCode ?? "en",
-    );
+    const language = preferedLanguage ?? getLocales()[0].languageCode ?? "en";
+    if (i18n.language !== language) void i18n.changeLanguage(language);
   }, [preferedLanguage, i18n]);
 
   useNotificationObserver();
