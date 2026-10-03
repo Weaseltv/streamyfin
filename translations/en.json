@@ -224,7 +224,17 @@
         "error": "Error",
         "invalid_code": "Invalid code",
         "authorize": "Authorize",
-        "paste_code": "Paste from clipboard"
+        "paste_code": "Paste from clipboard",
+        "scan_the_qr_code": "Scan the QR code",
+        "scan_qr": "Scan QR",
+        "scan_hint": "Point the camera at the QR code on the TV's sign-in screen. It signs the TV in with this account.",
+        "type_code_instead": "Type the 6-digit code instead",
+        "scan_instead": "Scan the QR code instead",
+        "invalid_qr": "That isn't a WeaselPlex sign-in code. Scan the QR code shown on the TV.",
+        "code_rejected": "The TV didn't accept this code. Check that it's still on the TV's sign-in screen and try again.",
+        "authorizing": "Signing the TV in…",
+        "tv_signed_in": "The TV is now signed in as this account.",
+        "camera_unavailable": "The camera isn't available in this build. Type the code from the TV instead."
       },
       "media_controls": {
         "media_controls_title": "Media controls",
@@ -648,6 +658,7 @@
   "library": {
     "no_results": "No results",
     "no_libraries_found": "No libraries found",
+    "search_placeholder": "Search {{name}}",
     "item_types": {
       "movies": "Movies",
       "series": "Series",

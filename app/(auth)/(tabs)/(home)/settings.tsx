@@ -81,27 +81,15 @@ function SettingsMobile() {
             title={t("home.settings.audio_subtitles.title")}
           />
           <ListItem
-            onPress={() => router.push("/settings/music/page")}
-            icon='musical-notes-outline'
-            showArrow
-            title={t("home.settings.music.title")}
-          />
-          <ListItem
             onPress={() => router.push("/settings/appearance/page")}
             icon='text-outline'
             showArrow
             title={t("home.settings.appearance.title")}
           />
-          {/* Plugins and Intro are hidden from the hub on purpose. Their
-              routes stay registered in _layout.tsx: Watchlists deep-links
-              straight to the Streamystats plugin page, and the first-launch
-              intro still shows itself via hasShownIntro. */}
-          <ListItem
-            onPress={() => router.push("/settings/network/page")}
-            icon='wifi-outline'
-            showArrow
-            title={t("home.settings.network.title")}
-          />
+          {/* Plugins, Intro, Music and Network are hidden from the hub on
+              purpose. Their routes stay registered in _layout.tsx: Watchlists
+              deep-links straight to the Streamystats plugin page, and the
+              first-launch intro still shows itself via hasShownIntro. */}
           <ListItem
             onPress={() => router.push("/settings/logs/page")}
             icon='document-text-outline'

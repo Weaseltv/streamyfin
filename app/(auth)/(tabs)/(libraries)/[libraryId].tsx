@@ -47,6 +47,7 @@ import { ResetFiltersButton } from "@/components/filters/ResetFiltersButton";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
 import { ItemPoster } from "@/components/posters/ItemPoster";
+import { SearchField } from "@/components/search/SearchField";
 import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
 import { libraryAccent, NeonBoard } from "@/constants/Colors";
@@ -129,6 +130,21 @@ const Page = () => {
   const [tagPreference, setTagPreference] = useAtom(tagPreferenceAtom);
 
   const { orientation } = useOrientation();
+  const insets = useSafeAreaInsets();
+
+  // Title search inside this library (phone). The fetch runs on the
+  // debounced `searchTerm`, not on every keystroke.
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchTerm("");
+      return;
+    }
+    const handle = setTimeout(() => setSearchTerm(trimmed), 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
 
   // Fallback refresh for newly added content when returning to the library
   // (primary path is the LibraryChanged WebSocket event). Scoped to this
@@ -511,6 +527,7 @@ const Page = () => {
           tags: selectedTags,
           years: selectedYears.map((year) => Number.parseInt(year, 10)),
           includeItemTypes: itemType ? [itemType] : undefined,
+          searchTerm: searchTerm || undefined,
           ...(Platform.isTV && library.CollectionType === "playlists"
             ? { mediaTypes: ["Video"] }
             : {}),
@@ -533,6 +550,7 @@ const Page = () => {
       sortBy,
       sortOrder,
       filterBy,
+      searchTerm,
     ],
   );
 
@@ -547,6 +565,7 @@ const Page = () => {
         sortBy,
         sortOrder,
         filterBy,
+        searchTerm,
       ],
       queryFn: fetchItems,
       getNextPageParam: (lastPage, pages) => {
@@ -590,6 +609,7 @@ const Page = () => {
     sortBy[0],
     sortOrder[0],
     filterBy.join(","),
+    searchTerm,
   ].join("|");
   const pendingScrollTopRef = useRef(false);
 
@@ -743,9 +763,20 @@ const Page = () => {
         : "A – Z"
       : undefined;
 
-  const ListHeaderComponent = useCallback(
+  // An element, not a component: a component recreated on every render would
+  // remount the header and drop the search field's focus on each keystroke.
+  // The wrapper cancels the list's gutter so the head rule and the search
+  // strip run edge to edge.
+  const listHeader = useMemo(
     () => (
-      <View>
+      <View
+        style={{
+          marginLeft: -(insets.left + Sizes.gutter),
+          marginRight: -(insets.right + Sizes.gutter),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        }}
+      >
         <PageHead
           eyebrow={
             totalCount !== undefined
@@ -754,6 +785,16 @@ const Page = () => {
           }
           title={library?.Name ?? ""}
           trailing={sortLabel}
+          accent={accent}
+          bleedRule
+        />
+        <SearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={() => setSearchTerm(searchQuery.trim())}
+          placeholder={t("library.search_placeholder", {
+            name: library?.Name ?? "",
+          })}
           accent={accent}
         />
         <FlatList
@@ -912,6 +953,9 @@ const Page = () => {
       libraryTypeLabel,
       sortLabel,
       t,
+      insets.left,
+      insets.right,
+      searchQuery,
       selectedGenres,
       setGenres,
       selectedYears,
@@ -1101,8 +1145,6 @@ const Page = () => {
     });
   }, [showOptions, t, tvFilterByOptions, setFilter, _setFilterBy]);
 
-  const insets = useSafeAreaInsets();
-
   if (Platform.isTV && (isLoading || isLibraryLoading))
     return (
       <View className='w-full h-full flex items-center justify-center'>
@@ -1145,7 +1187,9 @@ const Page = () => {
             }
           }}
           onEndReachedThreshold={1}
-          ListHeaderComponent={ListHeaderComponent}
+          ListHeaderComponent={listHeader}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='on-drag'
           contentContainerStyle={{
             paddingBottom: 24,
             paddingLeft: insets.left + Sizes.gutter,
