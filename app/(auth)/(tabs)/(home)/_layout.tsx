@@ -91,6 +91,16 @@ export default function IndexLayout() {
         }}
       />
       <Stack.Screen
+        name='quick-connect-scan'
+        options={{
+          title: t("home.settings.quick_connect.scan_qr"),
+          headerShown: !Platform.isTV,
+          headerBlurEffect: "none",
+          headerTransparent: false,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
         name='settings/playback-controls/page'
         options={{
           title: t("home.settings.playback_controls.title"),
