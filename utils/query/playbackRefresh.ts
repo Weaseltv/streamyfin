@@ -43,6 +43,16 @@ export function isItemMetadataKey(key: QueryKey, itemIds: ReadonlySet<string>) {
 /** One queue per real QueryClient, shared by navigation and WebSocket echoes. */
 export class PlaybackRefreshQueue {
   private held = false;
+  private holdListeners = new Set<(held: boolean) => void>();
+  get isHeld() {
+    return this.held;
+  }
+  subscribeHold(listener: (held: boolean) => void) {
+    this.holdListeners.add(listener);
+    return () => {
+      this.holdListeners.delete(listener);
+    };
+  }
   private draining = false;
   private progression = false;
   private library = false;
@@ -56,6 +66,7 @@ export class PlaybackRefreshQueue {
 
   open() {
     this.held = true;
+    for (const listener of this.holdListeners) listener(true);
     clearTimeout(this.timer);
     this.timer = undefined;
   }
@@ -63,6 +74,7 @@ export class PlaybackRefreshQueue {
   /** Called by the outer native stack's closing transitionEnd, not focus. */
   close() {
     this.held = false;
+    for (const listener of this.holdListeners) listener(false);
     // Give the stop echo the same quiet window as other UserDataChanged bursts.
     this.schedule();
   }
