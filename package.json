@@ -32,7 +32,6 @@
     "uuid": "11.1.1"
   },
   "dependencies": {
-    "@bottom-tabs/react-navigation": "1.4.0",
     "@douglowder/expo-av-route-picker-view": "^0.0.5",
     "@expo/metro-runtime": "~57.0.6",
     "@expo/react-native-action-sheet": "^4.1.1",
@@ -90,7 +89,6 @@
     "react-i18next": "17.0.11",
     "react-native": "npm:react-native-tvos@0.86.0-2",
     "react-native-awesome-slider": "^2.9.0",
-    "react-native-bottom-tabs": "1.4.0",
     "react-native-circular-progress": "^1.4.1",
     "react-native-collapsible": "^1.6.2",
     "react-native-country-flag": "^2.0.2",
@@ -158,6 +156,13 @@
         "react-native-safe-area-context",
         "react-native-svg"
       ]
+    },
+    "autolinking": {
+      "android": {
+        "exclude": [
+          "@expo/ui"
+        ]
+      }
     }
   },
   "private": true,
