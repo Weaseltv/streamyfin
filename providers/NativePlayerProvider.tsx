@@ -10,6 +10,7 @@ import {
   getTvShowsApi,
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useAtomValue } from "jotai";
 import type React from "react";
@@ -94,6 +95,7 @@ import {
   type PlayRequest,
   toDirectPlayerQuery,
 } from "@/utils/nativePlayer/playRequest";
+import { getReusableItemMetadata } from "@/utils/query/reusableItemMetadata";
 import { fetchAndParseSegments, getSegmentsForItem } from "@/utils/segments";
 import { rememberSeriesTrack } from "@/utils/seriesTrackMemory";
 import {
@@ -299,6 +301,7 @@ const NativePlayerProviderInner: React.FC<{
   const downloadUtils = useDownload();
   const revalidateProgressCache = useInvalidatePlaybackProgressCache();
   const { lastMessage, subscribe, clearLastMessage } = useWebSocketContext();
+  const queryClient = useQueryClient();
 
   const sessionRef = useRef<NativeSession | null>(null);
   // Monotonic id per beginSession call: the config build awaits a PlaybackInfo
@@ -596,7 +599,11 @@ const NativePlayerProviderInner: React.FC<{
         req,
         getDownloadedItemById: downloadUtils.getDownloadedItemById,
         strings: buildNativePlayerStrings(t),
-        item: options.item,
+        item:
+          options.item ??
+          (!req.offline
+            ? getReusableItemMetadata(queryClient, req.itemId)
+            : undefined),
       }).catch((error) => {
         writeToLog(
           "ERROR",
@@ -697,6 +704,7 @@ const NativePlayerProviderInner: React.FC<{
     },
     [
       downloadUtils,
+      queryClient,
       t,
       lockOrientation,
       unlockOrientation,
