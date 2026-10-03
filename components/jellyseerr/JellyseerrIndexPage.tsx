@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSegments } from "expo-router";
-import { orderBy } from "lodash";
+import orderBy from "lodash/orderBy";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
