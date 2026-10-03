@@ -9,7 +9,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
-import { processesAtom } from "@/providers/DownloadProvider";
+import { downloadingAtom } from "@/providers/DownloadProvider";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { HeaderIcon, type HeaderIconName } from "./HeaderIcon";
 import { Text } from "./Text";
@@ -117,13 +117,7 @@ export const NeonHeader: React.FC<Props> = ({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const accent = usePageAccent();
-  const processes = useAtomValue(processesAtom);
-  const downloading = processes.some(
-    (p) =>
-      p.status === "downloading" ||
-      p.status === "queued" ||
-      p.status === "pending",
-  );
+  const downloading = useAtomValue(downloadingAtom);
 
   return (
     <View

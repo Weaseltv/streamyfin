@@ -6,7 +6,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
 } from "react";
 import { Platform } from "react-native";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -26,6 +28,16 @@ import type { JobStatus } from "./Downloads/types";
 import { apiAtom } from "./JellyfinProvider";
 
 export const processesAtom = atom<JobStatus[]>([]);
+export const downloadingAtom = atom((get) =>
+  get(processesAtom).some((process) =>
+    ["downloading", "queued", "pending"].includes(process.status),
+  ),
+);
+const APP_CACHE_DOWNLOAD_DIRECTORY = new Directory(
+  Paths.cache,
+  `${Application.applicationId}/Downloads/`,
+);
+
 export const downloadsRefreshAtom = atom<number>(0);
 
 const DownloadContext = createContext<ReturnType<
@@ -59,11 +71,6 @@ function useDownloadProvider() {
   const authHeader = useMemo(() => {
     return api?.accessToken;
   }, [api]);
-
-  const APP_CACHE_DOWNLOAD_DIRECTORY = new Directory(
-    Paths.cache,
-    `${Application.applicationId}/Downloads/`,
-  );
 
   const updateProcess = useCallback(
     (
@@ -164,34 +171,47 @@ function useDownloadProvider() {
   };
 }
 
+const TV_DOWNLOADS = {
+  processes: [],
+  startBackgroundDownload: async () => {},
+  downloadedItems: [],
+  getDownloadedItems: () => [],
+  getDownloadsDatabase: () => ({ movies: {}, series: {}, other: {} }),
+  deleteAllFiles: async () => {},
+  deleteFile: async () => {},
+  deleteItems: async () => {},
+  deleteFileByType: async () => {},
+  removeProcess: () => {},
+  cancelDownload: async () => {},
+  triggerRefresh: () => {},
+  startDownload: async () => {},
+  getDownloadedItemSize: () => 0,
+  getDownloadedItemById: () => undefined,
+  updateDownloadedItem: () => {},
+  APP_CACHE_DOWNLOAD_DIRECTORY: "",
+  cleanCacheDirectory: async () => {},
+  appSizeUsage: async () => ({ total: 0, remaining: 0, appSize: 0 }),
+  dumpDownloadDiagnostics: async () => "",
+};
+
+type DownloadActions = Omit<
+  ReturnType<typeof useDownloadProvider>,
+  "processes" | "downloadedItems"
+>;
+const DownloadActionsContext = createContext<DownloadActions | null>(null);
+export function useDownloadActions() {
+  const context = useContext(DownloadActionsContext);
+  if (Platform.isTV) return TV_DOWNLOADS;
+  if (!context)
+    throw new Error(
+      "useDownloadActions must be used within a DownloadProvider",
+    );
+  return context;
+}
+
 export function useDownload() {
   const context = useContext(DownloadContext);
-
-  if (Platform.isTV) {
-    return {
-      processes: [],
-      startBackgroundDownload: async () => {},
-      downloadedItems: [],
-      getDownloadedItems: () => [],
-      getDownloadsDatabase: () => ({ movies: {}, series: {}, other: {} }),
-      deleteAllFiles: async () => {},
-      deleteFile: async () => {},
-      deleteItems: async () => {},
-      deleteFileByType: async () => {},
-      removeProcess: () => {},
-      cancelDownload: async () => {},
-      triggerRefresh: () => {},
-      startDownload: async () => {},
-      getDownloadedItemSize: () => 0,
-      getDownloadedItemById: () => undefined,
-      updateDownloadedItem: () => {},
-      APP_CACHE_DOWNLOAD_DIRECTORY: "",
-      cleanCacheDirectory: async () => {},
-      appSizeUsage: async () => ({ total: 0, remaining: 0, appSize: 0 }),
-      dumpDownloadDiagnostics: async () => "",
-    };
-  }
-
+  if (Platform.isTV) return TV_DOWNLOADS;
   if (context === null) {
     throw new Error("useDownload must be used within a DownloadProvider");
   }
@@ -201,10 +221,38 @@ export function useDownload() {
 
 export function DownloadProvider({ children }: { children: React.ReactNode }) {
   const downloadUtils = useDownloadProvider();
+  const latest = useRef(downloadUtils);
+  useLayoutEffect(() => {
+    latest.current = downloadUtils;
+  }, [downloadUtils]);
+  // Stable callable wrappers read the latest committed closures (including auth
+  // and process state). Changing progress never changes this context value.
+  const actions = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(downloadUtils)
+          .filter(([key]) => key !== "processes" && key !== "downloadedItems")
+          .map(([key, value]) => [
+            key,
+            typeof value === "function"
+              ? (...args: unknown[]) => {
+                  const current =
+                    latest.current[key as keyof typeof downloadUtils];
+                  return (current as (...values: unknown[]) => unknown)(
+                    ...args,
+                  );
+                }
+              : value,
+          ]),
+      ) as DownloadActions,
+    [downloadUtils.APP_CACHE_DOWNLOAD_DIRECTORY],
+  );
 
   return (
-    <DownloadContext.Provider value={downloadUtils}>
-      {children}
-    </DownloadContext.Provider>
+    <DownloadActionsContext.Provider value={actions}>
+      <DownloadContext.Provider value={downloadUtils}>
+        {children}
+      </DownloadContext.Provider>
+    </DownloadActionsContext.Provider>
   );
 }
