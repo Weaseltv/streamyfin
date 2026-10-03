@@ -72,7 +72,7 @@ export const CenterControls: FC<CenterControlsProps> = ({
             bottom: 30,
           }}
         >
-          <BrightnessSlider />
+          <BrightnessSlider active={showControls} />
         </View>
       )}
 
