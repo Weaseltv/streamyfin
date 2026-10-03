@@ -11,6 +11,7 @@ import {
 } from "@/components/stacks/NestedTabPageStack";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 import { useSettings } from "@/utils/atoms/settings";
 
 // Deep entries into this tab — the home "See All" button, or tapping a library /
@@ -168,70 +169,72 @@ export default function IndexLayout() {
   if (!settings?.libraryOptions) return null;
 
   return (
-    <Stack screenOptions={stackScreenOptions}>
-      <Stack.Screen
-        name='index'
-        options={{
-          title: t("tabs.library"),
-          headerShown: !Platform.isTV,
-          header: () => (
-            <NeonHeader
-              right={
-                !pluginSettings?.libraryOptions?.locked ? (
-                  <PlatformDropdown
-                    open={dropdownOpen}
-                    onOpenChange={setDropdownOpen}
-                    trigger={
-                      <View
-                        style={{
-                          height: Sizes.iconButton,
-                          width: Sizes.iconButton,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <HeaderIcon
-                          name='more'
-                          size={22}
-                          tintColor={NeonBoard.mid}
-                        />
-                      </View>
-                    }
-                    title={t("library.options.display")}
-                    groups={dropdownGroups}
-                  />
-                ) : null
-              }
-            />
-          ),
-        }}
-      />
-      <Stack.Screen
-        name='[libraryId]'
-        options={{
-          title: "",
-          headerShown: !Platform.isTV,
-          header: ({ navigation }) => (
-            <NeonHeader
-              onBack={navigation.canGoBack() ? navigation.goBack : undefined}
-              downloads={false}
-            />
-          ),
-        }}
-      />
-      {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
-        <Stack.Screen key={name} name={name} options={options} />
-      ))}
-      <Stack.Screen
-        name='collections/[collectionId]'
-        options={{
-          title: "",
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-    </Stack>
+    <ItemNavigationProvider origin='(libraries)'>
+      <Stack screenOptions={stackScreenOptions}>
+        <Stack.Screen
+          name='index'
+          options={{
+            title: t("tabs.library"),
+            headerShown: !Platform.isTV,
+            header: () => (
+              <NeonHeader
+                right={
+                  !pluginSettings?.libraryOptions?.locked ? (
+                    <PlatformDropdown
+                      open={dropdownOpen}
+                      onOpenChange={setDropdownOpen}
+                      trigger={
+                        <View
+                          style={{
+                            height: Sizes.iconButton,
+                            width: Sizes.iconButton,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <HeaderIcon
+                            name='more'
+                            size={22}
+                            tintColor={NeonBoard.mid}
+                          />
+                        </View>
+                      }
+                      title={t("library.options.display")}
+                      groups={dropdownGroups}
+                    />
+                  ) : null
+                }
+              />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name='[libraryId]'
+          options={{
+            title: "",
+            headerShown: !Platform.isTV,
+            header: ({ navigation }) => (
+              <NeonHeader
+                onBack={navigation.canGoBack() ? navigation.goBack : undefined}
+                downloads={false}
+              />
+            ),
+          }}
+        />
+        {Object.entries(nestedTabPageScreenOptions).map(([name, options]) => (
+          <Stack.Screen key={name} name={name} options={options} />
+        ))}
+        <Stack.Screen
+          name='collections/[collectionId]'
+          options={{
+            title: "",
+            headerShown: !Platform.isTV,
+            headerBlurEffect: "none",
+            headerTransparent: false,
+            headerShadowVisible: false,
+          }}
+        />
+      </Stack>
+    </ItemNavigationProvider>
   );
 }
