@@ -2,6 +2,7 @@ import type {
   BaseItemDto,
   BaseItemPerson,
 } from "@jellyfin/sdk/lib/generated-client/models";
+import { useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -17,6 +18,7 @@ interface Props extends ViewProps {
 
 export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
   const isOffline = useOfflineMode();
+  const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(false);
 
   // In this RN version InteractionManager is a setImmediate stub. Use
@@ -26,8 +28,20 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
     useCallback(() => {
       if (isOffline) return;
       setEnabled(true);
-      return () => setEnabled(false);
-    }, [isOffline]),
+      return () => {
+        setEnabled(false);
+        // A frozen React tree may not commit that state update yet. Cancel
+        // in the focus callback itself so network work stops independently.
+        void queryClient.cancelQueries({
+          queryKey: ["item", item.Id, "people"],
+          exact: true,
+        });
+        void queryClient.cancelQueries({
+          queryKey: ["actor", "movies"],
+          predicate: (query) => query.queryKey[3] === item.Id,
+        });
+      };
+    }, [isOffline, item.Id, queryClient]),
   );
 
   const { data, isLoading } = useItemPeopleQuery(
