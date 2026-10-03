@@ -5,6 +5,8 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Alert,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -57,6 +59,32 @@ const mediaTitle = (metadata: unknown): string | null => {
   if (typeof title !== "string") return null;
   const trimmed = title.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+/**
+ * Android's answer to the AirPlay row: the system screen-mirroring (Miracast)
+ * picker, which Roku TVs and most smart TVs accept. There is no single
+ * action for it, so try the AOSP/Pixel page first, then Samsung's Smart View
+ * picker, then the legacy Wi-Fi Display page. Each action here must also be
+ * declared under `<queries>` (see plugins/withAndroidManifest.ts) or Android
+ * 11+ hides the activity from `sendIntent`.
+ */
+export const SCREEN_MIRRORING_INTENTS = [
+  "android.settings.CAST_SETTINGS",
+  "com.samsung.wfd.LAUNCH_WFD_PICKER_DLG",
+  "android.settings.WIFI_DISPLAY_SETTINGS",
+] as const;
+
+const openScreenMirroring = async (): Promise<boolean> => {
+  for (const action of SCREEN_MIRRORING_INTENTS) {
+    try {
+      await Linking.sendIntent(action);
+      return true;
+    } catch {
+      // Not on this phone; try the next one.
+    }
+  }
+  return false;
 };
 
 /** Row geometry shared by every entry so the list reads as one set. */
@@ -419,6 +447,23 @@ export const CastDialog: React.FC<Props> = ({ visible, onClose }) => {
                       }}
                     />
                   }
+                />
+              ) : null}
+              {Platform.OS === "android" ? (
+                <DeviceRow
+                  icon='smartphone'
+                  label={t("cast.screen_mirroring")}
+                  onPress={async () => {
+                    const opened = await openScreenMirroring();
+                    if (opened) {
+                      onClose();
+                      return;
+                    }
+                    Alert.alert(
+                      t("cast.screen_mirroring"),
+                      t("cast.screen_mirroring_unavailable"),
+                    );
+                  }}
                 />
               ) : null}
               {ordered.map((device) => {
