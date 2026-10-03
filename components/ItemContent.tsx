@@ -30,7 +30,7 @@ import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useOrientation } from "@/hooks/useOrientation";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
@@ -63,7 +63,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   itemWithSources,
 }) => {
   const isOffline = useOfflineMode();
-  const { getDownloadedItemById } = useDownload();
+  const { getDownloadedItemById } = useDownloadActions();
   // A download pins the tracks it was pulled with, and only the record knows
   // them: resolving against the server media source hands back an index for a
   // stream the local file may not contain.
