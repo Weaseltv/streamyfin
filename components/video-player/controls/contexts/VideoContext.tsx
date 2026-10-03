@@ -127,6 +127,16 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
       playbackPosition: string;
     }>();
 
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const playbackRef = useRef({ itemId, mediaSource });
+  playbackRef.current = { itemId, mediaSource };
+
   const allSubs =
     mediaSource?.MediaStreams?.filter((s) => s.Type === "Subtitle") || [];
   const allAudio =
@@ -325,6 +335,8 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
             return;
           }
           router.setParams({ subtitleIndex: String(row.index) });
+          const selectionSource = mediaSource;
+          const selectionOwner = playerControls.getSubtitleSelectionOwner?.();
           void applyMpvSubtitleSelection(playerControls, {
             subtitleStreams: allSubs,
             jellyfinSubtitleIndex: row.index,
@@ -334,6 +346,16 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
             getExpectedExternalUrl: (s) =>
               getExternalSubtitleUrl(s, { offline, basePath: api?.basePath }),
           }).then((result) => {
+            // A source replacement or close owns the route now. A failed fetch
+            // from its predecessor must not reopen the old player.
+            if (
+              !mountedRef.current ||
+              playbackRef.current.itemId !== itemId ||
+              playbackRef.current.mediaSource !== selectionSource ||
+              playerControls.getSubtitleSelectionOwner?.() !== selectionOwner
+            ) {
+              return;
+            }
             // Safety net: a menu-listed sub the player can't select (server-
             // burned Encode, sidecar never sub-added) only shows up after the
             // server re-processes the stream with it.

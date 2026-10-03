@@ -629,7 +629,7 @@ describe("Android sidecars loaded out of order", () => {
       }),
     ).toEqual({ kind: "disable" });
     finish(true);
-    expect(await first).toEqual({ kind: "notFound" });
+    expect(await first).toEqual({ kind: "superseded" });
     expect(calls).toEqual([-1]);
   });
 });
