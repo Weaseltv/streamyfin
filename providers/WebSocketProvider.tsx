@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,6 +17,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useNetworkStatus } from "@/providers/NetworkStatusProvider";
 import { getJellyfinHeaders, hasHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
+import { WebSocketMessageBus } from "@/utils/websocketMessageBus";
 
 // Query keys that depend on the set of library items and should be refreshed
 // when the server reports that the library changed (items added/removed/updated).
@@ -63,12 +65,6 @@ interface WebSocketContextType {
   ws: WebSocket | null;
   isConnected: boolean;
   /**
-   * @deprecated Prefer `subscribe`. `lastMessage` only keeps the most recent
-   * message, so bursts arriving in the same tick are coalesced and lost. Kept
-   * for `useWebsockets` (GeneralCommand handling) until it is migrated.
-   */
-  lastMessage: WebSocketMessage | null;
-  /**
    * Subscribe to a given message type. The handler is called synchronously for
    * every matching message (no coalescing, unlike `lastMessage`). Returns an
    * unsubscribe function to call on cleanup.
@@ -78,7 +74,6 @@ interface WebSocketContextType {
     handler: WebSocketMessageHandler,
   ) => () => void;
   sendMessage: (message: any) => void;
-  clearLastMessage: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -95,7 +90,6 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   const { isConnected: isNetworkConnected } = useNetworkStatus();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const queryClient = useNetworkAwareQueryClient();
   const deviceId = useMemo(() => {
     return getOrSetDeviceId();
@@ -116,53 +110,20 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
 
   // Pub/sub registry: messageType -> set of handlers. Stored in a ref so
   // subscribing/dispatching never triggers a re-render.
-  const listenersRef = useRef<Map<string, Set<WebSocketMessageHandler>>>(
-    new Map(),
+  const bus = useRef(
+    new WebSocketMessageBus<WebSocketMessage>((error) => {
+      console.error("Error handling WebSocket message", error);
+    }),
   );
-
   const subscribe = useCallback(
-    (messageType: string, handler: WebSocketMessageHandler) => {
-      const listeners = listenersRef.current;
-      let handlers = listeners.get(messageType);
-      if (!handlers) {
-        handlers = new Set();
-        listeners.set(messageType, handlers);
-      }
-      handlers.add(handler);
-      return () => {
-        handlers?.delete(handler);
-        // Only drop the map entry if it still points at THIS set. After an
-        // unsubscribe + re-subscribe for the same type, a stale second call to
-        // this cleanup would otherwise delete the new subscribers' set and
-        // silently stop delivering their messages.
-        if (
-          handlers &&
-          handlers.size === 0 &&
-          listeners.get(messageType) === handlers
-        ) {
-          listeners.delete(messageType);
-        }
-      };
-    },
+    (messageType: string, handler: WebSocketMessageHandler) =>
+      bus.current.subscribe(messageType, (message) =>
+        handler(message.Data, message),
+      ),
     [],
   );
-
   const dispatchMessage = useCallback((message: WebSocketMessage) => {
-    const handlers = listenersRef.current.get(message.MessageType);
-    if (!handlers || handlers.size === 0) return;
-    // Copy to tolerate handlers that unsubscribe during dispatch.
-    for (const handler of [...handlers]) {
-      // Isolate each handler so one throwing subscriber can't abort the rest
-      // (and isn't misreported as a parse failure by the outer onmessage catch).
-      try {
-        handler(message.Data, message);
-      } catch (error) {
-        console.error(
-          `Error handling WebSocket message type "${message.MessageType}":`,
-          error,
-        );
-      }
-    }
+    bus.current.dispatch(message);
   }, []);
 
   const connectWebSocket = useCallback(() => {
@@ -240,8 +201,6 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     newWebSocket.onmessage = (e) => {
       try {
         const message = JSON.parse(e.data);
-        // Legacy single-slot state, still consumed by useWebsockets.
-        setLastMessage(message);
         // Pub/sub: deliver to every subscriber without coalescing.
         dispatchMessage(message);
       } catch (error) {
@@ -406,20 +365,12 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     },
     [ws, isConnected],
   );
-  const clearLastMessage = useCallback(() => {
-    setLastMessage(null);
-  }, []);
+  const value = useMemo(
+    () => ({ ws, isConnected, subscribe, sendMessage }),
+    [ws, isConnected, subscribe, sendMessage],
+  );
   return (
-    <WebSocketContext.Provider
-      value={{
-        ws,
-        isConnected,
-        lastMessage,
-        subscribe,
-        sendMessage,
-        clearLastMessage,
-      }}
-    >
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -434,3 +385,20 @@ export const useWebSocketContext = (): WebSocketContextType => {
   }
   return context;
 };
+
+/** Stable subscription; commands always see the most recently committed handler. */
+export function useWebSocketMessage(
+  messageType: string,
+  handler: WebSocketMessageHandler,
+) {
+  const { subscribe } = useWebSocketContext();
+  const latest = useRef(handler);
+  useLayoutEffect(() => {
+    latest.current = handler;
+  }, [handler]);
+  useEffect(
+    () =>
+      subscribe(messageType, (data, message) => latest.current(data, message)),
+    [messageType, subscribe],
+  );
+}

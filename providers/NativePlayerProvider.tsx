@@ -66,7 +66,10 @@ import {
 import { OrientationLock } from "@/packages/expo-screen-orientation";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import { useWebSocketContext } from "@/providers/WebSocketProvider";
+import {
+  useWebSocketContext,
+  useWebSocketMessage,
+} from "@/providers/WebSocketProvider";
 import {
   getActiveVideoPlayer,
   isNativePlayerSupported,
@@ -298,7 +301,7 @@ const NativePlayerProviderInner: React.FC<{
   const { lockOrientation, unlockOrientation } = useOrientation();
   const downloadUtils = useDownload();
   const revalidateProgressCache = useInvalidatePlaybackProgressCache();
-  const { lastMessage, subscribe, clearLastMessage } = useWebSocketContext();
+  const { subscribe } = useWebSocketContext();
 
   const sessionRef = useRef<NativeSession | null>(null);
   // Monotonic id per beginSession call: the config build awaits a PlaybackInfo
@@ -686,10 +689,6 @@ const NativePlayerProviderInner: React.FC<{
 
       setActiveItem(session.item);
       setIsActive(true);
-      // Drop any WS command that arrived before this session existed — a
-      // stale coalesced "Stop"/"Seek" must not execute the moment isActive
-      // flips (lastMessage has no other consumer while browsing).
-      clearLastMessage();
       reportPlaybackStart(session);
       void pushSegments(session);
       void pushEpisodeList(session);
@@ -703,7 +702,6 @@ const NativePlayerProviderInner: React.FC<{
       reportPlaybackStart,
       reportPlaybackStopped,
       releaseLiveStream,
-      clearLastMessage,
       pushSegments,
       pushEpisodeList,
     ],
@@ -1596,11 +1594,10 @@ const NativePlayerProviderInner: React.FC<{
     [subscribe, presentFromRequest],
   );
 
-  // General commands while the native player is up. The JS player route and a
-  // native session are mutually exclusive, so consuming lastMessage here can't
-  // double-handle with hooks/useWebsockets.
-  useEffect(() => {
-    if (!isActive || !lastMessage) return;
+  // Native and JS playback are mutually exclusive. Ignore commands while
+  // inactive instead of retaining a stale Stop/Seek for the next session.
+  useWebSocketMessage("*", (_data, lastMessage) => {
+    if (!isActive) return;
     const session = sessionRef.current;
     if (!session) return;
 
@@ -1612,13 +1609,19 @@ const NativePlayerProviderInner: React.FC<{
     if (!command) return;
 
     switch (command) {
-      case "PlayPause":
-        void (session.isPlaying ? nativePlayerPause() : nativePlayerPlay());
+      case "PlayPause": {
+        // Same-tick commands must see the result of the prior command before
+        // native playback events or a React commit arrive.
+        session.isPlaying = !session.isPlaying;
+        void (session.isPlaying ? nativePlayerPlay() : nativePlayerPause());
         break;
+      }
       case "Pause":
+        session.isPlaying = false;
         void nativePlayerPause();
         break;
       case "Unpause":
+        session.isPlaying = true;
         void nativePlayerPlay();
         break;
       case "Stop":
@@ -1662,15 +1665,7 @@ const NativePlayerProviderInner: React.FC<{
       default:
         return;
     }
-    clearLastMessage();
-  }, [
-    lastMessage,
-    isActive,
-    clearLastMessage,
-    handleAudioSelection,
-    handleSubtitleSelection,
-    playAdjacentItem,
-  ]);
+  });
 
   // Logout mid-playback tears the player down.
   useEffect(() => {
