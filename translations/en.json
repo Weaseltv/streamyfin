@@ -1170,6 +1170,11 @@
   },
   "cast": {
     "cast_to": "Cast to",
+    "select_device": "Select a device",
+    "casting_to": "Casting to {{device}}",
+    "airplay_bluetooth": "AirPlay & Bluetooth devices",
+    "screen_mirroring": "Screen mirroring",
+    "screen_mirroring_unavailable": "This phone has no screen mirroring picker. Look for Cast, Smart View or Screen mirroring in your phone's Settings.",
     "no_media_selected": "No media selected",
     "stop_casting": "Stop casting",
     "searching": "Looking for devices…",
