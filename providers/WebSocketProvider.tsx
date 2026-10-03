@@ -16,6 +16,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useNetworkStatus } from "@/providers/NetworkStatusProvider";
 import { getJellyfinHeaders, hasHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
+import { patchActorUserData } from "@/utils/query/actorUserData";
 
 // Query keys that depend on the set of library items and should be refreshed
 // when the server reports that the library changed (items added/removed/updated).
@@ -277,6 +278,13 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         return;
       }
 
+      // Mark cached actor catalogs dirty without starting requests behind
+      // the player. Their next focused mount fetches the changed catalog.
+      queryClient.invalidateQueries({
+        queryKey: ["actor", "movies"],
+        refetchType: "none",
+      });
+
       // A single scan can emit several LibraryChanged messages in quick
       // succession, so debounce the invalidation to refetch only once.
       if (libraryChangeDebounceRef.current) {
@@ -298,6 +306,17 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
       // progression-based home sections care about it.
       if (!((data?.UserDataList?.length ?? 0) > 0)) {
         return;
+      }
+
+      // Actor catalogs may stay fresh for a minute. Apply the server's user
+      // data to matching cached cards immediately without refetching them.
+      for (const [key, items] of queryClient.getQueriesData({
+        queryKey: ["actor", "movies"],
+      })) {
+        if (typeof data?.UserId === "string" && key[4] !== data.UserId)
+          continue;
+        const next = patchActorUserData(items, data.UserDataList);
+        if (next !== items) queryClient.setQueryData(key, next);
       }
 
       // Finishing an item can emit several UserDataChanged messages, so
