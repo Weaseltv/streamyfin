@@ -209,6 +209,19 @@ export function useDownloadActions() {
   return context;
 }
 
+const CompletedDownloadsContext = createContext<ReturnType<
+  typeof getAllDownloadedItems
+> | null>(null);
+export function useCompletedDownloads() {
+  const items = useContext(CompletedDownloadsContext);
+  if (Platform.isTV) return TV_DOWNLOADS.downloadedItems;
+  if (!items)
+    throw new Error(
+      "useCompletedDownloads must be used within a DownloadProvider",
+    );
+  return items;
+}
+
 export function useDownload() {
   const context = useContext(DownloadContext);
   if (Platform.isTV) return TV_DOWNLOADS;
@@ -250,9 +263,11 @@ export function DownloadProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DownloadActionsContext.Provider value={actions}>
-      <DownloadContext.Provider value={downloadUtils}>
-        {children}
-      </DownloadContext.Provider>
+      <CompletedDownloadsContext.Provider value={downloadUtils.downloadedItems}>
+        <DownloadContext.Provider value={downloadUtils}>
+          {children}
+        </DownloadContext.Provider>
+      </CompletedDownloadsContext.Provider>
     </DownloadActionsContext.Provider>
   );
 }
