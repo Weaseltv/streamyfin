@@ -616,7 +616,7 @@ export default function DirectPlayerPage() {
     // start each time.
   }, [stream, api]);
 
-  const togglePlay = async () => {
+  const togglePlay = useCallback(async () => {
     lightHapticFeedback();
     // Read the ref so two taps inside one render cycle don't both see the same
     // stale state and cancel each other out.
@@ -627,7 +627,7 @@ export default function DirectPlayerPage() {
     } else {
       videoRef.current?.play();
     }
-  };
+  }, [lightHapticFeedback, setPlaying]);
 
   // Key of the last "stopped" report, to dedupe the double teardown. The
   // PlaySessionId when there is one, the item id otherwise (see stopKey below).
