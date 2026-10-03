@@ -7,7 +7,9 @@ import type {
   MovieResult,
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
+import { seerr403ClearsSession } from "@/utils/jellyseerrSession";
 import { storage } from "@/utils/mmkv";
+import { store } from "@/utils/store";
 import "@/augmentations";
 import { t } from "i18next";
 import { useCallback, useMemo } from "react";
@@ -64,6 +66,11 @@ const JELLYSEERR_COOKIES = "JELLYSEERR_COOKIES";
 export const clearJellyseerrStorageData = () => {
   storage.remove(JELLYSEERR_USER);
   storage.remove(JELLYSEERR_COOKIES);
+  // Keep the in-memory user in sync with storage. Without this the atom held a
+  // stale user after a cleared session, so the silent reconnect skipped (it
+  // only runs when there is no user) and the Requests tab stayed gone until a
+  // full app restart. Resetting it lets useWeaselSeerrAutoConnect re-provision.
+  store.set(jellyseerrUserAtom, undefined);
 };
 
 export enum Endpoints {
@@ -467,7 +474,15 @@ export class JellyseerrApi {
           `Jellyseerr response error\nerror: ${error.toString()}\nurl: ${error?.config?.url}`,
           error.response?.data,
         );
-        if (error.response?.status === 403) {
+        // Only an auth-endpoint 403 means the session itself is dead and must be
+        // torn down (so the silent connect re-establishes it). A 403 from any
+        // other endpoint is a per-request permission result; clearing the whole
+        // session there logged the customer out of Seerr and hid the Requests
+        // tab after a single forbidden call. See utils/jellyseerrSession.
+        if (
+          error.response?.status === 403 &&
+          seerr403ClearsSession(error?.config?.url)
+        ) {
           clearJellyseerrStorageData();
         }
         return Promise.reject(error);
