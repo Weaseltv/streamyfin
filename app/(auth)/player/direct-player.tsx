@@ -795,6 +795,7 @@ export default function DirectPlayerPage() {
       PlaybackOrder: PlaybackOrder.Default,
     };
   }, [
+    isPlaybackStopped,
     stream,
     item?.Id,
     currentAudioIndex,
@@ -948,7 +949,8 @@ export default function DirectPlayerPage() {
 
   /** Build video source config for MPV */
   const videoSource = useMemo<MpvVideoSource | undefined>(() => {
-    if (!stream?.url) return undefined;
+    // A late commit during pop must not replay the old source after destroy.
+    if (isPlaybackStopped || !stream?.url) return undefined;
 
     const mediaSource = stream.mediaSource;
     const isTranscoding = Boolean(mediaSource?.TranscodingUrl);
@@ -1039,6 +1041,7 @@ export default function DirectPlayerPage() {
 
     return source;
   }, [
+    isPlaybackStopped,
     stream?.url,
     stream?.mediaSource,
     stream?.requiredHttpHeaders,
