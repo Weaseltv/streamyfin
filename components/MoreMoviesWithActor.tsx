@@ -33,7 +33,7 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
   const { t } = useTranslation();
 
   const { data: items, isLoading } = useQuery({
-    queryKey: ["actor", "movies", actorId, currentItem.Id],
+    queryKey: ["actor", "movies", actorId, currentItem.Id, user?.Id],
     queryFn: async ({ signal }) => {
       if (!api || !user?.Id) return [];
       const response = await getItemsApi(api).getItems(
