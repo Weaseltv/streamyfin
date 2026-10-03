@@ -11,6 +11,7 @@ import {
   getPlaystateApi,
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { File } from "expo-file-system";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -32,13 +33,14 @@ import {
   updatePlaybackSpeedSettings,
 } from "@/components/video-player/controls/utils/playback-speed-settings";
 import { VideoPlayerView } from "@/components/video-player/VideoPlayerView";
+import { Deadlines } from "@/constants/networkDeadlines";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useOrientation } from "@/hooks/useOrientation";
 import { usePlaybackManager } from "@/hooks/usePlaybackManager";
 import usePlaybackSpeed from "@/hooks/usePlaybackSpeed";
-import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
+import { useTwoWaySync } from "@/hooks/useTwoWaySync";
 import { useWebSocket } from "@/hooks/useWebsockets";
 import {
   type MpvOnErrorEventPayload,
@@ -70,6 +72,7 @@ import {
   isImageBasedSubtitle,
 } from "@/utils/jellyfin/subtitleUtils";
 import { writeToLog } from "@/utils/log";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 import {
   isLocalSubtitleIndex,
   localSubtitleIndex,
@@ -148,7 +151,8 @@ export default function DirectPlayerPage() {
   // Inactivity timer controls (TV only)
   const { pauseInactivityTimer, resumeInactivityTimer } = useInactivity();
 
-  const revalidateProgressCache = useInvalidatePlaybackProgressCache();
+  const refreshQueue = playbackRefreshQueue(useQueryClient());
+  const { syncPlaybackState } = useTwoWaySync();
 
   const lightHapticFeedback = useHaptic("light");
 
@@ -588,18 +592,21 @@ export default function DirectPlayerPage() {
     const reportPlaybackStart = async () => {
       const progressInfo = currentPlayStateInfo();
       if (progressInfo) {
-        await getPlaystateApi(api).reportPlaybackStart({
-          playbackStartInfo: {
-            ...progressInfo,
-            // This runs once the stream resolves, before MPV has produced a
-            // frame: the live state still says paused at 0:00. The source is
-            // built with autoplay, so describe the session that is starting
-            // instead, or the dashboard shows "paused at 0:00" until the first
-            // progress tick.
-            IsPaused: false,
-            PositionTicks: startTicks,
+        await getPlaystateApi(api).reportPlaybackStart(
+          {
+            playbackStartInfo: {
+              ...progressInfo,
+              // This runs once the stream resolves, before MPV has produced a
+              // frame: the live state still says paused at 0:00. The source is
+              // built with autoplay, so describe the session that is starting
+              // instead, or the dashboard shows "paused at 0:00" until the first
+              // progress tick.
+              IsPaused: false,
+              PositionTicks: startTicks,
+            },
           },
-        });
+          { timeout: Deadlines.reporting },
+        );
       }
     };
     // Fire-and-forget, so swallow instead of leaving an unhandled rejection
@@ -651,20 +658,23 @@ export default function DirectPlayerPage() {
         ? msToTicks(progress.get())
         : initialPlaybackTicksRef.current;
     try {
-      await getPlaystateApi(api).reportPlaybackStopped({
-        playbackStopInfo: {
-          ItemId: item.Id,
-          MediaSourceId: mediaSourceId,
-          PositionTicks: currentTimeInTicks,
-          PlaySessionId: stream.sessionId || undefined,
-          // Release the server-side live stream (and its tuner slot) on stop.
-          // Jellyfin only closes a live stream opened via autoOpenLiveStream when
-          // the stop report carries its LiveStreamId; without it the stream leaks
-          // and Live TV eventually fails for everyone with "M3U simultaneous
-          // stream limit has been reached". Undefined for non-live items (no-op).
-          LiveStreamId: stream.mediaSource?.LiveStreamId ?? undefined,
+      await getPlaystateApi(api).reportPlaybackStopped(
+        {
+          playbackStopInfo: {
+            ItemId: item.Id,
+            MediaSourceId: mediaSourceId,
+            PositionTicks: currentTimeInTicks,
+            PlaySessionId: stream.sessionId || undefined,
+            // Release the server-side live stream (and its tuner slot) on stop.
+            // Jellyfin only closes a live stream opened via autoOpenLiveStream when
+            // the stop report carries its LiveStreamId; without it the stream leaks
+            // and Live TV eventually fails for everyone with "M3U simultaneous
+            // stream limit has been reached". Undefined for non-live items (no-op).
+            LiveStreamId: stream.mediaSource?.LiveStreamId ?? undefined,
+          },
         },
-      });
+        { timeout: Deadlines.reporting },
+      );
     } catch (error) {
       // Un-mark the session so a later teardown path can retry: e.g. a failed
       // report from a WebSocket remote-stop (player still mounted) must not
@@ -682,21 +692,28 @@ export default function DirectPlayerPage() {
   }, [api, item, mediaSourceId, stream, progress, isConnected]);
 
   const stop = useCallback(() => {
-    // Update URL with final playback position before stopping
-    router.setParams({
-      playbackPosition: msToTicks(progress.get()).toString(),
-    });
-    reportPlaybackStopped();
+    const report = reportPlaybackStopped();
+    if (item?.Id) {
+      const id = item.Id;
+      const positionTicks =
+        progress.get() > 0
+          ? msToTicks(progress.get())
+          : initialPlaybackTicksRef.current;
+      refreshQueue.stopped(
+        item,
+        positionTicks,
+        report,
+        downloadUtils.getDownloadedItemById(id)
+          ? () => syncPlaybackState(id, Deadlines.reporting)
+          : undefined,
+      );
+    }
     markPlaybackStopped();
-    // Synchronously destroy the mpv instance + decoder + surface buffers
-    // BEFORE the screen unmounts. Otherwise the next screen (or the next
-    // episode's player) mounts while the old 4K decoder is still alive,
-    // causing OOM on low-RAM devices. Native stop() is idempotent so the
-    // later React unmount cleanup is still safe.
+    // Submit native decoder/demuxer cleanup before unmount. Native stop is
+    // asynchronous and idempotent; the unsafe mpv handle destroy stays disabled.
     videoRef.current?.destroy().catch(() => {});
     // Pre-libmpv-1.0 used `stop()`:
     // videoRef.current?.stop();
-    revalidateProgressCache();
     // Resume inactivity timer when leaving player (TV only)
     resumeInactivityTimer();
     // Release the keep-awake wakelock acquired during playback so it
@@ -711,6 +728,10 @@ export default function DirectPlayerPage() {
     markPlaybackStopped,
     progress,
     resumeInactivityTimer,
+    refreshQueue,
+    item,
+    downloadUtils,
+    syncPlaybackState,
   ]);
 
   // Keep refs to the latest stop / stopped-report so the effects below don't
