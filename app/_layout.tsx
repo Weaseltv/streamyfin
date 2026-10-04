@@ -7,7 +7,6 @@ import "@/augmentations";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import NetInfo from "@react-native-community/netinfo";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import * as BackgroundTask from "expo-background-task";
@@ -15,7 +14,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Image } from "expo-image";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import { ConfirmDeleteHost } from "@/components/common/ConfirmDeleteHost";
 import { GlobalModal } from "@/components/GlobalModal";
@@ -48,6 +47,10 @@ import {
   writeToLog,
 } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import {
+  createOfflinePersister,
+  isOfflineCatalogKey,
+} from "@/utils/query/offlinePersistence";
 import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
@@ -279,40 +282,29 @@ const queryClient = new QueryClient({
   },
 });
 
-/**
- * Query roots that are never useful offline and so must not be written into the
- * persisted snapshot.
- *
- * Everything successful used to be persisted, so a session of typing in the
- * search box left a permanent entry per keystroke-debounced query. The snapshot
- * is serialised with JSON.stringify on the JS thread, so its size is paid for
- * on every write and again on hydration at startup.
- *
- * Each of these needs the server to be reachable anyway, so caching them buys
- * nothing when it matters:
- * - search: results are meaningless without the server to search.
- * - sessions: a live view of what is playing elsewhere.
- * - logs: read straight out of MMKV by the diagnostics screen.
- * - appSize / musicCacheStats: recomputed on demand from local storage.
- */
-const NON_PERSISTED_QUERY_ROOTS = new Set([
-  "search",
-  "sessions",
-  "logs",
-  "appSize",
-  "musicCacheStats",
-]);
-
-// Create MMKV-based persister for offline support
-const mmkvPersister = createSyncStoragePersister({
-  storage: {
+// Query snapshots are separate from the authoritative downloads/music stores.
+const mmkvPersister = createOfflinePersister(
+  {
     getItem: (key) => storage.getString(key) ?? null,
     setItem: (key, value) => storage.set(key, value),
     removeItem: (key) => storage.remove(key),
   },
-});
+  {
+    gate: playbackRefreshQueue(queryClient),
+    scheduleIdle: (callback) => {
+      const handle = requestIdleCallback(callback, { timeout: 5000 });
+      return () => cancelIdleCallback(handle);
+    },
+  },
+);
 
 function Layout() {
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") mmkvPersister.flush();
+    });
+    return () => subscription.remove();
+  }, []);
   const { settings } = useSettings();
   const [user] = useAtom(userAtom);
   const [api] = useAtom(apiAtom);
@@ -534,10 +526,7 @@ function Layout() {
           shouldDehydrateQuery: (query) => {
             if (query.state.status !== "success") return false;
             if (query.options.gcTime === 0) return false;
-            const root = query.queryKey[0];
-            if (typeof root === "string" && NON_PERSISTED_QUERY_ROOTS.has(root))
-              return false;
-            return true;
+            return isOfflineCatalogKey(query.queryKey);
           },
         },
       }}
