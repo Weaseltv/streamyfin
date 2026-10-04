@@ -1,8 +1,12 @@
+import {
+  startupReadySessionAtom,
+  startupSessionKey,
+} from "@/utils/atoms/startupReady";
+import { startSessionRegistration } from "@/utils/startup/registration";
 import "@/augmentations";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import NetInfo from "@react-native-community/netinfo";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import * as BackgroundTask from "expo-background-task";
@@ -10,7 +14,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Image } from "expo-image";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import { ConfirmDeleteHost } from "@/components/common/ConfirmDeleteHost";
 import { GlobalModal } from "@/components/GlobalModal";
@@ -43,6 +47,11 @@ import {
   writeToLog,
 } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import {
+  createOfflinePersister,
+  isOfflineCatalogKey,
+} from "@/utils/query/offlinePersistence";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
 const CastDialogHost = Platform.isTV
@@ -57,10 +66,10 @@ import type {
   NotificationResponse,
 } from "expo-notifications/build/Notifications.types";
 import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
-import { Stack, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as TaskManager from "expo-task-manager";
-import { Provider as JotaiProvider, useAtom } from "jotai";
+import { Provider as JotaiProvider, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, LogBox } from "react-native";
@@ -215,6 +224,10 @@ const checkAndRequestPermissions = async () => {
   }
 };
 
+const MusicPlaybackEngine = Platform.isTV
+  ? () => null
+  : require("@/components/music/MusicPlaybackEngine").MusicPlaybackEngine;
+
 export default function RootLayout() {
   Appearance.setColorScheme("dark");
 
@@ -269,44 +282,32 @@ const queryClient = new QueryClient({
   },
 });
 
-/**
- * Query roots that are never useful offline and so must not be written into the
- * persisted snapshot.
- *
- * Everything successful used to be persisted, so a session of typing in the
- * search box left a permanent entry per keystroke-debounced query. The snapshot
- * is serialised with JSON.stringify on the JS thread, so its size is paid for
- * on every write and again on hydration at startup.
- *
- * Each of these needs the server to be reachable anyway, so caching them buys
- * nothing when it matters:
- * - search: results are meaningless without the server to search.
- * - sessions: a live view of what is playing elsewhere.
- * - logs: read straight out of MMKV by the diagnostics screen.
- * - appSize / musicCacheStats: recomputed on demand from local storage.
- */
-const NON_PERSISTED_QUERY_ROOTS = new Set([
-  "search",
-  "sessions",
-  "logs",
-  "appSize",
-  "musicCacheStats",
-]);
-
-// Create MMKV-based persister for offline support
-const mmkvPersister = createSyncStoragePersister({
-  storage: {
+// Query snapshots are separate from the authoritative downloads/music stores.
+const mmkvPersister = createOfflinePersister(
+  {
     getItem: (key) => storage.getString(key) ?? null,
     setItem: (key, value) => storage.set(key, value),
     removeItem: (key) => storage.remove(key),
   },
-});
+  {
+    gate: playbackRefreshQueue(queryClient),
+    scheduleIdle: (callback) => {
+      const handle = requestIdleCallback(callback, { timeout: 5000 });
+      return () => cancelIdleCallback(handle);
+    },
+  },
+);
 
 function Layout() {
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") mmkvPersister.flush();
+    });
+    return () => subscription.remove();
+  }, []);
   const { settings } = useSettings();
   const [user] = useAtom(userAtom);
   const [api] = useAtom(apiAtom);
-  const _segments = useSegments();
   const router = useRouter();
 
   // Enable TV menu key interception so React Native handles it instead of tvOS
@@ -315,85 +316,146 @@ function Layout() {
   }, []);
 
   useEffect(() => {
-    i18n.changeLanguage(
-      settings?.preferedLanguage ?? getLocales()[0].languageCode ?? "en",
-    );
+    const language =
+      settings?.preferedLanguage ?? getLocales()[0].languageCode ?? "en";
+    if (i18n.language !== language) void i18n.changeLanguage(language);
   }, [settings?.preferedLanguage, i18n]);
 
   useNotificationObserver();
 
-  const [expoPushToken, setExpoPushToken] = useState<ExpoPushToken>();
+  const sessionKey = startupSessionKey(api?.basePath, user?.Id);
+  const startupReady = useAtomValue(startupReadySessionAtom);
+  const sessionRef = useRef(sessionKey);
+  sessionRef.current = sessionKey;
+  const registrationAttempts = useRef(new Set<string>());
+  const postedTokens = useRef(new Set<string>());
+  const [expoPushToken, setExpoPushToken] = useState<{
+    token: ExpoPushToken;
+    sessionKey: string;
+  }>();
   const notificationListener = useRef<EventSubscription>(null);
   const responseListener = useRef<EventSubscription>(null);
 
   useEffect(() => {
-    if (!Platform.isTV && expoPushToken && api && user) {
+    if (
+      !Platform.isTV &&
+      expoPushToken &&
+      api &&
+      user?.Id &&
+      sessionKey &&
+      expoPushToken.sessionKey === sessionKey
+    ) {
+      const postKey = JSON.stringify([sessionKey, expoPushToken.token.data]);
+      if (postedTokens.current.has(postKey)) return;
+      postedTokens.current.add(postKey);
       api
         ?.post("/Streamyfin/device", {
-          token: expoPushToken.data,
+          token: expoPushToken.token.data,
           deviceId: getOrSetDeviceId(),
           userId: user.Id,
         })
-        .catch((_) =>
-          writeErrorLog("Failed to push expo push token to plugin"),
-        );
-    }
-  }, [api, expoPushToken, user]);
-
-  const registerNotifications = useCallback(async () => {
-    if (Platform.OS === "android") {
-      await Notifications?.setNotificationChannelAsync("default", {
-        name: "default",
-      });
-
-      // Create dedicated channel for download notifications
-      await Notifications?.setNotificationChannelAsync("downloads", {
-        name: "Downloads",
-        importance: Notifications.AndroidImportance.DEFAULT,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FF231F7C",
-      });
-    }
-
-    const granted = await checkAndRequestPermissions();
-    if (!granted) {
-      console.log(
-        "Notification permissions not granted, skipping background fetch and push token registration.",
-      );
-      return;
-    }
-
-    if (!Platform.isTV && user && user.Policy?.IsAdministrator) {
-      await registerBackgroundFetchAsyncSessions();
-    }
-
-    // only create push token for real devices (pointless for emulators)
-    if (Device.isDevice) {
-      Notifications?.getExpoPushTokenAsync({
-        // Read from config so this can never drift from app.json again. The literal
-        // here was UPSTREAM's project id: push tokens were being minted against
-        // Streamyfin's EAS project, not ours.
-        projectId:
-          Constants.expoConfig?.extra?.eas?.projectId ??
-          "f86e16f3-c729-4e85-9acc-34a37f67ef07",
-      })
-        .then((token: ExpoPushToken) => {
-          if (token) {
-            console.log("Expo push token obtained:", token.data);
-            setExpoPushToken(token);
-          }
-        })
-        .catch((reason: any) => {
-          console.error("Failed to get push token:", reason);
-          writeErrorLog("Failed to get Expo push token", reason);
+        .catch(() => {
+          postedTokens.current.delete(postKey);
+          writeErrorLog("Failed to push expo push token to plugin");
         });
     }
-  }, [user]);
+  }, [api, expoPushToken, sessionKey, user?.Id]);
+
+  useEffect(() => {
+    const createChannels = async () => {
+      if (Platform.OS === "android") {
+        await Notifications?.setNotificationChannelAsync("default", {
+          name: "default",
+        });
+
+        // Create dedicated channel for download notifications
+        await Notifications?.setNotificationChannelAsync("downloads", {
+          name: "Downloads",
+          importance: Notifications.AndroidImportance.DEFAULT,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#FF231F7C",
+        });
+      }
+    };
+    if (!Platform.isTV)
+      void createChannels().catch(() =>
+        writeErrorLog("Failed to create notification channels"),
+      );
+  }, []);
+
+  const isAdministrator = !!user?.Policy?.IsAdministrator;
+  const registerNotifications = useCallback(
+    async (owner: string, isActive: () => boolean) => {
+      const isCurrent = () => isActive() && sessionRef.current === owner;
+      const granted = await checkAndRequestPermissions();
+      if (!isCurrent()) return;
+      if (!granted) {
+        console.log(
+          "Notification permissions not granted, skipping background fetch and push token registration.",
+        );
+        return;
+      }
+
+      if (!Platform.isTV && isAdministrator) {
+        await registerBackgroundFetchAsyncSessions();
+      }
+
+      if (!isCurrent()) return;
+      // only create push token for real devices (pointless for emulators)
+      if (Device.isDevice) {
+        const token = await Notifications?.getExpoPushTokenAsync({
+          // Read from config so this can never drift from app.json again. The literal
+          // here was UPSTREAM's project id: push tokens were being minted against
+          // Streamyfin's EAS project, not ours.
+          projectId:
+            Constants.expoConfig?.extra?.eas?.projectId ??
+            "f86e16f3-c729-4e85-9acc-34a37f67ef07",
+        });
+        if (token && isCurrent()) {
+          setExpoPushToken({ token, sessionKey: owner });
+        }
+      }
+    },
+    [isAdministrator],
+  );
+
+  useEffect(() => {
+    if (Platform.isTV || !sessionKey || startupReady !== sessionKey) return;
+    const attemptKey = JSON.stringify([
+      sessionKey,
+      !!user?.Policy?.IsAdministrator,
+    ]);
+    if (registrationAttempts.current.has(attemptKey)) return;
+    let complete = false;
+    let active = true;
+    const cancel = startSessionRegistration({
+      register: async () => {
+        registrationAttempts.current.add(attemptKey);
+        await registerNotifications(sessionKey, () => active);
+      },
+      isCurrent: () => sessionRef.current === sessionKey,
+      onComplete: () => {
+        complete = true;
+      },
+      onError: (reason) => {
+        registrationAttempts.current.delete(attemptKey);
+        writeErrorLog("Failed to register notifications", reason);
+      },
+    });
+    return () => {
+      active = false;
+      cancel();
+      if (!complete) registrationAttempts.current.delete(attemptKey);
+    };
+  }, [
+    sessionKey,
+    startupReady,
+    user?.Policy?.IsAdministrator,
+    registerNotifications,
+  ]);
 
   useEffect(() => {
     if (!Platform.isTV) {
-      void registerNotifications();
-
       notificationListener.current =
         Notifications?.addNotificationReceivedListener(
           (notification: Notification) => {
@@ -452,7 +514,7 @@ function Layout() {
         responseListener.current?.remove();
       };
     }
-  }, [user]);
+  }, [router]);
 
   return (
     <PersistQueryClientProvider
@@ -464,10 +526,7 @@ function Layout() {
           shouldDehydrateQuery: (query) => {
             if (query.state.status !== "success") return false;
             if (query.options.gcTime === 0) return false;
-            const root = query.queryKey[0];
-            if (typeof root === "string" && NON_PERSISTED_QUERY_ROOTS.has(root))
-              return false;
-            return true;
+            return isOfflineCatalogKey(query.queryKey);
           },
         },
       }}
@@ -483,15 +542,38 @@ function Layout() {
                       <DownloadProvider>
                         <NativePlayerProvider>
                           <MusicPlayerProvider>
+                            {user?.Id && <MusicPlaybackEngine />}
                             <GlobalModalProvider>
                               <BottomSheetModalProvider>
                                 <IntroSheetProvider>
                                   <ThemeProvider value={DarkTheme}>
                                     <SystemBars style='light' hidden={false} />
-                                    <Stack initialRouteName='(auth)/(tabs)'>
+                                    <Stack
+                                      initialRouteName='(auth)/(tabs)'
+                                      screenListeners={({ navigation }) => ({
+                                        transitionEnd: () => {
+                                          // Also covers a route replacement/logout: release only
+                                          // after a real native transition and when no player remains.
+                                          if (
+                                            !navigation
+                                              .getState()
+                                              .routes.some(
+                                                (route) =>
+                                                  route.name ===
+                                                  "(auth)/player",
+                                              )
+                                          ) {
+                                            playbackRefreshQueue(
+                                              queryClient,
+                                            ).close();
+                                          }
+                                        },
+                                      })}
+                                    >
                                       <Stack.Screen
                                         name='(auth)/(tabs)'
                                         options={{
+                                          freezeOnBlur: !Platform.isTV,
                                           headerShown: false,
                                           title: "",
                                           header: () => null,

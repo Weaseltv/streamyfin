@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import { useMemo } from "react";
 import { Text } from "@/components/common/Text";
 import { textShadowStyle } from "@/components/jellyseerr/discover/GenericSlideCard";

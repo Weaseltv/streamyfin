@@ -5,7 +5,7 @@ import type {
   MediaStream,
 } from "@jellyfin/sdk/lib/generated-client";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity } from "react-native";
 import { Loader } from "@/components/Loader";
@@ -44,18 +44,6 @@ export const MediaSourceButton: React.FC<Props> = ({
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const firstMediaSource = item?.MediaSources?.[0];
-    if (!firstMediaSource) return;
-    setSelectedOptions((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        mediaSource: firstMediaSource,
-      };
-    });
-  }, [item, setSelectedOptions]);
 
   const getMediaSourceDisplayName = useCallback((source: MediaSourceInfo) => {
     const videoStream = source.MediaStreams?.find((x) => x.Type === "Video");

@@ -74,6 +74,7 @@ export const ItemImage: FC<Props> = ({
   return (
     <Image
       cachePolicy={"memory-disk"}
+      recyclingKey={`${item.Id ?? ""}:${variant}`}
       transition={300}
       placeholder={{ blurhash }}
       style={{

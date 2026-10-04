@@ -21,9 +21,6 @@ import { eventBus } from "@/utils/eventBus";
 const MiniPlayerBar = Platform.isTV
   ? () => null
   : require("@/components/music/MiniPlayerBar").MiniPlayerBar;
-const MusicPlaybackEngine = Platform.isTV
-  ? () => null
-  : require("@/components/music/MusicPlaybackEngine").MusicPlaybackEngine;
 
 const IS_ANDROID_TV = Platform.isTV && Platform.OS === "android";
 
@@ -145,6 +142,7 @@ export default function TabLayout() {
         screenOptions={{
           headerShown: false,
           lazy: true,
+          freezeOnBlur: true,
           sceneStyle: { backgroundColor: NeonBoard.stage },
         }}
       >
@@ -189,7 +187,6 @@ export default function TabLayout() {
         />
       </Tabs>
       <MiniPlayerBar />
-      <MusicPlaybackEngine />
     </View>
   );
 }

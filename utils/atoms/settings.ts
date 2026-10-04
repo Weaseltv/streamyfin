@@ -579,7 +579,8 @@ const saveSettings = (settings: Settings) => {
   }
 };
 
-export const settingsAtom = atom<Partial<Settings> | null>(null);
+// Seed before first render so the saved locale is not replaced by device defaults.
+export const settingsAtom = atom<Partial<Settings> | null>(loadSettings());
 const loadPluginSettings = () => {
   try {
     return storage.get<PluginLockableSettings>(STREAMYFIN_PLUGIN_SETTINGS);

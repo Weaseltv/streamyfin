@@ -48,7 +48,8 @@ export const useSessions = ({
 export const useAllSessions = ({
   refetchInterval = 5 * 1000,
   activeWithinSeconds = 360,
-}: useSessionsProps) => {
+  enabled = true,
+}: Partial<useSessionsProps> & { enabled?: boolean } = {}) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
 
@@ -63,7 +64,8 @@ export const useAllSessions = ({
       });
       return response.data;
     },
-    refetchInterval: refetchInterval,
+    enabled: enabled && !!api && !!user?.Policy?.IsAdministrator,
+    refetchInterval: enabled ? refetchInterval : false,
   });
 
   return { sessions: data, isLoading };
