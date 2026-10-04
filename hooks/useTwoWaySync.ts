@@ -21,7 +21,10 @@ export const useTwoWaySync = () => {
    *
    * @returns A Promise<boolean> indicating whether a server update was made (true) or not (false).
    */
-  const syncPlaybackState = async (itemId: string): Promise<boolean> => {
+  const syncPlaybackState = async (
+    itemId: string,
+    timeoutMs?: number,
+  ): Promise<boolean> => {
     if (!api || !user || !isConnected) {
       // Cannot sync if offline or not logged in
       return false;
@@ -35,7 +38,10 @@ export const useTwoWaySync = () => {
     > => {
       try {
         return (
-          await getUserLibraryApi(api).getItem({ itemId, userId: user.Id })
+          await getUserLibraryApi(api).getItem(
+            { itemId, userId: user.Id },
+            timeoutMs ? { timeout: timeoutMs } : undefined,
+          )
         ).data;
       } catch (error) {
         // A 404 means the item was deleted server-side while still downloaded
@@ -78,17 +84,20 @@ export const useTwoWaySync = () => {
     } else if (remoteLastPlayed < localLastPlayed) {
       // Since we're this is the source of truth, essentially need to make sure the played status matches the local item.
       try {
-        await getItemsApi(api).updateItemUserData({
-          itemId: localItem.item.Id!,
-          userId: user.Id,
-          updateUserItemDataDto: {
-            Played: localItem.item.UserData?.Played,
-            PlaybackPositionTicks:
-              localItem.item.UserData?.PlaybackPositionTicks,
-            PlayedPercentage: localItem.item.UserData?.PlayedPercentage,
-            LastPlayedDate: localItem.item.UserData?.LastPlayedDate,
+        await getItemsApi(api).updateItemUserData(
+          {
+            itemId: localItem.item.Id!,
+            userId: user.Id,
+            updateUserItemDataDto: {
+              Played: localItem.item.UserData?.Played,
+              PlaybackPositionTicks:
+                localItem.item.UserData?.PlaybackPositionTicks,
+              PlayedPercentage: localItem.item.UserData?.PlayedPercentage,
+              LastPlayedDate: localItem.item.UserData?.LastPlayedDate,
+            },
           },
-        });
+          timeoutMs ? { timeout: timeoutMs } : undefined,
+        );
       } catch (error) {
         console.error(
           "Failed to update item user data during syncPlaybackState:",
