@@ -58,7 +58,7 @@ import type {
   NotificationResponse,
 } from "expo-notifications/build/Notifications.types";
 import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
-import { Stack, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as TaskManager from "expo-task-manager";
 import { Provider as JotaiProvider, useAtom } from "jotai";
@@ -216,6 +216,10 @@ const checkAndRequestPermissions = async () => {
   }
 };
 
+const MusicPlaybackEngine = Platform.isTV
+  ? () => null
+  : require("@/components/music/MusicPlaybackEngine").MusicPlaybackEngine;
+
 export default function RootLayout() {
   Appearance.setColorScheme("dark");
 
@@ -307,7 +311,6 @@ function Layout() {
   const { settings } = useSettings();
   const [user] = useAtom(userAtom);
   const [api] = useAtom(apiAtom);
-  const _segments = useSegments();
   const router = useRouter();
 
   // Enable TV menu key interception so React Native handles it instead of tvOS
@@ -484,6 +487,7 @@ function Layout() {
                       <DownloadProvider>
                         <NativePlayerProvider>
                           <MusicPlayerProvider>
+                            {user?.Id && <MusicPlaybackEngine />}
                             <GlobalModalProvider>
                               <BottomSheetModalProvider>
                                 <IntroSheetProvider>
@@ -514,6 +518,7 @@ function Layout() {
                                       <Stack.Screen
                                         name='(auth)/(tabs)'
                                         options={{
+                                          freezeOnBlur: !Platform.isTV,
                                           headerShown: false,
                                           title: "",
                                           header: () => null,

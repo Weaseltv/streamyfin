@@ -16,6 +16,7 @@ type ICommonScreenOptions = ComponentProps<typeof Stack.Screen>["options"];
  * stage with a Condensed title; nothing is translucent or blurred.
  */
 export const stackScreenOptions: ICommonScreenOptions = {
+  freezeOnBlur: !Platform.isTV,
   headerTintColor: NeonBoard.text,
   headerBackButtonDisplayMode: "minimal",
   headerStyle: { backgroundColor: NeonBoard.stage },
