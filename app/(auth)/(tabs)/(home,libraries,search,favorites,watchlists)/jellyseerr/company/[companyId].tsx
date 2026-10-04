@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import { useMemo } from "react";
 import { Image } from "@/components/common/ServerImage";
 import ParallaxSlideShow from "@/components/jellyseerr/ParallaxSlideShow";

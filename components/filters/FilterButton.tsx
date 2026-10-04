@@ -10,7 +10,9 @@ interface FilterButtonProps<T> extends ViewProps {
   values: T[];
   title: string;
   set: (value: T[]) => void;
-  queryFn: (params: any) => Promise<any>;
+  queryFn?: (params: any) => Promise<any>;
+  /** Shared endpoint results; suppress the individual query when supplied. */
+  options?: T[];
   renderItemLabel: (item: T) => string;
   multiple?: boolean;
   icon?: "filter" | "sort";
@@ -24,6 +26,7 @@ interface FilterButtonProps<T> extends ViewProps {
 export const FilterButton = <T,>({
   id,
   queryFn,
+  options,
   queryKey,
   set,
   values, // selected values
@@ -36,12 +39,14 @@ export const FilterButton = <T,>({
 }: FilterButtonProps<T>) => {
   const { showModal, hideModal } = useGlobalModal();
 
-  const { data: filters } = useQuery<T[]>({
+  const { data: fetchedFilters } = useQuery<T[]>({
     queryKey: ["filters", title, queryKey, id],
     queryFn,
-    staleTime: 0,
-    enabled: !!id && !!queryFn && !!queryKey,
+    staleTime: 60_000,
+    enabled: options === undefined && !!id && !!queryFn && !!queryKey,
   });
+
+  const filters = options ?? fetchedFilters;
 
   const openSheet = () => {
     if (!filters?.length) return;

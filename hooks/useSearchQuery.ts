@@ -1,4 +1,4 @@
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** Debounce typing, but let the keyboard Search key submit immediately. */

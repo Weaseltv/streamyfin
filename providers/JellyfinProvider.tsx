@@ -26,7 +26,7 @@ import { JELLYFIN_CLIENT_NAME } from "@/constants/Client";
 import useRouter from "@/hooks/useAppRouter";
 import { useInterval } from "@/hooks/useInterval";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
-import { useSettings } from "@/utils/atoms/settings";
+import { useSettingsActions } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
@@ -46,13 +46,14 @@ import {
 import { store } from "@/utils/store";
 import { clearTVDiscoverySafely } from "@/utils/tvDiscovery/sync";
 import { APP_VERSION } from "@/utils/version";
+import { clearWeaselSeerrRefusal } from "@/utils/weaselSeerrRefusal";
 
 interface Server {
   address: string;
 }
 
 /** Server URLs compare equal regardless of trailing slashes. */
-const sameServerUrl = (a: string | undefined, b: string) =>
+const sameServerUrl = (a: string | null | undefined, b: string) =>
   (a ?? "").replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 const initialApi = (() => {
@@ -181,7 +182,8 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useAtom(userAtom);
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [secret, setSecret] = useState<string | null>(null);
-  const { setPluginSettings, refreshStreamyfinPluginSettings } = useSettings();
+  const { setPluginSettings, refreshStreamyfinPluginSettings } =
+    useSettingsActions();
   const { clearAllJellyseerData, setJellyseerrUser } = useJellyseerr();
   const queryClient = useQueryClient();
 
@@ -543,6 +545,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           writeErrorLog("Failed to delete expo push token for device"),
         );
 
+      // WeaselPlex: a refused Seerr connect is forgotten on sign-out, so the
+      // next sign-in tries straight away.
+      if (user?.Id) clearWeaselSeerrRefusal(user.Id);
       await clearSessionState();
     },
     onError: (error) => {
@@ -762,8 +767,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
             jellyfin,
             serverUrl,
             token,
+            store.get(apiAtom),
           );
-          setApi(apiInstance);
+          if (store.get(apiAtom) !== apiInstance) setApi(apiInstance);
 
           if (storedUser?.Id) {
             setUser(storedUser);
@@ -780,7 +786,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
               // The response can resolve long after startup (no axios timeout).
               // If the session changed meanwhile (logout, account switch), drop
               // it instead of repopulating a stale user / re-saving credentials.
-              if (getTokenFromStorage() !== token) return;
+              if (
+                getTokenFromStorage() !== token ||
+                !sameServerUrl(getServerUrlFromStorage(), serverUrl)
+              )
+                return;
               setUser(response.data);
 
               // Migrate current session to secure storage if not already saved
