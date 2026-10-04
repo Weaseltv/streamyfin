@@ -14,7 +14,7 @@ import {
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
 import { useIsFocused, useNavigation, useSegments } from "expo-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, RefreshControl, ScrollView, View } from "react-native";
@@ -39,7 +39,10 @@ import useRouter from "@/hooks/useAppRouter";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
-import { useDownload } from "@/providers/DownloadProvider";
+import {
+  useCompletedDownloads,
+  useDownloadActions,
+} from "@/providers/DownloadProvider";
 import { useIntroSheet } from "@/providers/IntroSheetProvider";
 import {
   apiAtom,
@@ -51,6 +54,10 @@ import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
+import {
+  startupReadySessionAtom,
+  startupSessionKey,
+} from "@/utils/atoms/startupReady";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
 import { serverHost } from "@/utils/serverHost";
@@ -98,7 +105,8 @@ const HomeMobile = () => {
   const { settings, refreshStreamyfinPluginSettings } = useSettings();
   const navigation = useNavigation();
   const scrollRef = useRef<FlashListRef<Section>>(null);
-  const { downloadedItems, cleanCacheDirectory } = useDownload();
+  const downloadedItems = useCompletedDownloads();
+  const { cleanCacheDirectory } = useDownloadActions();
   const prevIsConnected = useRef<boolean | null>(false);
   const {
     isConnected,
@@ -597,6 +605,21 @@ const HomeMobile = () => {
     );
     return () => clearTimeout(timer);
   }, [allHighPrioritySettled]);
+
+  const setStartupReady = useSetAtom(startupReadySessionAtom);
+  useEffect(() => {
+    const key = startupSessionKey(api?.basePath, user?.Id);
+    if (!isFocused || !key || l1 || !allHighPrioritySettled) return;
+    const frame = requestAnimationFrame(() => setStartupReady(key));
+    return () => cancelAnimationFrame(frame);
+  }, [
+    api?.basePath,
+    user?.Id,
+    isFocused,
+    l1,
+    allHighPrioritySettled,
+    setStartupReady,
+  ]);
 
   const markSectionSettled = useCallback(
     (queryKey: (string | undefined | null)[]) => {

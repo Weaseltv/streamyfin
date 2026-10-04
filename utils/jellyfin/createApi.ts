@@ -1,6 +1,10 @@
 import type { Api, Jellyfin } from "@jellyfin/sdk";
+import axios from "axios";
 import { Deadlines } from "@/constants/networkDeadlines";
-import { getJellyfinHeaders } from "@/utils/customHeaders";
+import { getJellyfinHeadersForUrl } from "@/utils/customHeaders";
+import { isEquivalentSessionApi } from "./apiIdentity";
+
+const managedApis = new WeakSet<Api>();
 
 /**
  * Creates a Jellyfin `Api` whose every request carries the custom proxy auth
@@ -18,8 +22,18 @@ export function createApiWithCustomHeaders(
   jellyfin: Jellyfin,
   serverUrl: string,
   accessToken?: string,
+  existingApi?: Api | null,
 ): Api {
-  const api = jellyfin.createApi(serverUrl, accessToken);
+  if (
+    existingApi &&
+    managedApis.has(existingApi) &&
+    isEquivalentSessionApi(existingApi, jellyfin, serverUrl, accessToken)
+  )
+    return existingApi;
+
+  // SDK defaults share the global Axios client. A new session needs its own
+  // interceptor; otherwise recreating APIs accumulates callbacks for old servers.
+  const api = jellyfin.createApi(serverUrl, accessToken, axios.create());
 
   // The SDK leaves this unset, which means "wait forever". A server that
   // accepts the connection but never answers would otherwise hang Play, a
@@ -28,11 +42,17 @@ export function createApiWithCustomHeaders(
   api.axiosInstance.defaults.timeout = Deadlines.negotiation;
 
   api.axiosInstance.interceptors.request.use((config) => {
-    for (const [key, value] of Object.entries(getJellyfinHeaders(serverUrl))) {
+    const url = api.axiosInstance.getUri({
+      ...config,
+      baseURL: config.baseURL ?? api.basePath,
+    });
+    const headers = getJellyfinHeadersForUrl(url, api.basePath);
+    for (const [key, value] of Object.entries(headers ?? {})) {
       config.headers.set(key, value);
     }
     return config;
   });
 
+  managedApis.add(api);
   return api;
 }

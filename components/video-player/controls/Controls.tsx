@@ -5,8 +5,9 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { useKeyEventListener } from "expo-key-event";
 import { useLocalSearchParams } from "expo-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
+  type ComponentProps,
   type FC,
   useCallback,
   useEffect,
@@ -150,12 +151,10 @@ export const Controls: FC<Props> = ({
     isOffline: offline,
   });
 
-  const {
-    trickPlayUrl,
-    calculateTrickplayUrl,
-    trickplayInfo,
-    prefetchAllTrickplayImages,
-  } = useTrickplay(item);
+  const { trickPlayUrl, calculateTrickplayUrl, trickplayInfo } = useTrickplay(
+    item,
+    !isBuffering,
+  );
 
   const min = useSharedValue(0);
   // Regular value for use during render (avoids Reanimated warning)
@@ -166,10 +165,6 @@ export const Controls: FC<Props> = ({
   const controlsOpacity = useSharedValue(showControls ? 1 : 0);
   const headerTranslateY = useSharedValue(showControls ? 0 : -50);
   const bottomTranslateY = useSharedValue(showControls ? 0 : 50);
-
-  useEffect(() => {
-    prefetchAllTrickplayImages();
-  }, [prefetchAllTrickplayImages]);
 
   // Animate controls visibility
   useEffect(() => {
@@ -287,13 +282,6 @@ export const Controls: FC<Props> = ({
     }
   });
 
-  // Time management hook
-  const { currentTime, remainingTime } = useVideoTime({
-    progress,
-    max,
-    isSeeking,
-  });
-
   // Chapter navigation hook
   const {
     hasChapters,
@@ -397,101 +385,6 @@ export const Controls: FC<Props> = ({
     audioIndex: string;
     subtitleIndex: string;
   }>();
-
-  const { showSkipButton, skipIntro } = useIntroSkipper(
-    item.Id!,
-    currentTime,
-    seek,
-    play,
-    offline,
-    api,
-    downloadedFiles,
-  );
-
-  const { showSkipCreditButton, skipCredit, hasContentAfterCredits } =
-    useCreditSkipper(
-      item.Id!,
-      currentTime,
-      seek,
-      play,
-      offline,
-      api,
-      downloadedFiles,
-      maxMs,
-    );
-
-  // Same gate as the bookmark icon in BottomControls, so the skip overlay
-  // only shifts left when the icon is actually shown.
-  const showsChapterIcon = useMemo(
-    () => hasChapterMarkers(item.Chapters, maxMs),
-    [item.Chapters, maxMs],
-  );
-
-  // Whether the "Next Episode" countdown can be rendered at all. The Skip
-  // Credits button yields to it only when this is true; if autoplay is
-  // disabled or its episode limit is reached, Skip Credits must stay available.
-  const willShowNextEpisode =
-    !!nextItem &&
-    settings.autoPlayNextEpisode !== false &&
-    (settings.maxAutoPlayEpisodeCount.value === -1 ||
-      autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value);
-
-  // Show during credits when nothing plays after them, or in the last seconds.
-  const showNextEpisode =
-    willShowNextEpisode &&
-    ((showSkipCreditButton && !hasContentAfterCredits) ||
-      remainingTime < 10000);
-
-  // Autoplay would run at EOF but the episode cap stops it: ask "Still
-  // watching?" there instead, with playback paused — mirroring the native
-  // player's stillWatchingRequired flow. Gated on reaching the end so the
-  // prompt never covers a video that is still playing.
-  const stillWatchingRequired =
-    !!nextItem &&
-    settings.autoPlayNextEpisode !== false &&
-    settings.maxAutoPlayEpisodeCount.value !== -1 &&
-    autoPlayEpisodeCount >= settings.maxAutoPlayEpisodeCount.value;
-
-  const [stillWatchingVisible, setStillWatchingVisible] = useState(false);
-  // The cap-hitting autoplay updates the episode count synchronously while
-  // currentTime/remainingTime still hold the outgoing episode's near-zero
-  // values (the next item loads async), so "at EOF" alone would fire the
-  // prompt over the incoming episode. Only a progress tick from mid-playback
-  // of the final episode itself arms the trigger.
-  const stillWatchingArmedRef = useRef(false);
-
-  // Reset after an in-place episode switch (setParams keeps Controls mounted).
-  useEffect(() => {
-    stillWatchingArmedRef.current = false;
-    setStillWatchingVisible(false);
-  }, [item.Id]);
-
-  useEffect(() => {
-    if (!stillWatchingRequired || stillWatchingVisible || maxMs <= 0) {
-      return;
-    }
-    if (
-      currentTime > 0 &&
-      remainingTime > CONTROLS_CONSTANTS.STILL_WATCHING_EOF_WINDOW_MS
-    ) {
-      stillWatchingArmedRef.current = true;
-      return;
-    }
-    if (
-      stillWatchingArmedRef.current &&
-      remainingTime <= CONTROLS_CONSTANTS.STILL_WATCHING_EOF_WINDOW_MS
-    ) {
-      setStillWatchingVisible(true);
-      pause();
-    }
-  }, [
-    stillWatchingVisible,
-    stillWatchingRequired,
-    maxMs,
-    currentTime,
-    remainingTime,
-    pause,
-  ]);
 
   const goToItemCommon = useCallback(
     (item: BaseItemDto) => {
@@ -715,15 +608,15 @@ export const Controls: FC<Props> = ({
             style={bottomAnimatedStyle}
             pointerEvents={showControls ? "auto" : "none"}
           >
-            <BottomControls
+            <TimedBottomControls
               item={item}
               chapters={item.Chapters}
               durationMs={maxMs}
               showControls={showControls}
               isSliding={isSliding}
               showRemoteBubble={showRemoteBubble}
-              currentTime={currentTime}
-              remainingTime={remainingTime}
+              progress={progress}
+              isSeeking={isSeeking}
               handleControlsInteraction={handleControlsInteraction}
               min={min}
               max={max}
@@ -740,29 +633,221 @@ export const Controls: FC<Props> = ({
               time={isSliding || showRemoteBubble ? time : remoteTime}
             />
           </Animated.View>
-          {/* Skip Intro / Skip Credits float independently of the controls so
-              they're visible (and tappable) without summoning the controls. */}
-          <SkipSegmentOverlay
-            showSkipButton={showSkipButton}
-            showSkipCreditButton={showSkipCreditButton}
-            hasContentAfterCredits={hasContentAfterCredits}
-            willShowNextEpisode={willShowNextEpisode}
-            showNextEpisode={showNextEpisode}
-            skipIntro={skipIntro}
-            skipCredit={skipCredit}
-            onNextEpisodeFinish={handleNextEpisodeAutoPlay}
-            onNextEpisodePress={handleNextEpisodeManual}
-            controlsVisible={showControls}
-            hasChapters={showsChapterIcon}
-          />
         </>
       )}
-      {stillWatchingVisible && (
-        <ContinueWatchingOverlay goToNextItem={handleContinueWatching} />
-      )}
+      <PlaybackTimingOverlays
+        item={item}
+        progress={progress}
+        max={max}
+        isSeeking={isSeeking}
+        maxMs={maxMs}
+        seek={seek}
+        play={play}
+        pause={pause}
+        api={api}
+        downloadedFiles={downloadedFiles}
+        offline={offline}
+        nextItem={nextItem}
+        showControls={showControls}
+        episodeView={episodeView}
+        onAutoPlay={handleNextEpisodeAutoPlay}
+        onNextPress={handleNextEpisodeManual}
+        onContinue={handleContinueWatching}
+      />
     </View>
   );
 };
+
+type TimedBottomProps = Omit<
+  ComponentProps<typeof BottomControls>,
+  "currentTime" | "remainingTime"
+> & {
+  progress: SharedValue<number>;
+  isSeeking: SharedValue<boolean>;
+};
+function TimedBottomControls({
+  progress,
+  isSeeking,
+  ...props
+}: TimedBottomProps) {
+  const times = useVideoTime({
+    progress,
+    max: props.max,
+    isSeeking,
+    active: props.showControls,
+  });
+  return <BottomControls {...props} {...times} />;
+}
+
+type TimingProps = Pick<
+  Props,
+  | "item"
+  | "progress"
+  | "isSeeking"
+  | "seek"
+  | "play"
+  | "pause"
+  | "api"
+  | "downloadedFiles"
+  | "showControls"
+> & {
+  max: SharedValue<number>;
+  maxMs: number;
+  offline: boolean;
+  nextItem?: BaseItemDto | null;
+  episodeView: boolean;
+  onAutoPlay: () => void;
+  onNextPress: () => void;
+  onContinue: (options: {
+    isAutoPlay?: boolean;
+    resetWatchCount?: boolean;
+  }) => void;
+};
+function PlaybackTimingOverlays({
+  item,
+  progress,
+  max,
+  isSeeking,
+  maxMs,
+  seek,
+  play,
+  pause,
+  api,
+  downloadedFiles,
+  offline,
+  nextItem,
+  showControls,
+  episodeView,
+  onAutoPlay,
+  onNextPress,
+  onContinue,
+}: TimingProps) {
+  const { settings } = useSettings();
+  const autoPlayEpisodeCount = useAtomValue(autoPlayEpisodeCountAtom);
+  // This clock keeps skip/autoplay/EOF behavior live even with controls hidden.
+  const { currentTime, remainingTime } = useVideoTime({
+    progress,
+    max,
+    isSeeking,
+  });
+  const { showSkipButton, skipIntro } = useIntroSkipper(
+    item.Id!,
+    currentTime,
+    seek,
+    play,
+    offline,
+    api,
+    downloadedFiles,
+  );
+
+  const { showSkipCreditButton, skipCredit, hasContentAfterCredits } =
+    useCreditSkipper(
+      item.Id!,
+      currentTime,
+      seek,
+      play,
+      offline,
+      api,
+      downloadedFiles,
+      maxMs,
+    );
+
+  // Same gate as the bookmark icon in BottomControls, so the skip overlay
+  // only shifts left when the icon is actually shown.
+  const showsChapterIcon = useMemo(
+    () => hasChapterMarkers(item.Chapters, maxMs),
+    [item.Chapters, maxMs],
+  );
+
+  // Whether the "Next Episode" countdown can be rendered at all. The Skip
+  // Credits button yields to it only when this is true; if autoplay is
+  // disabled or its episode limit is reached, Skip Credits must stay available.
+  const willShowNextEpisode =
+    !!nextItem &&
+    settings.autoPlayNextEpisode !== false &&
+    (settings.maxAutoPlayEpisodeCount.value === -1 ||
+      autoPlayEpisodeCount < settings.maxAutoPlayEpisodeCount.value);
+
+  // Show during credits when nothing plays after them, or in the last seconds.
+  const showNextEpisode =
+    willShowNextEpisode &&
+    ((showSkipCreditButton && !hasContentAfterCredits) ||
+      remainingTime < 10000);
+
+  // Autoplay would run at EOF but the episode cap stops it: ask "Still
+  // watching?" there instead, with playback paused — mirroring the native
+  // player's stillWatchingRequired flow. Gated on reaching the end so the
+  // prompt never covers a video that is still playing.
+  const stillWatchingRequired =
+    !!nextItem &&
+    settings.autoPlayNextEpisode !== false &&
+    settings.maxAutoPlayEpisodeCount.value !== -1 &&
+    autoPlayEpisodeCount >= settings.maxAutoPlayEpisodeCount.value;
+
+  const [stillWatchingVisible, setStillWatchingVisible] = useState(false);
+  // The cap-hitting autoplay updates the episode count synchronously while
+  // currentTime/remainingTime still hold the outgoing episode's near-zero
+  // values (the next item loads async), so "at EOF" alone would fire the
+  // prompt over the incoming episode. Only a progress tick from mid-playback
+  // of the final episode itself arms the trigger.
+  const stillWatchingArmedRef = useRef(false);
+
+  // Reset after an in-place episode switch (setParams keeps Controls mounted).
+  useEffect(() => {
+    stillWatchingArmedRef.current = false;
+    setStillWatchingVisible(false);
+  }, [item.Id]);
+
+  useEffect(() => {
+    if (!stillWatchingRequired || stillWatchingVisible || maxMs <= 0) {
+      return;
+    }
+    if (
+      currentTime > 0 &&
+      remainingTime > CONTROLS_CONSTANTS.STILL_WATCHING_EOF_WINDOW_MS
+    ) {
+      stillWatchingArmedRef.current = true;
+      return;
+    }
+    if (
+      stillWatchingArmedRef.current &&
+      remainingTime <= CONTROLS_CONSTANTS.STILL_WATCHING_EOF_WINDOW_MS
+    ) {
+      setStillWatchingVisible(true);
+      pause();
+    }
+  }, [
+    stillWatchingVisible,
+    stillWatchingRequired,
+    maxMs,
+    currentTime,
+    remainingTime,
+    pause,
+  ]);
+
+  return (
+    <>
+      {!episodeView && (
+        <SkipSegmentOverlay
+          showSkipButton={showSkipButton}
+          showSkipCreditButton={showSkipCreditButton}
+          hasContentAfterCredits={hasContentAfterCredits}
+          willShowNextEpisode={willShowNextEpisode}
+          showNextEpisode={showNextEpisode}
+          skipIntro={skipIntro}
+          skipCredit={skipCredit}
+          onNextEpisodeFinish={onAutoPlay}
+          onNextEpisodePress={onNextPress}
+          controlsVisible={showControls}
+          hasChapters={showsChapterIcon}
+        />
+      )}
+      {stillWatchingVisible && (
+        <ContinueWatchingOverlay goToNextItem={onContinue} />
+      )}
+    </>
+  );
+}
 
 const styles = StyleSheet.create({
   controlsContainer: {

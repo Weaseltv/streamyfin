@@ -64,7 +64,7 @@ import {
 // The TV-safe wrapper, NOT expo-screen-orientation directly: the native
 // module is absent from TV binaries and a top-level import crashes on launch.
 import { OrientationLock } from "@/packages/expo-screen-orientation";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useWebSocketContext } from "@/providers/WebSocketProvider";
 import {
@@ -298,7 +298,7 @@ const NativePlayerProviderInner: React.FC<{
   const atomStore = useStore();
   const { isConnected } = useNetworkStatus();
   const { lockOrientation, unlockOrientation } = useOrientation();
-  const downloadUtils = useDownload();
+  const downloadUtils = useDownloadActions();
   const revalidateProgressCache = useInvalidatePlaybackProgressCache();
   const { lastMessage, subscribe, clearLastMessage } = useWebSocketContext();
 

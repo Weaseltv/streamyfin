@@ -1,4 +1,4 @@
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import React, { useMemo } from "react";
 import { View } from "react-native";
 import { DiscoverSliderType } from "@/utils/jellyseerr/server/constants/discover";

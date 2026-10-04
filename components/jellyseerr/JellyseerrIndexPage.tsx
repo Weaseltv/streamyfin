@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSegments } from "expo-router";
-import { orderBy } from "lodash";
+import orderBy from "lodash/orderBy";
 import type React from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { Image } from "@/components/common/ServerImage";
 import Discover from "@/components/jellyseerr/discover/Discover";
+import { WeaselSeerrConnectState } from "@/components/jellyseerr/WeaselSeerrConnectState";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
@@ -218,6 +219,10 @@ export const JellyserrIndexPage: React.FC<Props> = ({
     !(showMovies && jellyseerrMovieResults?.length) &&
     !(showTv && jellyseerrTvResults?.length) &&
     !(showPeople && jellyseerrPersonResults?.length);
+
+  // WeaselPlex: no Seerr session yet. Say why and offer a retry instead of a
+  // search hint that can never produce results.
+  if (!jellyseerrApi) return <WeaselSeerrConnectState accent={ACCENT} />;
 
   if (!searchQuery.length)
     return showDiscover ? (
