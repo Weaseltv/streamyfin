@@ -82,7 +82,7 @@ import {
   applySubtitleStyle,
   buildSubtitleStyle,
 } from "@/utils/subtitles/subtitleStyle";
-import { msToTicks, ticksToSeconds } from "@/utils/time";
+import { msToTicks, ticksToMs, ticksToSeconds } from "@/utils/time";
 import { generateDeviceProfile } from "../../../utils/profiles/native";
 
 export default function DirectPlayerPage() {
@@ -1126,17 +1126,6 @@ export default function DirectPlayerPage() {
     }
   }, []);
 
-  useWebSocket({
-    isPlaying: isPlaying,
-    togglePlay: togglePlay,
-    stopPlayback: stop,
-    offline,
-    toggleMute: toggleMuteCb,
-    volumeUp: volumeUpCb,
-    volumeDown: volumeDownCb,
-    setVolume: setVolumeCb,
-  });
-
   /** Playback state handler for MPV */
   const onPlaybackStateChanged = useCallback(
     async (e: { nativeEvent: MpvOnPlaybackStateChangePayload }) => {
@@ -1652,6 +1641,22 @@ export default function DirectPlayerPage() {
 
     preloadLocalSubtitles();
   }, [isVideoLoaded, itemId]);
+
+  useWebSocket({
+    getIsPlaying: () => isPlayingRef.current,
+    togglePlay: togglePlay,
+    stopPlayback: stop,
+    offline,
+    toggleMute: toggleMuteCb,
+    volumeUp: volumeUpCb,
+    volumeDown: volumeDownCb,
+    setVolume: setVolumeCb,
+    seekPlayback: (ticks) => seek(ticksToMs(ticks)),
+    setAudioStreamIndex: handleAudioIndexChange,
+    setSubtitleStreamIndex: handleSubtitleIndexChange,
+    nextTrack: goToNextItem,
+    previousTrack: goToPreviousItem,
+  });
 
   // Show error UI first, before checking loading/missing‐data. It used to be
   // the word "Error" alone, with hardware Back as the only way out; losing the
