@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { atom, useAtomValue } from "jotai";
 import { useAtom } from "jotai/index";
-import { inRange } from "lodash";
+import inRange from "lodash/inRange";
 import type { User as JellyseerrUser } from "@/utils/jellyseerr/server/entity/User";
 import type {
   MovieResult,
