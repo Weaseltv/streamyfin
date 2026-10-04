@@ -389,8 +389,8 @@ function Layout() {
 
   const isAdministrator = !!user?.Policy?.IsAdministrator;
   const registerNotifications = useCallback(
-    async (owner: string) => {
-      const isCurrent = () => sessionRef.current === owner;
+    async (owner: string, isActive: () => boolean) => {
+      const isCurrent = () => isActive() && sessionRef.current === owner;
       const granted = await checkAndRequestPermissions();
       if (!isCurrent()) return;
       if (!granted) {
@@ -431,10 +431,11 @@ function Layout() {
     ]);
     if (registrationAttempts.current.has(attemptKey)) return;
     let complete = false;
+    let active = true;
     const cancel = startSessionRegistration({
       register: async () => {
         registrationAttempts.current.add(attemptKey);
-        await registerNotifications(sessionKey);
+        await registerNotifications(sessionKey, () => active);
       },
       isCurrent: () => sessionRef.current === sessionKey,
       onComplete: () => {
@@ -446,6 +447,7 @@ function Layout() {
       },
     });
     return () => {
+      active = false;
       cancel();
       if (!complete) registrationAttempts.current.delete(attemptKey);
     };
