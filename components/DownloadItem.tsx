@@ -79,6 +79,9 @@ interface DownloadProps extends ViewProps {
   label?: string;
   /** Hairline on the left of the cell. */
   divider?: boolean;
+  /** Used by a lazy single-row host; ordinary buttons keep their existing behavior. */
+  openOnMount?: boolean;
+  onClose?: () => void;
 }
 
 export const DownloadItems: React.FC<DownloadProps> = ({
@@ -90,6 +93,8 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   size = "default",
   label,
   divider,
+  openOnMount = false,
+  onClose,
   ...props
 }) => {
   const [api] = useAtom(apiAtom);
@@ -424,18 +429,29 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   const onButtonPress = () => {
     if (processes && itemsProcesses.length > 0) {
       navigateToDownloads();
+      onClose?.();
     } else if (itemsQueued) {
       navigateToDownloads();
+      onClose?.();
     } else if (allItemsDownloaded) {
       onDownloadedPress();
+      onClose?.();
     } else {
       handlePresentModalPress();
     }
   };
 
+  const opened = useRef(false);
+  useEffect(() => {
+    if (openOnMount && !opened.current) {
+      opened.current = true;
+      onButtonPress();
+    }
+  });
+
   return (
     <View {...props} style={[label ? { flex: 1 } : null, props.style]}>
-      {label ? (
+      {openOnMount ? null : label ? (
         <ActionCell
           icon={renderButtonContent()}
           label={label}
@@ -459,6 +475,7 @@ export const DownloadItems: React.FC<DownloadProps> = ({
           backgroundColor: Colors.surface,
         }}
         onChange={handleSheetChanges}
+        onDismiss={onClose}
         backdropComponent={renderBackdrop}
         enablePanDownToClose
         enableDismissOnClose
@@ -575,12 +592,16 @@ export const DownloadSingleItem: React.FC<{
   item: BaseItemDto;
   label?: string;
   divider?: boolean;
-}> = ({ item, size = "default", label, divider }) => {
+  openOnMount?: boolean;
+  onClose?: () => void;
+}> = ({ item, size = "default", label, divider, openOnMount, onClose }) => {
   if (Platform.isTV) return;
 
   return (
     <DownloadItems
       size={size}
+      openOnMount={openOnMount}
+      onClose={onClose}
       title={
         item.Type === "Episode"
           ? t("item_card.download.download_episode")
