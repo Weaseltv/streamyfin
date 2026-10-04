@@ -156,13 +156,6 @@
         "react-native-safe-area-context",
         "react-native-svg"
       ]
-    },
-    "autolinking": {
-      "android": {
-        "exclude": [
-          "@expo/ui"
-        ]
-      }
     }
   },
   "private": true,
