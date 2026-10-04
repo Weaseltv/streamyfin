@@ -11,7 +11,7 @@ import {
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 
@@ -158,7 +158,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const { isFavorite, toggleFavorite } = useFavorite(item);
   const router = useRouter();
   const isOffline = useOfflineMode();
-  const { deleteFile } = useDownload();
+  const { deleteFile } = useDownloadActions();
   const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
 
   const from = (segments as string[])[2] || "(home)";

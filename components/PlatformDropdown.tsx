@@ -11,21 +11,20 @@ import { Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { useAccent } from "@/utils/atoms/pageAccent";
 
-// @expo/ui's SwiftUI native module (ExpoUI) does not exist in tvOS builds.
-// A static top-level import evaluates requireNativeModule('ExpoUI') at module
-// load and crashes the entire route tree on tvOS (expo-router requires every
-// route file). Load it lazily and only off-TV; TV never renders these.
-const { Button, Host, Menu } = Platform.isTV
-  ? ({} as typeof import("@expo/ui/swift-ui"))
-  : require("@expo/ui/swift-ui");
-const { disabled, menuOrder } = Platform.isTV
-  ? ({} as typeof import("@expo/ui/swift-ui/modifiers"))
-  : require("@expo/ui/swift-ui/modifiers");
+// Only iOS phone menus use SwiftUI. Android omits ExpoUI from autolinking,
+// so evaluating its native import while loading routes would crash startup.
+const useSwiftUI = Platform.OS === "ios" && !Platform.isTV;
+const { Button, Host, Menu } = useSwiftUI
+  ? require("@expo/ui/swift-ui")
+  : ({} as typeof import("@expo/ui/swift-ui"));
+const { disabled, menuOrder } = useSwiftUI
+  ? require("@expo/ui/swift-ui/modifiers")
+  : ({} as typeof import("@expo/ui/swift-ui/modifiers"));
 
 // UIMenu reorders items by proximity to the anchor, so a menu that opens
 // upward shows them reversed. Keep the order they were provided in.
-// Built once, and never on TV where the modifiers module is not loaded.
-const fixedOrder = Platform.isTV ? [] : [menuOrder("fixed")];
+// Built once, only where the native menu is available.
+const fixedOrder = useSwiftUI ? [menuOrder("fixed")] : [];
 
 // Option types
 export type RadioOption<T = any> = {

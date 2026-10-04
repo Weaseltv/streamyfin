@@ -107,6 +107,7 @@ export type PlayerSubtitleTrack = {
   external?: boolean;
   /** For external tracks: the exact URL/path it was loaded from (mpv `external-filename`). */
   externalFilename?: string;
+  externalOrdinal?: number;
   language?: string;
   title?: string;
   codec?: string;
@@ -117,7 +118,9 @@ export type SubtitleSelection =
   | { kind: "disable" }
   /** Target is server-burned (Encode) — only a stream refresh can show/hide it. */
   | { kind: "burnedIn" }
-  | { kind: "notFound" };
+  | { kind: "notFound" }
+  /** A newer selection owns the player; do not start a fallback stream. */
+  | { kind: "superseded" };
 
 /** Decode percent-encoding and strip a leading `file://` scheme for tolerant comparison. */
 const normalizeUrl = (url: string): string => {
@@ -438,16 +441,6 @@ export const resolveSubtitleTrack = (params: {
   if (isExternalSubtitle(target)) {
     const playerExternals = playerTracks.filter((t) => t.external === true);
 
-    // 1) Exact identity by external filename — robust against hidden-embedded offset.
-    const expectedUrl = getExpectedExternalUrl?.(target);
-    const byName = playerExternals.find((t) =>
-      externalFilenameMatches(t.externalFilename, expectedUrl),
-    );
-    if (byName) return { kind: "select", trackId: byName.id };
-
-    // 2) Fallback: externals are appended in MediaStreams order → ordinal among
-    //    *loadable* externals (those actually added to the player) stays in lockstep
-    //    with the player's external list, skipping ones with no DeliveryUrl (#1763).
     const externalStreams = subtitleStreams.filter(isExternalSubtitle);
     const loadableExternals = getExpectedExternalUrl
       ? externalStreams.filter((s) => getExpectedExternalUrl(s))
@@ -455,6 +448,21 @@ export const resolveSubtitleTrack = (params: {
     const ordinal = loadableExternals.findIndex(
       (s) => s.Index === jellyfinSubtitleIndex,
     );
+    // Android can prepare the selected-last file before earlier languages.
+    // Explicit original ordinals prevent a sparse set from choosing another
+    // language. iOS tracks without this field keep the existing fallback.
+    if (playerExternals.some((t) => Number.isInteger(t.externalOrdinal))) {
+      const mapped = playerExternals.find((t) => t.externalOrdinal === ordinal);
+      return mapped
+        ? { kind: "select", trackId: mapped.id }
+        : { kind: "notFound" };
+    }
+
+    const expectedUrl = getExpectedExternalUrl?.(target);
+    const byName = playerExternals.find((t) =>
+      externalFilenameMatches(t.externalFilename, expectedUrl),
+    );
+    if (byName) return { kind: "select", trackId: byName.id };
     if (ordinal >= 0 && ordinal < playerExternals.length) {
       return { kind: "select", trackId: playerExternals[ordinal].id };
     }
@@ -516,6 +524,7 @@ export type PlayerSubtitleTrackRaw = {
   codec?: string;
   external?: boolean;
   externalFilename?: string;
+  externalOrdinal?: number;
 };
 
 /**
@@ -524,9 +533,15 @@ export type PlayerSubtitleTrackRaw = {
  */
 export interface SubtitleSelectablePlayer {
   getSubtitleTracks: () => Promise<PlayerSubtitleTrackRaw[] | null | undefined>;
+  /** Adapters share the actual native ref's selection ticket. */
+  getSubtitleSelectionOwner?: () => object | null | undefined;
+  /** Android prepares a sidecar only when requested; iOS already has its list. */
+  ensureExternalSubtitle?: (url: string, ordinal: number) => Promise<boolean>;
   setSubtitleTrack: (trackId: number) => unknown;
   disableSubtitles: () => unknown;
 }
+
+const subtitleSelectionTickets = new WeakMap<object, number>();
 
 /**
  * Read the player's real track list, resolve the Jellyfin subtitle index by
@@ -544,6 +559,10 @@ export const applyMpvSubtitleSelection = async (
   },
 ): Promise<SubtitleSelection> => {
   if (!player) return { kind: "notFound" };
+  const owner = player.getSubtitleSelectionOwner?.() ?? player;
+  const ticket = (subtitleSelectionTickets.get(owner) ?? 0) + 1;
+  subtitleSelectionTickets.set(owner, ticket);
+  const isCurrent = () => subtitleSelectionTickets.get(owner) === ticket;
 
   // Called fire-and-forget (`void applyMpvSubtitleSelection(...)`), so any native
   // rejection from getSubtitleTracks/setSubtitleTrack/disableSubtitles must be
@@ -562,7 +581,25 @@ export const applyMpvSubtitleSelection = async (
       return { kind: "burnedIn" };
     }
 
+    if (
+      player.ensureExternalSubtitle &&
+      burnTarget &&
+      isExternalSubtitle(burnTarget)
+    ) {
+      const url = params.getExpectedExternalUrl?.(burnTarget);
+      const loadable = (params.subtitleStreams ?? [])
+        .filter(isExternalSubtitle)
+        .filter((sub) => params.getExpectedExternalUrl?.(sub));
+      const ordinal = loadable.findIndex(
+        (sub) => sub.Index === burnTarget.Index,
+      );
+      if (url && ordinal >= 0)
+        await player.ensureExternalSubtitle(url, ordinal);
+      if (!isCurrent()) return { kind: "superseded" };
+    }
+
     const tracks = (await player.getSubtitleTracks()) ?? [];
+    if (!isCurrent()) return { kind: "superseded" };
     const selection = resolveSubtitleTrack({
       subtitleStreams: params.subtitleStreams,
       jellyfinSubtitleIndex: params.jellyfinSubtitleIndex,
@@ -570,6 +607,7 @@ export const applyMpvSubtitleSelection = async (
         id: t.id,
         external: t.external,
         externalFilename: t.externalFilename,
+        externalOrdinal: t.externalOrdinal,
         language: t.lang,
         title: t.title,
         codec: t.codec,
@@ -585,7 +623,7 @@ export const applyMpvSubtitleSelection = async (
     // notFound → leave current selection (e.g. image subs burned in while transcoding)
     return selection;
   } catch {
-    return { kind: "notFound" };
+    return { kind: isCurrent() ? "notFound" : "superseded" };
   }
 };
 

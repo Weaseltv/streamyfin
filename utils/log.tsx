@@ -9,6 +9,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { AppState } from "react-native";
+import { createBatchedLogStore } from "./batchedLogStore";
 import { storage } from "./mmkv";
 
 export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
@@ -55,6 +57,11 @@ function useLogProvider() {
   return useMemo(() => ({ logs, subscribe }), [logs, subscribe]);
 }
 
+const logStore = createBatchedLogStore<LogEntry>({
+  read: () => storage.getString("logs"),
+  write: (value) => storage.set("logs", value),
+});
+
 export const writeToLog = (level: LogLevel, message: string, data?: any) => {
   const newEntry: LogEntry = {
     timestamp: new Date().toISOString(),
@@ -63,14 +70,16 @@ export const writeToLog = (level: LogLevel, message: string, data?: any) => {
     data: data,
   };
 
-  const currentLogs = storage.getString("logs");
-  const logs: LogEntry[] = currentLogs ? JSON.parse(currentLogs) : [];
-  logs.push(newEntry);
-
-  const maxLogs = 100;
-  const recentLogs = logs.slice(Math.max(logs.length - maxLogs, 0));
-
-  storage.set("logs", JSON.stringify(recentLogs));
+  try {
+    logStore.append(newEntry, level === "ERROR");
+  } catch {
+    // Some native/API errors carry circular data. Preserve the error message
+    // and its urgency without allowing that payload to block the whole ring.
+    logStore.append(
+      { ...newEntry, data: "[Unserializable log data]" },
+      level === "ERROR",
+    );
+  }
 };
 
 export const writeInfoLog = (message: string, data?: any) =>
@@ -83,10 +92,7 @@ export const writeDebugLog = (message: string, data?: any) => {
   }
 };
 
-export const readFromLog = (): LogEntry[] => {
-  const logs = storage.getString("logs");
-  return logs ? JSON.parse(logs) : [];
-};
+export const readFromLog = (): LogEntry[] => logStore.read();
 
 export function useLog() {
   const context = useContext(LogContext);
@@ -102,6 +108,15 @@ export function useLog() {
 
 export function LogProvider({ children }: { children: React.ReactNode }) {
   const provider = useLogProvider();
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") logStore.flush();
+    });
+    return () => {
+      subscription.remove();
+      logStore.flush();
+    };
+  }, []);
 
   return <LogContext.Provider value={provider}>{children}</LogContext.Provider>;
 }

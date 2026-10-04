@@ -22,15 +22,21 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
   const min = useSharedValue<number>(0); // Explicitly type as number
   const max = useSharedValue<number>(100); // Explicitly type as number
   const isUserInteracting = useRef(false);
+  const mounted = useRef(false);
+  const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Use a ref to store the timeout ID
 
   useEffect(() => {
     if (isTv) return;
+    mounted.current = true;
+    let cancelled = false;
     const fetchInitialVolume = async () => {
       try {
         const { volume: initialVolume } = await VolumeManager.getVolume();
-        volume.value = initialVolume * 100;
+        if (!cancelled) volume.value = initialVolume * 100;
       } catch (error) {
         console.error("Error fetching initial volume:", error);
       }
@@ -41,6 +47,10 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
     VolumeManager.showNativeVolumeUI({ enabled: false });
 
     return () => {
+      cancelled = true;
+      mounted.current = false;
+      if (interactionTimeoutRef.current)
+        clearTimeout(interactionTimeoutRef.current);
       // Re-enable the native volume UI when the component unmounts
       VolumeManager.showNativeVolumeUI({ enabled: true });
     };
@@ -56,18 +66,21 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
       console.error("Error setting volume:", error);
     }
 
+    if (!mounted.current) return;
     // Re-call showNativeVolumeUI to ensure the setting is applied on iOS
     VolumeManager.showNativeVolumeUI({ enabled: false });
 
     // Reset interaction flag after a delay
-    setTimeout(() => {
+    if (interactionTimeoutRef.current)
+      clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
       isUserInteracting.current = false;
     }, 100);
   };
 
   useEffect(() => {
     if (isTv) return;
-    const _volumeListener = VolumeManager.addVolumeListener(
+    const volumeListener = VolumeManager.addVolumeListener(
       (result: VolumeResult) => {
         // Only update if user is not currently interacting with the slider
         if (!isUserInteracting.current) {
@@ -89,7 +102,7 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
     );
 
     return () => {
-      // volumeListener.remove();
+      volumeListener.remove();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }

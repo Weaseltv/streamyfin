@@ -15,6 +15,8 @@ export type NativePlayerStreamConfig = {
   url: string;
   headers?: Record<string, string>;
   externalSubtitles?: string[];
+  /** Server origin for custom subtitle headers, including CDN video sources. */
+  externalSubtitleBaseUrl?: string;
   /**
    * Position in `externalSubtitles` of the initially-selected sidecar, or -1
    * when none is (subtitles off, or the selection is embedded/burned-in).

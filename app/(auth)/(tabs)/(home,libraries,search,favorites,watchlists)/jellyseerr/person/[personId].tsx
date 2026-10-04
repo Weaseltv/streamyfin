@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { orderBy, uniqBy } from "lodash";
+import orderBy from "lodash/orderBy";
+import uniqBy from "lodash/uniqBy";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Image } from "@/components/common/ServerImage";

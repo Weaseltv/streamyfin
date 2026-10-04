@@ -1,4 +1,5 @@
 import { getSessionApi } from "@jellyfin/sdk/lib/utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
   createContext,
@@ -12,38 +13,12 @@ import {
   useState,
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
-import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useNetworkStatus } from "@/providers/NetworkStatusProvider";
 import { getJellyfinHeaders, hasHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 import { WebSocketMessageBus } from "@/utils/websocketMessageBus";
-
-// Query keys that depend on the set of library items and should be refreshed
-// when the server reports that the library changed (items added/removed/updated).
-const LIBRARY_CHANGE_QUERY_KEYS = [
-  ["home"],
-  ["library-items"],
-  ["nextUp-all"],
-  ["nextUp"],
-  ["resumeItems"],
-  ["seasons"],
-  ["episodes"],
-] as const;
-
-// Query keys that depend on per-user playback state (resume position, played
-// status, favorites) and should be refreshed when the server reports a
-// `UserDataChanged`. Scoped to the progression-based sections so finishing an
-// episode does not pointlessly refetch "recently added" or suggestions.
-const USER_DATA_CHANGE_QUERY_KEYS = [
-  ["home", "continueAndNextUp"],
-  ["home", "resumeItems"],
-  ["home", "nextUp-all"],
-  ["home", "heroItems"],
-  ["resumeItems"],
-  ["nextUp-all"],
-  ["nextUp"],
-] as const;
 
 interface WebSocketMessage {
   MessageType: string;
@@ -90,17 +65,11 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   const { isConnected: isNetworkConnected } = useNetworkStatus();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const queryClient = useNetworkAwareQueryClient();
+  const refreshQueue = playbackRefreshQueue(useQueryClient());
   const deviceId = useMemo(() => {
     return getOrSetDeviceId();
   }, []);
   const reconnectAttemptsRef = useRef(0);
-  const libraryChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const userDataChangeDebounceRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
   // Handle for the onerror backoff timer. Tracked so a reconnect triggered by
   // another path (foreground, network reconnect, effect re-run) can cancel a
   // pending one — an untracked timer would later open a second socket.
@@ -236,41 +205,24 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         return;
       }
 
-      // A single scan can emit several LibraryChanged messages in quick
-      // succession, so debounce the invalidation to refetch only once.
-      if (libraryChangeDebounceRef.current) {
-        clearTimeout(libraryChangeDebounceRef.current);
-      }
-      libraryChangeDebounceRef.current = setTimeout(() => {
-        for (const queryKey of LIBRARY_CHANGE_QUERY_KEYS) {
-          queryClient.invalidateQueries({ queryKey: [...queryKey] });
-        }
-      }, 1000);
+      refreshQueue.libraryChanged();
     },
-    [queryClient],
+    [refreshQueue],
   );
 
   const handleUserDataChanged = useCallback(
     (data: any) => {
-      // Jellyfin sends UserDataChanged when playback position, played status
-      // or favorites change (e.g. finishing an episode). Only the
-      // progression-based home sections care about it.
-      if (!((data?.UserDataList?.length ?? 0) > 0)) {
-        return;
-      }
-
-      // Finishing an item can emit several UserDataChanged messages, so
-      // debounce to invalidate the affected sections only once.
-      if (userDataChangeDebounceRef.current) {
-        clearTimeout(userDataChangeDebounceRef.current);
-      }
-      userDataChangeDebounceRef.current = setTimeout(() => {
-        for (const queryKey of USER_DATA_CHANGE_QUERY_KEYS) {
-          queryClient.invalidateQueries({ queryKey: [...queryKey] });
-        }
-      }, 800);
+      if (!((data?.UserDataList?.length ?? 0) > 0)) return;
+      // Retain every affected item, including updates from other clients.
+      // Remote play/pause/stop dispatch above continues immediately.
+      const ids = data.UserDataList.map(
+        (entry: { ItemId?: string }) => entry.ItemId,
+      ).filter(
+        (id: unknown): id is string => typeof id === "string" && id.length > 0,
+      );
+      refreshQueue.userDataChanged(ids);
     },
-    [queryClient],
+    [refreshQueue],
   );
 
   // Refresh library-dependent queries when the server reports a change.
@@ -287,12 +239,6 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
 
   useEffect(() => {
     return () => {
-      if (libraryChangeDebounceRef.current) {
-        clearTimeout(libraryChangeDebounceRef.current);
-      }
-      if (userDataChangeDebounceRef.current) {
-        clearTimeout(userDataChangeDebounceRef.current);
-      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

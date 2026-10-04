@@ -1,7 +1,7 @@
+import { Feather } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
-  ItemSortBy,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import {
   getFilterApi,
@@ -17,17 +17,17 @@ import {
 } from "expo-router";
 import { useAtom } from "jotai";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Chip } from "@/components/common/Chip";
 import { Text } from "@/components/common/Text";
 import {
   getItemNavigation,
   TouchableItemRouter,
 } from "@/components/common/TouchableItemRouter";
 import { FilterButton } from "@/components/filters/FilterButton";
-import { ResetFiltersButton } from "@/components/filters/ResetFiltersButton";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
 import { ItemPoster } from "@/components/posters/ItemPoster";
@@ -35,20 +35,16 @@ import { TVFilterButton } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import useRouter from "@/hooks/useAppRouter";
+import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import {
-  genreFilterAtom,
   SortByOption,
   SortOrderOption,
-  sortByAtom,
   sortOptions,
-  sortOrderAtom,
   sortOrderOptions,
-  tagsFilterAtom,
-  yearFilterAtom,
 } from "@/utils/atoms/filters";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 
@@ -74,11 +70,15 @@ const page: React.FC = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
-  const [selectedGenres, setSelectedGenres] = useAtom(genreFilterAtom);
-  const [selectedYears, setSelectedYears] = useAtom(yearFilterAtom);
-  const [selectedTags, setSelectedTags] = useAtom(tagsFilterAtom);
-  const [sortBy, setSortBy] = useAtom(sortByAtom);
-  const [sortOrder, setSortOrder] = useAtom(sortOrderAtom);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<SortByOption[]>([
+    SortByOption.PremiereDate,
+  ]);
+  const [sortOrder, setSortOrder] = useState<SortOrderOption[]>([
+    SortOrderOption.Ascending,
+  ]);
 
   const { data: collection, isLoading: isCollectionLoading } = useQuery({
     queryKey: ["collection", collectionId],
@@ -135,38 +135,44 @@ const page: React.FC = () => {
     enabled: Platform.isTV && !!api && !!user?.Id && !!collectionId,
   });
 
-  // On focus rather than on mount: the filter atoms are global, so a library
-  // opened on top of this screen overwrites them while it stays mounted.
+  const defaultSortBy = collection?.DisplayOrder
+    ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
+      SortByOption.PremiereDate
+    : SortByOption.PremiereDate;
+  const [filterScope, setFilterScope] = useState<string | null>(null);
+  useEffect(() => {
+    if (!collection || filterScope === collectionId) return;
+    setSelectedGenres([]);
+    setSelectedYears([]);
+    setSelectedTags([]);
+    setSortBy([defaultSortBy]);
+    setSortOrder([SortOrderOption.Ascending]);
+    setFilterScope(collectionId);
+  }, [collectionId, collection, defaultSortBy, filterScope]);
+
   useFocusEffect(
     useCallback(() => {
       navigation.setOptions({ title: collection?.Name || "" });
-      setSortOrder([SortOrderOption.Ascending]);
-      // A collection opens on a clean slate: without this the last library's
-      // selection bleeds in (libraries keep their own per-library memory).
-      setSelectedGenres([]);
-      setSelectedYears([]);
-      setSelectedTags([]);
-
-      if (!collection) return;
-
-      // Convert the DisplayOrder to SortByOption
-      const displayOrder = collection.DisplayOrder as ItemSortBy;
-      const sortByOption = displayOrder
-        ? SortByOption[displayOrder as keyof typeof SortByOption] ||
-          SortByOption.PremiereDate
-        : SortByOption.PremiereDate;
-
-      setSortBy([sortByOption]);
-    }, [
-      navigation,
-      collection,
-      setSortOrder,
-      setSortBy,
-      setSelectedGenres,
-      setSelectedYears,
-      setSelectedTags,
-    ]),
+    }, [navigation, collection?.Name]),
   );
+
+  const { data: availableFilters } = useAvailableItemFilters(
+    collectionId,
+    !Platform.isTV,
+  );
+  const hasActiveFilters =
+    selectedGenres.length > 0 ||
+    selectedYears.length > 0 ||
+    selectedTags.length > 0 ||
+    sortBy[0] !== defaultSortBy ||
+    sortOrder[0] !== SortOrderOption.Ascending;
+  const resetCollectionFilters = useCallback(() => {
+    setSelectedGenres([]);
+    setSelectedYears([]);
+    setSelectedTags([]);
+    setSortBy([defaultSortBy]);
+    setSortOrder([SortOrderOption.Ascending]);
+  }, [defaultSortBy]);
 
   // Calculate columns for TV grid
   const nrOfCols = useMemo(() => {
@@ -225,39 +231,41 @@ const page: React.FC = () => {
     ],
   );
 
-  const { data, fetchNextPage, hasNextPage, isLoading } = useInfiniteQuery({
-    queryKey: [
-      "collection-items",
-      collectionId,
-      selectedGenres,
-      selectedYears,
-      selectedTags,
-      sortBy,
-      sortOrder,
-    ],
-    queryFn: fetchItems,
-    getNextPageParam: (lastPage, pages) => {
-      if (
-        !lastPage?.Items ||
-        !lastPage?.TotalRecordCount ||
-        lastPage?.TotalRecordCount === 0
-      )
+  const { data, fetchNextPage, hasNextPage, isLoading, isFetching } =
+    useInfiniteQuery({
+      queryKey: [
+        "collection-items",
+        collectionId,
+        selectedGenres,
+        selectedYears,
+        selectedTags,
+        sortBy,
+        sortOrder,
+      ],
+      queryFn: fetchItems,
+      getNextPageParam: (lastPage, pages) => {
+        if (
+          !lastPage?.Items ||
+          !lastPage?.TotalRecordCount ||
+          lastPage?.TotalRecordCount === 0
+        )
+          return undefined;
+
+        const totalItems = lastPage.TotalRecordCount;
+        const accumulatedItems = pages.reduce(
+          (acc, curr) => acc + (curr?.Items?.length || 0),
+          0,
+        );
+
+        if (accumulatedItems < totalItems) {
+          return lastPage?.Items?.length * pages.length;
+        }
         return undefined;
-
-      const totalItems = lastPage.TotalRecordCount;
-      const accumulatedItems = pages.reduce(
-        (acc, curr) => acc + (curr?.Items?.length || 0),
-        0,
-      );
-
-      if (accumulatedItems < totalItems) {
-        return lastPage?.Items?.length * pages.length;
-      }
-      return undefined;
-    },
-    initialPageParam: 0,
-    enabled: !!api && !!user?.Id && !!collection,
-  });
+      },
+      initialPageParam: 0,
+      enabled:
+        !!api && !!user?.Id && !!collection && filterScope === collectionId,
+    });
 
   const flatData = useMemo(() => {
     return (
@@ -325,7 +333,7 @@ const page: React.FC = () => {
 
   const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
 
-  const ListHeaderComponent = useCallback(
+  const listHeader = useMemo(
     () => (
       <FlatList
         horizontal
@@ -336,17 +344,16 @@ const page: React.FC = () => {
           paddingVertical: 16,
           flexDirection: "row",
         }}
-        extraData={[
-          selectedGenres,
-          selectedYears,
-          selectedTags,
-          sortBy,
-          sortOrder,
-        ]}
         data={[
           {
             key: "reset",
-            component: <ResetFiltersButton libraryId={collectionId} />,
+            component: hasActiveFilters ? (
+              <Chip
+                label={t("library.filters.reset")}
+                icon={<Feather name='x' size={13} color='white' />}
+                onPress={resetCollectionFilters}
+              />
+            ) : null,
           },
           {
             key: "genre",
@@ -355,16 +362,7 @@ const page: React.FC = () => {
                 className='mr-1'
                 id={collectionId}
                 queryKey='genreFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: collectionId,
-                  });
-                  return response.data.Genres || [];
-                }}
+                options={availableFilters?.Genres ?? []}
                 set={setSelectedGenres}
                 values={selectedGenres}
                 title={t("library.filters.genres")}
@@ -379,16 +377,7 @@ const page: React.FC = () => {
                 className='mr-1'
                 id={collectionId}
                 queryKey='yearFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: collectionId,
-                  });
-                  return response.data.Years || [];
-                }}
+                options={availableFilters?.Years ?? []}
                 set={setSelectedYears}
                 values={selectedYears}
                 title={t("library.filters.years")}
@@ -403,16 +392,7 @@ const page: React.FC = () => {
                 className='mr-1'
                 id={collectionId}
                 queryKey='tagsFilter'
-                queryFn={async () => {
-                  if (!api) return null;
-                  const response = await getFilterApi(
-                    api,
-                  ).getQueryFiltersLegacy({
-                    userId: user?.Id,
-                    parentId: collectionId,
-                  });
-                  return response.data.Tags || [];
-                }}
+                options={availableFilters?.Tags ?? []}
                 set={setSelectedTags}
                 values={selectedTags}
                 title={t("library.filters.tags")}
@@ -461,6 +441,9 @@ const page: React.FC = () => {
     ),
     [
       collectionId,
+      availableFilters,
+      hasActiveFilters,
+      resetCollectionFilters,
       api,
       user?.Id,
       selectedGenres,
@@ -614,17 +597,7 @@ const page: React.FC = () => {
     });
   }, [showOptions, t, tvSortOrderOptions, setSortOrder]);
 
-  // TV filter bar state
-  const hasActiveFilters =
-    selectedGenres.length > 0 ||
-    selectedYears.length > 0 ||
-    selectedTags.length > 0;
-
-  const resetAllFilters = useCallback(() => {
-    setSelectedGenres([]);
-    setSelectedYears([]);
-    setSelectedTags([]);
-  }, [setSelectedGenres, setSelectedYears, setSelectedTags]);
+  const resetAllFilters = resetCollectionFilters;
 
   if (isLoading || isCollectionLoading) {
     return (
@@ -647,25 +620,18 @@ const page: React.FC = () => {
             </Text>
           </View>
         }
-        extraData={[
-          selectedGenres,
-          selectedYears,
-          selectedTags,
-          sortBy,
-          sortOrder,
-        ]}
         contentInsetAdjustmentBehavior='automatic'
         data={flatData}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         numColumns={nrOfCols}
         onEndReached={() => {
-          if (hasNextPage) {
-            fetchNextPage();
+          if (hasNextPage && !isFetching) {
+            void fetchNextPage({ cancelRefetch: false });
           }
         }}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader}
         contentContainerStyle={{ paddingBottom: 24 }}
         ItemSeparatorComponent={() => (
           <View
@@ -764,8 +730,8 @@ const page: React.FC = () => {
         numColumns={nrOfCols}
         removeClippedSubviews={false}
         onEndReached={() => {
-          if (hasNextPage) {
-            fetchNextPage();
+          if (hasNextPage && !isFetching) {
+            void fetchNextPage({ cancelRefetch: false });
           }
         }}
         onEndReachedThreshold={1}
