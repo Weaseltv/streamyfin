@@ -3,6 +3,7 @@ import {
   startupReadySessionAtom,
   startupSessionKey,
 } from "@/utils/atoms/startupReady";
+import { startSessionRegistration } from "@/utils/startup/registration";
 import "@/augmentations";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -402,23 +403,17 @@ function Layout() {
       if (!isCurrent()) return;
       // only create push token for real devices (pointless for emulators)
       if (Device.isDevice) {
-        Notifications?.getExpoPushTokenAsync({
+        const token = await Notifications?.getExpoPushTokenAsync({
           // Read from config so this can never drift from app.json again. The literal
           // here was UPSTREAM's project id: push tokens were being minted against
           // Streamyfin's EAS project, not ours.
           projectId:
             Constants.expoConfig?.extra?.eas?.projectId ??
             "f86e16f3-c729-4e85-9acc-34a37f67ef07",
-        })
-          .then((token: ExpoPushToken) => {
-            if (token) {
-              if (isCurrent()) setExpoPushToken({ token, sessionKey: owner });
-            }
-          })
-          .catch((reason: any) => {
-            console.error("Failed to get push token:", reason);
-            writeErrorLog("Failed to get Expo push token", reason);
-          });
+        });
+        if (token && isCurrent()) {
+          setExpoPushToken({ token, sessionKey: owner });
+        }
       }
     },
     [isAdministrator],
@@ -431,11 +426,25 @@ function Layout() {
       !!user?.Policy?.IsAdministrator,
     ]);
     if (registrationAttempts.current.has(attemptKey)) return;
-    registrationAttempts.current.add(attemptKey);
-    void registerNotifications(sessionKey).catch(() => {
-      registrationAttempts.current.delete(attemptKey);
-      writeErrorLog("Failed to register notifications");
+    let complete = false;
+    const cancel = startSessionRegistration({
+      register: async () => {
+        registrationAttempts.current.add(attemptKey);
+        await registerNotifications(sessionKey);
+      },
+      isCurrent: () => sessionRef.current === sessionKey,
+      onComplete: () => {
+        complete = true;
+      },
+      onError: (reason) => {
+        registrationAttempts.current.delete(attemptKey);
+        writeErrorLog("Failed to register notifications", reason);
+      },
     });
+    return () => {
+      cancel();
+      if (!complete) registrationAttempts.current.delete(attemptKey);
+    };
   }, [
     sessionKey,
     startupReady,
