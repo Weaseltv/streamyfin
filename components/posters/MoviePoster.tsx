@@ -50,7 +50,7 @@ const MoviePoster: React.FC<MoviePosterProps> = ({
     >
       <Image
         placeholder={{ blurhash }}
-        key={item.Id}
+        recyclingKey={item.Id}
         id={item.Id}
         source={url ? { uri: url } : null}
         cachePolicy={"memory-disk"}

@@ -638,7 +638,6 @@ const Page = () => {
   const renderItem = useCallback(
     ({ item, index }: { item: BaseItemDto; index: number }) => (
       <TouchableItemRouter
-        key={item.Id}
         style={{
           width: "100%",
           marginBottom: 6,

@@ -38,7 +38,7 @@ const Poster: React.FC<PosterProps> = ({ id, url, blurhash }) => {
               }
             : null
         }
-        key={id}
+        recyclingKey={id ?? url}
         id={id!}
         source={
           url
