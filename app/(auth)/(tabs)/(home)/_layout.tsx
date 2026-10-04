@@ -7,6 +7,7 @@ import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 
 // Keeps cold boot on the Home tab.
 //
@@ -33,6 +34,14 @@ import {
 export const unstable_settings = { anchor: "index" };
 
 export default function IndexLayout() {
+  return (
+    <ItemNavigationProvider origin='(home)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { t } = useTranslation();
 
   return (

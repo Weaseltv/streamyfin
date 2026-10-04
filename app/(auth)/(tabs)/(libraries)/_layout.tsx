@@ -11,6 +11,7 @@ import {
 } from "@/components/stacks/NestedTabPageStack";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 import { useSettings } from "@/utils/atoms/settings";
 
 // Deep entries into this tab — the home "See All" button, or tapping a library /
@@ -26,6 +27,14 @@ import { useSettings } from "@/utils/atoms/settings";
 export const unstable_settings = Platform.isTV ? {} : { anchor: "index" };
 
 export default function IndexLayout() {
+  return (
+    <ItemNavigationProvider origin='(libraries)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { settings, updateSettings, pluginSettings } = useSettings();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 

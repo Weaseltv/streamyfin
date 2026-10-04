@@ -7,8 +7,17 @@ import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 
 export default function SearchLayout() {
+  return (
+    <ItemNavigationProvider origin='(search)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { t } = useTranslation();
   return (
     <Stack screenOptions={stackScreenOptions}>

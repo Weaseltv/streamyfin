@@ -1,3 +1,4 @@
+import { ItemActionSheetHost } from "@/components/common/ItemActionSheetHost";
 import {
   startupReadySessionAtom,
   startupSessionKey,
@@ -547,6 +548,9 @@ function Layout() {
                                 <IntroSheetProvider>
                                   <ThemeProvider value={DarkTheme}>
                                     <SystemBars style='light' hidden={false} />
+                                    <ItemActionSheetHost
+                                      key={user?.Id ?? "signed-out"}
+                                    />
                                     <Stack
                                       initialRouteName='(auth)/(tabs)'
                                       screenListeners={({ navigation }) => ({
