@@ -110,7 +110,7 @@ export const CastAndCrew: React.FC<Props> = ({ item, loading, ...props }) => {
       if (existingPerson) {
         existingPerson.Role = `${existingPerson.Role}, ${person.Role}`;
       } else {
-        people[person.Id] = person;
+        people[person.Id] = { ...person };
       }
     });
     return Object.values(people);

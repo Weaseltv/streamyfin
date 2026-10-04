@@ -17,6 +17,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useNetworkStatus } from "@/providers/NetworkStatusProvider";
 import { getJellyfinHeaders, hasHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
+import { patchActorUserData } from "@/utils/query/actorUserData";
 import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 import { WebSocketMessageBus } from "@/utils/websocketMessageBus";
 
@@ -65,7 +66,8 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   const { isConnected: isNetworkConnected } = useNetworkStatus();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const refreshQueue = playbackRefreshQueue(useQueryClient());
+  const queryClient = useQueryClient();
+  const refreshQueue = playbackRefreshQueue(queryClient);
   const deviceId = useMemo(() => {
     return getOrSetDeviceId();
   }, []);
@@ -205,14 +207,29 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         return;
       }
 
+      queryClient.invalidateQueries({
+        queryKey: ["actor", "movies"],
+        refetchType: "none",
+      });
       refreshQueue.libraryChanged();
     },
-    [refreshQueue],
+    [refreshQueue, queryClient],
   );
 
   const handleUserDataChanged = useCallback(
     (data: any) => {
       if (!((data?.UserDataList?.length ?? 0) > 0)) return;
+      // Actor catalogs may stay fresh for a minute. Apply the server's user
+      // data to matching cached cards immediately without refetching them.
+      for (const [key, items] of queryClient.getQueriesData({
+        queryKey: ["actor", "movies"],
+      })) {
+        if (typeof data?.UserId === "string" && key[4] !== data.UserId)
+          continue;
+        const next = patchActorUserData(items, data.UserDataList);
+        if (next !== items) queryClient.setQueryData(key, next);
+      }
+
       // Retain every affected item, including updates from other clients.
       // Remote play/pause/stop dispatch above continues immediately.
       const ids = data.UserDataList.map(
@@ -222,7 +239,7 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
       );
       refreshQueue.userDataChanged(ids);
     },
-    [refreshQueue],
+    [refreshQueue, queryClient],
   );
 
   // Refresh library-dependent queries when the server reports a change.
