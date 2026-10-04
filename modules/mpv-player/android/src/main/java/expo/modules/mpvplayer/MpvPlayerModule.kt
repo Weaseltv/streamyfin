@@ -1,5 +1,6 @@
 package expo.modules.mpvplayer
 
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -22,6 +23,10 @@ class MpvPlayerModule : Module() {
         }
 
         // Enables the module to be used as a native view.
+        //
+        // Expo runs every view AsyncFunction below on the UI thread. The ones
+        // that reach mpv hand the work to the renderer's command thread and
+        // return (R28); reads resolve their promise from there.
         View(MpvPlayerView::class) {
             // All video load options are passed via a single "source" prop
             Prop("source") { view: MpvPlayerView, source: Map<String, Any?>? ->
@@ -38,6 +43,7 @@ class MpvPlayerModule : Module() {
                     url = urlString,
                     headers = source["headers"] as? Map<String, String>,
                     externalSubtitles = source["externalSubtitles"] as? List<String>,
+                    externalSubtitleBaseUrl = source["externalSubtitleBaseUrl"] as? String,
                     initialExternalSubtitleIndex =
                         (source["initialExternalSubtitleIndex"] as? Number)?.toInt() ?: -1,
                     startPosition = (source["startPosition"] as? Number)?.toDouble(),
@@ -98,8 +104,8 @@ class MpvPlayerModule : Module() {
             }
 
             // Function to get current speed
-            AsyncFunction("getSpeed") { view: MpvPlayerView ->
-                view.getSpeed()
+            AsyncFunction("getSpeed") { view: MpvPlayerView, promise: Promise ->
+                view.getSpeed { promise.resolve(it) }
             }
 
             // Function to check if paused
@@ -136,8 +142,12 @@ class MpvPlayerModule : Module() {
             }
 
             // Subtitle functions
-            AsyncFunction("getSubtitleTracks") { view: MpvPlayerView ->
-                view.getSubtitleTracks()
+            AsyncFunction("ensureExternalSubtitle") { view: MpvPlayerView, url: String, ordinal: Int, promise: Promise ->
+                view.ensureExternalSubtitle(url, ordinal) { promise.resolve(it) }
+            }
+
+            AsyncFunction("getSubtitleTracks") { view: MpvPlayerView, promise: Promise ->
+                view.getSubtitleTracks { promise.resolve(it) }
             }
 
             AsyncFunction("setSubtitleTrack") { view: MpvPlayerView, trackId: Int ->
@@ -148,8 +158,8 @@ class MpvPlayerModule : Module() {
                 view.disableSubtitles()
             }
 
-            AsyncFunction("getCurrentSubtitleTrack") { view: MpvPlayerView ->
-                view.getCurrentSubtitleTrack()
+            AsyncFunction("getCurrentSubtitleTrack") { view: MpvPlayerView, promise: Promise ->
+                view.getCurrentSubtitleTrack { promise.resolve(it) }
             }
 
             AsyncFunction("addSubtitleFile") { view: MpvPlayerView, url: String, select: Boolean ->
@@ -194,16 +204,16 @@ class MpvPlayerModule : Module() {
             }
 
             // Audio track functions
-            AsyncFunction("getAudioTracks") { view: MpvPlayerView ->
-                view.getAudioTracks()
+            AsyncFunction("getAudioTracks") { view: MpvPlayerView, promise: Promise ->
+                view.getAudioTracks { promise.resolve(it) }
             }
 
             AsyncFunction("setAudioTrack") { view: MpvPlayerView, trackId: Int ->
                 view.setAudioTrack(trackId)
             }
 
-            AsyncFunction("getCurrentAudioTrack") { view: MpvPlayerView ->
-                view.getCurrentAudioTrack()
+            AsyncFunction("getCurrentAudioTrack") { view: MpvPlayerView, promise: Promise ->
+                view.getCurrentAudioTrack { promise.resolve(it) }
             }
 
             // Video scaling functions
@@ -216,8 +226,8 @@ class MpvPlayerModule : Module() {
             }
 
             // Technical info function
-            AsyncFunction("getTechnicalInfo") { view: MpvPlayerView ->
-                view.getTechnicalInfo()
+            AsyncFunction("getTechnicalInfo") { view: MpvPlayerView, promise: Promise ->
+                view.getTechnicalInfo { promise.resolve(it) }
             }
 
             // Defines events that the view can send to JavaScript

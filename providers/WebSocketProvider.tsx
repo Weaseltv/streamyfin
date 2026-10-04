@@ -1,4 +1,5 @@
 import { getSessionApi } from "@jellyfin/sdk/lib/utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import {
   createContext,
@@ -6,43 +7,19 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
-import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useNetworkStatus } from "@/providers/NetworkStatusProvider";
 import { getJellyfinHeaders, hasHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { patchActorUserData } from "@/utils/query/actorUserData";
-
-// Query keys that depend on the set of library items and should be refreshed
-// when the server reports that the library changed (items added/removed/updated).
-const LIBRARY_CHANGE_QUERY_KEYS = [
-  ["home"],
-  ["library-items"],
-  ["nextUp-all"],
-  ["nextUp"],
-  ["resumeItems"],
-  ["seasons"],
-  ["episodes"],
-] as const;
-
-// Query keys that depend on per-user playback state (resume position, played
-// status, favorites) and should be refreshed when the server reports a
-// `UserDataChanged`. Scoped to the progression-based sections so finishing an
-// episode does not pointlessly refetch "recently added" or suggestions.
-const USER_DATA_CHANGE_QUERY_KEYS = [
-  ["home", "continueAndNextUp"],
-  ["home", "resumeItems"],
-  ["home", "nextUp-all"],
-  ["home", "heroItems"],
-  ["resumeItems"],
-  ["nextUp-all"],
-  ["nextUp"],
-] as const;
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
+import { WebSocketMessageBus } from "@/utils/websocketMessageBus";
 
 interface WebSocketMessage {
   MessageType: string;
@@ -64,12 +41,6 @@ interface WebSocketContextType {
   ws: WebSocket | null;
   isConnected: boolean;
   /**
-   * @deprecated Prefer `subscribe`. `lastMessage` only keeps the most recent
-   * message, so bursts arriving in the same tick are coalesced and lost. Kept
-   * for `useWebsockets` (GeneralCommand handling) until it is migrated.
-   */
-  lastMessage: WebSocketMessage | null;
-  /**
    * Subscribe to a given message type. The handler is called synchronously for
    * every matching message (no coalescing, unlike `lastMessage`). Returns an
    * unsubscribe function to call on cleanup.
@@ -79,7 +50,6 @@ interface WebSocketContextType {
     handler: WebSocketMessageHandler,
   ) => () => void;
   sendMessage: (message: any) => void;
-  clearLastMessage: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -96,18 +66,12 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   const { isConnected: isNetworkConnected } = useNetworkStatus();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const queryClient = useNetworkAwareQueryClient();
+  const queryClient = useQueryClient();
+  const refreshQueue = playbackRefreshQueue(queryClient);
   const deviceId = useMemo(() => {
     return getOrSetDeviceId();
   }, []);
   const reconnectAttemptsRef = useRef(0);
-  const libraryChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const userDataChangeDebounceRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
   // Handle for the onerror backoff timer. Tracked so a reconnect triggered by
   // another path (foreground, network reconnect, effect re-run) can cancel a
   // pending one — an untracked timer would later open a second socket.
@@ -117,53 +81,20 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
 
   // Pub/sub registry: messageType -> set of handlers. Stored in a ref so
   // subscribing/dispatching never triggers a re-render.
-  const listenersRef = useRef<Map<string, Set<WebSocketMessageHandler>>>(
-    new Map(),
+  const bus = useRef(
+    new WebSocketMessageBus<WebSocketMessage>((error) => {
+      console.error("Error handling WebSocket message", error);
+    }),
   );
-
   const subscribe = useCallback(
-    (messageType: string, handler: WebSocketMessageHandler) => {
-      const listeners = listenersRef.current;
-      let handlers = listeners.get(messageType);
-      if (!handlers) {
-        handlers = new Set();
-        listeners.set(messageType, handlers);
-      }
-      handlers.add(handler);
-      return () => {
-        handlers?.delete(handler);
-        // Only drop the map entry if it still points at THIS set. After an
-        // unsubscribe + re-subscribe for the same type, a stale second call to
-        // this cleanup would otherwise delete the new subscribers' set and
-        // silently stop delivering their messages.
-        if (
-          handlers &&
-          handlers.size === 0 &&
-          listeners.get(messageType) === handlers
-        ) {
-          listeners.delete(messageType);
-        }
-      };
-    },
+    (messageType: string, handler: WebSocketMessageHandler) =>
+      bus.current.subscribe(messageType, (message) =>
+        handler(message.Data, message),
+      ),
     [],
   );
-
   const dispatchMessage = useCallback((message: WebSocketMessage) => {
-    const handlers = listenersRef.current.get(message.MessageType);
-    if (!handlers || handlers.size === 0) return;
-    // Copy to tolerate handlers that unsubscribe during dispatch.
-    for (const handler of [...handlers]) {
-      // Isolate each handler so one throwing subscriber can't abort the rest
-      // (and isn't misreported as a parse failure by the outer onmessage catch).
-      try {
-        handler(message.Data, message);
-      } catch (error) {
-        console.error(
-          `Error handling WebSocket message type "${message.MessageType}":`,
-          error,
-        );
-      }
-    }
+    bus.current.dispatch(message);
   }, []);
 
   const connectWebSocket = useCallback(() => {
@@ -241,8 +172,6 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     newWebSocket.onmessage = (e) => {
       try {
         const message = JSON.parse(e.data);
-        // Legacy single-slot state, still consumed by useWebsockets.
-        setLastMessage(message);
         // Pub/sub: deliver to every subscriber without coalescing.
         dispatchMessage(message);
       } catch (error) {
@@ -278,36 +207,18 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         return;
       }
 
-      // Mark cached actor catalogs dirty without starting requests behind
-      // the player. Their next focused mount fetches the changed catalog.
       queryClient.invalidateQueries({
         queryKey: ["actor", "movies"],
         refetchType: "none",
       });
-
-      // A single scan can emit several LibraryChanged messages in quick
-      // succession, so debounce the invalidation to refetch only once.
-      if (libraryChangeDebounceRef.current) {
-        clearTimeout(libraryChangeDebounceRef.current);
-      }
-      libraryChangeDebounceRef.current = setTimeout(() => {
-        for (const queryKey of LIBRARY_CHANGE_QUERY_KEYS) {
-          queryClient.invalidateQueries({ queryKey: [...queryKey] });
-        }
-      }, 1000);
+      refreshQueue.libraryChanged();
     },
-    [queryClient],
+    [refreshQueue, queryClient],
   );
 
   const handleUserDataChanged = useCallback(
     (data: any) => {
-      // Jellyfin sends UserDataChanged when playback position, played status
-      // or favorites change (e.g. finishing an episode). Only the
-      // progression-based home sections care about it.
-      if (!((data?.UserDataList?.length ?? 0) > 0)) {
-        return;
-      }
-
+      if (!((data?.UserDataList?.length ?? 0) > 0)) return;
       // Actor catalogs may stay fresh for a minute. Apply the server's user
       // data to matching cached cards immediately without refetching them.
       for (const [key, items] of queryClient.getQueriesData({
@@ -319,18 +230,16 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
         if (next !== items) queryClient.setQueryData(key, next);
       }
 
-      // Finishing an item can emit several UserDataChanged messages, so
-      // debounce to invalidate the affected sections only once.
-      if (userDataChangeDebounceRef.current) {
-        clearTimeout(userDataChangeDebounceRef.current);
-      }
-      userDataChangeDebounceRef.current = setTimeout(() => {
-        for (const queryKey of USER_DATA_CHANGE_QUERY_KEYS) {
-          queryClient.invalidateQueries({ queryKey: [...queryKey] });
-        }
-      }, 800);
+      // Retain every affected item, including updates from other clients.
+      // Remote play/pause/stop dispatch above continues immediately.
+      const ids = data.UserDataList.map(
+        (entry: { ItemId?: string }) => entry.ItemId,
+      ).filter(
+        (id: unknown): id is string => typeof id === "string" && id.length > 0,
+      );
+      refreshQueue.userDataChanged(ids);
     },
-    [queryClient],
+    [refreshQueue, queryClient],
   );
 
   // Refresh library-dependent queries when the server reports a change.
@@ -347,12 +256,6 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
 
   useEffect(() => {
     return () => {
-      if (libraryChangeDebounceRef.current) {
-        clearTimeout(libraryChangeDebounceRef.current);
-      }
-      if (userDataChangeDebounceRef.current) {
-        clearTimeout(userDataChangeDebounceRef.current);
-      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -425,20 +328,12 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     },
     [ws, isConnected],
   );
-  const clearLastMessage = useCallback(() => {
-    setLastMessage(null);
-  }, []);
+  const value = useMemo(
+    () => ({ ws, isConnected, subscribe, sendMessage }),
+    [ws, isConnected, subscribe, sendMessage],
+  );
   return (
-    <WebSocketContext.Provider
-      value={{
-        ws,
-        isConnected,
-        lastMessage,
-        subscribe,
-        sendMessage,
-        clearLastMessage,
-      }}
-    >
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -453,3 +348,20 @@ export const useWebSocketContext = (): WebSocketContextType => {
   }
   return context;
 };
+
+/** Stable subscription; commands always see the most recently committed handler. */
+export function useWebSocketMessage(
+  messageType: string,
+  handler: WebSocketMessageHandler,
+) {
+  const { subscribe } = useWebSocketContext();
+  const latest = useRef(handler);
+  useLayoutEffect(() => {
+    latest.current = handler;
+  }, [handler]);
+  useEffect(
+    () =>
+      subscribe(messageType, (data, message) => latest.current(data, message)),
+    [messageType, subscribe],
+  );
+}

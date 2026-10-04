@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { View } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -29,13 +30,16 @@ export const LoadingLine: React.FC<Props> = ({
   const accent = useAccent(accentProp);
   const x = useSharedValue(-1);
   useEffect(() => {
+    cancelAnimation(x);
     x.value = -1;
+    if (!active) return;
     x.value = withRepeat(
       withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
       -1,
       false,
     );
-  }, [x]);
+    return () => cancelAnimation(x);
+  }, [active, x]);
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: `${x.value * 100}%` }],
   }));

@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
-import { useAllSessions, type useSessionsProps } from "@/hooks/useSessions";
+import { useAllSessions } from "@/hooks/useSessions";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { HeaderIcon } from "./common/HeaderIcon";
 import { Text } from "./common/Text";
@@ -33,15 +33,16 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const api = useAtomValue(apiAtom);
-  const { sessions, isLoading } = useAllSessions({} as useSessionsProps);
+  const { sessions, isLoading } = useAllSessions({ enabled: modalVisible });
   const { t } = useTranslation();
-  // Bright while another client is playing this item, otherwise grey — the
-  // same idle/active pair as the Cast button beside it.
-  const isPlayingElsewhere = !!sessions?.some(
-    (session) =>
-      session.NowPlayingItem?.Id === item.Id &&
-      session.DeviceId !== api?.deviceInfo.id,
-  );
+  // The closed icon stays neutral; only the open chooser observes live sessions.
+  const isPlayingElsewhere =
+    modalVisible &&
+    !!sessions?.some(
+      (session) =>
+        session.NowPlayingItem?.Id === item.Id &&
+        session.DeviceId !== api?.deviceInfo.id,
+    );
   const handlePlayInSession = async (sessionId: string) => {
     if (!api || !item.Id) return;
 

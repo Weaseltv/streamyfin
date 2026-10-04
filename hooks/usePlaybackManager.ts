@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { Deadlines } from "@/constants/networkDeadlines";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { DownloadedItem } from "@/providers/Downloads/types";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { shuffleQueueAtom } from "@/utils/atoms/shuffleQueue";
@@ -74,7 +74,7 @@ export const usePlaybackManager = ({
   const { isConnected } = useNetworkStatus();
   const queryClient = useQueryClient();
   const { getDownloadedItemById, updateDownloadedItem, getDownloadedItems } =
-    useDownload();
+    useDownloadActions();
 
   /** Whether the device is online. actually it's connected to the internet. */
   const isOnline = isConnected;

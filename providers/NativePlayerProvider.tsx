@@ -11,7 +11,7 @@ import {
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
 import { router } from "expo-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import type React from "react";
 import {
   createContext,
@@ -64,10 +64,14 @@ import {
 // The TV-safe wrapper, NOT expo-screen-orientation directly: the native
 // module is absent from TV binaries and a top-level import crashes on launch.
 import { OrientationLock } from "@/packages/expo-screen-orientation";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import { useWebSocketContext } from "@/providers/WebSocketProvider";
 import {
+  useWebSocketContext,
+  useWebSocketMessage,
+} from "@/providers/WebSocketProvider";
+import {
+  autoPlayEpisodeCountAtom,
   getActiveVideoPlayer,
   isNativePlayerSupported,
   isNativePlayerSupportedTV,
@@ -294,11 +298,12 @@ const NativePlayerProviderInner: React.FC<{
   const user = useAtomValue(userAtom);
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
+  const atomStore = useStore();
   const { isConnected } = useNetworkStatus();
   const { lockOrientation, unlockOrientation } = useOrientation();
-  const downloadUtils = useDownload();
+  const downloadUtils = useDownloadActions();
   const revalidateProgressCache = useInvalidatePlaybackProgressCache();
-  const { lastMessage, subscribe, clearLastMessage } = useWebSocketContext();
+  const { subscribe } = useWebSocketContext();
 
   const sessionRef = useRef<NativeSession | null>(null);
   // Monotonic id per beginSession call: the config build awaits a PlaybackInfo
@@ -487,7 +492,7 @@ const NativePlayerProviderInner: React.FC<{
       const max = currentSettings?.maxAutoPlayEpisodeCount?.value ?? -1;
       const autoplayWanted = currentSettings?.autoPlayNextEpisode ?? false;
       const capReached =
-        max !== -1 && (currentSettings?.autoPlayEpisodeCount ?? 0) >= max;
+        max !== -1 && atomStore.get(autoPlayEpisodeCountAtom) >= max;
       const autoplayAllowed = autoplayWanted && !capReached;
       const epNumber =
         next.ParentIndexNumber !== undefined && next.IndexNumber !== undefined
@@ -510,7 +515,7 @@ const NativePlayerProviderInner: React.FC<{
         stillWatchingRequired: autoplayWanted && capReached,
       };
     },
-    [],
+    [atomStore],
   );
 
   const pushEpisodeList = useCallback(
@@ -686,10 +691,6 @@ const NativePlayerProviderInner: React.FC<{
 
       setActiveItem(session.item);
       setIsActive(true);
-      // Drop any WS command that arrived before this session existed — a
-      // stale coalesced "Stop"/"Seek" must not execute the moment isActive
-      // flips (lastMessage has no other consumer while browsing).
-      clearLastMessage();
       reportPlaybackStart(session);
       void pushSegments(session);
       void pushEpisodeList(session);
@@ -703,7 +704,6 @@ const NativePlayerProviderInner: React.FC<{
       reportPlaybackStart,
       reportPlaybackStopped,
       releaseLiveStream,
-      clearLastMessage,
       pushSegments,
       pushEpisodeList,
     ],
@@ -1402,7 +1402,7 @@ const NativePlayerProviderInner: React.FC<{
         const currentSettings = settingsRef.current;
         if (payload.reason === "countdown") {
           const max = currentSettings?.maxAutoPlayEpisodeCount?.value ?? -1;
-          const count = currentSettings?.autoPlayEpisodeCount ?? 0;
+          const count = atomStore.get(autoPlayEpisodeCountAtom);
           const allowed =
             (currentSettings?.autoPlayNextEpisode ?? false) &&
             (max === -1 || count < max);
@@ -1411,11 +1411,11 @@ const NativePlayerProviderInner: React.FC<{
             return;
           }
           if (max !== -1) {
-            updateSettings({ autoPlayEpisodeCount: count + 1 });
+            atomStore.set(autoPlayEpisodeCountAtom, count + 1);
           }
         } else if (currentSettings?.maxAutoPlayEpisodeCount?.value !== -1) {
           // A deliberate tap resets the auto-play chain counter.
-          updateSettings({ autoPlayEpisodeCount: 0 });
+          atomStore.set(autoPlayEpisodeCountAtom, 0);
         }
         void playAdjacentItem(session, next);
       }),
@@ -1547,6 +1547,7 @@ const NativePlayerProviderInner: React.FC<{
     teardownSession,
     downloadUtils,
     updateSettings,
+    atomStore,
     lockOrientation,
   ]);
 
@@ -1596,11 +1597,10 @@ const NativePlayerProviderInner: React.FC<{
     [subscribe, presentFromRequest],
   );
 
-  // General commands while the native player is up. The JS player route and a
-  // native session are mutually exclusive, so consuming lastMessage here can't
-  // double-handle with hooks/useWebsockets.
-  useEffect(() => {
-    if (!isActive || !lastMessage) return;
+  // Native and JS playback are mutually exclusive. Ignore commands while
+  // inactive instead of retaining a stale Stop/Seek for the next session.
+  useWebSocketMessage("*", (_data, lastMessage) => {
+    if (!isActive) return;
     const session = sessionRef.current;
     if (!session) return;
 
@@ -1612,13 +1612,19 @@ const NativePlayerProviderInner: React.FC<{
     if (!command) return;
 
     switch (command) {
-      case "PlayPause":
-        void (session.isPlaying ? nativePlayerPause() : nativePlayerPlay());
+      case "PlayPause": {
+        // Same-tick commands must see the result of the prior command before
+        // native playback events or a React commit arrive.
+        session.isPlaying = !session.isPlaying;
+        void (session.isPlaying ? nativePlayerPlay() : nativePlayerPause());
         break;
+      }
       case "Pause":
+        session.isPlaying = false;
         void nativePlayerPause();
         break;
       case "Unpause":
+        session.isPlaying = true;
         void nativePlayerPlay();
         break;
       case "Stop":
@@ -1662,15 +1668,7 @@ const NativePlayerProviderInner: React.FC<{
       default:
         return;
     }
-    clearLastMessage();
-  }, [
-    lastMessage,
-    isActive,
-    clearLastMessage,
-    handleAudioSelection,
-    handleSubtitleSelection,
-    playAdjacentItem,
-  ]);
+  });
 
   // Logout mid-playback tears the player down.
   useEffect(() => {
