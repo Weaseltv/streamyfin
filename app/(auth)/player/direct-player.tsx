@@ -199,8 +199,8 @@ export default function DirectPlayerPage() {
   const [item, setItem] = useState<BaseItemDto | null>(null);
   const initialSeekDoneRef = useRef(false);
 
-  /** Position MPV is told to start from: the URL param wins, since it is
-   * rewritten during playback, otherwise the item's stored resume position.
+  /** Initial position: an explicit URL param wins, otherwise use the item's
+   * stored resume position.
    * The route is deep-linkable, so the param is parsed whole rather than by
    * prefix: parseInt would turn "1200invalid" into a position instead of
    * falling back, and NaN would reach getStreamUrl and MPV. */
@@ -212,12 +212,21 @@ export default function DirectPlayerPage() {
       : (item?.UserData?.PlaybackPositionTicks ?? 0);
   }, [playbackPositionFromUrl, item?.UserData?.PlaybackPositionTicks]);
 
-  // Pinned on mount: the initial seek must not follow the position the player
-  // writes back into the URL every 30s. Zero here is not a missed resume:
-  // PlayButton always passes playbackPosition, and when it is absent the
-  // resume still happens through the stream offset and MPV's startPosition,
-  // which read startTicks after the item has loaded.
   const initialPlaybackTicksRef = useRef<number>(startTicks);
+  // The live position belongs to this item, not to global route state. Reset
+  // synchronously when an in-place episode switch reuses this component.
+  const livePlaybackTicksRef = useRef<{ itemId: string; ticks: number | null }>(
+    {
+      itemId,
+      ticks: null,
+    },
+  );
+  if (livePlaybackTicksRef.current.itemId !== itemId) {
+    livePlaybackTicksRef.current = { itemId, ticks: null };
+  }
+  // A source keeps the position negotiated for its session. Later progress
+  // must not rewrite that source or replay its initial seek.
+  const [streamStartTicks, setStreamStartTicks] = useState(startTicks);
 
   const [downloadedItem, setDownloadedItem] = useState<DownloadedItem | null>(
     null,
@@ -502,6 +511,8 @@ export default function DirectPlayerPage() {
           return null;
         }
 
+        const requestStartTicks =
+          livePlaybackTicksRef.current.ticks ?? startTicks;
         let result: Stream | null = null;
         if (offline && downloadedItem?.mediaSource) {
           const url = downloadedItem.videoFilePath;
@@ -528,7 +539,7 @@ export default function DirectPlayerPage() {
           const res = await getStreamUrl({
             api,
             item,
-            startTimeTicks: startTicks,
+            startTimeTicks: requestStartTicks,
             userId: user.Id,
             audioStreamIndex: audioIndex,
             maxStreamingBitrate: bitrateValue,
@@ -559,6 +570,8 @@ export default function DirectPlayerPage() {
           result = { mediaSource, sessionId, url, requiredHttpHeaders };
         }
         if (!isCurrent()) return null;
+        setStreamStartTicks(requestStartTicks);
+        initialPlaybackTicksRef.current = requestStartTicks;
         setStream(result);
         setStreamStatus({ isLoading: false, isError: false });
         return result;
@@ -603,7 +616,7 @@ export default function DirectPlayerPage() {
               // instead, or the dashboard shows "paused at 0:00" until the first
               // progress tick.
               IsPaused: false,
-              PositionTicks: startTicks,
+              PositionTicks: streamStartTicks,
             },
           },
           { timeout: Deadlines.reporting },
@@ -619,9 +632,8 @@ export default function DirectPlayerPage() {
         error instanceof Error ? error.message : String(error),
       );
     });
-    // startTicks is read, not depended on: it is rewritten into the URL every
-    // 30s during playback, and re-running this would report a new playback
-    // start each time.
+    // Report once for the acquired session, using its negotiated position.
+    // Progress remains local and cannot create another playback start.
   }, [stream, api]);
 
   const togglePlay = useCallback(async () => {
@@ -738,8 +750,7 @@ export default function DirectPlayerPage() {
   // Keep refs to the latest stop / stopped-report so the effects below don't
   // need these churning callbacks in their dependency arrays. Reporting
   // "stopped" from an effect cleanup that re-runs during playback (e.g. when
-  // the 30s router.setParams position write mutates navigation state) caused a
-  // spurious PlaybackStopped every URL_UPDATE_INTERVAL.
+  // route parameters or navigation state change) caused a spurious stopped report.
   const stopRef = useRef(stop);
   const reportPlaybackStoppedRef = useRef(reportPlaybackStopped);
 
@@ -826,17 +837,15 @@ export default function DirectPlayerPage() {
     // when the user pauses or resumes.
   }, [currentPlayStateInfo, isPlaying, item?.Id, stream, hasPlaybackStarted]);
 
-  const lastUrlUpdateTime = useSharedValue(0);
   const lastProgressReportTime = useSharedValue(0);
   const wasJustSeeking = useSharedValue(false);
-  const URL_UPDATE_INTERVAL = 30000; // Update URL every 30 seconds instead of every second
   // Heartbeat cadence for the periodic progress report. MPV ticks once a
   // second, but the server only needs the position often enough for Now
   // Playing and resume: state changes (pause, resume, track, mute) are
   // reported on their own by the effect above, and a seek reports immediately.
   const PROGRESS_REPORT_INTERVAL = 10000;
 
-  // Track when seeking ends to update URL immediately
+  // Track when seeking ends to report the new position immediately
   useAnimatedReaction(
     () => isSeeking.get(),
     (currentSeeking, previousSeeking) => {
@@ -878,27 +887,17 @@ export default function DirectPlayerPage() {
         cacheProgress.set(cacheEnd);
       }
 
-      // Update URL immediately after seeking, or every 30 seconds during normal playback
+      livePlaybackTicksRef.current.ticks = msToTicks(currentTime);
       const now = Date.now();
-      const shouldUpdateUrl = wasJustSeeking.get();
+      const wasSeek = wasJustSeeking.get();
       wasJustSeeking.value = false;
-
-      if (
-        shouldUpdateUrl ||
-        now - lastUrlUpdateTime.get() > URL_UPDATE_INTERVAL
-      ) {
-        router.setParams({
-          playbackPosition: msToTicks(currentTime).toString(),
-        });
-        lastUrlUpdateTime.value = now;
-      }
 
       // Reporting every tick meant one request per second per player, and for
       // a downloaded item the whole downloads database was serialized and
       // written to storage on each one (plus two query invalidations). Report
       // right after a seek, since the position jumped, otherwise heartbeat.
       const shouldReportProgress =
-        shouldUpdateUrl ||
+        wasSeek ||
         now - lastProgressReportTime.get() >= PROGRESS_REPORT_INTERVAL;
       if (!shouldReportProgress) return;
       lastProgressReportTime.value = now;
@@ -986,7 +985,7 @@ export default function DirectPlayerPage() {
       isTranscoding,
     );
 
-    const startPos = ticksToSeconds(startTicks);
+    const startPos = ticksToSeconds(streamStartTicks);
 
     // Build source config - headers only needed for online streaming
     const source: MpvVideoSource = {
@@ -1047,7 +1046,7 @@ export default function DirectPlayerPage() {
     stream?.url,
     stream?.mediaSource,
     stream?.requiredHttpHeaders,
-    startTicks,
+    streamStartTicks,
     api?.basePath,
     api?.accessToken,
     audioIndex,
@@ -1227,6 +1226,7 @@ export default function DirectPlayerPage() {
   }, []);
 
   const seek = useCallback((position: number) => {
+    livePlaybackTicksRef.current.ticks = msToTicks(position);
     // MPV expects seconds, convert from ms
     videoRef.current?.seekTo?.(position / 1000);
   }, []);
