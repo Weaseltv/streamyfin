@@ -3,7 +3,7 @@ import { useGlobalSearchParams } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { prefetchServerImage } from "@/components/common/ServerImage";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { ticksToMs } from "@/utils/time";
 import {
@@ -21,7 +21,7 @@ interface TrickplayUrl {
 /** Hook to handle trickplay logic for a given item. */
 export const useTrickplay = (item: BaseItemDto) => {
   const api = useAtomValue(apiAtom);
-  const { getDownloadedItemById } = useDownload();
+  const { getDownloadedItemById } = useDownloadActions();
   const [trickPlayUrl, setTrickPlayUrl] = useState<TrickplayUrl | null>(null);
   const lastCalculationTime = useRef(0);
   const throttleDelay = 200;

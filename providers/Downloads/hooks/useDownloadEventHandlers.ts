@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   DownloadCompleteEvent,
@@ -54,6 +54,10 @@ export function useDownloadEventHandlers({
   onDataChange,
 }: UseDownloadEventHandlersProps) {
   const { t } = useTranslation();
+  const latestProcesses = useRef(processes);
+  useLayoutEffect(() => {
+    latestProcesses.current = processes;
+  }, [processes]);
 
   // Handle download started events
   useEffect(() => {
@@ -119,7 +123,9 @@ export function useDownloadEventHandlers({
           estimatedTotalBytes = event.totalBytes;
         } else {
           // Transcoding - estimate from bitrate
-          const process = processes.find((p) => p.id === processId);
+          const process = latestProcesses.current.find(
+            (p) => p.id === processId,
+          );
           if (process?.maxBitrate.value && process.item.RunTimeTicks) {
             const { estimateDownloadSize } = require("@/utils/download");
             estimatedTotalBytes = estimateDownloadSize(
@@ -175,7 +181,7 @@ export function useDownloadEventHandlers({
     );
 
     return () => progressSub.remove();
-  }, [updateProcess, processes]);
+  }, [updateProcess]);
 
   // Handle download completion events
   useEffect(() => {
@@ -197,7 +203,7 @@ export function useDownloadEventHandlers({
 
           // In-memory process may carry a live isTranscoding signal derived from progress events;
           // finalize falls back to the media source when it is gone (e.g. after a relaunch).
-          const process = processes.find((p) => p.id === itemId);
+          const process = latestProcesses.current.find((p) => p.id === itemId);
           finalizePendingDownload(
             record,
             videoFileSize,
@@ -240,7 +246,7 @@ export function useDownloadEventHandlers({
     );
 
     return () => completeSub.remove();
-  }, [processes, updateProcess, removeProcess, onSuccess, onDataChange, t]);
+  }, [updateProcess, removeProcess, onSuccess, onDataChange, t]);
 
   // Handle download error events
   useEffect(() => {
