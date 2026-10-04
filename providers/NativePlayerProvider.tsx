@@ -11,7 +11,7 @@ import {
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
 import { router } from "expo-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import type React from "react";
 import {
   createContext,
@@ -68,6 +68,7 @@ import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useWebSocketContext } from "@/providers/WebSocketProvider";
 import {
+  autoPlayEpisodeCountAtom,
   getActiveVideoPlayer,
   isNativePlayerSupported,
   isNativePlayerSupportedTV,
@@ -294,6 +295,7 @@ const NativePlayerProviderInner: React.FC<{
   const user = useAtomValue(userAtom);
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
+  const atomStore = useStore();
   const { isConnected } = useNetworkStatus();
   const { lockOrientation, unlockOrientation } = useOrientation();
   const downloadUtils = useDownloadActions();
@@ -487,7 +489,7 @@ const NativePlayerProviderInner: React.FC<{
       const max = currentSettings?.maxAutoPlayEpisodeCount?.value ?? -1;
       const autoplayWanted = currentSettings?.autoPlayNextEpisode ?? false;
       const capReached =
-        max !== -1 && (currentSettings?.autoPlayEpisodeCount ?? 0) >= max;
+        max !== -1 && atomStore.get(autoPlayEpisodeCountAtom) >= max;
       const autoplayAllowed = autoplayWanted && !capReached;
       const epNumber =
         next.ParentIndexNumber !== undefined && next.IndexNumber !== undefined
@@ -510,7 +512,7 @@ const NativePlayerProviderInner: React.FC<{
         stillWatchingRequired: autoplayWanted && capReached,
       };
     },
-    [],
+    [atomStore],
   );
 
   const pushEpisodeList = useCallback(
@@ -1402,7 +1404,7 @@ const NativePlayerProviderInner: React.FC<{
         const currentSettings = settingsRef.current;
         if (payload.reason === "countdown") {
           const max = currentSettings?.maxAutoPlayEpisodeCount?.value ?? -1;
-          const count = currentSettings?.autoPlayEpisodeCount ?? 0;
+          const count = atomStore.get(autoPlayEpisodeCountAtom);
           const allowed =
             (currentSettings?.autoPlayNextEpisode ?? false) &&
             (max === -1 || count < max);
@@ -1411,11 +1413,11 @@ const NativePlayerProviderInner: React.FC<{
             return;
           }
           if (max !== -1) {
-            updateSettings({ autoPlayEpisodeCount: count + 1 });
+            atomStore.set(autoPlayEpisodeCountAtom, count + 1);
           }
         } else if (currentSettings?.maxAutoPlayEpisodeCount?.value !== -1) {
           // A deliberate tap resets the auto-play chain counter.
-          updateSettings({ autoPlayEpisodeCount: 0 });
+          atomStore.set(autoPlayEpisodeCountAtom, 0);
         }
         void playAdjacentItem(session, next);
       }),
@@ -1547,6 +1549,7 @@ const NativePlayerProviderInner: React.FC<{
     teardownSession,
     downloadUtils,
     updateSettings,
+    atomStore,
     lockOrientation,
   ]);
 

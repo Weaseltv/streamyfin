@@ -1598,11 +1598,24 @@ export default function DirectPlayerPage() {
     videoRef,
   ]);
 
+  // Unrelated preferences must not issue another seven native style commands.
+  const subtitleStyle = useMemo(
+    () => buildSubtitleStyle(settings),
+    [
+      settings.mpvSubtitleScale,
+      settings.mpvSubtitleMarginY,
+      settings.mpvSubtitleAlignX,
+      settings.mpvSubtitleAlignY,
+      settings.mpvSubtitleBackgroundEnabled,
+      settings.mpvSubtitleBackgroundOpacity,
+    ],
+  );
+
   // Apply subtitle settings when video loads
   useEffect(() => {
     if (!isVideoLoaded || !videoRef.current) return;
-    applySubtitleStyle(videoRef.current, buildSubtitleStyle(settings));
-  }, [isVideoLoaded, settings]);
+    applySubtitleStyle(videoRef.current, subtitleStyle);
+  }, [isVideoLoaded, subtitleStyle]);
 
   // Apply initial playback speed when video loads
   useEffect(() => {

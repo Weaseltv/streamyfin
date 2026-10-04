@@ -29,47 +29,8 @@ export const Badge: React.FC<Props> = ({
   glow = false,
   ...props
 }) => {
-  const typography = useScaledTVTypography();
-
-  // On TV, use BlurView for consistent styling
-  if (Platform.isTV) {
-    return (
-      <BlurView
-        intensity={10}
-        tint='light'
-        style={{
-          borderRadius: 8,
-          overflow: "hidden",
-          alignSelf: "flex-start",
-          flexShrink: 1,
-          flexGrow: 0,
-        }}
-      >
-        <View
-          style={[
-            {
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "rgba(0,0,0,0.3)",
-            },
-            props.style,
-          ]}
-        >
-          {iconLeft && <View style={{ marginRight: 8 }}>{iconLeft}</View>}
-          <Text
-            style={{
-              fontSize: typography.callout,
-              color: "#E5E7EB",
-            }}
-          >
-            {text}
-          </Text>
-        </View>
-      </BlurView>
-    );
-  }
+  if (Platform.isTV)
+    return <TVBadge iconLeft={iconLeft} text={text} {...props} />;
 
   const accent = tint ?? NeonBoard.mid;
   const filled = variant === "primary" || variant === "filled";
@@ -104,5 +65,46 @@ export const Badge: React.FC<Props> = ({
         {text}
       </Text>
     </View>
+  );
+};
+
+const TVBadge: React.FC<Props> = ({ iconLeft, text, ...props }) => {
+  const typography = useScaledTVTypography();
+
+  return (
+    <BlurView
+      intensity={10}
+      tint='light'
+      style={{
+        borderRadius: 8,
+        overflow: "hidden",
+        alignSelf: "flex-start",
+        flexShrink: 1,
+        flexGrow: 0,
+      }}
+    >
+      <View
+        style={[
+          {
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.3)",
+          },
+          props.style,
+        ]}
+      >
+        {iconLeft && <View style={{ marginRight: 8 }}>{iconLeft}</View>}
+        <Text
+          style={{
+            fontSize: typography.callout,
+            color: "#E5E7EB",
+          }}
+        >
+          {text}
+        </Text>
+      </View>
+    </BlurView>
   );
 };

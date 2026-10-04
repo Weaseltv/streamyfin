@@ -26,7 +26,7 @@ import { JELLYFIN_CLIENT_NAME } from "@/constants/Client";
 import useRouter from "@/hooks/useAppRouter";
 import { useInterval } from "@/hooks/useInterval";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
-import { useSettings } from "@/utils/atoms/settings";
+import { useSettingsActions } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
@@ -182,7 +182,8 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useAtom(userAtom);
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [secret, setSecret] = useState<string | null>(null);
-  const { setPluginSettings, refreshStreamyfinPluginSettings } = useSettings();
+  const { setPluginSettings, refreshStreamyfinPluginSettings } =
+    useSettingsActions();
   const { clearAllJellyseerData, setJellyseerrUser } = useJellyseerr();
   const queryClient = useQueryClient();
 
