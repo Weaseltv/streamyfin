@@ -73,6 +73,7 @@ import {
 } from "@/utils/jellyfin/subtitleUtils";
 import { writeToLog } from "@/utils/log";
 import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
+import { getReusableItemMetadata } from "@/utils/query/reusableItemMetadata";
 import {
   isLocalSubtitleIndex,
   localSubtitleIndex,
@@ -89,6 +90,7 @@ export default function DirectPlayerPage() {
   const videoRef = useRef<MpvPlayerViewRef>(null);
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const router = useRouter();
@@ -379,12 +381,20 @@ export default function DirectPlayerPage() {
             setItemStatus({ isLoading: false, isError: false });
             return;
           }
-          const res = await getUserLibraryApi(api).getItem({
-            itemId,
-            userId: user?.Id,
-          });
-          if (!isCurrent()) return;
-          fetchedItem = res.data;
+          const cached =
+            itemAttempt === 0
+              ? getReusableItemMetadata(queryClient, itemId)
+              : undefined;
+          if (cached) {
+            fetchedItem = cached;
+          } else {
+            const res = await getUserLibraryApi(api).getItem({
+              itemId,
+              userId: user?.Id,
+            });
+            if (!isCurrent()) return;
+            fetchedItem = res.data;
+          }
         }
         if (!isCurrent()) return;
         setItem(fetchedItem);
@@ -411,7 +421,7 @@ export default function DirectPlayerPage() {
       progress.set(0);
       fetchItemData();
     }
-  }, [itemId, offline, api, user?.Id, progress, itemAttempt]);
+  }, [itemId, offline, api, user?.Id, progress, itemAttempt, queryClient]);
 
   // Lock orientation based on user settings
   useEffect(() => {
