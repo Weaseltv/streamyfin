@@ -1,7 +1,7 @@
 import { getItemsApi, getUserLibraryApi } from "@jellyfin/sdk/lib/utils/api";
 import { AxiosError } from "axios";
 import { useAtomValue } from "jotai";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "../providers/JellyfinProvider";
 import { useNetworkStatus } from "./useNetworkStatus";
 
@@ -12,7 +12,7 @@ import { useNetworkStatus } from "./useNetworkStatus";
 export const useTwoWaySync = () => {
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
-  const { getDownloadedItemById, updateDownloadedItem } = useDownload();
+  const { getDownloadedItemById, updateDownloadedItem } = useDownloadActions();
   const { isConnected } = useNetworkStatus();
 
   /**

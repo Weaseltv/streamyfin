@@ -1,4 +1,4 @@
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import type React from "react";
 import { useMemo } from "react";
 import { View } from "react-native";

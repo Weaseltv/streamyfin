@@ -126,6 +126,7 @@ export default function DirectPlayerPage() {
   const [isBuffering, setIsBuffering] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [tracksReady, setTracksReady] = useState(false);
+  const androidInitialSubtitleApplied = useRef(false);
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
   const [currentPlaybackSpeed, setCurrentPlaybackSpeed] = useState(1.0);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
@@ -623,7 +624,7 @@ export default function DirectPlayerPage() {
     // start each time.
   }, [stream, api]);
 
-  const togglePlay = async () => {
+  const togglePlay = useCallback(async () => {
     lightHapticFeedback();
     // Read the ref so two taps inside one render cycle don't both see the same
     // stale state and cancel each other out.
@@ -634,7 +635,7 @@ export default function DirectPlayerPage() {
     } else {
       videoRef.current?.play();
     }
-  };
+  }, [lightHapticFeedback, setPlaying]);
 
   // Key of the last "stopped" report, to dedupe the double teardown. The
   // PlaySessionId when there is one, the item id otherwise (see stopKey below).
@@ -959,9 +960,9 @@ export default function DirectPlayerPage() {
     // of truth with identity matching (online: basePath + DeliveryUrl unless
     // IsExternalUrl; offline: local file path stored in DeliveryUrl).
     // Keep the stream beside its URL so native can be told which entry is the
-    // selected one. It waits on that sidecar alone and backgrounds the rest,
-    // rather than blocking readiness behind every language (same contract as
-    // buildNativePlayerConfig for the iOS native player).
+    // selected one. Android prepares that sidecar asynchronously and fetches
+    // other languages only when selected; playback readiness does not wait
+    // for the download. iOS keeps its existing selected-first contract.
     const externalSubEntries = (mediaSource?.MediaStreams ?? [])
       .filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External")
       .flatMap((s) => {
@@ -1007,6 +1008,7 @@ export default function DirectPlayerPage() {
     // Add external subtitles only for online playback
     if (externalSubs.length > 0) {
       source.externalSubtitles = externalSubs;
+      source.externalSubtitleBaseUrl = api?.basePath;
       source.initialExternalSubtitleIndex = initialExternalSubtitleIndex;
     }
 
@@ -1281,6 +1283,10 @@ export default function DirectPlayerPage() {
     ],
   );
 
+  useEffect(() => {
+    androidInitialSubtitleApplied.current = false;
+  }, [stream?.url]);
+
   // TV subtitle track change handler
   /**
    * Resolve a Jellyfin subtitle index against MPV's *real* track list and apply
@@ -1378,8 +1384,14 @@ export default function DirectPlayerPage() {
         return;
       }
 
+      const generation = streamGenerationRef.current;
       setCurrentSubtitleIndex(index);
       const result = await applySubtitleSelection(index);
+      if (
+        isPlaybackStoppedRef.current ||
+        streamGenerationRef.current !== generation
+      )
+        return;
       // Safety net: a menu-listed sub the player can't select (server-burned
       // Encode, sidecar never sub-added) needs the server to re-process the
       // stream with it.
@@ -1736,9 +1748,13 @@ export default function DirectPlayerPage() {
                 }}
                 onTracksReady={() => {
                   setTracksReady(true);
-                  // Fired after embedded tracks enumerate and again after each
-                  // external sub-add; re-resolve so the final fire (full track
-                  // list) selects the right track by identity.
+                  // Android's initial selection awaits its own preparation.
+                  // Later sidecar arrivals preserve the current native sid;
+                  // re-applying here could overwrite a newer menu intent.
+                  if (Platform.OS === "android") {
+                    if (androidInitialSubtitleApplied.current) return;
+                    androidInitialSubtitleApplied.current = true;
+                  }
                   void applySubtitleSelection(currentSubtitleIndex);
                 }}
               />
