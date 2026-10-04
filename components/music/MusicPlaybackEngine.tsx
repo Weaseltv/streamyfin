@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import TrackPlayer, {
   Event,
   type PlaybackActiveTrackChangedEvent,
@@ -14,15 +14,44 @@ import {
 } from "@/providers/AudioStorage";
 import { useMusicPlayer } from "@/providers/MusicPlayerProvider";
 
-export const MusicPlaybackEngine: React.FC = () => {
+// Poll only while a track can advance. Native queue/cache listeners remain in the
+// parent even while this progress synchronizer is absent.
+const PlaybackProgressSync = ({
+  lastReportedProgressRef,
+}: {
+  lastReportedProgressRef: RefObject<number>;
+}) => {
   const { position, duration } = useProgress(1000);
+  const { setProgress, setDuration, reportProgress } = useMusicPlayer();
+
+  useEffect(() => {
+    if (position > 0) setProgress(position);
+  }, [position, setProgress]);
+
+  useEffect(() => {
+    if (duration > 0) setDuration(duration);
+  }, [duration, setDuration]);
+
+  useEffect(() => {
+    if (
+      Math.floor(position) - Math.floor(lastReportedProgressRef.current) >=
+      10
+    ) {
+      lastReportedProgressRef.current = position;
+      reportProgress();
+    }
+  }, [position, reportProgress, lastReportedProgressRef]);
+
+  return null;
+};
+
+export const MusicPlaybackEngine: React.FC = () => {
   const playbackState = usePlaybackState();
   const activeTrack = useActiveTrack();
   const {
     setProgress,
     setDuration,
     setIsPlaying,
-    reportProgress,
     onTrackEnd,
     syncFromTrackPlayer,
     triggerLookahead,
@@ -30,19 +59,35 @@ export const MusicPlaybackEngine: React.FC = () => {
 
   const lastReportedProgressRef = useRef(0);
 
-  // Sync progress from TrackPlayer to our state
-  useEffect(() => {
-    if (position > 0) {
-      setProgress(position);
-    }
-  }, [position, setProgress]);
+  const pollProgress = Boolean(
+    activeTrack &&
+      (playbackState.state === State.Playing ||
+        playbackState.state === State.Buffering ||
+        playbackState.state === State.Loading),
+  );
 
-  // Sync duration from TrackPlayer to our state
+  // Capture the final position on pause/stop without keeping an idle timer.
+  // Paused seeks through MusicPlayerProvider update its progress immediately.
   useEffect(() => {
-    if (duration > 0) {
-      setDuration(duration);
-    }
-  }, [duration, setDuration]);
+    if (!activeTrack || pollProgress) return;
+    let current = true;
+    void TrackPlayer.getProgress()
+      .then(({ position, duration }) => {
+        if (!current) return;
+        if (position > 0) setProgress(position);
+        if (duration > 0) setDuration(duration);
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [
+    activeTrack?.id,
+    pollProgress,
+    playbackState.state,
+    setProgress,
+    setDuration,
+  ]);
 
   // Sync playback state from TrackPlayer to our state
   useEffect(() => {
@@ -56,17 +101,6 @@ export const MusicPlaybackEngine: React.FC = () => {
       syncFromTrackPlayer();
     }
   }, [activeTrack?.id, syncFromTrackPlayer]);
-
-  // Report progress every ~10 seconds
-  useEffect(() => {
-    if (
-      Math.floor(position) - Math.floor(lastReportedProgressRef.current) >=
-      10
-    ) {
-      lastReportedProgressRef.current = position;
-      reportProgress();
-    }
-  }, [position, reportProgress]);
 
   // Listen for track changes (native -> JS)
   // This triggers look-ahead caching, checks for cached versions, and handles track end
@@ -217,6 +251,7 @@ export const MusicPlaybackEngine: React.FC = () => {
     return () => subscription.remove();
   }, []);
 
-  // No visual component needed - TrackPlayer is headless
-  return null;
+  return pollProgress ? (
+    <PlaybackProgressSync lastReportedProgressRef={lastReportedProgressRef} />
+  ) : null;
 };

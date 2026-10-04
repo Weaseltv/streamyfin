@@ -8,6 +8,7 @@ import { ItemImage } from "@/components/common/ItemImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { imageWidthFor } from "@/utils/imageSizes";
 import { runtimeTicksToMinutes } from "@/utils/time";
 
 interface Props {
@@ -103,6 +104,7 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
           <ItemImage
             item={item}
             variant='Primary'
+            width={imageWidthFor(108)}
             style={{ width: "100%", height: "100%" }}
           />
         </View>

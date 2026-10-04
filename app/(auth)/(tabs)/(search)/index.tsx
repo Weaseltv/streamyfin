@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useLocalSearchParams, useSegments } from "expo-router";
 import { useAtom } from "jotai";
-import { orderBy, uniqBy } from "lodash";
+import orderBy from "lodash/orderBy";
+import uniqBy from "lodash/uniqBy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, type TextInput, View } from "react-native";
@@ -605,11 +606,7 @@ export default function SearchPage() {
 
   const renderMovieResult = useCallback(
     (item: BaseItemDto) => (
-      <TouchableItemRouter
-        key={item.Id}
-        item={item}
-        style={{ width: Sizes.posterSmall.w }}
-      >
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
         <MoviePoster item={item} size='small' />
         <ItemCardText item={item} />
       </TouchableItemRouter>
@@ -619,11 +616,7 @@ export default function SearchPage() {
 
   const renderSeriesResult = useCallback(
     (item: BaseItemDto) => (
-      <TouchableItemRouter
-        key={item.Id}
-        item={item}
-        style={{ width: Sizes.posterSmall.w }}
-      >
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
         <SeriesPoster item={item} size='small' />
         <ItemCardText item={item} />
       </TouchableItemRouter>
@@ -633,11 +626,7 @@ export default function SearchPage() {
 
   const renderEpisodeResult = useCallback(
     (item: BaseItemDto) => (
-      <TouchableItemRouter
-        item={item}
-        key={item.Id}
-        style={{ width: Sizes.thumbSmall.w }}
-      >
+      <TouchableItemRouter item={item} style={{ width: Sizes.thumbSmall.w }}>
         <ContinueWatchingPoster item={item} size='small' />
         <ItemCardText item={item} />
       </TouchableItemRouter>
@@ -647,11 +636,7 @@ export default function SearchPage() {
 
   const renderCollectionResult = useCallback(
     (item: BaseItemDto) => (
-      <TouchableItemRouter
-        key={item.Id}
-        item={item}
-        style={{ width: Sizes.posterSmall.w }}
-      >
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
         <MoviePoster item={item} size='small' badge={null} />
         <ItemCardText item={item} />
       </TouchableItemRouter>
@@ -662,7 +647,6 @@ export default function SearchPage() {
   const renderActorResult = useCallback(
     (item: BaseItemDto) => (
       <PersonAvatar
-        key={item.Id}
         person={item as BaseItemPerson}
         onPress={() => handleItemPress(item)}
       />
@@ -673,7 +657,6 @@ export default function SearchPage() {
   const renderArtistResult = useCallback(
     (item: BaseItemDto) => (
       <PersonAvatar
-        key={item.Id}
         person={item as BaseItemPerson}
         onPress={() => handleItemPress(item)}
       />
@@ -684,7 +667,6 @@ export default function SearchPage() {
   const renderAlbumResult = useCallback(
     (item: BaseItemDto) => (
       <MusicCard
-        key={item.Id}
         item={item}
         url={getPrimaryImageUrl({ api, item })}
         glyph='disc'
@@ -697,7 +679,6 @@ export default function SearchPage() {
   const renderSongResult = useCallback(
     (item: BaseItemDto) => (
       <MusicCard
-        key={item.Id}
         item={item}
         url={getPrimaryImageUrl({ api, item })}
         glyph='music'
@@ -710,7 +691,6 @@ export default function SearchPage() {
   const renderPlaylistResult = useCallback(
     (item: BaseItemDto) => (
       <MusicCard
-        key={item.Id}
         item={item}
         url={getPrimaryImageUrl({ api, item })}
         glyph='list'
@@ -1138,6 +1118,7 @@ const MusicCard: React.FC<{
       >
         {url ? (
           <Image
+            recyclingKey={item.Id}
             source={{ uri: url }}
             style={{ width: "100%", height: "100%" }}
             contentFit='cover'

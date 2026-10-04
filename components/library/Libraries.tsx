@@ -75,7 +75,6 @@ export const Libraries: React.FC = () => {
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
       <LoadingLine accent={ACCENT} active={isLoading} />
       <FlashList
-        extraData={settings}
         contentContainerStyle={{
           paddingBottom: 150,
           paddingLeft: insets.left,

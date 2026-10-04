@@ -1,4 +1,3 @@
-import { ItemFields } from "@jellyfin/sdk/lib/generated-client/models";
 import { useLocalSearchParams } from "expo-router";
 import type React from "react";
 import { useEffect } from "react";
@@ -13,6 +12,10 @@ import { Text } from "@/components/common/Text";
 import { ItemContent } from "@/components/ItemContent";
 import { useItemQuery } from "@/hooks/useItemQuery";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
+import {
+  ALL_DETAIL_ITEM_FIELDS,
+  DETAIL_ITEM_FIELDS,
+} from "@/utils/query/reusableItemMetadata";
 
 const ItemContentSkeletonTV = Platform.isTV
   ? require("@/components/ItemContentSkeleton.tv").ItemContentSkeletonTV
@@ -25,22 +28,17 @@ const Page: React.FC = () => {
   const { offline } = useLocalSearchParams() as { offline?: string };
   const isOffline = offline === "true";
 
-  // Exclude MediaSources/MediaStreams from initial fetch for faster loading
-  // (especially important for plugins like Gelato)
+  // One complete detail DTO supplies both the page and track defaults.
+  // People remains a separate focused query; every Play still negotiates anew.
   const {
     data: item,
     isError,
     isLoading,
-  } = useItemQuery(id, isOffline, undefined, [
-    ItemFields.MediaSources,
-    ItemFields.MediaSourceCount,
-    ItemFields.MediaStreams,
-  ]);
-
-  // Lazily preload item with full media sources in background — never cache
-  const { data: itemWithSources } = useItemQuery(id, isOffline, undefined, [], {
-    gcTime: 0,
-  });
+  } = useItemQuery(
+    id,
+    isOffline,
+    Platform.isTV ? ALL_DETAIL_ITEM_FIELDS : DETAIL_ITEM_FIELDS,
+  );
 
   const opacity = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => {
@@ -71,11 +69,7 @@ const Page: React.FC = () => {
     <OfflineModeProvider isOffline={isOffline}>
       <View className='flex flex-1 relative'>
         {/* Always render ItemContent - it handles loading state internally on TV */}
-        <ItemContent
-          item={item}
-          itemWithSources={itemWithSources}
-          isLoading={isLoading}
-        />
+        <ItemContent item={item} itemWithSources={item} isLoading={isLoading} />
 
         {/* Skeleton overlay - fades out when content loads */}
         {!item && (
