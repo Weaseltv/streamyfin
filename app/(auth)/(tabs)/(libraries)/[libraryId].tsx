@@ -52,12 +52,13 @@ import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
 import { libraryAccent, NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { Freshness } from "@/constants/queryFreshness";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
+import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
 import { useFilterReset } from "@/hooks/useFilterReset";
 import { useOrientation } from "@/hooks/useOrientation";
-import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -90,6 +91,9 @@ import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 
 const GRID_GAP = 10;
+const GridSeparator = () => (
+  <View style={{ width: GRID_GAP, height: GRID_GAP }} />
+);
 
 const TV_ITEM_GAP = 20;
 const TV_HORIZONTAL_PADDING = 60;
@@ -145,15 +149,6 @@ const Page = () => {
     const handle = setTimeout(() => setSearchTerm(trimmed), 300);
     return () => clearTimeout(handle);
   }, [searchQuery]);
-
-  // Fallback refresh for newly added content when returning to the library
-  // (primary path is the LibraryChanged WebSocket event). Scoped to this
-  // library's own items; Home and other libraries refresh on their own focus.
-  const refreshKeys = useMemo(
-    () => [["library-items", libraryId]],
-    [libraryId],
-  );
-  useRefreshLibraryOnFocus(refreshKeys);
 
   // True only while this screen is focused AND its filters have been restored
   // into the shared atoms. The atoms are global, so while this screen sits
@@ -554,6 +549,11 @@ const Page = () => {
     ],
   );
 
+  const { data: availableFilters } = useAvailableItemFilters(
+    libraryId,
+    !Platform.isTV,
+  );
+
   const { data, isFetching, fetchNextPage, hasNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: [
@@ -588,6 +588,20 @@ const Page = () => {
         return undefined;
       },
       initialPageParam: 0,
+      // Re-enabling after filter restoration fetches only stale/invalidated
+      // data; a second focus invalidation would replay every loaded page.
+      // Playback/favorite filters and sorts still refresh on every return.
+      staleTime:
+        filterBy.length > 0 ||
+        sortBy.some((value) =>
+          [
+            SortByOption.DatePlayed,
+            SortByOption.PlayCount,
+            SortByOption.Random,
+          ].includes(value),
+        )
+          ? 0
+          : Freshness.catalog,
       enabled: !!api && !!user?.Id && !!library && filtersReady,
     });
 
@@ -638,7 +652,6 @@ const Page = () => {
   const renderItem = useCallback(
     ({ item, index }: { item: BaseItemDto; index: number }) => (
       <TouchableItemRouter
-        key={item.Id}
         style={{
           width: "100%",
           marginBottom: 6,
@@ -819,16 +832,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='genreFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Genres || [];
-                  }}
+                  options={availableFilters?.Genres ?? []}
                   set={setGenres}
                   values={selectedGenres}
                   title={t("library.filters.genres")}
@@ -843,16 +847,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='yearFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Years || [];
-                  }}
+                  options={availableFilters?.Years ?? []}
                   set={setYears}
                   values={selectedYears}
                   title={t("library.filters.years")}
@@ -867,16 +862,7 @@ const Page = () => {
                   accent={accent}
                   id={libraryId}
                   queryKey='tagsFilter'
-                  queryFn={async () => {
-                    if (!api) return null;
-                    const response = await getFilterApi(
-                      api,
-                    ).getQueryFiltersLegacy({
-                      userId: user?.Id,
-                      parentId: libraryId,
-                    });
-                    return response.data.Tags || [];
-                  }}
+                  options={availableFilters?.Tags ?? []}
                   set={setTags}
                   values={selectedTags}
                   title={t("library.filters.tags")}
@@ -946,6 +932,7 @@ const Page = () => {
     [
       libraryId,
       api,
+      availableFilters,
       user?.Id,
       accent,
       library?.Name,
@@ -1145,6 +1132,11 @@ const Page = () => {
     });
   }, [showOptions, t, tvFilterByOptions, setFilter, _setFilterBy]);
 
+  const gridExtraData = useMemo(
+    () => [orientation, nrOfCols, cardWidth],
+    [orientation, nrOfCols, cardWidth],
+  );
+
   if (Platform.isTV && (isLoading || isLibraryLoading))
     return (
       <View className='w-full h-full flex items-center justify-center'>
@@ -1178,12 +1170,12 @@ const Page = () => {
           }
           data={flatData}
           renderItem={renderItem}
-          extraData={[orientation, nrOfCols, cardWidth]}
+          extraData={gridExtraData}
           keyExtractor={keyExtractor}
           numColumns={nrOfCols}
           onEndReached={() => {
-            if (hasNextPage) {
-              fetchNextPage();
+            if (hasNextPage && !isFetching) {
+              void fetchNextPage({ cancelRefetch: false });
             }
           }}
           onEndReachedThreshold={1}
@@ -1195,9 +1187,7 @@ const Page = () => {
             paddingLeft: insets.left + Sizes.gutter,
             paddingRight: insets.right + Sizes.gutter,
           }}
-          ItemSeparatorComponent={() => (
-            <View style={{ width: GRID_GAP, height: GRID_GAP }} />
-          )}
+          ItemSeparatorComponent={GridSeparator}
         />
       </View>
     );
@@ -1219,7 +1209,7 @@ const Page = () => {
           layoutMeasurement.height + contentOffset.y >=
           contentSize.height - 500;
         if (isNearBottom && hasNextPage && !isFetching) {
-          fetchNextPage();
+          void fetchNextPage({ cancelRefetch: false });
         }
       }}
       scrollEventThrottle={400}

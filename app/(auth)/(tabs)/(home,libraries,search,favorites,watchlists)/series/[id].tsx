@@ -1,3 +1,4 @@
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -11,7 +12,6 @@ import { HeaderButtonGroup } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Image } from "@/components/common/ServerImage";
 import { DownloadItems } from "@/components/DownloadItem";
-import { ParallaxScrollView } from "@/components/ParallaxPage";
 import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
@@ -28,6 +28,13 @@ import {
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
+
+const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
+  [...(data ?? [])].sort(
+    (a, b) =>
+      (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
+      (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
+  );
 
 const page: React.FC = () => {
   const navigation = useNavigation();
@@ -115,12 +122,7 @@ const page: React.FC = () => {
       });
       return res?.data.Items || [];
     },
-    select: (data) =>
-      [...(data || [])].sort(
-        (a, b) =>
-          (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
-          (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
-      ),
+    select: sortEpisodeSummary,
     staleTime: isOffline ? Infinity : 60 * 1000,
     refetchInterval: !isOffline && Platform.isTV ? 60 * 1000 : undefined,
     enabled: isOffline || (!!api && !!user?.Id),
@@ -193,9 +195,10 @@ const page: React.FC = () => {
 
   return (
     <OfflineModeProvider isOffline={isOffline}>
-      <ParallaxScrollView
-        headerHeight={210}
-        overlap={40}
+      <SeasonPicker
+        item={item}
+        initialSeasonIndex={Number(seasonIndex)}
+        currentEpisodeId={nextUpId}
         headerImage={
           backdropUrl ? (
             <Image
@@ -217,21 +220,17 @@ const page: React.FC = () => {
             />
           )
         }
-      >
-        <View className='flex flex-col'>
-          <SeriesHeader
-            item={item}
-            seasons={seasonCount}
-            episodes={allEpisodes?.length}
-          />
-          {!isOffline && <NextUp seriesId={seriesId} />}
-          <SeasonPicker
-            item={item}
-            initialSeasonIndex={Number(seasonIndex)}
-            currentEpisodeId={nextUpId}
-          />
-        </View>
-      </ParallaxScrollView>
+        pageHeader={
+          <View className='flex flex-col'>
+            <SeriesHeader
+              item={item}
+              seasons={seasonCount}
+              episodes={allEpisodes?.length}
+            />
+            {!isOffline && <NextUp seriesId={seriesId} />}
+          </View>
+        }
+      />
     </OfflineModeProvider>
   );
 };

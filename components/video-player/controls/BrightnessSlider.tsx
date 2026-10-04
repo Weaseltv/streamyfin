@@ -9,58 +9,67 @@ const Brightness = !Platform.isTV ? require("expo-brightness") : null;
 import { Ionicons } from "@expo/vector-icons";
 import { NeonBoard } from "@/constants/Colors";
 
-const BrightnessSlider = () => {
+const BrightnessSlider = ({ active = true }: { active?: boolean }) => {
   const isTv = Platform.isTV;
 
   const brightness = useSharedValue(50);
   const min = useSharedValue(0);
   const max = useSharedValue(100);
   const isUserInteracting = useRef(false);
+  const mounted = useRef(false);
+  const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const lastKnownBrightness = useRef<number>(50);
   const brightnessSupportedRef = useRef(true);
   const [brightnessSupported, setBrightnessSupported] = useState(true);
 
-  // Update brightness from device
-  const updateBrightnessFromDevice = async () => {
-    // Check ref (not state) to avoid stale closure in setInterval
-    if (
-      isTv ||
-      !Brightness ||
-      isUserInteracting.current ||
-      !brightnessSupportedRef.current
-    )
-      return;
-
-    try {
-      const currentBrightness = await Brightness.getBrightnessAsync();
-      const brightnessPercent = Math.round(currentBrightness * 100);
-
-      // Only update if brightness actually changed
-      if (Math.abs(brightnessPercent - lastKnownBrightness.current) > 1) {
-        brightness.value = brightnessPercent;
-        lastKnownBrightness.current = brightnessPercent;
-      }
-    } catch (error) {
-      console.warn("Brightness not supported on this device:", error);
-      // Update both ref (stops interval) and state (triggers re-render to hide)
-      brightnessSupportedRef.current = false;
-      setBrightnessSupported(false);
-    }
-  };
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (interactionTimeoutRef.current)
+        clearTimeout(interactionTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
-    if (isTv) return;
-
-    // Initial brightness fetch
-    updateBrightnessFromDevice();
-
-    // Set up periodic brightness checking to sync with gesture changes
-    const interval = setInterval(updateBrightnessFromDevice, 200); // Check every 200ms
-
+    if (isTv || !active || !Brightness) return;
+    let cancelled = false;
+    let pending = false;
+    const updateBrightnessFromDevice = async () => {
+      if (
+        pending ||
+        isUserInteracting.current ||
+        !brightnessSupportedRef.current
+      )
+        return;
+      pending = true;
+      try {
+        const currentBrightness = await Brightness.getBrightnessAsync();
+        if (cancelled) return;
+        const brightnessPercent = Math.round(currentBrightness * 100);
+        if (Math.abs(brightnessPercent - lastKnownBrightness.current) > 1) {
+          brightness.value = brightnessPercent;
+          lastKnownBrightness.current = brightnessPercent;
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("Brightness not supported on this device:", error);
+        brightnessSupportedRef.current = false;
+        setBrightnessSupported(false);
+      } finally {
+        pending = false;
+      }
+    };
+    // Refresh immediately when revealed, including changes made by gestures.
+    void updateBrightnessFromDevice();
+    const interval = setInterval(updateBrightnessFromDevice, 200);
     return () => {
+      cancelled = true;
       clearInterval(interval);
     };
-  }, [isTv]);
+  }, [isTv, active, brightness]);
 
   const handleValueChange = async (value: number) => {
     isUserInteracting.current = true;
@@ -73,8 +82,11 @@ const BrightnessSlider = () => {
       console.error("Error setting brightness:", error);
     }
 
+    if (!mounted.current) return;
     // Reset interaction flag after a delay
-    setTimeout(() => {
+    if (interactionTimeoutRef.current)
+      clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
       isUserInteracting.current = false;
     }, 100);
   };

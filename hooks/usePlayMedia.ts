@@ -6,6 +6,7 @@ import { isNativePlayerPresented } from "@/modules/mpv-player";
 import { useNativePlayer } from "@/providers/NativePlayerProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import {
+  autoPlayEpisodeCountAtom,
   getActiveVideoPlayer,
   useSettings,
   VideoPlayer,
@@ -38,7 +39,8 @@ interface PlayMediaOptions {
 export const usePlayMedia = () => {
   const { undismiss: undismissSeriesFromNextUp } = useDismissedNextUp();
   const router = useRouter();
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
+  const resetAutoPlayCount = useSetAtom(autoPlayEpisodeCountAtom);
   const setShuffleQueue = useSetAtom(shuffleQueueAtom);
   const { presentFromRequest } = useNativePlayer();
 
@@ -46,9 +48,7 @@ export const usePlayMedia = () => {
     async (req: PlayRequest, options?: PlayMediaOptions): Promise<void> => {
       // Moved from PlayButton.goToPlayer: a fresh play resets the auto-play
       // chain counter and cancels any active shuffle queue.
-      if (settings.maxAutoPlayEpisodeCount.value !== -1) {
-        updateSettings({ autoPlayEpisodeCount: 0 });
-      }
+      resetAutoPlayCount(0);
       if (!options?.preserveShuffleQueue) {
         setShuffleQueue(null);
       }
@@ -78,7 +78,7 @@ export const usePlayMedia = () => {
     [
       router,
       settings,
-      updateSettings,
+      resetAutoPlayCount,
       setShuffleQueue,
       presentFromRequest,
       undismissSeriesFromNextUp,

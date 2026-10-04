@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { isEqual } from "lodash";
+import isEqual from "lodash/isEqual";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";

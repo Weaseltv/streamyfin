@@ -1,19 +1,14 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { useSegments } from "expo-router";
 import { type PropsWithChildren, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Platform,
   TouchableOpacity,
   type TouchableOpacityProps,
 } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
-import { useFavorite } from "@/hooks/useFavorite";
-import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
+import { useRequestItemActions } from "./ItemActionSheetHost";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -151,17 +146,10 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   children,
   ...props
 }) => {
-  const { t } = useTranslation();
-  const segments = useSegments();
-  const { showActionSheetWithOptions } = useActionSheet();
-  const markAsPlayedStatus = useMarkAsPlayed([item]);
-  const { isFavorite, toggleFavorite } = useFavorite(item);
   const router = useRouter();
   const isOffline = useOfflineMode();
-  const { deleteFile } = useDownload();
-  const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
-
-  const from = (segments as string[])[2] || "(home)";
+  const requestActions = useRequestItemActions();
+  const from = useItemNavigationOrigin();
 
   const handlePress = useCallback(() => {
     // Force music libraries to navigate via the explicit string route.
@@ -176,75 +164,10 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   }, [from, item, router]);
 
   const showActionSheet = useCallback(() => {
-    if (
-      !(
-        item.Type === "Movie" ||
-        item.Type === "Episode" ||
-        item.Type === "Series"
-      )
-    )
-      return;
-
-    const actions: { label: string; onPress: () => void | Promise<void> }[] = [
-      {
-        label: t("common.mark_as_played"),
-        onPress: () => markAsPlayedStatus(true),
-      },
-      {
-        label: t("common.mark_as_not_played"),
-        onPress: () => markAsPlayedStatus(false),
-      },
-      {
-        label: isFavorite
-          ? t("music.track_options.remove_from_favorites")
-          : t("music.track_options.add_to_favorites"),
-        onPress: toggleFavorite,
-      },
-    ];
-    // Jellyfin's Next Up keeps offering a series' next unwatched episode for
-    // as long as an earlier one is marked watched, and has no way to exclude
-    // a series. "Mark as not played" on that episode cannot remove it — this
-    // can. Lifted automatically when the user plays the series again.
-    if (item.Type === "Episode" && item.SeriesId) {
-      const seriesId = item.SeriesId;
-      actions.push({
-        label: t("common.remove_from_continue_and_next_up"),
-        onPress: () => dismissSeriesFromNextUp(seriesId),
-      });
+    if (["Movie", "Episode", "Series"].includes(item.Type ?? "")) {
+      requestActions({ item, isOffline });
     }
-    let destructiveButtonIndex: number | undefined;
-    if (isOffline && item.Id) {
-      const itemId = item.Id;
-      destructiveButtonIndex = actions.length;
-      actions.push({
-        label: t("home.downloads.delete_download"),
-        onPress: () => deleteFile(itemId),
-      });
-    }
-    const options = [...actions.map((a) => a.label), t("common.cancel")];
-    const cancelButtonIndex = options.length - 1;
-
-    showActionSheetWithOptions(
-      { options, cancelButtonIndex, destructiveButtonIndex },
-      async (selectedIndex) => {
-        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex)
-          return;
-        await actions[selectedIndex]?.onPress();
-      },
-    );
-  }, [
-    showActionSheetWithOptions,
-    isFavorite,
-    markAsPlayedStatus,
-    toggleFavorite,
-    isOffline,
-    deleteFile,
-    dismissSeriesFromNextUp,
-    item.Id,
-    item.Type,
-    item.SeriesId,
-    t,
-  ]);
+  }, [item, isOffline, requestActions]);
 
   if (
     from === "(home)" ||

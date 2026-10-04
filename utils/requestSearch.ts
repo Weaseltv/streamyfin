@@ -1,6 +1,6 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import type { Results } from "@/utils/jellyseerr/server/models/Search";
 
 export interface RequestSearchParams {

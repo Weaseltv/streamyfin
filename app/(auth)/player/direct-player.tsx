@@ -33,13 +33,14 @@ import {
   updatePlaybackSpeedSettings,
 } from "@/components/video-player/controls/utils/playback-speed-settings";
 import { VideoPlayerView } from "@/components/video-player/VideoPlayerView";
+import { Deadlines } from "@/constants/networkDeadlines";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useOrientation } from "@/hooks/useOrientation";
 import { usePlaybackManager } from "@/hooks/usePlaybackManager";
 import usePlaybackSpeed from "@/hooks/usePlaybackSpeed";
-import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
+import { useTwoWaySync } from "@/hooks/useTwoWaySync";
 import { useWebSocket } from "@/hooks/useWebsockets";
 import {
   type MpvOnErrorEventPayload,
@@ -71,6 +72,7 @@ import {
   isImageBasedSubtitle,
 } from "@/utils/jellyfin/subtitleUtils";
 import { writeToLog } from "@/utils/log";
+import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 import { getReusableItemMetadata } from "@/utils/query/reusableItemMetadata";
 import {
   isLocalSubtitleIndex,
@@ -81,7 +83,7 @@ import {
   applySubtitleStyle,
   buildSubtitleStyle,
 } from "@/utils/subtitles/subtitleStyle";
-import { msToTicks, ticksToSeconds } from "@/utils/time";
+import { msToTicks, ticksToMs, ticksToSeconds } from "@/utils/time";
 import { generateDeviceProfile } from "../../../utils/profiles/native";
 
 export default function DirectPlayerPage() {
@@ -126,6 +128,7 @@ export default function DirectPlayerPage() {
   const [isBuffering, setIsBuffering] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [tracksReady, setTracksReady] = useState(false);
+  const androidInitialSubtitleApplied = useRef(false);
   const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
   const [currentPlaybackSpeed, setCurrentPlaybackSpeed] = useState(1.0);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
@@ -151,7 +154,8 @@ export default function DirectPlayerPage() {
   // Inactivity timer controls (TV only)
   const { pauseInactivityTimer, resumeInactivityTimer } = useInactivity();
 
-  const revalidateProgressCache = useInvalidatePlaybackProgressCache();
+  const refreshQueue = playbackRefreshQueue(useQueryClient());
+  const { syncPlaybackState } = useTwoWaySync();
 
   const lightHapticFeedback = useHaptic("light");
 
@@ -197,8 +201,8 @@ export default function DirectPlayerPage() {
   const [item, setItem] = useState<BaseItemDto | null>(null);
   const initialSeekDoneRef = useRef(false);
 
-  /** Position MPV is told to start from: the URL param wins, since it is
-   * rewritten during playback, otherwise the item's stored resume position.
+  /** Initial position: an explicit URL param wins, otherwise use the item's
+   * stored resume position.
    * The route is deep-linkable, so the param is parsed whole rather than by
    * prefix: parseInt would turn "1200invalid" into a position instead of
    * falling back, and NaN would reach getStreamUrl and MPV. */
@@ -210,12 +214,21 @@ export default function DirectPlayerPage() {
       : (item?.UserData?.PlaybackPositionTicks ?? 0);
   }, [playbackPositionFromUrl, item?.UserData?.PlaybackPositionTicks]);
 
-  // Pinned on mount: the initial seek must not follow the position the player
-  // writes back into the URL every 30s. Zero here is not a missed resume:
-  // PlayButton always passes playbackPosition, and when it is absent the
-  // resume still happens through the stream offset and MPV's startPosition,
-  // which read startTicks after the item has loaded.
   const initialPlaybackTicksRef = useRef<number>(startTicks);
+  // The live position belongs to this item, not to global route state. Reset
+  // synchronously when an in-place episode switch reuses this component.
+  const livePlaybackTicksRef = useRef<{ itemId: string; ticks: number | null }>(
+    {
+      itemId,
+      ticks: null,
+    },
+  );
+  if (livePlaybackTicksRef.current.itemId !== itemId) {
+    livePlaybackTicksRef.current = { itemId, ticks: null };
+  }
+  // A source keeps the position negotiated for its session. Later progress
+  // must not rewrite that source or replay its initial seek.
+  const [streamStartTicks, setStreamStartTicks] = useState(startTicks);
 
   const [downloadedItem, setDownloadedItem] = useState<DownloadedItem | null>(
     null,
@@ -508,6 +521,8 @@ export default function DirectPlayerPage() {
           return null;
         }
 
+        const requestStartTicks =
+          livePlaybackTicksRef.current.ticks ?? startTicks;
         let result: Stream | null = null;
         if (offline && downloadedItem?.mediaSource) {
           const url = downloadedItem.videoFilePath;
@@ -534,7 +549,7 @@ export default function DirectPlayerPage() {
           const res = await getStreamUrl({
             api,
             item,
-            startTimeTicks: startTicks,
+            startTimeTicks: requestStartTicks,
             userId: user.Id,
             audioStreamIndex: audioIndex,
             maxStreamingBitrate: bitrateValue,
@@ -565,6 +580,8 @@ export default function DirectPlayerPage() {
           result = { mediaSource, sessionId, url, requiredHttpHeaders };
         }
         if (!isCurrent()) return null;
+        setStreamStartTicks(requestStartTicks);
+        initialPlaybackTicksRef.current = requestStartTicks;
         setStream(result);
         setStreamStatus({ isLoading: false, isError: false });
         return result;
@@ -599,18 +616,21 @@ export default function DirectPlayerPage() {
     const reportPlaybackStart = async () => {
       const progressInfo = currentPlayStateInfo();
       if (progressInfo) {
-        await getPlaystateApi(api).reportPlaybackStart({
-          playbackStartInfo: {
-            ...progressInfo,
-            // This runs once the stream resolves, before MPV has produced a
-            // frame: the live state still says paused at 0:00. The source is
-            // built with autoplay, so describe the session that is starting
-            // instead, or the dashboard shows "paused at 0:00" until the first
-            // progress tick.
-            IsPaused: false,
-            PositionTicks: startTicks,
+        await getPlaystateApi(api).reportPlaybackStart(
+          {
+            playbackStartInfo: {
+              ...progressInfo,
+              // This runs once the stream resolves, before MPV has produced a
+              // frame: the live state still says paused at 0:00. The source is
+              // built with autoplay, so describe the session that is starting
+              // instead, or the dashboard shows "paused at 0:00" until the first
+              // progress tick.
+              IsPaused: false,
+              PositionTicks: streamStartTicks,
+            },
           },
-        });
+          { timeout: Deadlines.reporting },
+        );
       }
     };
     // Fire-and-forget, so swallow instead of leaving an unhandled rejection
@@ -622,12 +642,11 @@ export default function DirectPlayerPage() {
         error instanceof Error ? error.message : String(error),
       );
     });
-    // startTicks is read, not depended on: it is rewritten into the URL every
-    // 30s during playback, and re-running this would report a new playback
-    // start each time.
+    // Report once for the acquired session, using its negotiated position.
+    // Progress remains local and cannot create another playback start.
   }, [stream, api]);
 
-  const togglePlay = async () => {
+  const togglePlay = useCallback(async () => {
     lightHapticFeedback();
     // Read the ref so two taps inside one render cycle don't both see the same
     // stale state and cancel each other out.
@@ -638,7 +657,7 @@ export default function DirectPlayerPage() {
     } else {
       videoRef.current?.play();
     }
-  };
+  }, [lightHapticFeedback, setPlaying]);
 
   // Key of the last "stopped" report, to dedupe the double teardown. The
   // PlaySessionId when there is one, the item id otherwise (see stopKey below).
@@ -662,20 +681,23 @@ export default function DirectPlayerPage() {
         ? msToTicks(progress.get())
         : initialPlaybackTicksRef.current;
     try {
-      await getPlaystateApi(api).reportPlaybackStopped({
-        playbackStopInfo: {
-          ItemId: item.Id,
-          MediaSourceId: mediaSourceId,
-          PositionTicks: currentTimeInTicks,
-          PlaySessionId: stream.sessionId || undefined,
-          // Release the server-side live stream (and its tuner slot) on stop.
-          // Jellyfin only closes a live stream opened via autoOpenLiveStream when
-          // the stop report carries its LiveStreamId; without it the stream leaks
-          // and Live TV eventually fails for everyone with "M3U simultaneous
-          // stream limit has been reached". Undefined for non-live items (no-op).
-          LiveStreamId: stream.mediaSource?.LiveStreamId ?? undefined,
+      await getPlaystateApi(api).reportPlaybackStopped(
+        {
+          playbackStopInfo: {
+            ItemId: item.Id,
+            MediaSourceId: mediaSourceId,
+            PositionTicks: currentTimeInTicks,
+            PlaySessionId: stream.sessionId || undefined,
+            // Release the server-side live stream (and its tuner slot) on stop.
+            // Jellyfin only closes a live stream opened via autoOpenLiveStream when
+            // the stop report carries its LiveStreamId; without it the stream leaks
+            // and Live TV eventually fails for everyone with "M3U simultaneous
+            // stream limit has been reached". Undefined for non-live items (no-op).
+            LiveStreamId: stream.mediaSource?.LiveStreamId ?? undefined,
+          },
         },
-      });
+        { timeout: Deadlines.reporting },
+      );
     } catch (error) {
       // Un-mark the session so a later teardown path can retry: e.g. a failed
       // report from a WebSocket remote-stop (player still mounted) must not
@@ -693,21 +715,28 @@ export default function DirectPlayerPage() {
   }, [api, item, mediaSourceId, stream, progress, isConnected]);
 
   const stop = useCallback(() => {
-    // Update URL with final playback position before stopping
-    router.setParams({
-      playbackPosition: msToTicks(progress.get()).toString(),
-    });
-    reportPlaybackStopped();
+    const report = reportPlaybackStopped();
+    if (item?.Id) {
+      const id = item.Id;
+      const positionTicks =
+        progress.get() > 0
+          ? msToTicks(progress.get())
+          : initialPlaybackTicksRef.current;
+      refreshQueue.stopped(
+        item,
+        positionTicks,
+        report,
+        downloadUtils.getDownloadedItemById(id)
+          ? () => syncPlaybackState(id, Deadlines.reporting)
+          : undefined,
+      );
+    }
     markPlaybackStopped();
-    // Synchronously destroy the mpv instance + decoder + surface buffers
-    // BEFORE the screen unmounts. Otherwise the next screen (or the next
-    // episode's player) mounts while the old 4K decoder is still alive,
-    // causing OOM on low-RAM devices. Native stop() is idempotent so the
-    // later React unmount cleanup is still safe.
+    // Submit native decoder/demuxer cleanup before unmount. Native stop is
+    // asynchronous and idempotent; the unsafe mpv handle destroy stays disabled.
     videoRef.current?.destroy().catch(() => {});
     // Pre-libmpv-1.0 used `stop()`:
     // videoRef.current?.stop();
-    revalidateProgressCache();
     // Resume inactivity timer when leaving player (TV only)
     resumeInactivityTimer();
     // Release the keep-awake wakelock acquired during playback so it
@@ -722,13 +751,16 @@ export default function DirectPlayerPage() {
     markPlaybackStopped,
     progress,
     resumeInactivityTimer,
+    refreshQueue,
+    item,
+    downloadUtils,
+    syncPlaybackState,
   ]);
 
   // Keep refs to the latest stop / stopped-report so the effects below don't
   // need these churning callbacks in their dependency arrays. Reporting
   // "stopped" from an effect cleanup that re-runs during playback (e.g. when
-  // the 30s router.setParams position write mutates navigation state) caused a
-  // spurious PlaybackStopped every URL_UPDATE_INTERVAL.
+  // route parameters or navigation state change) caused a spurious stopped report.
   const stopRef = useRef(stop);
   const reportPlaybackStoppedRef = useRef(reportPlaybackStopped);
 
@@ -785,6 +817,7 @@ export default function DirectPlayerPage() {
       PlaybackOrder: PlaybackOrder.Default,
     };
   }, [
+    isPlaybackStopped,
     stream,
     item?.Id,
     currentAudioIndex,
@@ -814,17 +847,15 @@ export default function DirectPlayerPage() {
     // when the user pauses or resumes.
   }, [currentPlayStateInfo, isPlaying, item?.Id, stream, hasPlaybackStarted]);
 
-  const lastUrlUpdateTime = useSharedValue(0);
   const lastProgressReportTime = useSharedValue(0);
   const wasJustSeeking = useSharedValue(false);
-  const URL_UPDATE_INTERVAL = 30000; // Update URL every 30 seconds instead of every second
   // Heartbeat cadence for the periodic progress report. MPV ticks once a
   // second, but the server only needs the position often enough for Now
   // Playing and resume: state changes (pause, resume, track, mute) are
   // reported on their own by the effect above, and a seek reports immediately.
   const PROGRESS_REPORT_INTERVAL = 10000;
 
-  // Track when seeking ends to update URL immediately
+  // Track when seeking ends to report the new position immediately
   useAnimatedReaction(
     () => isSeeking.get(),
     (currentSeeking, previousSeeking) => {
@@ -866,27 +897,17 @@ export default function DirectPlayerPage() {
         cacheProgress.set(cacheEnd);
       }
 
-      // Update URL immediately after seeking, or every 30 seconds during normal playback
+      livePlaybackTicksRef.current.ticks = msToTicks(currentTime);
       const now = Date.now();
-      const shouldUpdateUrl = wasJustSeeking.get();
+      const wasSeek = wasJustSeeking.get();
       wasJustSeeking.value = false;
-
-      if (
-        shouldUpdateUrl ||
-        now - lastUrlUpdateTime.get() > URL_UPDATE_INTERVAL
-      ) {
-        router.setParams({
-          playbackPosition: msToTicks(currentTime).toString(),
-        });
-        lastUrlUpdateTime.value = now;
-      }
 
       // Reporting every tick meant one request per second per player, and for
       // a downloaded item the whole downloads database was serialized and
       // written to storage on each one (plus two query invalidations). Report
       // right after a seek, since the position jumped, otherwise heartbeat.
       const shouldReportProgress =
-        shouldUpdateUrl ||
+        wasSeek ||
         now - lastProgressReportTime.get() >= PROGRESS_REPORT_INTERVAL;
       if (!shouldReportProgress) return;
       lastProgressReportTime.value = now;
@@ -938,7 +959,8 @@ export default function DirectPlayerPage() {
 
   /** Build video source config for MPV */
   const videoSource = useMemo<MpvVideoSource | undefined>(() => {
-    if (!stream?.url) return undefined;
+    // A late commit during pop must not replay the old source after destroy.
+    if (isPlaybackStopped || !stream?.url) return undefined;
 
     const mediaSource = stream.mediaSource;
     const isTranscoding = Boolean(mediaSource?.TranscodingUrl);
@@ -947,9 +969,9 @@ export default function DirectPlayerPage() {
     // of truth with identity matching (online: basePath + DeliveryUrl unless
     // IsExternalUrl; offline: local file path stored in DeliveryUrl).
     // Keep the stream beside its URL so native can be told which entry is the
-    // selected one. It waits on that sidecar alone and backgrounds the rest,
-    // rather than blocking readiness behind every language (same contract as
-    // buildNativePlayerConfig for the iOS native player).
+    // selected one. Android prepares that sidecar asynchronously and fetches
+    // other languages only when selected; playback readiness does not wait
+    // for the download. iOS keeps its existing selected-first contract.
     const externalSubEntries = (mediaSource?.MediaStreams ?? [])
       .filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External")
       .flatMap((s) => {
@@ -973,7 +995,7 @@ export default function DirectPlayerPage() {
       isTranscoding,
     );
 
-    const startPos = ticksToSeconds(startTicks);
+    const startPos = ticksToSeconds(streamStartTicks);
 
     // Build source config - headers only needed for online streaming
     const source: MpvVideoSource = {
@@ -995,6 +1017,7 @@ export default function DirectPlayerPage() {
     // Add external subtitles only for online playback
     if (externalSubs.length > 0) {
       source.externalSubtitles = externalSubs;
+      source.externalSubtitleBaseUrl = api?.basePath;
       source.initialExternalSubtitleIndex = initialExternalSubtitleIndex;
     }
 
@@ -1029,10 +1052,11 @@ export default function DirectPlayerPage() {
 
     return source;
   }, [
+    isPlaybackStopped,
     stream?.url,
     stream?.mediaSource,
     stream?.requiredHttpHeaders,
-    startTicks,
+    streamStartTicks,
     api?.basePath,
     api?.accessToken,
     audioIndex,
@@ -1111,17 +1135,6 @@ export default function DirectPlayerPage() {
       console.error("Error setting volume:", error);
     }
   }, []);
-
-  useWebSocket({
-    isPlaying: isPlaying,
-    togglePlay: togglePlay,
-    stopPlayback: stop,
-    offline,
-    toggleMute: toggleMuteCb,
-    volumeUp: volumeUpCb,
-    volumeDown: volumeDownCb,
-    setVolume: setVolumeCb,
-  });
 
   /** Playback state handler for MPV */
   const onPlaybackStateChanged = useCallback(
@@ -1212,6 +1225,7 @@ export default function DirectPlayerPage() {
   }, []);
 
   const seek = useCallback((position: number) => {
+    livePlaybackTicksRef.current.ticks = msToTicks(position);
     // MPV expects seconds, convert from ms
     videoRef.current?.seekTo?.(position / 1000);
   }, []);
@@ -1267,6 +1281,10 @@ export default function DirectPlayerPage() {
       progress,
     ],
   );
+
+  useEffect(() => {
+    androidInitialSubtitleApplied.current = false;
+  }, [stream?.url]);
 
   // TV subtitle track change handler
   /**
@@ -1365,8 +1383,14 @@ export default function DirectPlayerPage() {
         return;
       }
 
+      const generation = streamGenerationRef.current;
       setCurrentSubtitleIndex(index);
       const result = await applySubtitleSelection(index);
+      if (
+        isPlaybackStoppedRef.current ||
+        streamGenerationRef.current !== generation
+      )
+        return;
       // Safety net: a menu-listed sub the player can't select (server-burned
       // Encode, sidecar never sub-added) needs the server to re-process the
       // stream with it.
@@ -1573,11 +1597,24 @@ export default function DirectPlayerPage() {
     videoRef,
   ]);
 
+  // Unrelated preferences must not issue another seven native style commands.
+  const subtitleStyle = useMemo(
+    () => buildSubtitleStyle(settings),
+    [
+      settings.mpvSubtitleScale,
+      settings.mpvSubtitleMarginY,
+      settings.mpvSubtitleAlignX,
+      settings.mpvSubtitleAlignY,
+      settings.mpvSubtitleBackgroundEnabled,
+      settings.mpvSubtitleBackgroundOpacity,
+    ],
+  );
+
   // Apply subtitle settings when video loads
   useEffect(() => {
     if (!isVideoLoaded || !videoRef.current) return;
-    applySubtitleStyle(videoRef.current, buildSubtitleStyle(settings));
-  }, [isVideoLoaded, settings]);
+    applySubtitleStyle(videoRef.current, subtitleStyle);
+  }, [isVideoLoaded, subtitleStyle]);
 
   // Apply initial playback speed when video loads
   useEffect(() => {
@@ -1614,6 +1651,22 @@ export default function DirectPlayerPage() {
 
     preloadLocalSubtitles();
   }, [isVideoLoaded, itemId]);
+
+  useWebSocket({
+    getIsPlaying: () => isPlayingRef.current,
+    togglePlay: togglePlay,
+    stopPlayback: stop,
+    offline,
+    toggleMute: toggleMuteCb,
+    volumeUp: volumeUpCb,
+    volumeDown: volumeDownCb,
+    setVolume: setVolumeCb,
+    seekPlayback: (ticks) => seek(ticksToMs(ticks)),
+    setAudioStreamIndex: handleAudioIndexChange,
+    setSubtitleStreamIndex: handleSubtitleIndexChange,
+    nextTrack: goToNextItem,
+    previousTrack: goToPreviousItem,
+  });
 
   // Show error UI first, before checking loading/missing‐data. It used to be
   // the word "Error" alone, with hardware Back as the only way out; losing the
@@ -1723,9 +1776,13 @@ export default function DirectPlayerPage() {
                 }}
                 onTracksReady={() => {
                   setTracksReady(true);
-                  // Fired after embedded tracks enumerate and again after each
-                  // external sub-add; re-resolve so the final fire (full track
-                  // list) selects the right track by identity.
+                  // Android's initial selection awaits its own preparation.
+                  // Later sidecar arrivals preserve the current native sid;
+                  // re-applying here could overwrite a newer menu intent.
+                  if (Platform.OS === "android") {
+                    if (androidInitialSubtitleApplied.current) return;
+                    androidInitialSubtitleApplied.current = true;
+                  }
                   void applySubtitleSelection(currentSubtitleIndex);
                 }}
               />

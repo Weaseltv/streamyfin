@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtomValue } from "jotai";
-import type React from "react";
+import { memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { NeonProgress } from "@/components/common/NeonProgress";
@@ -21,7 +21,7 @@ interface Props {
   /** The episode carries the yellow tally (the current or next-up one). */
   current?: boolean;
   /** Trailing element (the download button on the series page). */
-  trailing?: React.ReactNode;
+  trailing?: ReactNode;
 }
 
 /**
@@ -29,7 +29,11 @@ interface Props {
  * the green played check or yellow progress, title 14/600, runtime ·
  * downloaded meta, and a yellow play glyph.
  */
-export const EpisodeRow: React.FC<Props> = ({ episode, current, trailing }) => {
+export const EpisodeRow = memo(function EpisodeRow({
+  episode,
+  current,
+  trailing,
+}: Props) {
   const api = useAtomValue(apiAtom);
   const { t } = useTranslation();
   const playMedia = usePlayMedia();
@@ -97,6 +101,7 @@ export const EpisodeRow: React.FC<Props> = ({ episode, current, trailing }) => {
         {thumb ? (
           <Image
             id={episode.Id}
+            recyclingKey={episode.Id}
             source={{ uri: thumb }}
             style={{ width: "100%", height: "100%" }}
             contentFit='cover'
@@ -158,4 +163,4 @@ export const EpisodeRow: React.FC<Props> = ({ episode, current, trailing }) => {
       </Pressable>
     </TouchableItemRouter>
   );
-};
+});
