@@ -1,7 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useGlobalSearchParams } from "expo-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { prefetchServerImage } from "@/components/common/ServerImage";
 import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom } from "@/providers/JellyfinProvider";
@@ -11,6 +11,10 @@ import {
   getTrickplayInfo,
   type TrickplayInfo,
 } from "@/utils/trickplay";
+import {
+  TrickplayPrefetchQueue,
+  trickplaySheetWindow,
+} from "@/utils/trickplayPrefetch";
 
 interface TrickplayUrl {
   x: number;
@@ -19,7 +23,7 @@ interface TrickplayUrl {
 }
 
 /** Hook to handle trickplay logic for a given item. */
-export const useTrickplay = (item: BaseItemDto) => {
+export const useTrickplay = (item: BaseItemDto, prefetchEnabled = true) => {
   const api = useAtomValue(apiAtom);
   const { getDownloadedItemById } = useDownloadActions();
   const [trickPlayUrl, setTrickPlayUrl] = useState<TrickplayUrl | null>(null);
@@ -27,6 +31,15 @@ export const useTrickplay = (item: BaseItemDto) => {
   const throttleDelay = 200;
   const isOffline = useGlobalSearchParams().offline === "true";
   const trickplayInfo = useMemo(() => getTrickplayInfo(item), [item]);
+
+  const prefetchQueue = useMemo(
+    () =>
+      new TrickplayPrefetchQueue((url) =>
+        prefetchServerImage(url, api?.basePath),
+      ),
+    [api?.basePath, item.Id, isOffline],
+  );
+  useEffect(() => () => prefetchQueue.dispose(), [prefetchQueue]);
 
   /** Generates the trickplay URL for the given item and sheet index.
    * We change between offline and online trickplay URLs depending on the state of the app. */
@@ -59,11 +72,27 @@ export const useTrickplay = (item: BaseItemDto) => {
       );
       const url = getTrickplayUrl(item, sheetIndex);
       if (url) setTrickPlayUrl({ x, y, url });
+      if (prefetchEnabled) {
+        const urls = trickplaySheetWindow(
+          sheetIndex,
+          trickplayInfo.totalImageSheets,
+        )
+          .map((index) => getTrickplayUrl(item, index))
+          .filter((value): value is string => !!value);
+        prefetchQueue.replace(urls);
+      }
     },
-    [trickplayInfo, item, throttleDelay, getTrickplayUrl],
+    [
+      trickplayInfo,
+      item,
+      throttleDelay,
+      getTrickplayUrl,
+      prefetchEnabled,
+      prefetchQueue,
+    ],
   );
 
-  /** Prefetches all the trickplay images for the item, limiting concurrency to avoid I/O spikes. */
+  /** Legacy TV caller. Phone controls prefetch only the current scrub window. */
   const prefetchAllTrickplayImages = useCallback(async () => {
     if (!trickplayInfo || !item.Id) return;
     const maxConcurrent = 4;
