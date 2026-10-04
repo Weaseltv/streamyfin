@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   type BaseItemDto,
   PlayCommand,
+  type SessionInfoDto,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { getSessionApi } from "@jellyfin/sdk/lib/utils/api/session-api";
 import { useAtomValue } from "jotai";
@@ -14,28 +15,33 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { toast } from "sonner-native";
 import { NeonBoard } from "@/constants/Colors";
 import { useAllSessions } from "@/hooks/useSessions";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { HeaderIcon } from "./common/HeaderIcon";
 import { Text } from "./common/Text";
+import type { SelectedOptions } from "./ItemContent";
 import { Loader } from "./Loader";
 import { SquareButton } from "./SquareButton";
 
 interface Props extends React.ComponentProps<typeof View> {
   item: BaseItemDto;
   size?: "default" | "large";
+  /** The version and tracks the user picked on the item page, sent along so the other device plays the same thing. */
+  selectedOptions?: SelectedOptions;
 }
 
 export const PlayInRemoteSessionButton: React.FC<Props> = ({
   item,
+  selectedOptions,
   ...props
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const api = useAtomValue(apiAtom);
+  // Only the open chooser polls; the closed icon stays neutral.
   const { sessions, isLoading } = useAllSessions({ enabled: modalVisible });
   const { t } = useTranslation();
-  // The closed icon stays neutral; only the open chooser observes live sessions.
   const isPlayingElsewhere =
     modalVisible &&
     !!sessions?.some(
@@ -43,20 +49,29 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
         session.NowPlayingItem?.Id === item.Id &&
         session.DeviceId !== api?.deviceInfo.id,
     );
-  const handlePlayInSession = async (sessionId: string) => {
-    if (!api || !item.Id) return;
+  const handlePlayInSession = async (session: SessionInfoDto) => {
+    if (!api || !item.Id || !session.Id) return;
+    const device = session.DeviceName || session.Client || "";
 
     try {
-      console.log(`Playing ${item.Name} in session ${sessionId}`);
-      getSessionApi(api).play({
-        sessionId,
+      console.log(`Playing ${item.Name} on ${device} (session ${session.Id})`);
+      await getSessionApi(api).play({
+        sessionId: session.Id,
         itemIds: [item.Id],
         playCommand: PlayCommand.PlayNow,
+        // Resume where the user left off, as pressing Play on that device would.
+        startPositionTicks: item.UserData?.PlaybackPositionTicks || undefined,
+        mediaSourceId: selectedOptions?.mediaSource?.Id ?? undefined,
+        audioStreamIndex: selectedOptions?.audioIndex ?? undefined,
+        // -1 means "no subtitles" to the server and to WeaselPlex TV.
+        subtitleStreamIndex: selectedOptions?.subtitleIndex ?? undefined,
       });
 
       setModalVisible(false);
+      toast.success(t("home.sessions.playing_on", { device }));
     } catch (error) {
       console.error("Error playing in remote session:", error);
+      toast.error(t("home.sessions.play_failed", { device }));
     }
   };
 
@@ -94,7 +109,7 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
                 </View>
               ) : !sessions || sessions.length === 0 ? (
                 <Text style={styles.noSessionsText}>
-                  {t("home.sessions.no_active_sessions")}
+                  {t("home.sessions.no_remote_targets")}
                 </Text>
               ) : (
                 <FlatList
@@ -103,7 +118,7 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
                   renderItem={({ item: session }) => (
                     <TouchableOpacity
                       style={styles.sessionItem}
-                      onPress={() => handlePlayInSession(session.Id || "")}
+                      onPress={() => handlePlayInSession(session)}
                     >
                       <View style={styles.sessionInfo}>
                         <Text style={styles.sessionName}>

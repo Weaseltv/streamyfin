@@ -1639,7 +1639,10 @@ const NativePlayerProviderInner: React.FC<{
         void dismissNativePlayer();
         break;
       case "Seek": {
-        const ticks = Number(args?.SeekPositionTicks);
+        // Playstate messages carry SeekPositionTicks on Data itself.
+        const ticks = Number(
+          lastMessage?.Data?.SeekPositionTicks ?? args?.SeekPositionTicks,
+        );
         if (Number.isFinite(ticks)) {
           void nativePlayerSeekTo(ticksToSeconds(ticks));
         }
