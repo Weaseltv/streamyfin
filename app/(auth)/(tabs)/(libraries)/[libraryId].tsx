@@ -1,3 +1,4 @@
+import type { ItemsApiGetItemsRequest } from "@jellyfin/sdk/lib/generated-client/api/items-api";
 import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
@@ -28,10 +29,13 @@ import { useTranslation } from "react-i18next";
 import {
   BackHandler,
   FlatList,
+  Keyboard,
   Platform,
+  Pressable,
   ScrollView,
   useWindowDimensions,
   View,
+  type ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LoadingLine } from "@/components/common/LoadingLine";
@@ -46,6 +50,7 @@ import { FilterButton } from "@/components/filters/FilterButton";
 import { ResetFiltersButton } from "@/components/filters/ResetFiltersButton";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
+import { LibraryAlphabetPicker } from "@/components/library/LibraryAlphabetPicker";
 import { ItemPoster } from "@/components/posters/ItemPoster";
 import { SearchField } from "@/components/search/SearchField";
 import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
@@ -89,6 +94,13 @@ import {
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
+import {
+  ALPHABET_RAIL_WIDTH,
+  getLibraryLetter,
+  getNextLibraryPage,
+  getPreviousLibraryPage,
+  loadLibraryAlphabet,
+} from "@/utils/libraryAlphabet";
 
 const GRID_GAP = 10;
 const GridSeparator = () => (
@@ -157,6 +169,34 @@ const Page = () => {
   // refocus fired one more request with the stale filters before the restore
   // below ran.
   const [filtersReady, setFiltersReady] = useState(false);
+  const nameSorted = !Platform.isTV && sortBy[0] === SortByOption.SortName;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [activeLetter, setActiveLetter] = useState<string>();
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [railTop, setRailTop] = useState(0);
+  const scrollOffsetRef = useRef(0);
+  const pendingJumpRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    setRailTop(Math.max(0, headerHeight - scrollOffsetRef.current) + 8);
+  }, [headerHeight]);
+
+  // Key navigation by the complete result set. A new filter must never use an
+  // offset from the previous library, search, sort, or column arrangement.
+  const filterSignature = JSON.stringify([
+    api?.basePath,
+    user?.Id,
+    libraryId,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+    sortBy,
+    sortOrder,
+    filterBy,
+    searchTerm,
+  ]);
+  const [jump, setJump] = useState<{ signature: string; startIndex: number }>();
+  const jumpStart =
+    nameSorted && jump?.signature === filterSignature ? jump.startIndex : 0;
 
   const { t } = useTranslation();
   const router = useRouter();
@@ -417,8 +457,8 @@ const Page = () => {
       // TV uses flexWrap, so nrOfCols is just for mobile
       return 1;
     }
-    // At least 100-wide posters at a 16 gutter and 10 gap: 3 across on every
-    // phone from 360 to 430 wide.
+    // Keep three columns on typical phones. Name-sorted grids reserve a
+    // narrow gutter for the alphabet without letting it cover the posters.
     return Math.max(
       2,
       Math.floor(
@@ -430,10 +470,18 @@ const Page = () => {
   const cardWidth = useMemo(
     () =>
       Math.floor(
-        (screenWidth - Sizes.gutter * 2 - GRID_GAP * (nrOfCols - 1)) / nrOfCols,
+        (screenWidth -
+          insets.left -
+          insets.right -
+          Sizes.gutter * 2 -
+          (nameSorted ? ALPHABET_RAIL_WIDTH : 0) -
+          GRID_GAP * (nrOfCols - 1)) /
+          nrOfCols,
       ),
-    [screenWidth, nrOfCols],
+    [screenWidth, nrOfCols, insets.left, insets.right, nameSorted],
   );
+  // Whole rows keep prepended pages aligned, including tablets/landscape.
+  const pageSize = Platform.isTV ? 36 : Math.ceil(36 / nrOfCols) * nrOfCols;
 
   const { data: library, isLoading: isLibraryLoading } = useQuery({
     queryKey: ["library", libraryId],
@@ -476,6 +524,59 @@ const Page = () => {
     }
   }, [navigation, fromSeeAll]);
 
+  const itemQuery = useMemo((): ItemsApiGetItemsRequest => {
+    let itemType: BaseItemKind | undefined;
+
+    // This fix makes sure to only return 1 type of items, if defined.
+    // This is because the underlying directory some times contains other types, and we don't want to show them.
+    if (library?.CollectionType === "movies") {
+      itemType = "Movie";
+    } else if (library?.CollectionType === "tvshows") {
+      itemType = "Series";
+    } else if (library?.CollectionType === "boxsets") {
+      itemType = "BoxSet";
+    } else if (library?.CollectionType === "homevideos") {
+      itemType = "Video";
+    } else if (library?.CollectionType === "musicvideos") {
+      itemType = "MusicVideo";
+    } else if (library?.CollectionType === "playlists") {
+      itemType = "Playlist";
+    }
+
+    return {
+      userId: user?.Id,
+      parentId: libraryId,
+      sortBy: [sortBy[0], "SortName", "ProductionYear"],
+      sortOrder: [sortOrder[0]],
+      enableImageTypes: ["Primary", "Backdrop", "Banner", "Thumb"],
+      filters: filterBy as ItemFilter[],
+      // true is needed for merged versions
+      recursive: true,
+      imageTypeLimit: 1,
+      fields: ["PrimaryImageAspectRatio", "SortName"],
+      genres: selectedGenres,
+      tags: selectedTags,
+      years: selectedYears.map((year) => Number.parseInt(year, 10)),
+      includeItemTypes: itemType ? [itemType] : undefined,
+      searchTerm: searchTerm || undefined,
+      ...(Platform.isTV && library?.CollectionType === "playlists"
+        ? { mediaTypes: ["Video"] }
+        : {}),
+    };
+  }, [
+    api,
+    user?.Id,
+    libraryId,
+    library,
+    selectedGenres,
+    selectedYears,
+    selectedTags,
+    sortBy,
+    sortOrder,
+    filterBy,
+    searchTerm,
+  ]);
+
   const fetchItems = useCallback(
     async ({
       pageParam,
@@ -485,68 +586,13 @@ const Page = () => {
       signal?: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
       if (!api || !library) return null;
-
-      let itemType: BaseItemKind | undefined;
-
-      // This fix makes sure to only return 1 type of items, if defined.
-      // This is because the underlying directory some times contains other types, and we don't want to show them.
-      if (library.CollectionType === "movies") {
-        itemType = "Movie";
-      } else if (library.CollectionType === "tvshows") {
-        itemType = "Series";
-      } else if (library.CollectionType === "boxsets") {
-        itemType = "BoxSet";
-      } else if (library.CollectionType === "homevideos") {
-        itemType = "Video";
-      } else if (library.CollectionType === "musicvideos") {
-        itemType = "MusicVideo";
-      } else if (library.CollectionType === "playlists") {
-        itemType = "Playlist";
-      }
-
       const response = await getItemsApi(api).getItems(
-        {
-          userId: user?.Id,
-          parentId: libraryId,
-          limit: 36,
-          startIndex: pageParam,
-          sortBy: [sortBy[0], "SortName", "ProductionYear"],
-          sortOrder: [sortOrder[0]],
-          enableImageTypes: ["Primary", "Backdrop", "Banner", "Thumb"],
-          filters: filterBy as ItemFilter[],
-          // true is needed for merged versions
-          recursive: true,
-          imageTypeLimit: 1,
-          fields: ["PrimaryImageAspectRatio", "SortName"],
-          genres: selectedGenres,
-          tags: selectedTags,
-          years: selectedYears.map((year) => Number.parseInt(year, 10)),
-          includeItemTypes: itemType ? [itemType] : undefined,
-          searchTerm: searchTerm || undefined,
-          ...(Platform.isTV && library.CollectionType === "playlists"
-            ? { mediaTypes: ["Video"] }
-            : {}),
-        },
-        // Superseded filter/sort combinations are cancelled instead of
-        // finishing in the background.
+        { ...itemQuery, limit: pageSize, startIndex: pageParam },
         { signal },
       );
-
       return response.data || null;
     },
-    [
-      api,
-      user?.Id,
-      libraryId,
-      library,
-      selectedGenres,
-      selectedYears,
-      selectedTags,
-      sortBy,
-      sortOrder,
-      filterBy,
-      searchTerm,
-    ],
+    [api, library, itemQuery, pageSize],
   );
 
   const { data: availableFilters } = useAvailableItemFilters(
@@ -554,56 +600,52 @@ const Page = () => {
     !Platform.isTV,
   );
 
-  const { data, isFetching, fetchNextPage, hasNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: [
-        "library-items",
-        libraryId,
-        selectedGenres,
-        selectedYears,
-        selectedTags,
-        sortBy,
-        sortOrder,
-        filterBy,
-        searchTerm,
-      ],
-      queryFn: fetchItems,
-      getNextPageParam: (lastPage, pages) => {
-        if (
-          !lastPage?.Items ||
-          !lastPage?.TotalRecordCount ||
-          lastPage?.TotalRecordCount === 0
-        )
-          return undefined;
-
-        const totalItems = lastPage.TotalRecordCount;
-        const accumulatedItems = pages.reduce(
-          (acc, curr) => acc + (curr?.Items?.length || 0),
-          0,
-        );
-
-        if (accumulatedItems < totalItems) {
-          return lastPage?.Items?.length * pages.length;
-        }
-        return undefined;
-      },
-      initialPageParam: 0,
-      // Re-enabling after filter restoration fetches only stale/invalidated
-      // data; a second focus invalidation would replay every loaded page.
-      // Playback/favorite filters and sorts still refresh on every return.
-      staleTime:
-        filterBy.length > 0 ||
-        sortBy.some((value) =>
-          [
-            SortByOption.DatePlayed,
-            SortByOption.PlayCount,
-            SortByOption.Random,
-          ].includes(value),
-        )
-          ? 0
-          : Freshness.catalog,
-      enabled: !!api && !!user?.Id && !!library && filtersReady,
-    });
+  const {
+    data,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    fetchPreviousPage,
+    hasPreviousPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: [
+      "library-items",
+      libraryId,
+      selectedGenres,
+      selectedYears,
+      selectedTags,
+      sortBy,
+      sortOrder,
+      filterBy,
+      searchTerm,
+      jumpStart,
+      pageSize,
+    ],
+    queryFn: fetchItems,
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      getNextLibraryPage(lastPage, lastPageParam),
+    getPreviousPageParam: (_firstPage, _pages, firstPageParam) =>
+      getPreviousLibraryPage(firstPageParam, pageSize),
+    initialPageParam: jumpStart,
+    // Re-enabling after filter restoration fetches only stale/invalidated
+    // data; a second focus invalidation would replay every loaded page.
+    // Playback/favorite filters and sorts still refresh on every return.
+    staleTime:
+      filterBy.length > 0 ||
+      sortBy.some((value) =>
+        [
+          SortByOption.DatePlayed,
+          SortByOption.PlayCount,
+          SortByOption.Random,
+        ].includes(value),
+      )
+        ? 0
+        : Freshness.catalog,
+    enabled: !!api && !!user?.Id && !!library && filtersReady,
+  });
 
   const flatData = useMemo(() => {
     return (
@@ -614,25 +656,122 @@ const Page = () => {
 
   const flashListRef = useRef<FlashListRef<BaseItemDto>>(null);
 
+  const {
+    data: alphabet,
+    isFetching: isAlphabetFetching,
+    isError: isAlphabetError,
+    refetch: refetchAlphabet,
+  } = useQuery({
+    queryKey: ["library-items", libraryId, "alphabet", filterSignature],
+    queryFn: async ({ signal }) => {
+      if (!api) throw new Error("No library server available");
+      return loadLibraryAlphabet(async (startIndex, limit) => {
+        const response = await getItemsApi(api).getItems(
+          {
+            ...itemQuery,
+            startIndex,
+            limit,
+            enableImages: false,
+            enableUserData: false,
+            fields: ["SortName"],
+          },
+          { signal },
+        );
+        return response.data;
+      }, signal);
+    },
+    enabled: nameSorted && !!api && !!user?.Id && !!library && filtersReady,
+    staleTime: filterBy.length > 0 ? 0 : 5 * Freshness.catalog,
+  });
+  const availableLetters = useMemo(
+    () => alphabet?.entries.map((entry) => entry.letter) ?? [],
+    [alphabet],
+  );
+  const totalCount = data?.pages?.[0]?.TotalRecordCount ?? alphabet?.totalCount;
+  const showAlphabet = nameSorted && (totalCount ?? 0) > pageSize;
+
+  const scrollToPendingLetter = useCallback(() => {
+    const id = pendingJumpRef.current;
+    if (!id || isFetching) return;
+    const index = flatData.findIndex((item) => item.Id === id);
+    if (index < 0) {
+      // A title may have moved or been removed after the index was cached.
+      // Recover to the library start and rebuild instead of leaving a pending
+      // jump that would suppress scrolling/viewability indefinitely.
+      if (data?.pages.length && !isError) {
+        pendingJumpRef.current = undefined;
+        setJump(undefined);
+        void refetchAlphabet();
+      }
+      return;
+    }
+    if (!flashListRef.current) return;
+    pendingJumpRef.current = undefined;
+    void flashListRef.current.scrollToIndex({
+      index,
+      animated: false,
+      viewPosition: 0,
+    });
+  }, [flatData, isFetching, data, isError, refetchAlphabet]);
+
+  const jumpToLetter = useCallback(
+    (letter: string) => {
+      const entry = alphabet?.entries.find((entry) => entry.letter === letter);
+      if (!entry) return;
+      Keyboard.dismiss();
+      pendingScrollTopRef.current = false;
+      pendingJumpRef.current = entry.itemId;
+      setActiveLetter(letter);
+      const loadedIndex = flatData.findIndex(
+        (item) => item.Id === entry.itemId,
+      );
+      if (loadedIndex >= 0 && flashListRef.current) {
+        pendingJumpRef.current = undefined;
+        void flashListRef.current.scrollToIndex({
+          index: loadedIndex,
+          animated: false,
+          viewPosition: 0,
+        });
+        return;
+      }
+      setJump({
+        signature: filterSignature,
+        startIndex: Math.floor(entry.index / pageSize) * pageSize,
+      });
+    },
+    [alphabet, flatData, filterSignature, pageSize],
+  );
+
+  useEffect(scrollToPendingLetter, [scrollToPendingLetter]);
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken<BaseItemDto>[] }) => {
+      if (pendingJumpRef.current) return;
+      const first = viewableItems.find((entry) => entry.isViewable);
+      if (first) setActiveLetter(getLibraryLetter(first.item));
+    },
+    [],
+  );
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
+
   // Jump the grid back to the top when the filters or the sort change, reset
   // included, instead of staying deep in the previous result set.
-  const filterSignature = [
-    selectedGenres.join(","),
-    selectedYears.join(","),
-    selectedTags.join(","),
-    sortBy[0],
-    sortOrder[0],
-    filterBy.join(","),
-    searchTerm,
-  ].join("|");
   const pendingScrollTopRef = useRef(false);
+  const resetSignatureRef = useRef("");
 
   // Instant feedback: pin to the top as soon as the filters change, without
   // waiting for the new fetch, and flag a re-pin for once it settles.
   useEffect(() => {
+    if (!filtersReady) return;
+    const signature = `${filterSignature}|${pageSize}`;
+    if (resetSignatureRef.current === signature) return;
+    resetSignatureRef.current = signature;
+    setJump(undefined);
+    setPickerOpen(false);
+    setActiveLetter(undefined);
+    pendingJumpRef.current = undefined;
     flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
     pendingScrollTopRef.current = true;
-  }, [filterSignature]);
+  }, [filterSignature, pageSize, filtersReady]);
 
   // Safety net: FlashList can restore the previous offset as the filtered list
   // grows, so re-pin once the fetch settles. Pagination keeps the same
@@ -760,7 +899,6 @@ const Page = () => {
 
   const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
   const generalFilters = useFilterOptions();
-  const totalCount = data?.pages?.[0]?.TotalRecordCount;
   const libraryTypeLabel =
     library?.CollectionType === "movies"
       ? t("library.item_types.movies")
@@ -783,9 +921,14 @@ const Page = () => {
   const listHeader = useMemo(
     () => (
       <View
+        onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
         style={{
           marginLeft: -(insets.left + Sizes.gutter),
-          marginRight: -(insets.right + Sizes.gutter),
+          marginRight: -(
+            insets.right +
+            Sizes.gutter +
+            (nameSorted ? ALPHABET_RAIL_WIDTH : 0)
+          ),
           paddingLeft: insets.left,
           paddingRight: insets.right,
         }}
@@ -798,6 +941,27 @@ const Page = () => {
           }
           title={library?.Name ?? ""}
           trailing={sortLabel}
+          right={
+            showAlphabet ? (
+              <Pressable
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setPickerOpen(true);
+                }}
+                accessibilityRole='button'
+                accessibilityLabel={t("library.alphabet.title")}
+                style={{
+                  minHeight: 44,
+                  paddingLeft: 12,
+                  justifyContent: "center",
+                }}
+              >
+                <Text variant='headTally' accent={accent}>
+                  {sortLabel}
+                </Text>
+              </Pressable>
+            ) : undefined
+          }
           accent={accent}
           bleedRule
         />
@@ -939,6 +1103,8 @@ const Page = () => {
       totalCount,
       libraryTypeLabel,
       sortLabel,
+      nameSorted,
+      showAlphabet,
       t,
       insets.left,
       insets.right,
@@ -1163,8 +1329,21 @@ const Page = () => {
                 }}
               >
                 <Text variant='section' muted>
-                  {t("library.no_results")}
+                  {t(
+                    isError
+                      ? "library.alphabet.load_error"
+                      : "library.no_results",
+                  )}
                 </Text>
+                {isError && (
+                  <Pressable
+                    onPress={() => void refetch()}
+                    accessibilityRole='button'
+                    style={{ padding: 16 }}
+                  >
+                    <Text accent={accent}>{t("states.retry")}</Text>
+                  </Pressable>
+                )}
               </View>
             )
           }
@@ -1173,6 +1352,28 @@ const Page = () => {
           extraData={gridExtraData}
           keyExtractor={keyExtractor}
           numColumns={nrOfCols}
+          onLoad={scrollToPendingLetter}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          onScroll={({ nativeEvent }) => {
+            const offset = nativeEvent.contentOffset.y;
+            const movingUp = offset < scrollOffsetRef.current;
+            scrollOffsetRef.current = offset;
+            setRailTop(Math.max(0, headerHeight - offset) + 8);
+            // Load earlier pages only after an upward scroll. Mounting a jumped
+            // page at the start must not immediately fetch the whole prefix.
+            if (
+              movingUp &&
+              offset < 160 &&
+              hasPreviousPage &&
+              !isFetching &&
+              !pendingJumpRef.current
+            ) {
+              void fetchPreviousPage({ cancelRefetch: false });
+            }
+          }}
+          scrollEventThrottle={64}
+          showsVerticalScrollIndicator={!showAlphabet}
           onEndReached={() => {
             if (hasNextPage && !isFetching) {
               void fetchNextPage({ cancelRefetch: false });
@@ -1185,10 +1386,32 @@ const Page = () => {
           contentContainerStyle={{
             paddingBottom: 24,
             paddingLeft: insets.left + Sizes.gutter,
-            paddingRight: insets.right + Sizes.gutter,
+            paddingRight:
+              insets.right +
+              Sizes.gutter +
+              (nameSorted ? ALPHABET_RAIL_WIDTH : 0),
           }}
           ItemSeparatorComponent={GridSeparator}
         />
+        {showAlphabet && (
+          <LibraryAlphabetPicker
+            accent={accent}
+            activeLetter={activeLetter}
+            availableLetters={availableLetters}
+            descending={sortOrder[0] === SortOrderOption.Descending}
+            top={railTop}
+            loading={isAlphabetFetching && !alphabet}
+            failed={isAlphabetError}
+            pickerOpen={pickerOpen}
+            onOpen={() => {
+              Keyboard.dismiss();
+              setPickerOpen(true);
+            }}
+            onClose={() => setPickerOpen(false)}
+            onRetry={() => void refetchAlphabet()}
+            onSelect={jumpToLetter}
+          />
+        )}
       </View>
     );
   }
