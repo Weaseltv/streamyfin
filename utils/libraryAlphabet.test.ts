@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { InfiniteQueryObserver, QueryClient } from "@tanstack/query-core";
+// React Native installs this implementation, which lacks throwIfAborted.
+import { AbortController as NativeAbortController } from "abort-controller/dist/abort-controller";
 import {
   getAlphabetTouchLetter,
   getLibraryLetter,
@@ -34,6 +36,7 @@ describe("library alphabet", () => {
   });
 
   test("indexes 8,324 titles in small metadata batches and retains only letter positions", async () => {
+    const controller = new NativeAbortController();
     const items = Array.from({ length: 8324 }, (_, i) =>
       item(
         i,
@@ -43,13 +46,16 @@ describe("library alphabet", () => {
       ),
     );
     const requests: number[] = [];
-    const index = await loadLibraryAlphabet(async (startIndex, limit) => {
-      requests.push(startIndex);
-      return {
-        Items: items.slice(startIndex, startIndex + limit),
-        TotalRecordCount: items.length,
-      };
-    });
+    const index = await loadLibraryAlphabet(
+      async (startIndex, limit) => {
+        requests.push(startIndex);
+        return {
+          Items: items.slice(startIndex, startIndex + limit),
+          TotalRecordCount: items.length,
+        };
+      },
+      controller.signal as unknown as AbortSignal,
+    );
     expect(requests).toEqual([
       0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
     ]);
@@ -113,16 +119,37 @@ describe("library alphabet", () => {
   });
 
   test("cancels a superseded filter index before requesting another batch", async () => {
-    const controller = new AbortController();
+    for (const Controller of [AbortController, NativeAbortController]) {
+      const controller = new Controller();
+      let calls = 0;
+      await expect(
+        loadLibraryAlphabet(
+          async () => {
+            calls++;
+            controller.abort();
+            return { Items: [item(1, "alpha")], TotalRecordCount: 8000 };
+          },
+          controller.signal as unknown as AbortSignal,
+        ),
+      ).rejects.toMatchObject({ name: "AbortError" });
+      expect(calls).toBe(1);
+    }
+  });
+
+  test("does not request titles if the phone signal is already aborted", async () => {
+    const controller = new NativeAbortController();
+    controller.abort();
     let calls = 0;
     await expect(
-      loadLibraryAlphabet(async () => {
-        calls++;
-        controller.abort();
-        return { Items: [item(1, "alpha")], TotalRecordCount: 8000 };
-      }, controller.signal),
-    ).rejects.toThrow();
-    expect(calls).toBe(1);
+      loadLibraryAlphabet(
+        async () => {
+          calls++;
+          return { Items: [item(1, "alpha")], TotalRecordCount: 1 };
+        },
+        controller.signal as unknown as AbortSignal,
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(calls).toBe(0);
   });
 
   test("rejects changing library counts rather than publishing wrong offsets", async () => {

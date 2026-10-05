@@ -25,6 +25,15 @@ export function getLibraryLetter(item: Pick<BaseItemDto, "SortName" | "Name">) {
   return /^[A-Z]$/.test(initial) ? initial : "#";
 }
 
+function throwIfAborted(signal?: AbortSignal) {
+  // React Native's AbortSignal supports aborted, but not throwIfAborted().
+  if (signal?.aborted) {
+    const error = new Error("Library alphabet request cancelled");
+    error.name = "AbortError";
+    throw error;
+  }
+}
+
 /** Retain only letter offsets/IDs; discard each metadata batch as it arrives. */
 export async function loadLibraryAlphabet(
   fetchPage: (
@@ -37,9 +46,9 @@ export async function loadLibraryAlphabet(
   let startIndex = 0;
   let totalCount: number | undefined;
   while (true) {
-    signal?.throwIfAborted();
+    throwIfAborted(signal);
     const page = await fetchPage(startIndex, INDEX_PAGE_SIZE);
-    signal?.throwIfAborted();
+    throwIfAborted(signal);
     if (
       totalCount !== undefined &&
       page.TotalRecordCount !== undefined &&
