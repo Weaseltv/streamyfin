@@ -178,7 +178,7 @@ export function LibraryAlphabetPicker({
               variant='pageTitle'
               accent={accent}
               allowFontScaling={false}
-              style={{ fontSize: 40 }}
+              style={{ fontSize: 40, lineHeight: 48 }}
             >
               {preview}
             </Text>
