@@ -9,9 +9,11 @@ import { getSessionApi } from "@jellyfin/sdk/lib/utils/api/session-api";
 import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, TouchableOpacity, View } from "react-native";
+import { Slider } from "react-native-awesome-slider";
+import { useSharedValue } from "react-native-reanimated";
 import { Badge } from "@/components/Badge";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { NeonProgress } from "@/components/common/NeonProgress";
@@ -94,6 +96,42 @@ const SessionCard = ({ session }: SessionCardProps) => {
       setRemainingTicks(remainingTimeTicks);
     }
   }, [session]);
+
+  // Scrubber: position in ticks on a slider over the item's runtime. While the
+  // user drags, the server's position updates are ignored so the thumb does
+  // not jump back; releasing sends a Seek to the device.
+  const runTimeTicks = session.NowPlayingItem?.RunTimeTicks ?? 0;
+  const canSeek = runTimeTicks > 0 && session.PlayState?.CanSeek !== false;
+  const seekProgress = useSharedValue(0);
+  const seekMin = useSharedValue(0);
+  const seekMax = useSharedValue(1);
+  const scrubbing = useRef(false);
+  useEffect(() => {
+    seekMax.value = runTimeTicks > 0 ? runTimeTicks : 1;
+  }, [runTimeTicks, seekMax]);
+  useEffect(() => {
+    if (!scrubbing.current && runTimeTicks > 0) {
+      seekProgress.value = Math.max(0, runTimeTicks - remainingTicks);
+    }
+  }, [remainingTicks, runTimeTicks, seekProgress]);
+
+  const handleSeek = async (positionTicks: number) => {
+    scrubbing.current = false;
+    if (!api || !session.Id) return;
+    const ticks = Math.round(
+      Math.min(Math.max(positionTicks, 0), runTimeTicks),
+    );
+    setRemainingTicks(runTimeTicks - ticks);
+    try {
+      await getSessionApi(api).sendPlaystateCommand({
+        sessionId: session.Id,
+        command: PlaystateCommand.Seek,
+        seekPositionTicks: ticks,
+      });
+    } catch (error) {
+      console.error("Error sending seek command:", error);
+    }
+  };
 
   const { data: ipInfo } = useQuery<{
     cityName?: string;
@@ -239,16 +277,53 @@ const SessionCard = ({ session }: SessionCardProps) => {
                   <Ionicons name='pause' size={14} color={NeonBoard.mid} />
                 )}
               </View>
+              <Text variant='caption' muted>
+                {formatTimeString(
+                  Math.max(0, runTimeTicks - remainingTicks),
+                  "tick",
+                )}
+              </Text>
               <Text variant='caption' muted className='text-right'>
                 {t("home.downloads.time_left", {
                   time: formatTimeString(remainingTicks, "tick"),
                 })}
               </Text>
             </View>
-            <NeonProgress
-              progress={getProgressPercentage() / 100}
-              color={NeonBoard.volt}
-            />
+            {canSeek ? (
+              <View style={{ height: 28, justifyContent: "center" }}>
+                <Slider
+                  theme={{
+                    maximumTrackTintColor: NeonBoard.line2,
+                    minimumTrackTintColor: NeonBoard.volt,
+                  }}
+                  progress={seekProgress}
+                  minimumValue={seekMin}
+                  maximumValue={seekMax}
+                  onSlidingStart={() => {
+                    scrubbing.current = true;
+                  }}
+                  onSlidingComplete={(value) => void handleSeek(value)}
+                  sliderHeight={4}
+                  containerStyle={{ borderRadius: 2 }}
+                  renderBubble={() => null}
+                  renderThumb={() => (
+                    <View
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 7,
+                        backgroundColor: NeonBoard.text,
+                      }}
+                    />
+                  )}
+                />
+              </View>
+            ) : (
+              <NeonProgress
+                progress={getProgressPercentage() / 100}
+                color={NeonBoard.volt}
+              />
+            )}
 
             {/* Session controls */}
             <View className='flex flex-row mt-2 space-x-4 justify-center'>
