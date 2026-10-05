@@ -12,6 +12,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   useFocusEffect,
+  useIsFocused,
   useLocalSearchParams,
   useNavigation,
 } from "expo-router";
@@ -72,6 +73,7 @@ const page: React.FC = () => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { showOptions } = useTVOptionModal();
   const { showItemActions } = useTVItemActionModal();
@@ -318,6 +320,7 @@ const page: React.FC = () => {
     },
     initialPageParam: 0,
     staleTime: 60_000,
+    refetchInterval: isStreaming && isFocused ? 60_000 : false,
     enabled:
       !!api && !!user?.Id && !!collection && filterScope === collectionId,
   });
