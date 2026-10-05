@@ -29,6 +29,7 @@ import { HeroBand } from "@/components/home/HeroBand";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
+import { ScrollingCollectionList } from "@/components/home/ScrollingCollectionList";
 import { StreamystatsPromotedWatchlists } from "@/components/home/StreamystatsPromotedWatchlists";
 import { StreamystatsRecommendations } from "@/components/home/StreamystatsRecommendations";
 import { ItemCardText } from "@/components/ItemCardText";
@@ -61,6 +62,7 @@ import {
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
 import { serverHost } from "@/utils/serverHost";
+import { loadStreamingCollections } from "@/utils/streamingCollections";
 import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 // Conditionally load TV version
@@ -91,7 +93,15 @@ type MediaListSectionType = {
   priority?: 1 | 2;
 };
 
-type Section = InfiniteScrollingCollectionListSection | MediaListSectionType;
+type StreamingSection = {
+  type: "Streaming";
+  queryKey: string[];
+};
+
+type Section =
+  | InfiniteScrollingCollectionListSection
+  | MediaListSectionType
+  | StreamingSection;
 
 const HomeMobile = () => {
   useSetPageAccent(NeonBoard.volt);
@@ -583,12 +593,40 @@ const HomeMobile = () => {
     return ss;
   }, [api, user?.Id, settings?.home?.sections, t]);
 
-  const sections = settings?.home?.sections ? customSections : defaultSections;
+  const sections = useMemo(() => {
+    const base = settings?.home?.sections ? customSections : defaultSections;
+    if (!api || !user?.Id) return base;
+    // Follow Continue Watching / Next Up; custom layouts keep their first two
+    // rows. The tagged row is local and never requires server plugin settings.
+    const index = settings?.home?.sections
+      ? Math.min(2, base.length)
+      : settings.mergeNextUpAndContinueWatching
+        ? 1
+        : 2;
+    const streaming: StreamingSection = {
+      type: "Streaming",
+      queryKey: ["home", "streaming", api.basePath, user.Id],
+    };
+    return [...base.slice(0, index), streaming, ...base.slice(index)];
+  }, [
+    api,
+    user?.Id,
+    settings?.home?.sections,
+    settings.mergeNextUpAndContinueWatching,
+    customSections,
+    defaultSections,
+  ]);
+
+  const streamingKeys = useMemo(
+    () => [["home", "streaming", api?.basePath, user?.Id]],
+    [api?.basePath, user?.Id],
+  );
+  useRefreshLibraryOnFocus(streamingKeys, 60_000);
 
   // Get all high priority section keys and check if all have loaded
   const highPrioritySectionKeys = useMemo(() => {
     return sections
-      .filter((s) => s.priority === 1)
+      .filter((s) => "priority" in s && s.priority === 1)
       .map((s) => s.queryKey.join("-"));
   }, [sections]);
 
@@ -887,6 +925,25 @@ const HomeMobile = () => {
                 )}
               </View>
             ) : null;
+          if (section.type === "Streaming") {
+            return (
+              <View>
+                <ScrollingCollectionList
+                  title={t("home.streaming")}
+                  badge={null}
+                  queryKey={section.queryKey}
+                  queryFn={({ signal }) =>
+                    api && user?.Id
+                      ? loadStreamingCollections(api, user.Id, signal)
+                      : Promise.resolve([])
+                  }
+                  refetchInterval={isFocused && reachable ? 60_000 : false}
+                  hideIfEmpty
+                />
+                {streamystatsSections}
+              </View>
+            );
+          }
           if (section.type === "InfiniteScrollingCollectionList") {
             const isHighPriority = section.priority === 1;
             const handleSeeAll = section.parentId

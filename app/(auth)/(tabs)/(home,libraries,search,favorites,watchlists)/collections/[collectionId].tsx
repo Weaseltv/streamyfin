@@ -8,19 +8,28 @@ import {
   getItemsApi,
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   useFocusEffect,
+  useIsFocused,
   useLocalSearchParams,
   useNavigation,
 } from "expo-router";
 import { useAtom } from "jotai";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Platform, useWindowDimensions, View } from "react-native";
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  useWindowDimensions,
+  View,
+  type ViewToken,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
 import { Chip } from "@/components/common/Chip";
 import { Text } from "@/components/common/Text";
 import {
@@ -30,12 +39,15 @@ import {
 import { FilterButton } from "@/components/filters/FilterButton";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
+import { LibraryAlphabetPicker } from "@/components/library/LibraryAlphabetPicker";
 import { ItemPoster } from "@/components/posters/ItemPoster";
 import { TVFilterButton } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
+import { NeonBoard, typeAccent } from "@/constants/Colors";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import useRouter from "@/hooks/useAppRouter";
 import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
+import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
@@ -46,7 +58,20 @@ import {
   sortOptions,
   sortOrderOptions,
 } from "@/utils/atoms/filters";
+import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
+import {
+  ALPHABET_RAIL_WIDTH,
+  getLibraryLetter,
+  getNextLibraryPage,
+  getPreviousLibraryPage,
+} from "@/utils/libraryAlphabet";
+import {
+  loadStreamingCollectionAlphabet,
+  loadStreamingCollectionItems,
+  STREAMING_COLLECTION_TAG,
+  type StreamingMediaType,
+} from "@/utils/streamingCollections";
 
 const TV_ITEM_GAP = 16;
 const TV_SCALE_PADDING = 20;
@@ -59,6 +84,7 @@ const page: React.FC = () => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { showOptions } = useTVOptionModal();
   const { showItemActions } = useTVItemActionModal();
@@ -73,6 +99,7 @@ const page: React.FC = () => {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [mediaType, setMediaType] = useState<StreamingMediaType>("All");
   const [sortBy, setSortBy] = useState<SortByOption[]>([
     SortByOption.PremiereDate,
   ]);
@@ -80,8 +107,14 @@ const page: React.FC = () => {
     SortOrderOption.Ascending,
   ]);
 
-  const { data: collection, isLoading: isCollectionLoading } = useQuery({
-    queryKey: ["collection", collectionId],
+  const {
+    data: collection,
+    isLoading: isCollectionLoading,
+    isError: collectionError,
+    isFetching: fetchingCollection,
+    refetch: refetchCollection,
+  } = useQuery({
+    queryKey: ["collection", api?.basePath, user?.Id, collectionId],
     queryFn: async () => {
       if (!api) return null;
       const response = await getUserLibraryApi(api).getItem({
@@ -135,20 +168,34 @@ const page: React.FC = () => {
     enabled: Platform.isTV && !!api && !!user?.Id && !!collectionId,
   });
 
-  const defaultSortBy = collection?.DisplayOrder
-    ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
-      SortByOption.PremiereDate
-    : SortByOption.PremiereDate;
+  const isStreaming =
+    !Platform.isTV &&
+    collection?.Tags?.includes(STREAMING_COLLECTION_TAG) === true;
+  const defaultSortBy =
+    !isStreaming && collection?.DisplayOrder
+      ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
+        SortByOption.PremiereDate
+      : SortByOption.PremiereDate;
+  const defaultSortOrder = isStreaming
+    ? SortOrderOption.Descending
+    : SortOrderOption.Ascending;
+  const accent = isStreaming
+    ? mediaType === "All"
+      ? NeonBoard.volt
+      : typeAccent({ Type: mediaType })
+    : undefined;
+  useSetPageAccent(accent, isStreaming);
   const [filterScope, setFilterScope] = useState<string | null>(null);
   useEffect(() => {
     if (!collection || filterScope === collectionId) return;
     setSelectedGenres([]);
     setSelectedYears([]);
     setSelectedTags([]);
+    setMediaType("All");
     setSortBy([defaultSortBy]);
-    setSortOrder([SortOrderOption.Ascending]);
+    setSortOrder([defaultSortOrder]);
     setFilterScope(collectionId);
-  }, [collectionId, collection, defaultSortBy, filterScope]);
+  }, [collectionId, collection, defaultSortBy, defaultSortOrder, filterScope]);
 
   useFocusEffect(
     useCallback(() => {
@@ -158,21 +205,47 @@ const page: React.FC = () => {
 
   const { data: availableFilters } = useAvailableItemFilters(
     collectionId,
-    !Platform.isTV,
+    !Platform.isTV && !!collection && !isStreaming,
   );
   const hasActiveFilters =
     selectedGenres.length > 0 ||
     selectedYears.length > 0 ||
     selectedTags.length > 0 ||
+    mediaType !== "All" ||
     sortBy[0] !== defaultSortBy ||
-    sortOrder[0] !== SortOrderOption.Ascending;
+    sortOrder[0] !== defaultSortOrder;
   const resetCollectionFilters = useCallback(() => {
     setSelectedGenres([]);
     setSelectedYears([]);
     setSelectedTags([]);
+    setMediaType("All");
     setSortBy([defaultSortBy]);
-    setSortOrder([SortOrderOption.Ascending]);
-  }, [defaultSortBy]);
+    setSortOrder([defaultSortOrder]);
+  }, [defaultSortBy, defaultSortOrder]);
+
+  const pageSize = Platform.isTV ? 36 : 18;
+  const nameSorted = isStreaming && sortBy[0] === SortByOption.SortName;
+  const filterSignature = JSON.stringify([
+    api?.basePath,
+    user?.Id,
+    collectionId,
+    mediaType,
+    sortBy,
+    sortOrder,
+  ]);
+  const [jump, setJump] = useState<{ signature: string; startIndex: number }>();
+  const jumpStart =
+    nameSorted && jump?.signature === filterSignature ? jump.startIndex : 0;
+  const flashListRef = useRef<FlashListRef<BaseItemDto>>(null);
+  const pendingJumpRef = useRef<string | undefined>(undefined);
+  const [activeLetter, setActiveLetter] = useState<string>();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [railTop, setRailTop] = useState(0);
+  const scrollOffsetRef = useRef(0);
+  useEffect(() => {
+    setRailTop(Math.max(0, headerHeight - scrollOffsetRef.current) + 8);
+  }, [headerHeight]);
 
   // Calculate columns for TV grid
   const nrOfCols = useMemo(() => {
@@ -189,15 +262,27 @@ const page: React.FC = () => {
   const fetchItems = useCallback(
     async ({
       pageParam,
+      signal,
     }: {
       pageParam: number;
+      signal: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
-      if (!api || !collection) return null;
+      if (!api || !user?.Id || !collection) return null;
+
+      if (isStreaming)
+        return loadStreamingCollectionItems(api, user.Id, collectionId, {
+          mediaType,
+          sortBy: sortBy[0],
+          sortOrder: sortOrder[0],
+          startIndex: pageParam,
+          limit: pageSize,
+          signal,
+        });
 
       const response = await getItemsApi(api).getItems({
-        userId: user?.Id,
+        userId: user.Id,
         parentId: collectionId,
-        limit: Platform.isTV ? 36 : 18,
+        limit: pageSize,
         startIndex: pageParam,
         // Set one ordering at a time. As collections do not work with correctly with multiple.
         sortBy: [sortBy[0]],
@@ -228,44 +313,55 @@ const page: React.FC = () => {
       selectedTags,
       sortBy,
       sortOrder,
+      isStreaming,
+      mediaType,
+      pageSize,
     ],
   );
 
-  const { data, fetchNextPage, hasNextPage, isLoading, isFetching } =
-    useInfiniteQuery({
-      queryKey: [
-        "collection-items",
-        collectionId,
-        selectedGenres,
-        selectedYears,
-        selectedTags,
-        sortBy,
-        sortOrder,
-      ],
-      queryFn: fetchItems,
-      getNextPageParam: (lastPage, pages) => {
-        if (
-          !lastPage?.Items ||
-          !lastPage?.TotalRecordCount ||
-          lastPage?.TotalRecordCount === 0
-        )
-          return undefined;
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    fetchPreviousPage,
+    hasPreviousPage,
+    isLoading,
+    isFetching,
+    isRefetching,
+    refetch,
+    isError: itemsError,
+  } = useInfiniteQuery({
+    queryKey: [
+      "collection-items",
+      api?.basePath,
+      user?.Id,
+      collectionId,
+      isStreaming,
+      mediaType,
+      selectedGenres,
+      selectedYears,
+      selectedTags,
+      sortBy,
+      sortOrder,
+      jumpStart,
+    ],
+    queryFn: fetchItems,
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      getNextLibraryPage(lastPage, lastPageParam),
+    getPreviousPageParam: (_firstPage, _pages, firstPageParam) =>
+      nameSorted ? getPreviousLibraryPage(firstPageParam, pageSize) : undefined,
+    initialPageParam: jumpStart,
+    staleTime: 60_000,
+    refetchInterval: isStreaming && isFocused ? 60_000 : false,
+    enabled:
+      !!api && !!user?.Id && !!collection && filterScope === collectionId,
+  });
 
-        const totalItems = lastPage.TotalRecordCount;
-        const accumulatedItems = pages.reduce(
-          (acc, curr) => acc + (curr?.Items?.length || 0),
-          0,
-        );
-
-        if (accumulatedItems < totalItems) {
-          return lastPage?.Items?.length * pages.length;
-        }
-        return undefined;
-      },
-      initialPageParam: 0,
-      enabled:
-        !!api && !!user?.Id && !!collection && filterScope === collectionId,
-    });
+  const collectionKeys = useMemo(
+    () => [["collection-items", api?.basePath, user?.Id, collectionId]],
+    [api?.basePath, user?.Id, collectionId],
+  );
+  useRefreshLibraryOnFocus(collectionKeys, 60_000);
 
   const flatData = useMemo(() => {
     return (
@@ -273,6 +369,106 @@ const page: React.FC = () => {
       []
     );
   }, [data]);
+
+  const {
+    data: alphabet,
+    isFetching: isAlphabetFetching,
+    isError: alphabetError,
+    refetch: refetchAlphabet,
+  } = useQuery({
+    queryKey: ["collection-alphabet", filterSignature],
+    queryFn: ({ signal }) => {
+      if (!api || !user?.Id) throw new Error("No collection server available");
+      return loadStreamingCollectionAlphabet(
+        api,
+        user.Id,
+        collectionId,
+        mediaType,
+        sortOrder[0],
+        signal,
+      );
+    },
+    enabled: nameSorted && !!api && !!user?.Id && filterScope === collectionId,
+    staleTime: 60_000,
+    refetchInterval: nameSorted && isFocused ? 60_000 : false,
+  });
+  const showAlphabet =
+    nameSorted &&
+    (data?.pages[0]?.TotalRecordCount ?? alphabet?.totalCount ?? 0) > pageSize;
+  const availableLetters = useMemo(
+    () => alphabet?.entries.map((entry) => entry.letter) ?? [],
+    [alphabet],
+  );
+  const scrollToPendingLetter = useCallback(() => {
+    const id = pendingJumpRef.current;
+    if (!id || isFetching) return;
+    const index = flatData.findIndex((item) => item.Id === id);
+    if (index < 0) {
+      // Monday's membership refresh can move/remove an indexed title.
+      if (data?.pages.length && !itemsError) {
+        pendingJumpRef.current = undefined;
+        setJump(undefined);
+        void refetchAlphabet();
+      }
+      return;
+    }
+    if (!flashListRef.current) return;
+    pendingJumpRef.current = undefined;
+    void flashListRef.current.scrollToIndex({
+      index,
+      animated: false,
+      viewPosition: 0,
+    });
+  }, [flatData, isFetching, data, itemsError, refetchAlphabet]);
+  const jumpToLetter = useCallback(
+    (letter: string) => {
+      const entry = alphabet?.entries.find((entry) => entry.letter === letter);
+      if (!entry) return;
+      pendingJumpRef.current = entry.itemId;
+      setActiveLetter(letter);
+      const index = flatData.findIndex((item) => item.Id === entry.itemId);
+      if (index >= 0 && flashListRef.current) {
+        pendingJumpRef.current = undefined;
+        void flashListRef.current.scrollToIndex({
+          index,
+          animated: false,
+          viewPosition: 0,
+        });
+      } else {
+        setJump({
+          signature: filterSignature,
+          startIndex: Math.floor(entry.index / pageSize) * pageSize,
+        });
+      }
+    },
+    [alphabet, flatData, filterSignature, pageSize],
+  );
+  useEffect(scrollToPendingLetter, [scrollToPendingLetter]);
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken<BaseItemDto>[] }) => {
+      if (pendingJumpRef.current) return;
+      const first = viewableItems.find((entry) => entry.isViewable);
+      if (first) setActiveLetter(getLibraryLetter(first.item));
+    },
+    [],
+  );
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
+  const pendingScrollTopRef = useRef(false);
+  useEffect(() => {
+    if (!isStreaming) return;
+    setJump(undefined);
+    setPickerOpen(false);
+    setActiveLetter(undefined);
+    pendingJumpRef.current = undefined;
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    pendingScrollTopRef.current = true;
+  }, [filterSignature, isStreaming]);
+  useEffect(() => {
+    if (pendingScrollTopRef.current && !isFetching) {
+      pendingScrollTopRef.current = false;
+      flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [isFetching, flatData]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: BaseItemDto; index: number }) => (
@@ -346,18 +542,29 @@ const page: React.FC = () => {
         }}
         data={[
           {
-            key: "reset",
-            component: hasActiveFilters ? (
+            key: "alphabet",
+            component: showAlphabet ? (
               <Chip
-                label={t("library.filters.reset")}
-                icon={<Feather name='x' size={13} color='white' />}
-                onPress={resetCollectionFilters}
+                label='A–Z'
+                accent={accent}
+                onPress={() => setPickerOpen(true)}
               />
             ) : null,
           },
           {
+            key: "reset",
+            component:
+              !isStreaming && hasActiveFilters ? (
+                <Chip
+                  label={t("library.filters.reset")}
+                  icon={<Feather name='x' size={13} color='white' />}
+                  onPress={resetCollectionFilters}
+                />
+              ) : null,
+          },
+          {
             key: "genre",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -368,11 +575,11 @@ const page: React.FC = () => {
                 title={t("library.filters.genres")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "year",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -383,11 +590,11 @@ const page: React.FC = () => {
                 title={t("library.filters.years")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "tags",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -398,7 +605,7 @@ const page: React.FC = () => {
                 title={t("library.filters.tags")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "sortBy",
@@ -407,12 +614,22 @@ const page: React.FC = () => {
                 className='mr-1'
                 id={collectionId}
                 queryKey='sortBy'
-                queryFn={async () => sortOptions.map((s) => s.key)}
+                options={
+                  isStreaming
+                    ? [
+                        SortByOption.SortName,
+                        SortByOption.DateCreated,
+                        SortByOption.PremiereDate,
+                      ]
+                    : sortOptions.map((s) => s.key)
+                }
                 set={setSortBy}
                 values={sortBy}
                 title={t("library.filters.sort_by")}
                 renderItemLabel={(item) =>
-                  sortOptions.find((i) => i.key === item)?.value || ""
+                  isStreaming && item === SortByOption.PremiereDate
+                    ? t("library.filters.release_date")
+                    : sortOptions.find((i) => i.key === item)?.value || ""
                 }
               />
             ),
@@ -429,7 +646,13 @@ const page: React.FC = () => {
                 values={sortOrder}
                 title={t("library.filters.sort_order")}
                 renderItemLabel={(item) =>
-                  sortOrderOptions.find((i) => i.key === item)?.value || ""
+                  isStreaming && sortBy[0] !== SortByOption.SortName
+                    ? t(
+                        item === SortOrderOption.Descending
+                          ? "library.filters.newest_first"
+                          : "library.filters.oldest_first",
+                      )
+                    : sortOrderOptions.find((i) => i.key === item)?.value || ""
                 }
               />
             ),
@@ -456,6 +679,10 @@ const page: React.FC = () => {
       setSortBy,
       sortOrder,
       setSortOrder,
+      isStreaming,
+      showAlphabet,
+      accent,
+      t,
     ],
   );
 
@@ -599,6 +826,31 @@ const page: React.FC = () => {
 
   const resetAllFilters = resetCollectionFilters;
 
+  if (collectionError || (itemsError && flatData.length === 0)) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          paddingHorizontal: 24,
+          gap: 12,
+        }}
+      >
+        <Text>{t("home.section_failed")}</Text>
+        <Button
+          variant='border'
+          loading={fetchingCollection || isFetching}
+          onPress={() => {
+            if (collectionError) void refetchCollection();
+            else void refetch();
+          }}
+        >
+          {t("home.retry")}
+        </Button>
+      </View>
+    );
+  }
+
   if (isLoading || isCollectionLoading) {
     return (
       <View className='w-full h-full flex items-center justify-center'>
@@ -612,36 +864,127 @@ const page: React.FC = () => {
   // Mobile return
   if (!Platform.isTV) {
     return (
-      <FlashList
-        ListEmptyComponent={
-          <View className='flex flex-col items-center justify-center h-full'>
-            <Text className='font-bold text-xl text-neutral-500'>
-              {t("search.no_results")}
-            </Text>
-          </View>
-        }
-        contentInsetAdjustmentBehavior='automatic'
-        data={flatData}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        numColumns={nrOfCols}
-        onEndReached={() => {
-          if (hasNextPage && !isFetching) {
-            void fetchNextPage({ cancelRefetch: false });
+      <View style={{ flex: 1 }}>
+        <FlashList
+          ref={flashListRef}
+          ListEmptyComponent={
+            <View className='flex flex-col items-center justify-center h-full'>
+              <Text className='font-bold text-xl text-neutral-500'>
+                {t("search.no_results")}
+              </Text>
+            </View>
           }
-        }}
-        onEndReachedThreshold={0.5}
-        ListHeaderComponent={listHeader}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ItemSeparatorComponent={() => (
-          <View
-            style={{
-              width: 10,
-              height: 10,
-            }}
+          contentInsetAdjustmentBehavior='automatic'
+          data={flatData}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => {
+                void refetch();
+                if (nameSorted) void refetchAlphabet();
+              }}
+            />
+          }
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          numColumns={nrOfCols}
+          onLoad={scrollToPendingLetter}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          onScroll={({ nativeEvent }) => {
+            const offset = nativeEvent.contentOffset.y;
+            const movingUp = offset < scrollOffsetRef.current;
+            scrollOffsetRef.current = offset;
+            setRailTop(Math.max(0, headerHeight - offset) + 8);
+            if (
+              movingUp &&
+              offset < 160 &&
+              hasPreviousPage &&
+              !isFetching &&
+              !pendingJumpRef.current
+            ) {
+              void fetchPreviousPage({ cancelRefetch: false });
+            }
+          }}
+          scrollEventThrottle={64}
+          showsVerticalScrollIndicator={!showAlphabet}
+          onEndReached={() => {
+            if (hasNextPage && !isFetching) {
+              void fetchNextPage({ cancelRefetch: false });
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={
+            isStreaming ? (
+              <View
+                onLayout={(event) =>
+                  setHeaderHeight(event.nativeEvent.layout.height)
+                }
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 8,
+                    paddingHorizontal: 15,
+                    paddingTop: 16,
+                  }}
+                >
+                  {(["All", "Movie", "Series"] as const).map((type) => (
+                    <Chip
+                      key={type}
+                      label={t(
+                        type === "All"
+                          ? "library.filters.all"
+                          : type === "Movie"
+                            ? "item_card.movies"
+                            : "item_card.shows",
+                      )}
+                      selected={mediaType === type}
+                      accent={
+                        type === "All"
+                          ? NeonBoard.volt
+                          : typeAccent({ Type: type })
+                      }
+                      onPress={() => setMediaType(type)}
+                    />
+                  ))}
+                </View>
+                {listHeader}
+              </View>
+            ) : (
+              listHeader
+            )
+          }
+          contentContainerStyle={{
+            paddingBottom: 24,
+            paddingRight: nameSorted ? ALPHABET_RAIL_WIDTH : 0,
+          }}
+          ItemSeparatorComponent={() => (
+            <View
+              style={{
+                width: 10,
+                height: 10,
+              }}
+            />
+          )}
+        />
+        {showAlphabet && (
+          <LibraryAlphabetPicker
+            accent={accent ?? NeonBoard.volt}
+            activeLetter={activeLetter}
+            availableLetters={availableLetters}
+            descending={sortOrder[0] === SortOrderOption.Descending}
+            top={railTop}
+            loading={isAlphabetFetching && !alphabet}
+            failed={alphabetError}
+            pickerOpen={pickerOpen}
+            onOpen={() => setPickerOpen(true)}
+            onClose={() => setPickerOpen(false)}
+            onRetry={() => void refetchAlphabet()}
+            onSelect={jumpToLetter}
           />
         )}
-      />
+      </View>
     );
   }
 

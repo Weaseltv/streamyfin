@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View, type ViewProps } from "react-native";
+import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
@@ -27,6 +28,7 @@ interface Props extends ViewProps {
   disabled?: boolean;
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[]>;
+  refetchInterval?: number | false;
   hideIfEmpty?: boolean;
   scrollY?: number; // For lazy loading
   enableLazyLoading?: boolean; // Enable/disable lazy loading
@@ -41,6 +43,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   disabled = false,
   queryFn,
   queryKey,
+  refetchInterval,
   hideIfEmpty = false,
   scrollY = 0,
   enableLazyLoading = false,
@@ -50,12 +53,13 @@ export const ScrollingCollectionList: React.FC<Props> = ({
     enabled: enableLazyLoading,
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: queryKey,
     queryFn,
     staleTime: 60 * 1000, // 1 minute
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    refetchInterval,
     enabled: enableLazyLoading ? isInView : true,
   });
 
@@ -65,7 +69,12 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   // Show skeleton if loading OR if lazy loading is enabled and not in view yet
   const shouldShowSkeleton = isLoading || (enableLazyLoading && !isInView);
 
-  if (hideIfEmpty === true && data?.length === 0 && !shouldShowSkeleton)
+  if (
+    hideIfEmpty === true &&
+    data?.length === 0 &&
+    !shouldShowSkeleton &&
+    !isError
+  )
     return null;
   if (disabled || !title) return null;
 
@@ -76,7 +85,21 @@ export const ScrollingCollectionList: React.FC<Props> = ({
         accent={accent}
         count={shouldShowSkeleton ? undefined : data?.length}
       />
-      {!shouldShowSkeleton && data?.length === 0 && (
+      {isError && !data?.length && (
+        <View style={{ paddingHorizontal: Sizes.gutter, gap: 8 }}>
+          <Text variant='meta' muted>
+            {t("home.section_failed")}
+          </Text>
+          <Button
+            variant='border'
+            loading={isFetching}
+            onPress={() => void refetch()}
+          >
+            {t("home.retry")}
+          </Button>
+        </View>
+      )}
+      {!shouldShowSkeleton && !isError && data?.length === 0 && (
         <View style={{ paddingHorizontal: Sizes.gutter }}>
           <Text variant='meta' muted>
             {t("home.no_items")}
