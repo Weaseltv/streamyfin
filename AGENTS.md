@@ -87,3 +87,6 @@ Every Android build leaves gigabytes behind (`android/`, `node_modules`, Gradle 
 - **Everything else you built:** `android/` in your task worktree (it's gitignored and `expo prebuild` regenerates it), throwaway clones in `/tmp`, emulator test APKs.
 - **`~/work/weaselfin/releases/out/`:** keep only the last two releases of each app.
 - Then run `df -h ~`, and say in your report if less than 30 GB is free.
+
+## Sending files to Justin
+From either T3 worker (Hostinger VPS srv1160496 or ThinkCentre), run `tailscale file cp <file> desktop-gualr4f:`. No sudo is needed because the Tailscale operator is `justin`. Files land in `C:\Users\justi\Downloads`. Zip folders first.
