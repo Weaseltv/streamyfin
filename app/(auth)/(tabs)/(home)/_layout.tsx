@@ -48,7 +48,13 @@ function TabStack() {
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen
         name='index'
-        options={{ ...neonRootScreenOptions, title: t("tabs.home") }}
+        options={{
+          ...neonRootScreenOptions,
+          title: t("tabs.home"),
+          // Home is the only tab with the Sessions action: the Sessions page
+          // lives in this stack, and one header polling is enough.
+          header: () => <NeonHeader sessions />,
+        }}
       />
       <Stack.Screen
         name='downloads/index'
