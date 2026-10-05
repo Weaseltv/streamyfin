@@ -176,8 +176,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#333",
   },
+  // Not flex: 1. The sheet has no fixed height (only maxHeight), so a flex: 1
+  // child resolves to zero height on iOS and the chooser rendered as a bare
+  // title bar. Shrink to fit the sheet instead and keep room for the empty and
+  // loading states.
   modalContent: {
-    flex: 1,
+    flexShrink: 1,
+    minHeight: 120,
   },
   modalTitle: {
     fontSize: 18,
