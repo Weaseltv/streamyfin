@@ -144,7 +144,6 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
       item?.Id ? { Id: item.Id, Type: item.Type, Name: item.Name } : undefined,
     [item?.Id, item?.Type, item?.Name],
   );
-  const isAdministrator = user?.Policy?.IsAdministrator === true;
   const headerReady = !!itemWithSources;
   const headerActions = useMemo(
     () =>
@@ -152,9 +151,12 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
         <HeaderButtonGroup>
           <Chromecast.Chromecast />
           {headerItem.Type !== "Program" &&
-            isAdministrator &&
             !settings.hideRemoteSessionButton && (
-              <PlayInRemoteSessionButton item={headerItem} size='large' />
+              <PlayInRemoteSessionButton
+                item={headerItem}
+                selectedOptions={selectedOptions}
+                size='large'
+              />
             )}
           {headerItem.Type !== "Program" &&
             settings.streamyStatsServerUrl &&
@@ -163,7 +165,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
       ),
     [
       headerItem,
-      isAdministrator,
+      selectedOptions,
       settings.hideRemoteSessionButton,
       settings.streamyStatsServerUrl,
       settings.hideWatchlistsTab,

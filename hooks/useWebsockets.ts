@@ -121,10 +121,13 @@ export const useWebSocket = ({
       console.log("Command ~ FastForward");
       fastForwardPlayback?.();
     } else if (command === "Seek") {
-      const positionStr = args?.SeekPositionTicks;
+      // Playstate messages carry SeekPositionTicks on Data itself; some
+      // clients put it in Arguments instead, so accept either.
+      const positionStr =
+        lastMessage?.Data?.SeekPositionTicks ?? args?.SeekPositionTicks;
       console.log("Command ~ Seek", { positionStr });
-      if (positionStr) {
-        const position = Number.parseInt(positionStr, 10);
+      if (positionStr !== undefined && positionStr !== null) {
+        const position = Number.parseInt(String(positionStr), 10);
         if (!Number.isNaN(position)) {
           seekPlayback?.(position);
         }

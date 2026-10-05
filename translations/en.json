@@ -520,7 +520,10 @@
       "title": "Sessions",
       "no_active_sessions": "No active sessions",
       "select_session": "Select session",
-      "now_playing": "Now playing:"
+      "now_playing": "Now playing:",
+      "no_remote_targets": "No devices available. Open WeaselPlex on the device you want to play on, signed in with your account, then try again.",
+      "playing_on": "Playing on {{device}}",
+      "play_failed": "Could not play on {{device}}"
     },
     "downloads": {
       "downloads_title": "Downloads",
