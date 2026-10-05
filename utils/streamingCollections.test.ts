@@ -6,6 +6,7 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import axios, { type AxiosRequestConfig } from "axios";
 import {
+  loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
   loadStreamingCollections,
   STREAMING_COLLECTION_TAG,
@@ -155,5 +156,68 @@ describe("streaming collections via the Jellyfin SDK", () => {
     await expect(
       loadStreamingCollections(api, "member-d", controller.signal),
     ).rejects.toThrow();
+  });
+
+  test("indexes every collection page with server sort titles and movie/show scoping in either direction", async () => {
+    const titles: BaseItemDto[] = [
+      { Id: "number", SortName: "12 monkeys" },
+      ...Array.from({ length: 1000 }, (_, i) => ({
+        Id: `a-${i}`,
+        SortName: `a ${i}`,
+      })),
+      { Id: "m", Name: "The Matrix", SortName: "matrix" },
+      { Id: "z", SortName: "z title" },
+    ];
+    const { api, requests } = server((params) => {
+      const sorted =
+        params.get("sortOrder") === "Descending"
+          ? [...titles].reverse()
+          : titles;
+      const start = Number(params.get("startIndex"));
+      return {
+        Items: sorted.slice(start, start + Number(params.get("limit"))),
+        TotalRecordCount: sorted.length,
+      };
+    });
+    const index = await loadStreamingCollectionAlphabet(
+      api,
+      "member-e",
+      "tagged-collection",
+      "All",
+      "Ascending",
+    );
+    expect(index.totalCount).toBe(1003);
+    expect(index.entries).toEqual([
+      { letter: "#", index: 0, itemId: "number" },
+      { letter: "A", index: 1, itemId: "a-0" },
+      { letter: "M", index: 1001, itemId: "m" },
+      { letter: "Z", index: 1002, itemId: "z" },
+    ]);
+    expect(requests.map((p) => p.get("startIndex"))).toEqual(["0", "1000"]);
+    for (const mediaType of ["Movie", "Series"] as const) {
+      const reversed = await loadStreamingCollectionAlphabet(
+        api,
+        "member-e",
+        "tagged-collection",
+        mediaType,
+        "Descending",
+      );
+      expect(reversed.entries.map((e) => e.letter)).toEqual([
+        "Z",
+        "M",
+        "A",
+        "#",
+      ]);
+      expect(requests.at(-1)!.getAll("includeItemTypes")).toEqual([mediaType]);
+    }
+    for (const params of requests) {
+      expect(params.get("userId")).toBe("member-e");
+      expect(params.get("parentId")).toBe("tagged-collection");
+      expect(params.get("recursive")).toBe("false");
+      expect(params.get("sortBy")).toBe("SortName");
+      expect(params.getAll("fields")).toEqual(["SortName"]);
+      expect(params.get("enableImages")).toBe("false");
+      expect(params.get("enableUserData")).toBe("false");
+    }
   });
 });

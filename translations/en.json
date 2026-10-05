@@ -703,6 +703,8 @@
       "years": "Years",
       "sort_by": "Sort by",
       "release_date": "Release date",
+      "newest_first": "Newest first",
+      "oldest_first": "Oldest first",
       "filter_by": "Filter by",
       "sort_order": "Sort order",
       "tags": "Tags",

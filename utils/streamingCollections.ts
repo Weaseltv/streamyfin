@@ -5,6 +5,7 @@ import type {
   SortOrder,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
+import { loadLibraryAlphabet } from "./libraryAlphabet";
 
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
 export const STREAMING_SERVICE_ORDER: readonly string[] = [
@@ -51,6 +52,7 @@ export async function loadStreamingCollectionItems(
     startIndex: number;
     limit: number;
     signal?: AbortSignal;
+    metadataOnly?: boolean;
   },
 ) {
   const response = await getItemsApi(api).getItems(
@@ -65,11 +67,39 @@ export async function loadStreamingCollectionItems(
       sortOrder: [options.sortOrder],
       startIndex: options.startIndex,
       limit: options.limit,
-      fields: ["ItemCounts", "PrimaryImageAspectRatio"],
+      fields: options.metadataOnly
+        ? ["SortName"]
+        : ["ItemCounts", "PrimaryImageAspectRatio", "SortName"],
+      enableImages: options.metadataOnly ? false : undefined,
+      enableUserData: options.metadataOnly ? false : undefined,
     },
     { signal: options.signal },
   );
   return response.data;
+}
+
+/** The library's complete, lightweight letter index, scoped to this collection. */
+export function loadStreamingCollectionAlphabet(
+  api: Api,
+  userId: string,
+  collectionId: string,
+  mediaType: StreamingMediaType,
+  sortOrder: SortOrder,
+  signal?: AbortSignal,
+) {
+  return loadLibraryAlphabet(
+    (startIndex, limit) =>
+      loadStreamingCollectionItems(api, userId, collectionId, {
+        mediaType,
+        sortBy: "SortName",
+        sortOrder,
+        startIndex,
+        limit,
+        signal,
+        metadataOnly: true,
+      }),
+    signal,
+  );
 }
 
 /** Standard Jellyfin collections only; no companion plugin or library IDs. */
