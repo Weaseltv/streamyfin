@@ -19,8 +19,15 @@ import { useAtom } from "jotai";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Platform, useWindowDimensions, View } from "react-native";
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
 import { Chip } from "@/components/common/Chip";
 import { Text } from "@/components/common/Text";
 import {
@@ -36,6 +43,7 @@ import { TVPosterCard } from "@/components/tv/TVPosterCard";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import useRouter from "@/hooks/useAppRouter";
 import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
+import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
@@ -47,6 +55,11 @@ import {
   sortOrderOptions,
 } from "@/utils/atoms/filters";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
+import {
+  loadStreamingCollectionItems,
+  STREAMING_COLLECTION_TAG,
+  type StreamingMediaType,
+} from "@/utils/streamingCollections";
 
 const TV_ITEM_GAP = 16;
 const TV_SCALE_PADDING = 20;
@@ -73,6 +86,7 @@ const page: React.FC = () => {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [mediaType, setMediaType] = useState<StreamingMediaType>("All");
   const [sortBy, setSortBy] = useState<SortByOption[]>([
     SortByOption.PremiereDate,
   ]);
@@ -80,8 +94,14 @@ const page: React.FC = () => {
     SortOrderOption.Ascending,
   ]);
 
-  const { data: collection, isLoading: isCollectionLoading } = useQuery({
-    queryKey: ["collection", collectionId],
+  const {
+    data: collection,
+    isLoading: isCollectionLoading,
+    isError: collectionError,
+    isFetching: fetchingCollection,
+    refetch: refetchCollection,
+  } = useQuery({
+    queryKey: ["collection", api?.basePath, user?.Id, collectionId],
     queryFn: async () => {
       if (!api) return null;
       const response = await getUserLibraryApi(api).getItem({
@@ -135,16 +155,22 @@ const page: React.FC = () => {
     enabled: Platform.isTV && !!api && !!user?.Id && !!collectionId,
   });
 
-  const defaultSortBy = collection?.DisplayOrder
-    ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
-      SortByOption.PremiereDate
-    : SortByOption.PremiereDate;
+  const isStreaming =
+    !Platform.isTV &&
+    collection?.Tags?.includes(STREAMING_COLLECTION_TAG) === true;
+  const defaultSortBy = isStreaming
+    ? SortByOption.SortName
+    : collection?.DisplayOrder
+      ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
+        SortByOption.PremiereDate
+      : SortByOption.PremiereDate;
   const [filterScope, setFilterScope] = useState<string | null>(null);
   useEffect(() => {
     if (!collection || filterScope === collectionId) return;
     setSelectedGenres([]);
     setSelectedYears([]);
     setSelectedTags([]);
+    setMediaType("All");
     setSortBy([defaultSortBy]);
     setSortOrder([SortOrderOption.Ascending]);
     setFilterScope(collectionId);
@@ -158,18 +184,20 @@ const page: React.FC = () => {
 
   const { data: availableFilters } = useAvailableItemFilters(
     collectionId,
-    !Platform.isTV,
+    !Platform.isTV && !!collection && !isStreaming,
   );
   const hasActiveFilters =
     selectedGenres.length > 0 ||
     selectedYears.length > 0 ||
     selectedTags.length > 0 ||
+    mediaType !== "All" ||
     sortBy[0] !== defaultSortBy ||
     sortOrder[0] !== SortOrderOption.Ascending;
   const resetCollectionFilters = useCallback(() => {
     setSelectedGenres([]);
     setSelectedYears([]);
     setSelectedTags([]);
+    setMediaType("All");
     setSortBy([defaultSortBy]);
     setSortOrder([SortOrderOption.Ascending]);
   }, [defaultSortBy]);
@@ -189,13 +217,25 @@ const page: React.FC = () => {
   const fetchItems = useCallback(
     async ({
       pageParam,
+      signal,
     }: {
       pageParam: number;
+      signal: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
-      if (!api || !collection) return null;
+      if (!api || !user?.Id || !collection) return null;
+
+      if (isStreaming)
+        return loadStreamingCollectionItems(api, user.Id, collectionId, {
+          mediaType,
+          sortBy: sortBy[0],
+          sortOrder: sortOrder[0],
+          startIndex: pageParam,
+          limit: 18,
+          signal,
+        });
 
       const response = await getItemsApi(api).getItems({
-        userId: user?.Id,
+        userId: user.Id,
         parentId: collectionId,
         limit: Platform.isTV ? 36 : 18,
         startIndex: pageParam,
@@ -228,44 +268,65 @@ const page: React.FC = () => {
       selectedTags,
       sortBy,
       sortOrder,
+      isStreaming,
+      mediaType,
     ],
   );
 
-  const { data, fetchNextPage, hasNextPage, isLoading, isFetching } =
-    useInfiniteQuery({
-      queryKey: [
-        "collection-items",
-        collectionId,
-        selectedGenres,
-        selectedYears,
-        selectedTags,
-        sortBy,
-        sortOrder,
-      ],
-      queryFn: fetchItems,
-      getNextPageParam: (lastPage, pages) => {
-        if (
-          !lastPage?.Items ||
-          !lastPage?.TotalRecordCount ||
-          lastPage?.TotalRecordCount === 0
-        )
-          return undefined;
-
-        const totalItems = lastPage.TotalRecordCount;
-        const accumulatedItems = pages.reduce(
-          (acc, curr) => acc + (curr?.Items?.length || 0),
-          0,
-        );
-
-        if (accumulatedItems < totalItems) {
-          return lastPage?.Items?.length * pages.length;
-        }
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isLoading,
+    isFetching,
+    isRefetching,
+    refetch,
+    isError: itemsError,
+  } = useInfiniteQuery({
+    queryKey: [
+      "collection-items",
+      api?.basePath,
+      user?.Id,
+      collectionId,
+      isStreaming,
+      mediaType,
+      selectedGenres,
+      selectedYears,
+      selectedTags,
+      sortBy,
+      sortOrder,
+    ],
+    queryFn: fetchItems,
+    getNextPageParam: (lastPage, pages) => {
+      if (
+        !lastPage?.Items ||
+        !lastPage?.TotalRecordCount ||
+        lastPage?.TotalRecordCount === 0
+      )
         return undefined;
-      },
-      initialPageParam: 0,
-      enabled:
-        !!api && !!user?.Id && !!collection && filterScope === collectionId,
-    });
+
+      const totalItems = lastPage.TotalRecordCount;
+      const accumulatedItems = pages.reduce(
+        (acc, curr) => acc + (curr?.Items?.length || 0),
+        0,
+      );
+
+      if (lastPage.Items.length > 0 && accumulatedItems < totalItems) {
+        return accumulatedItems;
+      }
+      return undefined;
+    },
+    initialPageParam: 0,
+    staleTime: 60_000,
+    enabled:
+      !!api && !!user?.Id && !!collection && filterScope === collectionId,
+  });
+
+  const collectionKeys = useMemo(
+    () => [["collection-items", api?.basePath, user?.Id, collectionId]],
+    [api?.basePath, user?.Id, collectionId],
+  );
+  useRefreshLibraryOnFocus(collectionKeys, 60_000);
 
   const flatData = useMemo(() => {
     return (
@@ -347,17 +408,18 @@ const page: React.FC = () => {
         data={[
           {
             key: "reset",
-            component: hasActiveFilters ? (
-              <Chip
-                label={t("library.filters.reset")}
-                icon={<Feather name='x' size={13} color='white' />}
-                onPress={resetCollectionFilters}
-              />
-            ) : null,
+            component:
+              !isStreaming && hasActiveFilters ? (
+                <Chip
+                  label={t("library.filters.reset")}
+                  icon={<Feather name='x' size={13} color='white' />}
+                  onPress={resetCollectionFilters}
+                />
+              ) : null,
           },
           {
             key: "genre",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -368,11 +430,11 @@ const page: React.FC = () => {
                 title={t("library.filters.genres")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "year",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -383,11 +445,11 @@ const page: React.FC = () => {
                 title={t("library.filters.years")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "tags",
-            component: (
+            component: !isStreaming ? (
               <FilterButton
                 className='mr-1'
                 id={collectionId}
@@ -398,7 +460,7 @@ const page: React.FC = () => {
                 title={t("library.filters.tags")}
                 renderItemLabel={(item) => item.toString()}
               />
-            ),
+            ) : null,
           },
           {
             key: "sortBy",
@@ -407,12 +469,22 @@ const page: React.FC = () => {
                 className='mr-1'
                 id={collectionId}
                 queryKey='sortBy'
-                queryFn={async () => sortOptions.map((s) => s.key)}
+                options={
+                  isStreaming
+                    ? [
+                        SortByOption.SortName,
+                        SortByOption.DateCreated,
+                        SortByOption.PremiereDate,
+                      ]
+                    : sortOptions.map((s) => s.key)
+                }
                 set={setSortBy}
                 values={sortBy}
                 title={t("library.filters.sort_by")}
                 renderItemLabel={(item) =>
-                  sortOptions.find((i) => i.key === item)?.value || ""
+                  isStreaming && item === SortByOption.PremiereDate
+                    ? t("library.filters.release_date")
+                    : sortOptions.find((i) => i.key === item)?.value || ""
                 }
               />
             ),
@@ -456,6 +528,8 @@ const page: React.FC = () => {
       setSortBy,
       sortOrder,
       setSortOrder,
+      isStreaming,
+      t,
     ],
   );
 
@@ -599,6 +673,31 @@ const page: React.FC = () => {
 
   const resetAllFilters = resetCollectionFilters;
 
+  if (collectionError || (itemsError && flatData.length === 0)) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          paddingHorizontal: 24,
+          gap: 12,
+        }}
+      >
+        <Text>{t("home.section_failed")}</Text>
+        <Button
+          variant='border'
+          loading={fetchingCollection || isFetching}
+          onPress={() => {
+            if (collectionError) void refetchCollection();
+            else void refetch();
+          }}
+        >
+          {t("home.retry")}
+        </Button>
+      </View>
+    );
+  }
+
   if (isLoading || isCollectionLoading) {
     return (
       <View className='w-full h-full flex items-center justify-center'>
@@ -622,6 +721,12 @@ const page: React.FC = () => {
         }
         contentInsetAdjustmentBehavior='automatic'
         data={flatData}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+          />
+        }
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         numColumns={nrOfCols}
@@ -631,7 +736,38 @@ const page: React.FC = () => {
           }
         }}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={listHeader}
+        ListHeaderComponent={
+          isStreaming ? (
+            <View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  paddingHorizontal: 15,
+                  paddingTop: 16,
+                }}
+              >
+                {(["All", "Movie", "Series"] as const).map((type) => (
+                  <Chip
+                    key={type}
+                    label={t(
+                      type === "All"
+                        ? "library.filters.all"
+                        : type === "Movie"
+                          ? "item_card.movies"
+                          : "item_card.shows",
+                    )}
+                    selected={mediaType === type}
+                    onPress={() => setMediaType(type)}
+                  />
+                ))}
+              </View>
+              {listHeader}
+            </View>
+          ) : (
+            listHeader
+          )
+        }
         contentContainerStyle={{ paddingBottom: 24 }}
         ItemSeparatorComponent={() => (
           <View
