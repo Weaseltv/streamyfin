@@ -9,6 +9,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
+import { useSessions } from "@/hooks/useSessions";
 import { downloadingAtom } from "@/providers/DownloadProvider";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { HeaderIcon, type HeaderIconName } from "./HeaderIcon";
@@ -25,6 +26,11 @@ interface Props {
   downloads?: boolean;
   cast?: boolean;
   settings?: boolean;
+  /**
+   * Show the Sessions action (what your other devices are playing, with
+   * transport controls). Off by default so only the Home header polls.
+   */
+  sessions?: boolean;
   /** A 2pt accent loading line under the row (never a spinner over content). */
   loading?: boolean;
   /** Muted brand (used behind a sheet). */
@@ -105,12 +111,35 @@ export const HeaderIconButton: React.FC<{
  * 1pt `line` bottom rule, mascot + wordmark on the left, Downloads / Cast /
  * Settings as 44 square icon buttons on the right.
  */
+/**
+ * Sessions action: bright while one of your devices is playing something,
+ * the same grey as Settings otherwise. Polls lightly; the Sessions page itself
+ * polls faster once open.
+ */
+const SessionsHeaderButton: React.FC = () => {
+  const router = useRouter();
+  const { sessions } = useSessions({
+    refetchInterval: 15 * 1000,
+    activeWithinSeconds: 360,
+  });
+  const playing = !!sessions && sessions.length > 0;
+  return (
+    <HeaderIconButton
+      name='sessions'
+      accessibilityLabel='Sessions'
+      tintColor={playing ? NeonBoard.text : NeonBoard.mid}
+      onPress={() => router.push("/(auth)/(tabs)/(home)/sessions")}
+    />
+  );
+};
+
 export const NeonHeader: React.FC<Props> = ({
   onBack,
   right,
   downloads = true,
   cast = true,
   settings = true,
+  sessions = false,
   loading = false,
   dim = false,
 }) => {
@@ -154,6 +183,7 @@ export const NeonHeader: React.FC<Props> = ({
           style={{ opacity: dim ? 0.4 : 1 }}
         >
           {right}
+          {sessions ? <SessionsHeaderButton /> : null}
           {downloads ? (
             <HeaderIconButton
               name='downloads'
