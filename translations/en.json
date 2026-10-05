@@ -669,6 +669,14 @@
     "no_results": "No results",
     "no_libraries_found": "No libraries found",
     "search_placeholder": "Search {{name}}",
+    "alphabet": {
+      "title": "Jump to letter",
+      "hint": "Swipe up or down to choose a letter, or activate to open the letter picker.",
+      "jump": "Jump to {{letter}}",
+      "symbols": "Jump to numbers, symbols and other titles",
+      "retry": "Retry alphabet navigation",
+      "load_error": "Could not load this part of the library"
+    },
     "item_types": {
       "movies": "Movies",
       "series": "Series",
