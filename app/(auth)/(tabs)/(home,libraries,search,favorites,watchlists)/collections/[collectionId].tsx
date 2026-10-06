@@ -127,7 +127,7 @@ const page: React.FC = () => {
     },
     enabled: !!api && !!user?.Id && !!collectionId,
     staleTime: Platform.isTV ? 60_000 : 0,
-    gcTime: Platform.isTV ? undefined : 0,
+    ...(Platform.isTV ? {} : { gcTime: 0 }),
   });
 
   // TV Filter queries
@@ -361,7 +361,7 @@ const page: React.FC = () => {
       nameSorted ? getPreviousLibraryPage(firstPageParam, pageSize) : undefined,
     initialPageParam: jumpStart,
     staleTime: isCurated ? 0 : 60_000,
-    gcTime: isCurated ? 0 : undefined,
+    ...(isCurated ? { gcTime: 0 } : {}),
     refetchInterval: (isStreaming || isCurated) && isFocused ? 60_000 : false,
     enabled:
       !!api && !!user?.Id && !!collection && filterScope === collectionId,
