@@ -62,8 +62,10 @@ import {
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
 import { serverHost } from "@/utils/serverHost";
-import { loadStreamingCollections } from "@/utils/streamingCollections";
-import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
+import {
+  loadCuratedCollections,
+  loadStreamingCollections,
+} from "@/utils/streamingCollections";
 
 // Conditionally load TV version
 /**
@@ -258,7 +260,7 @@ const HomeMobile = () => {
         userId: user.Id,
       });
 
-      return sortWeaselLibraries(response.data.Items) || null;
+      return response.data.Items || null;
     },
     enabled: !!api && !!user?.Id,
     staleTime: 60 * 1000,
@@ -622,6 +624,11 @@ const HomeMobile = () => {
     [api?.basePath, user?.Id],
   );
   useRefreshLibraryOnFocus(streamingKeys, 60_000);
+  const curatedKeys = useMemo(
+    () => [["home", "curated", api?.basePath, user?.Id]],
+    [api?.basePath, user?.Id],
+  );
+  useRefreshLibraryOnFocus(curatedKeys, 0);
 
   // Get all high priority section keys and check if all have loaded
   const highPrioritySectionKeys = useMemo(() => {
@@ -937,6 +944,19 @@ const HomeMobile = () => {
                       ? loadStreamingCollections(api, user.Id, signal)
                       : Promise.resolve([])
                   }
+                  refetchInterval={isFocused && reachable ? 60_000 : false}
+                  hideIfEmpty
+                />
+                <ScrollingCollectionList
+                  title={t("home.weaselplex_picks")}
+                  badge={null}
+                  queryKey={curatedKeys[0]}
+                  queryFn={({ signal }) =>
+                    api && user?.Id
+                      ? loadCuratedCollections(api, user.Id, signal)
+                      : Promise.resolve([])
+                  }
+                  cache={false}
                   refetchInterval={isFocused && reachable ? 60_000 : false}
                   hideIfEmpty
                 />

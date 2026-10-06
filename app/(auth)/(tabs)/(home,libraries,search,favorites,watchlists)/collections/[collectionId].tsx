@@ -67,6 +67,7 @@ import {
   getPreviousLibraryPage,
 } from "@/utils/libraryAlphabet";
 import {
+  CURATED_COLLECTION_TAG,
   loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
   STREAMING_COLLECTION_TAG,
@@ -125,7 +126,8 @@ const page: React.FC = () => {
       return data;
     },
     enabled: !!api && !!user?.Id && !!collectionId,
-    staleTime: 60 * 1000,
+    staleTime: Platform.isTV ? 60_000 : 0,
+    ...(Platform.isTV ? {} : { gcTime: 0 }),
   });
 
   // TV Filter queries
@@ -171,6 +173,9 @@ const page: React.FC = () => {
   const isStreaming =
     !Platform.isTV &&
     collection?.Tags?.includes(STREAMING_COLLECTION_TAG) === true;
+  const isCurated =
+    !Platform.isTV &&
+    collection?.Tags?.includes(CURATED_COLLECTION_TAG) === true;
   const defaultSortBy =
     !isStreaming && collection?.DisplayOrder
       ? SortByOption[collection.DisplayOrder as keyof typeof SortByOption] ||
@@ -294,11 +299,13 @@ const page: React.FC = () => {
           "MediaSourceCount",
         ],
         // true is needed for merged versions
-        recursive: true,
+        recursive: !isCurated,
         genres: selectedGenres,
         tags: selectedTags,
         years: selectedYears.map((year) => Number.parseInt(year, 10)),
-        includeItemTypes: ["Movie", "Series", "Season"],
+        includeItemTypes: isCurated
+          ? ["Movie", "Series"]
+          : ["Movie", "Series", "Season"],
       });
 
       return response.data || null;
@@ -314,6 +321,7 @@ const page: React.FC = () => {
       sortBy,
       sortOrder,
       isStreaming,
+      isCurated,
       mediaType,
       pageSize,
     ],
@@ -337,6 +345,7 @@ const page: React.FC = () => {
       user?.Id,
       collectionId,
       isStreaming,
+      isCurated,
       mediaType,
       selectedGenres,
       selectedYears,
@@ -351,8 +360,9 @@ const page: React.FC = () => {
     getPreviousPageParam: (_firstPage, _pages, firstPageParam) =>
       nameSorted ? getPreviousLibraryPage(firstPageParam, pageSize) : undefined,
     initialPageParam: jumpStart,
-    staleTime: 60_000,
-    refetchInterval: isStreaming && isFocused ? 60_000 : false,
+    staleTime: isCurated ? 0 : 60_000,
+    ...(isCurated ? { gcTime: 0 } : {}),
+    refetchInterval: (isStreaming || isCurated) && isFocused ? 60_000 : false,
     enabled:
       !!api && !!user?.Id && !!collection && filterScope === collectionId,
   });
@@ -361,7 +371,7 @@ const page: React.FC = () => {
     () => [["collection-items", api?.basePath, user?.Id, collectionId]],
     [api?.basePath, user?.Id, collectionId],
   );
-  useRefreshLibraryOnFocus(collectionKeys, 60_000);
+  useRefreshLibraryOnFocus(collectionKeys, isCurated ? 0 : 60_000);
 
   const flatData = useMemo(() => {
     return (
