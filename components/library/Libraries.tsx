@@ -18,7 +18,6 @@ import { Freshness } from "@/constants/queryFreshness";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
-import { sortWeaselLibraries } from "@/utils/weaselLibraryOrder";
 
 const ACCENT = sectionAccent("library");
 
@@ -39,7 +38,7 @@ export const Libraries: React.FC = () => {
         userId: user?.Id,
       });
 
-      return sortWeaselLibraries(response.data.Items) || null;
+      return response.data.Items || null;
     },
     staleTime: Freshness.catalog,
   });

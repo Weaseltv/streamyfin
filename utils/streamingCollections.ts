@@ -8,6 +8,7 @@ import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { loadLibraryAlphabet } from "./libraryAlphabet";
 
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
+export const CURATED_COLLECTION_TAG = "WeaselPlex Curated";
 export const STREAMING_SERVICE_ORDER: readonly string[] = [
   "Netflix",
   "Disney+",
@@ -103,9 +104,10 @@ export function loadStreamingCollectionAlphabet(
 }
 
 /** Standard Jellyfin collections only; no companion plugin or library IDs. */
-export async function loadStreamingCollections(
+async function loadTaggedCollections(
   api: Api,
   userId: string,
+  tag: string,
   signal?: AbortSignal,
 ) {
   const itemsApi = getItemsApi(api);
@@ -114,7 +116,10 @@ export async function loadStreamingCollections(
       userId,
       includeItemTypes: ["BoxSet"],
       recursive: true,
-      tags: [STREAMING_COLLECTION_TAG],
+      tags: [tag],
+      // Picks order belongs entirely to the server, including seasonal changes.
+      sortBy: tag === CURATED_COLLECTION_TAG ? ["SortName"] : undefined,
+      sortOrder: tag === CURATED_COLLECTION_TAG ? ["Ascending"] : undefined,
       fields: ["ChildCount", "Overview"],
       enableUserData: false,
     },
@@ -133,7 +138,23 @@ export async function loadStreamingCollections(
       return children.data.Items?.length ? item : null;
     }),
   );
+  return visible.filter((item): item is BaseItemDto => item !== null);
+}
+
+export async function loadStreamingCollections(
+  api: Api,
+  userId: string,
+  signal?: AbortSignal,
+) {
   return sortStreamingCollections(
-    visible.filter((item): item is BaseItemDto => item !== null),
+    await loadTaggedCollections(api, userId, STREAMING_COLLECTION_TAG, signal),
   );
+}
+
+export function loadCuratedCollections(
+  api: Api,
+  userId: string,
+  signal?: AbortSignal,
+) {
+  return loadTaggedCollections(api, userId, CURATED_COLLECTION_TAG, signal);
 }

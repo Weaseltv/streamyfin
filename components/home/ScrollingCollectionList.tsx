@@ -29,6 +29,8 @@ interface Props extends ViewProps {
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[]>;
   refetchInterval?: number | false;
+  /** Live curated rows must not retain or persist yesterday's collections. */
+  cache?: boolean;
   hideIfEmpty?: boolean;
   scrollY?: number; // For lazy loading
   enableLazyLoading?: boolean; // Enable/disable lazy loading
@@ -44,6 +46,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   queryFn,
   queryKey,
   refetchInterval,
+  cache = true,
   hideIfEmpty = false,
   scrollY = 0,
   enableLazyLoading = false,
@@ -56,7 +59,8 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: queryKey,
     queryFn,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: cache ? 60 * 1000 : 0,
+    gcTime: cache ? undefined : 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     refetchInterval,

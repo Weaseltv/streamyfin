@@ -6,6 +6,8 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import axios, { type AxiosRequestConfig } from "axios";
 import {
+  CURATED_COLLECTION_TAG,
+  loadCuratedCollections,
   loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
   loadStreamingCollections,
@@ -49,6 +51,83 @@ function server(respond: (params: URLSearchParams) => BaseItemDtoQueryResult) {
 }
 
 describe("streaming collections via the Jellyfin SDK", () => {
+  test("Picks requests member-scoped curated BoxSets in server SortName order without reordering names", async () => {
+    const { api, requests, headers } = server((params) => ({
+      Items:
+        params.get("tags") === CURATED_COLLECTION_TAG
+          ? [
+              collection("Spooky Season", 8),
+              collection("Z picks", 3),
+              collection("Empty", 0),
+              collection("A picks", 2),
+            ]
+          : [collection("Netflix", 10), collection("Sports", 10)],
+    }));
+    const items = await loadCuratedCollections(api, "member-picks");
+    expect(items.map((item) => item.Name)).toEqual([
+      "Spooky Season",
+      "Z picks",
+      "A picks",
+    ]);
+    expect(requests).toHaveLength(1);
+    const params = requests[0];
+    expect(params.get("userId")).toBe("member-picks");
+    expect(params.getAll("includeItemTypes")).toEqual(["BoxSet"]);
+    expect(params.getAll("tags")).toEqual(["WeaselPlex Curated"]);
+    expect(params.get("recursive")).toBe("true");
+    expect(params.getAll("sortBy")).toEqual(["SortName"]);
+    expect(params.getAll("sortOrder")).toEqual(["Ascending"]);
+    expect(params.getAll("fields")).toEqual(["ChildCount", "Overview"]);
+    expect(params.has("parentId")).toBe(false);
+    expect(headers[0]).toStartWith("MediaBrowser ");
+    expect(headers[0]).toContain('Token="test-token"');
+  });
+
+  test("Picks rediscovers replacement seasonal IDs and Monday's order on every request", async () => {
+    let items: BaseItemDto[] = [
+      { ...collection("Spooky Season", 4), Id: "old-season" },
+      collection("Spin the Wheel", 1),
+    ];
+    const { api, requests } = server(() => ({ Items: items }));
+    expect((await loadCuratedCollections(api, "member-picks"))[0].Id).toBe(
+      "old-season",
+    );
+    items = [];
+    expect(await loadCuratedCollections(api, "member-picks")).toEqual([]);
+    items = [
+      collection("Spin the Wheel", 7),
+      { ...collection("Cozy Season", 5), Id: "new-season" },
+    ];
+    expect(await loadCuratedCollections(api, "member-picks")).toEqual(items);
+    expect(requests).toHaveLength(3);
+    expect(
+      requests.every((p) => p.get("tags") === CURATED_COLLECTION_TAG),
+    ).toBe(true);
+  });
+
+  test("Picks probes missing child counts with userId without changing the server's order", async () => {
+    const { api, requests } = server((params) => {
+      if (!params.has("parentId"))
+        return {
+          Items: [
+            collection("Z picks"),
+            collection("Empty"),
+            collection("A picks", 1),
+          ],
+        };
+      return {
+        Items: params.get("parentId") === "Z picks" ? [{ Id: "movie" }] : [],
+      };
+    });
+    expect(
+      (await loadCuratedCollections(api, "member-picks")).map((i) => i.Name),
+    ).toEqual(["Z picks", "A picks"]);
+    for (const params of requests.slice(1)) {
+      expect(params.get("userId")).toBe("member-picks");
+      expect(params.get("limit")).toBe("1");
+    }
+  });
+
   test("discovers by tag, scopes to the member, hides empty collections, and orders services before new names", async () => {
     const services = STREAMING_SERVICE_ORDER.map((name) =>
       collection(name, 12),
