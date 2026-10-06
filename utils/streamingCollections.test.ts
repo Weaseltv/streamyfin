@@ -7,6 +7,7 @@ import type {
 import axios, { type AxiosRequestConfig } from "axios";
 import {
   CURATED_COLLECTION_TAG,
+  collectionCardPresentation,
   loadCuratedCollections,
   loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
@@ -50,7 +51,100 @@ function server(respond: (params: URLSearchParams) => BaseItemDtoQueryResult) {
   };
 }
 
+describe("collection poster presentation", () => {
+  const layout = (viewportWidth = 390) => ({
+    width: 132,
+    viewportWidth,
+    gutter: 16,
+    gap: 10,
+  });
+
+  test("only the two exact tags on BoxSets remove captions, irrespective of names", () => {
+    for (const tag of [STREAMING_COLLECTION_TAG, CURATED_COLLECTION_TAG]) {
+      expect(
+        collectionCardPresentation(
+          { Type: "BoxSet", Tags: ["Other", tag] },
+          layout(),
+        ).imageOnly,
+      ).toBe(true);
+      for (const Type of [
+        "Movie",
+        "Series",
+        "Episode",
+        "CollectionFolder",
+      ] as const) {
+        expect(
+          collectionCardPresentation({ Type, Tags: [tag] }, layout()).imageOnly,
+        ).toBe(false);
+      }
+    }
+    for (const Tags of [
+      undefined,
+      null,
+      [],
+      ["Sports"],
+      ["WeaselPlex Curated extra"],
+      ["weaselplex curated"],
+    ]) {
+      expect(
+        collectionCardPresentation({ Type: "BoxSet", Tags }, layout())
+          .imageOnly,
+      ).toBe(false);
+    }
+  });
+
+  test("Picks retain 2:3 art and at least 2.5 visible cards across phone widths, rotation and split views", () => {
+    for (const viewport of [
+      320, 360, 375, 390, 412, 430, 480, 768, 844, 1024,
+    ]) {
+      const card = collectionCardPresentation(
+        { Type: "BoxSet", Tags: [CURATED_COLLECTION_TAG] },
+        layout(viewport),
+      );
+      expect(card.posterDimensions!.w).toBe(card.width);
+      expect(card.posterDimensions!.h / card.width).toBe(1.5);
+      expect(16 + 2.5 * card.width + 2 * 10).toBeLessThanOrEqual(viewport);
+      expect(card.width).toBeLessThanOrEqual(132 * 1.35);
+      const streaming = collectionCardPresentation(
+        { Type: "BoxSet", Tags: [STREAMING_COLLECTION_TAG] },
+        layout(viewport),
+      );
+      expect(streaming.width).toBe(132);
+      expect(streaming.posterDimensions).toBeUndefined();
+    }
+    expect(
+      collectionCardPresentation(
+        { Type: "BoxSet", Tags: [CURATED_COLLECTION_TAG] },
+        layout(844),
+      ).width,
+    ).toBe(178);
+  });
+});
+
 describe("streaming collections via the Jellyfin SDK", () => {
+  test("both row queries request and retain Tags for data-driven artwork cards", async () => {
+    const { api, requests } = server((params) => ({
+      Items: [
+        {
+          ...collection("Art already carries the title", 4),
+          Tags: [params.get("tags")!],
+        },
+      ],
+    }));
+    for (const load of [loadStreamingCollections, loadCuratedCollections]) {
+      const [item] = await load(api, "member-art");
+      expect(requests.at(-1)!.getAll("fields")).toContain("Tags");
+      expect(
+        collectionCardPresentation(item, {
+          width: 132,
+          viewportWidth: 390,
+          gutter: 16,
+          gap: 10,
+        }).imageOnly,
+      ).toBe(true);
+      expect(item.Name).toBe("Art already carries the title");
+    }
+  });
   test("Picks requests member-scoped curated BoxSets in server SortName order without reordering names", async () => {
     const { api, requests, headers } = server((params) => ({
       Items:
@@ -77,7 +171,7 @@ describe("streaming collections via the Jellyfin SDK", () => {
     expect(params.get("recursive")).toBe("true");
     expect(params.getAll("sortBy")).toEqual(["SortName"]);
     expect(params.getAll("sortOrder")).toEqual(["Ascending"]);
-    expect(params.getAll("fields")).toEqual(["ChildCount", "Overview"]);
+    expect(params.getAll("fields")).toEqual(["ChildCount", "Overview", "Tags"]);
     expect(params.has("parentId")).toBe(false);
     expect(headers[0]).toStartWith("MediaBrowser ");
     expect(headers[0]).toContain('Token="test-token"');
@@ -154,7 +248,11 @@ describe("streaming collections via the Jellyfin SDK", () => {
     expect(requests[0].get("userId")).toBe("member-a");
     expect(requests[0].get("includeItemTypes")).toBe("BoxSet");
     expect(requests[0].get("recursive")).toBe("true");
-    expect(requests[0].getAll("fields")).toEqual(["ChildCount", "Overview"]);
+    expect(requests[0].getAll("fields")).toEqual([
+      "ChildCount",
+      "Overview",
+      "Tags",
+    ]);
     expect(requests[0].has("parentId")).toBe(false);
     expect(headers[0]).toContain('Token="test-token"');
     expect(headers[0]).toStartWith("MediaBrowser ");

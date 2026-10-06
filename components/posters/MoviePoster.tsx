@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtom } from "jotai";
 import { useMemo } from "react";
+import { PixelRatio } from "react-native";
 import { Image } from "@/components/common/ServerImage";
 import { PosterFrame } from "@/components/posters/PosterFrame";
 import { Sizes } from "@/constants/neon";
@@ -14,6 +15,7 @@ type MoviePosterProps = {
   size?: "normal" | "small";
   /** Hide the type badge (grids inside a typed library do not repeat it). */
   badge?: string | null;
+  dimensions?: { w: number; h: number };
 };
 
 /** 110×160 poster with a 1pt border, the type badge, played square and progress. */
@@ -22,6 +24,7 @@ const MoviePoster: React.FC<MoviePosterProps> = ({
   showProgress = true,
   size = "normal",
   badge,
+  dimensions,
 }) => {
   const [api] = useAtom(apiAtom);
 
@@ -29,9 +32,11 @@ const MoviePoster: React.FC<MoviePosterProps> = ({
     return getPrimaryImageUrl({
       api,
       item,
-      width: 300,
+      width: dimensions
+        ? Math.max(300, Math.ceil(dimensions.w * PixelRatio.get()))
+        : 300,
     });
-  }, [item]);
+  }, [api, item, dimensions?.w]);
 
   const blurhash = useMemo(() => {
     const key = item.ImageTags?.Primary as string;
@@ -43,8 +48,9 @@ const MoviePoster: React.FC<MoviePosterProps> = ({
   return (
     <PosterFrame
       item={item}
-      width={box.w}
-      height={box.h}
+      width={dimensions?.w ?? box.w}
+      height={dimensions?.h ?? box.h}
+      indicatorScale={dimensions ? dimensions.w / box.w : 1}
       badge={badge}
       progress={showProgress}
     >

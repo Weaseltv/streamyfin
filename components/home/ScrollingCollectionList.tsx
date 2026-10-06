@@ -4,8 +4,15 @@ import {
   type QueryKey,
   useQuery,
 } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View, type ViewProps } from "react-native";
+import {
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+  View,
+  type ViewProps,
+} from "react-native";
 import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
@@ -14,11 +21,14 @@ import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Sizes } from "@/constants/neon";
 import { useInView } from "@/hooks/useInView";
 import { useSettings } from "@/utils/atoms/settings";
+import { collectionCardPresentation } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
 
 interface Props extends ViewProps {
   title?: string | null;
+  /** Query tag for matching loading placeholders; real cards use their own Tags. */
+  collectionTag?: string;
   orientation?: "horizontal" | "vertical";
   /** Rule colour: volt on Home; the type colour on item, search and watchlist pages. */
   accent?: string;
@@ -38,6 +48,7 @@ interface Props extends ViewProps {
 
 export const ScrollingCollectionList: React.FC<Props> = ({
   title,
+  collectionTag,
   orientation = "vertical",
   accent,
   badge,
@@ -52,6 +63,22 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   enableLazyLoading = false,
   ...props
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const [measuredWidth, setMeasuredWidth] = useState<number>();
+  const layout = {
+    width: railCardWidth(orientation),
+    viewportWidth: Math.min(windowWidth, measuredWidth ?? windowWidth),
+    gutter: Sizes.gutter,
+    gap: RAIL_GAP,
+  };
+  const presentation = (item: Pick<BaseItemDto, "Type" | "Tags">) =>
+    collectionCardPresentation(
+      Platform.isTV || orientation !== "vertical" ? {} : item,
+      layout,
+    );
+  const placeholder = presentation(
+    collectionTag ? { Type: "BoxSet", Tags: [collectionTag] } : {},
+  );
   const { ref, isInView, onLayout } = useInView(scrollY, {
     enabled: enableLazyLoading,
   });
@@ -72,6 +99,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
 
   // Show skeleton if loading OR if lazy loading is enabled and not in view yet
   const shouldShowSkeleton = isLoading || (enableLazyLoading && !isInView);
+  const hasArtworkCards = data?.some((item) => presentation(item).imageOnly);
 
   if (
     hideIfEmpty === true &&
@@ -83,7 +111,14 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   if (disabled || !title) return null;
 
   return (
-    <View ref={ref} onLayout={onLayout} {...props}>
+    <View
+      ref={ref}
+      onLayout={(event) => {
+        setMeasuredWidth(event.nativeEvent.layout.width);
+        onLayout();
+      }}
+      {...props}
+    >
       <SectionHeader
         title={title}
         accent={accent}
@@ -111,32 +146,53 @@ export const ScrollingCollectionList: React.FC<Props> = ({
         </View>
       )}
       {shouldShowSkeleton ? (
-        <RailSkeleton orientation={orientation} />
+        <RailSkeleton
+          orientation={orientation}
+          width={placeholder.width}
+          height={placeholder.posterDimensions?.h}
+          imageOnly={placeholder.imageOnly}
+        />
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          {...(hasArtworkCards ? { removeClippedSubviews: false } : {})}
+        >
           <View
             style={{
               paddingHorizontal: Sizes.gutter,
               flexDirection: "row",
               gap: RAIL_GAP,
+              ...(hasArtworkCards ? { paddingVertical: 8 } : {}),
             }}
           >
-            {data?.map((item) => (
-              <TouchableItemRouter
-                item={item}
-                key={item.Id}
-                style={{ width: railCardWidth(orientation) }}
-              >
-                <ItemCard
+            {data?.map((item) => {
+              const card = presentation(item);
+              return (
+                <TouchableItemRouter
                   item={item}
-                  orientation={orientation}
-                  useEpisodePoster={settings?.useEpisodeImagesForNextUp}
-                  badge={badge}
-                  badgeColor={badgeColor}
-                />
-                <ItemCardText item={item} />
-              </TouchableItemRouter>
-            ))}
+                  key={item.Id}
+                  style={{ width: card.width }}
+                  {...(card.imageOnly
+                    ? {
+                        accessible: true,
+                        accessibilityRole: "button" as const,
+                        accessibilityLabel: item.Name ?? undefined,
+                      }
+                    : {})}
+                >
+                  <ItemCard
+                    item={item}
+                    orientation={orientation}
+                    useEpisodePoster={settings?.useEpisodeImagesForNextUp}
+                    badge={badge}
+                    badgeColor={badgeColor}
+                    posterDimensions={card.posterDimensions}
+                  />
+                  {!card.imageOnly && <ItemCardText item={item} />}
+                </TouchableItemRouter>
+              );
+            })}
           </View>
         </ScrollView>
       )}
