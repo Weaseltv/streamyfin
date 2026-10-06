@@ -9,6 +9,39 @@ import { loadLibraryAlphabet } from "./libraryAlphabet";
 
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
 export const CURATED_COLLECTION_TAG = "WeaselPlex Curated";
+
+/** Collection art identifies the card; ordinary items keep their captions. */
+export function collectionCardPresentation(
+  item: Pick<BaseItemDto, "Type" | "Tags">,
+  layout: {
+    width: number;
+    viewportWidth: number;
+    gutter: number;
+    gap: number;
+  },
+) {
+  const imageOnly =
+    item.Type === "BoxSet" &&
+    Boolean(
+      item.Tags?.includes(STREAMING_COLLECTION_TAG) ||
+        item.Tags?.includes(CURATED_COLLECTION_TAG),
+    );
+  if (!imageOnly || !item.Tags?.includes(CURATED_COLLECTION_TAG))
+    return { imageOnly, width: layout.width, posterDimensions: undefined };
+
+  // A leading gutter, two gaps and 2.5 posters must fit before scrolling.
+  const width = Math.max(
+    1,
+    Math.floor(
+      Math.min(
+        layout.width * 1.35,
+        (layout.viewportWidth - layout.gutter - 2 * layout.gap) / 2.5,
+      ),
+    ),
+  );
+  return { imageOnly, width, posterDimensions: { w: width, h: width * 1.5 } };
+}
+
 export const STREAMING_SERVICE_ORDER: readonly string[] = [
   "Netflix",
   "Disney+",
@@ -120,7 +153,7 @@ async function loadTaggedCollections(
       // Picks order belongs entirely to the server, including seasonal changes.
       sortBy: tag === CURATED_COLLECTION_TAG ? ["SortName"] : undefined,
       sortOrder: tag === CURATED_COLLECTION_TAG ? ["Ascending"] : undefined,
-      fields: ["ChildCount", "Overview"],
+      fields: ["ChildCount", "Overview", "Tags"],
       enableUserData: false,
     },
     { signal },

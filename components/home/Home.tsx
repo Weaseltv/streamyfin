@@ -63,8 +63,10 @@ import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
 import { serverHost } from "@/utils/serverHost";
 import {
+  CURATED_COLLECTION_TAG,
   loadCuratedCollections,
   loadStreamingCollections,
+  STREAMING_COLLECTION_TAG,
 } from "@/utils/streamingCollections";
 
 // Conditionally load TV version
@@ -937,6 +939,7 @@ const HomeMobile = () => {
               <View>
                 <ScrollingCollectionList
                   title={t("home.streaming")}
+                  collectionTag={STREAMING_COLLECTION_TAG}
                   badge={null}
                   queryKey={section.queryKey}
                   queryFn={({ signal }) =>
@@ -949,6 +952,7 @@ const HomeMobile = () => {
                 />
                 <ScrollingCollectionList
                   title={t("home.weaselplex_picks")}
+                  collectionTag={CURATED_COLLECTION_TAG}
                   badge={null}
                   queryKey={curatedKeys[0]}
                   queryFn={({ signal }) =>

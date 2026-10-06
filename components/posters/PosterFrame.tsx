@@ -21,6 +21,8 @@ interface Props {
   /** Show the 3pt type-coloured progress at the bottom edge. */
   progress?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Keep count/played overlays proportional on resized collection posters. */
+  indicatorScale?: number;
 }
 
 /**
@@ -37,6 +39,7 @@ export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
   watched = true,
   progress = true,
   style,
+  indicatorScale = 1,
   children,
 }) => {
   const accent = badgeColor ?? typeAccent(item);
@@ -66,7 +69,26 @@ export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
           style={[{ position: "absolute", top: 6, left: 6 }, glowChip(accent)]}
         />
       ) : null}
-      {watched ? <WatchedIndicator item={item} /> : null}
+      {watched ? (
+        indicatorScale === 1 ? (
+          <WatchedIndicator item={item} />
+        ) : (
+          <View
+            pointerEvents='none'
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: width / indicatorScale,
+              height: height / indicatorScale,
+              transform: [{ scale: indicatorScale }],
+              transformOrigin: "top right",
+            }}
+          >
+            <WatchedIndicator item={item} />
+          </View>
+        )
+      ) : null}
       {downloaded ? (
         <View style={{ position: "absolute", right: 6, bottom: 8 }}>
           <Feather name='download' size={14} color={NeonBoard.green} />
