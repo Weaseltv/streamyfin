@@ -52,12 +52,7 @@ function server(respond: (params: URLSearchParams) => BaseItemDtoQueryResult) {
 }
 
 describe("collection poster presentation", () => {
-  const layout = (viewportWidth = 390) => ({
-    width: 132,
-    viewportWidth,
-    gutter: 16,
-    gap: 10,
-  });
+  const layout = () => ({ width: 132 });
 
   test("only the two exact tags on BoxSets remove captions, irrespective of names", () => {
     for (const tag of [STREAMING_COLLECTION_TAG, CURATED_COLLECTION_TAG]) {
@@ -93,31 +88,17 @@ describe("collection poster presentation", () => {
     }
   });
 
-  test("Picks retain 2:3 art and at least 2.5 visible cards across phone widths, rotation and split views", () => {
-    for (const viewport of [
-      320, 360, 375, 390, 412, 430, 480, 768, 844, 1024,
-    ]) {
-      const card = collectionCardPresentation(
-        { Type: "BoxSet", Tags: [CURATED_COLLECTION_TAG] },
-        layout(viewport),
-      );
-      expect(card.posterDimensions!.w).toBe(card.width);
-      expect(card.posterDimensions!.h / card.width).toBe(1.5);
-      expect(16 + 2.5 * card.width + 2 * 10).toBeLessThanOrEqual(viewport);
-      expect(card.width).toBeLessThanOrEqual(132 * 1.35);
-      const streaming = collectionCardPresentation(
-        { Type: "BoxSet", Tags: [STREAMING_COLLECTION_TAG] },
-        layout(viewport),
-      );
-      expect(streaming.width).toBe(132);
-      expect(streaming.posterDimensions).toBeUndefined();
+  test("Picks and streaming collections keep the standard rail width", () => {
+    for (const width of [116, 132]) {
+      for (const tag of [STREAMING_COLLECTION_TAG, CURATED_COLLECTION_TAG]) {
+        expect(
+          collectionCardPresentation(
+            { Type: "BoxSet", Tags: [tag] },
+            { width },
+          ),
+        ).toEqual({ imageOnly: true, width });
+      }
     }
-    expect(
-      collectionCardPresentation(
-        { Type: "BoxSet", Tags: [CURATED_COLLECTION_TAG] },
-        layout(844),
-      ).width,
-    ).toBe(178);
   });
 });
 

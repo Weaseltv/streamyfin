@@ -4,15 +4,8 @@ import {
   type QueryKey,
   useQuery,
 } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Platform,
-  ScrollView,
-  useWindowDimensions,
-  View,
-  type ViewProps,
-} from "react-native";
+import { Platform, ScrollView, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
@@ -63,13 +56,8 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   enableLazyLoading = false,
   ...props
 }) => {
-  const { width: windowWidth } = useWindowDimensions();
-  const [measuredWidth, setMeasuredWidth] = useState<number>();
   const layout = {
     width: railCardWidth(orientation),
-    viewportWidth: Math.min(windowWidth, measuredWidth ?? windowWidth),
-    gutter: Sizes.gutter,
-    gap: RAIL_GAP,
   };
   const presentation = (item: Pick<BaseItemDto, "Type" | "Tags">) =>
     collectionCardPresentation(
@@ -111,14 +99,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
   if (disabled || !title) return null;
 
   return (
-    <View
-      ref={ref}
-      onLayout={(event) => {
-        setMeasuredWidth(event.nativeEvent.layout.width);
-        onLayout();
-      }}
-      {...props}
-    >
+    <View ref={ref} onLayout={onLayout} {...props}>
       <SectionHeader
         title={title}
         accent={accent}
@@ -149,7 +130,6 @@ export const ScrollingCollectionList: React.FC<Props> = ({
         <RailSkeleton
           orientation={orientation}
           width={placeholder.width}
-          height={placeholder.posterDimensions?.h}
           imageOnly={placeholder.imageOnly}
         />
       ) : (
@@ -187,7 +167,6 @@ export const ScrollingCollectionList: React.FC<Props> = ({
                     useEpisodePoster={settings?.useEpisodeImagesForNextUp}
                     badge={badge}
                     badgeColor={badgeColor}
-                    posterDimensions={card.posterDimensions}
                   />
                   {!card.imageOnly && <ItemCardText item={item} />}
                 </TouchableItemRouter>
