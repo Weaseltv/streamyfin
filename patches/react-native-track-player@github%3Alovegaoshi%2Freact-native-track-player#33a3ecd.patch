@@ -1,0 +1,28 @@
+diff --git a/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+index 6b23eed182f91fef39b379b714dcd63c96dcff94..e59420d10bd0a044a8d6c090a9b08bf264e9f22f 100644
+--- a/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
++++ b/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+@@ -934,10 +934,22 @@ class MusicService : HeadlessJsMediaService() {
+     @MainThread
+     override fun onDestroy() {
+         Timber.tag("APM").d("RNTP service is destroyed.")
+-        if (::player.isInitialized) {
++        // Always release the session. media3 keeps every live session in a
++        // process-wide registry keyed by id (default ""), and the system binds
++        // this service for media resumption at boot without JS ever calling
++        // setupPlayer; releasing only when `player` existed left that session
++        // registered, and the next onCreate in the same process crashed with
++        // "Session ID must be unique. ID=" (WeaselPlex, Android 16 emulator,
++        // every cold boot).
++        if (::mediaSession.isInitialized) {
+             mediaSession.release()
++        }
++        if (::player.isInitialized) {
+             player.destroy()
+         }
++        if (::fakePlayer.isInitialized) {
++            fakePlayer.release()
++        }
+ 
+         progressUpdateJob?.cancel()
+         super.onDestroy()
