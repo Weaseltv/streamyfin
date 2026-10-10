@@ -46,6 +46,7 @@ export const QuickConnectScanScreen: React.FC = () => {
   const requestCodeEntry = useSetAtom(quickConnectCodeEntryRequestAtom);
 
   const [screenState, setScreenState] = useState<ScreenState>("scanning");
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // The camera keeps firing while a frame is in view; only the first read
   // goes through.
@@ -53,12 +54,27 @@ export const QuickConnectScanScreen: React.FC = () => {
 
   useEffect(() => {
     if (!ExpoCamera) return;
-    ExpoCamera.Camera.getCameraPermissionsAsync().then((response) => {
-      if (response.granted) return;
-      ExpoCamera.Camera.requestCameraPermissionsAsync().then((result) => {
-        if (!result.granted) setScreenState("no-permission");
-      });
-    });
+    let mounted = true;
+    // Mount the native camera only after permission resolves. A camera
+    // mounted before Android's permission prompt stays black after Allow.
+    const checkPermission = async () => {
+      try {
+        let permission = await ExpoCamera.Camera.getCameraPermissionsAsync();
+        if (!mounted) return;
+        if (!permission.granted) {
+          permission = await ExpoCamera.Camera.requestCameraPermissionsAsync();
+        }
+        if (!mounted) return;
+        setCameraPermissionGranted(permission.granted);
+        if (!permission.granted) setScreenState("no-permission");
+      } catch {
+        if (mounted) setScreenState("no-permission");
+      }
+    };
+    void checkPermission();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const fail = useCallback(
@@ -225,19 +241,21 @@ export const QuickConnectScanScreen: React.FC = () => {
 
   return (
     <View className='flex-1 bg-video items-center justify-center'>
-      <CameraView
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-        onBarcodeScanned={handleBarCodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ["qr"],
-        }}
-      />
+      {cameraPermissionGranted && (
+        <CameraView
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+          onBarcodeScanned={handleBarCodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+        />
+      )}
 
       {/* Flat stage scrim over the camera */}
       <View
