@@ -102,10 +102,16 @@ type StreamingSection = {
   queryKey: string[];
 };
 
+type CuratedSection = {
+  type: "Curated";
+  queryKey: string[];
+};
+
 type Section =
   | InfiniteScrollingCollectionListSection
   | MediaListSectionType
-  | StreamingSection;
+  | StreamingSection
+  | CuratedSection;
 
 const HomeMobile = () => {
   useSetPageAccent(NeonBoard.volt);
@@ -601,7 +607,8 @@ const HomeMobile = () => {
     const base = settings?.home?.sections ? customSections : defaultSections;
     if (!api || !user?.Id) return base;
     // Follow Continue Watching / Next Up; custom layouts keep their first two
-    // rows. The tagged row is local and never requires server plugin settings.
+    // rows. The tagged rows are local and never require server plugin settings.
+    // The Weasel's Picks closes the list, matching the Android TV home.
     const index = settings?.home?.sections
       ? Math.min(2, base.length)
       : settings.mergeNextUpAndContinueWatching
@@ -611,7 +618,11 @@ const HomeMobile = () => {
       type: "Streaming",
       queryKey: ["home", "streaming", api.basePath, user.Id],
     };
-    return [...base.slice(0, index), streaming, ...base.slice(index)];
+    const curated: CuratedSection = {
+      type: "Curated",
+      queryKey: ["home", "curated", api.basePath, user.Id],
+    };
+    return [...base.slice(0, index), streaming, ...base.slice(index), curated];
   }, [
     api,
     user?.Id,
@@ -897,8 +908,12 @@ const HomeMobile = () => {
           const hasSuggestedMovies =
             !settings?.streamyStatsMovieRecommendations &&
             !settings?.home?.sections;
+          const hasCurated = sections.at(-1)?.type === "Curated";
           const streamystatsIndex =
-            sections.length - 1 - (hasSuggestedMovies ? 1 : 0);
+            sections.length -
+            1 -
+            (hasSuggestedMovies ? 1 : 0) -
+            (hasCurated ? 1 : 0);
           const hasStreamystatsContent =
             settings.streamyStatsMovieRecommendations ||
             settings.streamyStatsSeriesRecommendations ||
@@ -950,22 +965,26 @@ const HomeMobile = () => {
                   refetchInterval={isFocused && reachable ? 60_000 : false}
                   hideIfEmpty
                 />
-                <ScrollingCollectionList
-                  title={t("home.weaselplex_picks")}
-                  collectionTag={CURATED_COLLECTION_TAG}
-                  badge={null}
-                  queryKey={curatedKeys[0]}
-                  queryFn={({ signal }) =>
-                    api && user?.Id
-                      ? loadCuratedCollections(api, user.Id, signal)
-                      : Promise.resolve([])
-                  }
-                  cache={false}
-                  refetchInterval={isFocused && reachable ? 60_000 : false}
-                  hideIfEmpty
-                />
                 {streamystatsSections}
               </View>
+            );
+          }
+          if (section.type === "Curated") {
+            return (
+              <ScrollingCollectionList
+                title={t("home.weaselplex_picks")}
+                collectionTag={CURATED_COLLECTION_TAG}
+                badge={null}
+                queryKey={section.queryKey}
+                queryFn={({ signal }) =>
+                  api && user?.Id
+                    ? loadCuratedCollections(api, user.Id, signal)
+                    : Promise.resolve([])
+                }
+                cache={false}
+                refetchInterval={isFocused && reachable ? 60_000 : false}
+                hideIfEmpty
+              />
             );
           }
           if (section.type === "InfiniteScrollingCollectionList") {
