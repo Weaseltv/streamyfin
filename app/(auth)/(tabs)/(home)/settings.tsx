@@ -52,19 +52,6 @@ function SettingsMobile() {
 
         <QuickConnect accent={ACCENT} />
 
-        {Platform.OS !== "ios" && (
-          <ListGroup title={t("pairing.pair_with_phone_title")} accent={ACCENT}>
-            <ListItem
-              onPress={() =>
-                router.push("/(auth)/(tabs)/(home)/companion-login")
-              }
-              icon='phone-portrait-outline'
-              showArrow
-              title={t("pairing.pair_with_phone")}
-            />
-          </ListGroup>
-        )}
-
         <AppLanguageSelector />
 
         <ListGroup title={t("home.settings.categories.title")} accent={ACCENT}>
