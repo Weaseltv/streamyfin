@@ -57,6 +57,43 @@ The same publish path serves WeaselPlex, so these rules apply here too.
   doesn't keep a stale copy.
 - **Report what you published:** product, versionName, versionCode and the deployment id.
 
+## Machines: work on the machine the thread was opened on (owner, 2026-10-12)
+
+The owner works on the WeaselTV repos from two T3 machines and spreads threads
+between them to balance load: the T3 VPS (`srv1160496`, `100.72.23.45`) and the
+ThinkCentre (`justin-ThinkCentre-M73`, SSH alias `thinkcentre`, `100.87.100.109`).
+Neither is the default. Follow these rules even when Notion is
+unavailable or has not been read.
+
+- Do all of a thread's work on the machine the owner opened it on: editing,
+  builds, tests and file transfers. Run `hostname` if unsure.
+- Never move a thread's work to the other machine. That includes falling back
+  when a build or connection fails, the machine is busy, or an old procedure or
+  Notion log names the other machine. Stop and report instead. Move work only
+  when the owner says so for that task.
+- Rules that send a kind of job to a specific machine still apply (iOS on the
+  M4, never Android there). Within those rules, use the thread's machine.
+- The one routine cross-machine action is the git refresh below. It only
+  fetches and fast-forwards; it never builds, edits or transfers files.
+
+### Keep both machines' code current
+
+Both machines keep a main checkout of this repo at `~/work/weaselfin/streamyfin`, and
+T3 worktrees branch from it. That copy must never be more than a day behind
+GitHub. On 2026-10-12 some of these checkouts were four weeks old.
+
+- Start every task from fresh code: `git fetch --all --prune`, then branch from
+  `origin/weaselfin`, not a local `weaselfin` that may be stale. If the main
+  checkout is more than a day behind, run `./scripts/sync-machines.sh` first.
+- Finishing a task that pushed or merged code includes refreshing both
+  machines: push your branch first (GitHub is the only transfer; never copy code
+  between machines), then run `./scripts/sync-machines.sh`. It updates this
+  machine and the other one (VPS -> ThinkCentre, ThinkCentre -> VPS).
+- The script never discards changes or touches other threads' worktrees. Report
+  anything it couldn't update, and say in your report if the other machine
+  could not be reached. The same script is in every WeaselTV repo; keep the
+  copies identical.
+
 ## Machine roles (hard rule)
 
 - **HostMyApple M4 = iOS only.** Xcode, Simulator, TestFlight upload. **Never** the Android SDK/NDK, never `expo prebuild --platform android`, never Gradle for WeaselPlex Android. Do not add Android steps to any M4 workflow.
