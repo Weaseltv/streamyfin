@@ -92,6 +92,7 @@ const ticksToSeconds = (ticks: number): number => ticks / TICKS_PER_SECOND;
 const fetchMediaSegments = async (
   itemId: string,
   api: Api,
+  signal?: AbortSignal,
 ): Promise<{
   introSegments: MediaTimeSegment[];
   creditSegments: MediaTimeSegment[];
@@ -100,6 +101,7 @@ const fetchMediaSegments = async (
     const response = await api.axiosInstance.get<MediaSegmentsResponse>(
       `${api.basePath}/MediaSegments/${itemId}`,
       {
+        signal,
         headers: getAuthHeaders(api),
         params: {
           includeSegmentTypes: ["Intro", "Outro"],
@@ -143,6 +145,7 @@ const fetchMediaSegments = async (
 const fetchLegacySegments = async (
   itemId: string,
   api: Api,
+  signal?: AbortSignal,
 ): Promise<{
   introSegments: MediaTimeSegment[];
   creditSegments: MediaTimeSegment[];
@@ -154,11 +157,11 @@ const fetchLegacySegments = async (
     const [introRes, creditRes] = await Promise.allSettled([
       api.axiosInstance.get<IntroTimestamps>(
         `${api.basePath}/Episode/${itemId}/IntroTimestamps`,
-        { headers: getAuthHeaders(api) },
+        { headers: getAuthHeaders(api), signal },
       ),
       api.axiosInstance.get<CreditTimestamps>(
         `${api.basePath}/Episode/${itemId}/Timestamps`,
-        { headers: getAuthHeaders(api) },
+        { headers: getAuthHeaders(api), signal },
       ),
     ]);
 
@@ -190,16 +193,17 @@ const fetchLegacySegments = async (
 export const fetchAndParseSegments = async (
   itemId: string,
   api: Api,
+  signal?: AbortSignal,
 ): Promise<{
   introSegments: MediaTimeSegment[];
   creditSegments: MediaTimeSegment[];
 }> => {
   // Try new API first (Jellyfin 10.11+)
-  const newSegments = await fetchMediaSegments(itemId, api);
+  const newSegments = await fetchMediaSegments(itemId, api, signal);
   if (newSegments) {
     return newSegments;
   }
 
   // Fallback to legacy endpoints
-  return fetchLegacySegments(itemId, api);
+  return fetchLegacySegments(itemId, api, signal);
 };

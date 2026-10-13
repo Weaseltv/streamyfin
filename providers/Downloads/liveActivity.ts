@@ -7,6 +7,8 @@ import { BackgroundDownloader } from "@/modules";
 import type { DownloadActivityMetadata } from "@/modules/background-downloader";
 import { optionsWithOptionalHeaders } from "@/utils/customHeaders";
 import { getItemImage } from "@/utils/getItemImage";
+import { downloadPreparationFile } from "./assetDownload";
+import type { PreparationStage } from "./preparation";
 
 /**
  * Builds the payload for the iOS download Live Activity.
@@ -69,6 +71,8 @@ const POSTER_RETENTION_MS = 24 * 60 * 60 * 1000;
 async function stagePoster(
   item: BaseItemDto,
   api: Api,
+  stage?: PreparationStage,
+  generation?: string,
 ): Promise<string | undefined> {
   const directoryPath = BackgroundDownloader.getLiveActivityDirectory();
   if (!directoryPath || !item.Id) return undefined;
@@ -102,16 +106,20 @@ async function stagePoster(
       }
     }
 
-    const fileName = `${item.Id}.jpg`;
-    await File.downloadFileAsync(
-      image.uri as string,
-      new File(directory, fileName),
-      optionsWithOptionalHeaders({ idempotent: true }, image.headers),
-    );
+    const fileName = `${item.Id}${generation ? `_${generation}` : ""}.jpg`;
+    const file = new File(directory, fileName);
+    if (stage)
+      await downloadPreparationFile(image.uri, file, image.headers, stage);
+    else
+      await File.downloadFileAsync(
+        image.uri,
+        file,
+        optionsWithOptionalHeaders({ idempotent: true }, image.headers),
+      );
 
     return fileName;
-  } catch (error) {
-    console.warn("[LiveActivity] Failed to stage poster:", error);
+  } catch {
+    console.warn("[LiveActivity] Poster unavailable");
     return undefined;
   }
 }
@@ -121,16 +129,20 @@ export async function buildDownloadActivityMetadata({
   api,
   t,
   estimatedTotalBytes,
+  stage,
+  generation,
 }: {
   item: BaseItemDto;
   api: Api;
   t: TFunction;
   estimatedTotalBytes?: number;
+  stage?: PreparationStage;
+  generation?: string;
 }): Promise<DownloadActivityMetadata | undefined> {
   if (!isSupported || !item.Id) return undefined;
 
   const { title, subtitle } = getActivityText(item);
-  const posterFileName = await stagePoster(item, api);
+  const posterFileName = await stagePoster(item, api, stage, generation);
 
   return {
     itemId: item.Id,

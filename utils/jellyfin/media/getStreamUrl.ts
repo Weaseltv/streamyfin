@@ -48,7 +48,7 @@ const getPlaybackUrl = (
       );
     }
 
-    console.log("Video is being transcoded:", transcodeUrl);
+    console.log("Playback route: transcode");
     return `${api.basePath}${transcodeUrl}`;
   }
 
@@ -59,7 +59,7 @@ const getPlaybackUrl = (
     mediaSource?.Protocol === "Http" &&
     mediaSource?.Path
   ) {
-    console.log("Video is remote stream, using direct Path:", mediaSource.Path);
+    console.log("Playback route: remote");
     return mediaSource.Path;
   }
 
@@ -87,7 +87,7 @@ const getPlaybackUrl = (
 
   const directPlayUrl = `${api.basePath}/Videos/${itemId}/stream?${streamParams.toString()}`;
 
-  console.log("Video is being direct played:", directPlayUrl);
+  console.log("Playback route: direct");
   return directPlayUrl;
 };
 
@@ -162,6 +162,7 @@ export const getStreamUrl = async ({
   subtitleStreamIndex = undefined,
   mediaSourceId,
   deviceId,
+  signal,
 }: {
   api: Api | null | undefined;
   item: BaseItemDto | null | undefined;
@@ -175,6 +176,7 @@ export const getStreamUrl = async ({
   height?: number;
   mediaSourceId?: string | null;
   deviceId?: string | null;
+  signal?: AbortSignal;
 }): Promise<{
   url: string | null;
   sessionId: string | null;
@@ -203,6 +205,7 @@ export const getStreamUrl = async ({
         // long: the server can be spinning up a transcode before it
         // answers. Without it this inherited no deadline at all.
         timeout: Deadlines.negotiation,
+        signal,
         params: {
           startTimeTicks: 0,
           isPlayback: true,
@@ -247,6 +250,7 @@ export const getStreamUrl = async ({
       // long: the server can be spinning up a transcode before it
       // answers. Without it this inherited no deadline at all.
       timeout: Deadlines.negotiation,
+      signal,
       data: {
         userId,
         deviceProfile,
@@ -298,6 +302,7 @@ export const getDownloadStreamUrl = async ({
   mediaSourceId,
   deviceId,
   audioMode = "auto",
+  signal,
 }: {
   api: Api | null | undefined;
   item: BaseItemDto | null | undefined;
@@ -308,6 +313,7 @@ export const getDownloadStreamUrl = async ({
   mediaSourceId?: string | null;
   deviceId?: string | null;
   audioMode?: AudioTranscodeModeType;
+  signal?: AbortSignal;
 }): Promise<{
   url: string | null;
   sessionId: string | null;
@@ -328,6 +334,7 @@ export const getDownloadStreamUrl = async ({
       // long: the server can be spinning up a transcode before it
       // answers. Without it this inherited no deadline at all.
       timeout: Deadlines.negotiation,
+      signal,
       data: {
         userId,
         deviceProfile: generateDownloadProfile(audioMode),
