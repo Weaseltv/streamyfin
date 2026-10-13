@@ -1,6 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import type { PropsWithChildren, ReactElement } from "react";
-import { type NativeScrollEvent, View, type ViewProps } from "react-native";
+import {
+  type NativeScrollEvent,
+  Platform,
+  View,
+  type ViewProps,
+} from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
@@ -34,6 +40,20 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
   const insets = useSafeAreaInsets();
+  // Expo Router's native-stack measurement already includes the status inset.
+  const navigationHeight = useHeaderHeight();
+  const protectedHeight = Math.max(navigationHeight, insets.top);
+  const protectionStyle = useAnimatedStyle(() => {
+    const boundary = Math.max(1, headerHeight - overlap - protectedHeight);
+    return {
+      opacity: interpolate(
+        scrollOffset.value,
+        [Math.max(0, boundary - protectedHeight), boundary],
+        [0, 1],
+        "clamp",
+      ),
+    };
+  });
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -85,18 +105,6 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
             : undefined
         }
       >
-        {logo && (
-          <View
-            style={{
-              top: headerHeight - 200,
-              height: 130,
-            }}
-            className='absolute left-0 w-full z-40 px-4 flex justify-center items-center'
-          >
-            {logo}
-          </View>
-        )}
-
         <Animated.View
           style={[
             {
@@ -108,6 +116,18 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
         >
           {headerImage}
         </Animated.View>
+        {logo && (
+          <View
+            style={{
+              top: headerHeight - 200,
+              height: 130,
+              zIndex: 2,
+            }}
+            className='absolute left-0 w-full z-40 px-4 flex justify-center items-center'
+          >
+            {logo}
+          </View>
+        )}
 
         <View
           style={{
@@ -142,6 +162,23 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
           {children}
         </View>
       </Animated.ScrollView>
+      {!Platform.isTV && (
+        <Animated.View
+          pointerEvents='none'
+          style={[
+            {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: protectedHeight,
+              backgroundColor: NeonBoard.stage,
+              zIndex: 100,
+            },
+            protectionStyle,
+          ]}
+        />
+      )}
     </View>
   );
 };
