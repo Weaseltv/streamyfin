@@ -73,7 +73,10 @@ export const VideoPlayerSelector: React.FC<ViewProps> = ({ ...props }) => {
       }
       {...props}
     >
-      <ListItem title={t("home.settings.video_player.title")}>
+      <ListItem
+        stackControlOnCompact
+        title={t("home.settings.video_player.title")}
+      >
         <PlatformDropdown
           groups={playerOptionGroups}
           trigger={<DropdownTrigger value={currentPlayerLabel} />}

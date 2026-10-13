@@ -1,7 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import {
+  Platform,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  type ViewProps,
+} from "react-native";
 import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
@@ -25,6 +31,7 @@ interface Props extends ViewProps {
   onPress?: () => void;
   disabled?: boolean;
   disabledByAdmin?: boolean;
+  stackControlOnCompact?: boolean;
 }
 
 /**
@@ -46,6 +53,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
   onPress,
   disabled = false,
   disabledByAdmin = false,
+  stackControlOnCompact = false,
   style,
   ...viewProps
 }) => {
@@ -79,6 +87,7 @@ export const ListItem: React.FC<PropsWithChildren<Props>> = ({
       showArrow={showArrow}
       iconAfter={iconAfter}
       tally={tally}
+      stackControlOnCompact={stackControlOnCompact}
     >
       {children}
     </ListItemContent>
@@ -114,7 +123,13 @@ const ListItemContent = ({
   iconAfter,
   tally,
   children,
+  stackControlOnCompact,
 }: Props) => {
+  const { width, fontScale } = useWindowDimensions();
+  const stackControl =
+    !Platform.isTV &&
+    stackControlOnCompact &&
+    (width < 400 || fontScale > 1.15);
   const pageAccent = usePageAccent();
   const titleColor =
     textColor === "red"
@@ -141,7 +156,14 @@ const ListItemContent = ({
           ]}
         />
       ) : null}
-      <View className='flex flex-row items-center w-full'>
+      <View
+        style={{
+          flexDirection: stackControl ? "column" : "row",
+          alignItems: stackControl ? "stretch" : "center",
+          width: "100%",
+          gap: stackControl ? 8 : 0,
+        }}
+      >
         {icon && (
           <View
             style={{
@@ -156,18 +178,19 @@ const ListItemContent = ({
         )}
         {/* The label sizes to its content and only shrinks if it alone
             overflows; the value column takes whatever is left. */}
-        <View className='shrink'>
-          <Text
-            variant='rowTitle'
-            numberOfLines={1}
-            style={{ color: titleColor }}
-          >
+        <View
+          style={{
+            flex: stackControl || value ? undefined : 1,
+            flexShrink: 1,
+            minWidth: 0,
+          }}
+        >
+          <Text variant='rowTitle' style={{ color: titleColor }}>
             {title}
           </Text>
           {subtitle && (
             <Text
               variant='meta'
-              numberOfLines={2}
               style={{
                 marginTop: 2,
                 color: subtitleColor === "red" ? NeonBoard.red : NeonBoard.mid,
@@ -191,7 +214,18 @@ const ListItemContent = ({
             </Text>
           </View>
         )}
-        {children && <View className='ml-auto'>{children}</View>}
+        {children && (
+          <View
+            style={{
+              flexShrink: 0,
+              marginLeft: stackControl ? 0 : 12,
+              alignSelf: stackControl ? "flex-end" : undefined,
+              maxWidth: "100%",
+            }}
+          >
+            {children}
+          </View>
+        )}
         {showArrow && (
           <View className={children ? "ml-1" : "ml-auto"}>
             <Ionicons

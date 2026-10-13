@@ -37,6 +37,7 @@ import { MediaListSection } from "@/components/medialists/MediaListSection";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
@@ -121,7 +122,6 @@ const HomeMobile = () => {
   const user = useAtomValue(userAtom);
   const { excludeItem: excludeDismissedSeries } = useDismissedNextUp();
   const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState(false);
   const { settings, refreshStreamyfinPluginSettings } = useSettings();
   const navigation = useNavigation();
   const scrollRef = useRef<FlashListRef<Section>>(null);
@@ -288,24 +288,24 @@ const HomeMobile = () => {
     );
   }, [userViews]);
 
-  const refetch = async () => {
-    setLoading(true);
-    // Do NOT reset settledSections here. The priority gate only exists to
-    // stagger the initial mount; every section is already on screen by the
-    // time the user can pull. Clearing it flipped every priority-2 section
-    // ("Recently added in …", suggestions) to enabled={false}, and
-    // invalidateQueries only refetches *active* queries, so those rows were
-    // marked stale but never refetched. They could not recover either:
-    // InfiniteScrollingCollectionList fires onSettled once per mount, so the
-    // gate never reopened until the app was force-quit and remounted.
-    await refreshStreamyfinPluginSettings();
-    // force: pulling to refresh is the user asserting they want fresh data.
-    // The gated path skips invalidation whenever onlineManager reports offline
-    // and resolves silently, so the spinner completes and nothing refetches.
-    // Automatic callers keep the gated path so offline sessions keep a cache.
-    await invalidateCache(true);
-    setLoading(false);
-  };
+  const { refreshing: loading, onRefresh: refetch } = useManualRefresh(
+    async () => {
+      // Do NOT reset settledSections here. The priority gate only exists to
+      // stagger the initial mount; every section is already on screen by the
+      // time the user can pull. Clearing it flipped every priority-2 section
+      // ("Recently added in …", suggestions) to enabled={false}, and
+      // invalidateQueries only refetches *active* queries, so those rows were
+      // marked stale but never refetched. They could not recover either:
+      // InfiniteScrollingCollectionList fires onSettled once per mount, so the
+      // gate never reopened until the app was force-quit and remounted.
+      await refreshStreamyfinPluginSettings();
+      // force: pulling to refresh is the user asserting they want fresh data.
+      // The gated path skips invalidation whenever onlineManager reports offline
+      // and resolves silently, so the spinner completes and nothing refetches.
+      // Automatic callers keep the gated path so offline sessions keep a cache.
+      await invalidateCache(true);
+    },
+  );
 
   const createCollectionConfig = useCallback(
     (

@@ -45,7 +45,10 @@ export const AppLanguageSelector: React.FC<Props> = () => {
   return (
     <View>
       <ListGroup title={t("home.settings.languages.title")}>
-        <ListItem title={t("home.settings.languages.app_language")}>
+        <ListItem
+          stackControlOnCompact
+          title={t("home.settings.languages.app_language")}
+        >
           <PlatformDropdown
             groups={optionGroups}
             trigger={

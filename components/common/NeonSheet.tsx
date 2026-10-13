@@ -85,7 +85,7 @@ export const NeonSheetHead: React.FC<HeadProps> = ({
 }) => {
   const accent = useAccent(accentProp);
   return (
-    <View>
+    <View style={{ backgroundColor: NeonBoard.card }}>
       <View
         style={{
           paddingLeft: Sizes.rowLead,
@@ -210,6 +210,7 @@ export const NeonSheet: React.FC<SheetProps> = ({
 
   return (
     <Container
+      stickyHeaderIndices={scroll ? [0] : undefined}
       style={fill ? { flex: 1 } : undefined}
       contentContainerStyle={
         scroll

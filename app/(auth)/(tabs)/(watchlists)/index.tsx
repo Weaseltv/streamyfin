@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, RefreshControl, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +15,7 @@ import { Text } from "@/components/common/Text";
 import { ListItem } from "@/components/list/ListItem";
 import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import {
   useStreamystatsEnabled,
   useWatchlistsQuery,
@@ -176,13 +177,12 @@ export default function WatchlistsScreen() {
   const user = useAtomValue(userAtom);
   const streamystatsEnabled = useStreamystatsEnabled();
   const { data: watchlists, isLoading, refetch } = useWatchlistsQuery();
-  const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(
+    async () => {
+      await refetch({ throwOnError: true });
+    },
+  );
 
   const handleWatchlistPress = useCallback(
     (watchlistId: number) => {

@@ -99,7 +99,10 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           </Text>
         }
       >
-        <ListItem title={t("home.settings.subtitles.subtitle_language")}>
+        <ListItem
+          stackControlOnCompact
+          title={t("home.settings.subtitles.subtitle_language")}
+        >
           <PlatformDropdown
             groups={subtitleLanguageOptionGroups}
             trigger={
@@ -115,6 +118,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
         </ListItem>
 
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.subtitles.subtitle_mode")}
           disabled={pluginSettings?.subtitleMode?.locked}
         >

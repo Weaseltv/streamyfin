@@ -138,6 +138,7 @@ export const GestureControls: React.FC<Props> = ({ ...props }) => {
             showText={false}
           >
             <ListItem
+              stackControlOnCompact
               title={t("home.settings.gesture_controls.hold_to_speed_rate")}
               disabled={pluginSettings?.holdToSpeedRate?.locked}
             >
