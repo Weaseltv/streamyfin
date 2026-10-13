@@ -10,7 +10,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { t } from "i18next";
 import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { LoadingLine } from "@/components/common/LoadingLine";
@@ -180,7 +180,7 @@ export default function FavoritesSeeAllScreen() {
         options={{
           headerTitle: headerTitle,
           headerBlurEffect: "none",
-          headerTransparent: true,
+          headerTransparent: !(Platform.OS === "android" && !Platform.isTV),
           headerShadowVisible: false,
         }}
       />
