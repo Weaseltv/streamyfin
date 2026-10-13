@@ -353,20 +353,29 @@ export class JellyseerrApi {
       });
   }
 
-  async personDetails(id: number | string): Promise<PersonDetails> {
+  async personDetails(
+    id: number | string,
+    signal?: AbortSignal,
+  ): Promise<PersonDetails> {
     return this.axios
-      ?.get<PersonDetails>(`${Endpoints.API_V1 + Endpoints.PERSON}/${id}`)
+      ?.get<PersonDetails>(`${Endpoints.API_V1 + Endpoints.PERSON}/${id}`, {
+        signal,
+      })
       .then((response) => {
         return response?.data;
       });
   }
 
-  async personCombinedCredits(id: number | string): Promise<CombinedCredit> {
+  async personCombinedCredits(
+    id: number | string,
+    signal?: AbortSignal,
+  ): Promise<CombinedCredit> {
     return this.axios
       ?.get<CombinedCredit>(
         `${
           Endpoints.API_V1 + Endpoints.PERSON
         }/${id}${Endpoints.COMBINED_CREDITS}`,
+        { signal },
       )
       .then((response) => {
         return response?.data;

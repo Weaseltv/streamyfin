@@ -1,14 +1,19 @@
+import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import orderBy from "lodash/orderBy";
 import uniqBy from "lodash/uniqBy";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { Button } from "@/components/Button";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import ParallaxSlideShow from "@/components/jellyseerr/ParallaxSlideShow";
+import { Loader } from "@/components/Loader";
 import { OverviewText } from "@/components/OverviewText";
 import JellyseerrPoster from "@/components/posters/JellyseerrPoster";
+import { NeonBoard } from "@/constants/Colors";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import type { PersonCreditCast } from "@/utils/jellyseerr/server/models/Person";
 
@@ -24,14 +29,39 @@ export default function JellyseerrPersonPage() {
 
   const { personId } = local as { personId: string };
 
-  const { data } = useQuery({
-    queryKey: ["jellyseerr", "person", personId],
-    queryFn: async () => ({
-      details: await jellyseerrApi?.personDetails(personId),
-      combinedCredits: await jellyseerrApi?.personCombinedCredits(personId),
-    }),
+  const details = useQuery({
+    queryKey: [
+      "jellyseerr",
+      "person",
+      jellyseerrApi?.axios.defaults.baseURL,
+      personId,
+      "details",
+    ],
+    queryFn: ({ signal }) => jellyseerrApi!.personDetails(personId, signal),
     enabled: !!jellyseerrApi && !!personId,
+    retry: 1,
   });
+  const credits = useQuery({
+    queryKey: [
+      "jellyseerr",
+      "person",
+      jellyseerrApi?.axios.defaults.baseURL,
+      personId,
+      "credits",
+    ],
+    queryFn: ({ signal }) =>
+      jellyseerrApi!.personCombinedCredits(personId, signal),
+    enabled: !!jellyseerrApi && !!personId,
+    retry: 1,
+  });
+  const data = { details: details.data, combinedCredits: credits.data };
+  const portrait = data.details?.profilePath
+    ? jellyseerrApi?.imageProxy(
+        data.details.profilePath,
+        "w600_and_h600_bestv2",
+      )
+    : undefined;
+  const [failedPortrait, setFailedPortrait] = useState<string>();
 
   const castedRoles: PersonCreditCast[] = useMemo(
     () =>
@@ -48,57 +78,85 @@ export default function JellyseerrPersonPage() {
   const backdrops = useMemo(
     () =>
       jellyseerrApi
-        ? castedRoles.map((c) =>
-            jellyseerrApi.imageProxy(
-              c.backdropPath,
-              "w1920_and_h800_multi_faces",
-            ),
-          )
+        ? castedRoles
+            .filter((c) => !!c.backdropPath)
+            .map((c) =>
+              jellyseerrApi.imageProxy(
+                c.backdropPath,
+                "w1920_and_h800_multi_faces",
+              ),
+            )
         : [],
-    [jellyseerrApi, data?.combinedCredits],
+    [jellyseerrApi, castedRoles],
   );
 
   return (
     <ParallaxSlideShow
+      backdropIdentity={`personId:${jellyseerrApi?.axios.defaults.baseURL}:${personId}`}
       data={castedRoles}
       images={backdrops}
       listHeader={t("jellyseerr.appearances")}
       keyExtractor={(item) => item.id.toString()}
+      isLoading={credits.isPending}
+      isFetching={credits.isFetching}
+      isError={credits.isError}
+      onRetry={() => {
+        void credits.refetch();
+      }}
       logo={
-        <Image
-          key={data?.details?.id}
-          id={data?.details?.id.toString()}
-          className='rounded-full bottom-1'
-          source={{
-            uri: jellyseerrApi?.imageProxy(
-              data?.details?.profilePath,
-              "w600_and_h600_bestv2",
-            ),
-          }}
-          cachePolicy={"memory-disk"}
-          contentFit='cover'
-          style={{
-            width: 125,
-            height: 125,
-          }}
-        />
+        portrait && failedPortrait !== portrait ? (
+          <Image
+            key={portrait}
+            source={{ uri: portrait }}
+            cachePolicy='memory-disk'
+            contentFit='cover'
+            onError={() => setFailedPortrait(portrait)}
+            style={{ width: 125, height: 125, borderRadius: 63 }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 125,
+              height: 125,
+              borderRadius: 63,
+              backgroundColor: NeonBoard.card2,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name='user' size={40} color={NeonBoard.mid} />
+          </View>
+        )
       }
       HeaderContent={() => (
         <>
+          {details.isPending && <Loader />}
+          {details.isError && (
+            <Button
+              variant='border'
+              loading={details.isFetching}
+              onPress={() => details.refetch()}
+            >
+              {t("home.retry")}
+            </Button>
+          )}
           <Text className='font-bold text-2xl mb-1'>{data?.details?.name}</Text>
-          <Text className='opacity-50'>
-            {t("jellyseerr.born")}{" "}
-            {data?.details?.birthday &&
-              new Date(data.details.birthday).toLocaleDateString(
-                `${locale}-${region}`,
-                {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                },
-              )}{" "}
-            | {data?.details?.placeOfBirth}
-          </Text>
+          {data.details &&
+            (data.details.birthday || data.details.placeOfBirth) && (
+              <Text className='opacity-50'>
+                {t("jellyseerr.born")}{" "}
+                {data?.details?.birthday &&
+                  new Date(data.details.birthday).toLocaleDateString(
+                    `${locale}-${region}`,
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}{" "}
+                | {data?.details?.placeOfBirth}
+              </Text>
+            )}
         </>
       )}
       MainContent={() => (

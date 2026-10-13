@@ -59,18 +59,21 @@ export default function JellyseerrGenrePage() {
   const backdrops = useMemo(
     () =>
       jellyseerrApi
-        ? flatData.map((r) =>
-            jellyseerrApi.imageProxy(
-              r.backdropPath,
-              "w1920_and_h800_multi_faces",
-            ),
-          )
+        ? flatData
+            .filter((r) => !!r.backdropPath)
+            .map((r) =>
+              jellyseerrApi.imageProxy(
+                r.backdropPath,
+                "w1920_and_h800_multi_faces",
+              ),
+            )
         : [],
     [jellyseerrApi, flatData],
   );
 
   return (
     <ParallaxSlideShow
+      backdropIdentity={`genreId:${jellyseerrApi?.axios.defaults.baseURL}:${genreId}`}
       data={flatData}
       images={backdrops}
       listHeader=''
