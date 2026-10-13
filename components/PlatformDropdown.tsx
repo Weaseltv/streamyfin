@@ -105,7 +105,8 @@ export const DropdownTrigger: React.FC<{
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        height: compact ? Sizes.buttonCompact : Sizes.outline,
+        minHeight: compact ? Sizes.buttonCompact : Sizes.outline,
+        paddingVertical: 6,
         paddingLeft: 12,
         paddingRight: 10,
         backgroundColor: NeonBoard.card2,
@@ -116,7 +117,6 @@ export const DropdownTrigger: React.FC<{
     >
       <Text
         variant='chip'
-        numberOfLines={1}
         style={{ color: accent, fontSize: 13, maxWidth: 200 }}
       >
         {value}

@@ -3,7 +3,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -37,6 +37,7 @@ import { Sizes } from "@/constants/neon";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import useRouter from "@/hooks/useAppRouter";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { useOrientation } from "@/hooks/useOrientation";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import {
@@ -95,7 +96,6 @@ export default function WatchlistDetailScreen() {
 
   const deleteWatchlist = useDeleteWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
-  const [refreshing, setRefreshing] = useState(false);
   const { confirm, dialog } = useConfirmDialog();
 
   const isOwner = useMemo(
@@ -126,11 +126,14 @@ export default function WatchlistDetailScreen() {
     });
   }, [navigation, watchlist?.name, isOwner, watchlistId]);
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([refetchWatchlist(), refetchItems()]);
-    setRefreshing(false);
-  }, [refetchWatchlist, refetchItems]);
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(
+    async () => {
+      await Promise.all([
+        refetchWatchlist({ throwOnError: true }),
+        refetchItems({ throwOnError: true }),
+      ]);
+    },
+  );
 
   const handleDelete = useCallback(() => {
     const onConfirm = async () => {

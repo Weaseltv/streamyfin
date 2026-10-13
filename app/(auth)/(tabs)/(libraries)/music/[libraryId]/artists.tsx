@@ -12,6 +12,7 @@ import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
 import { MusicArtistCard } from "@/components/music/MusicArtistCard";
 import { Colors } from "@/constants/Colors";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 // Web uses Limit=100
@@ -78,6 +79,10 @@ export default function ArtistsScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(() =>
+    refetch({ throwOnError: true }),
+  );
+
   if (!api || !user?.Id) {
     return (
       <View className='flex-1 justify-center items-center bg-black'>
@@ -136,8 +141,8 @@ export default function ArtistsScreen() {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refetch}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={Colors.primary}
           />
         }

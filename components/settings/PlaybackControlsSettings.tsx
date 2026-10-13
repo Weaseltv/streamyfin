@@ -118,6 +118,7 @@ export const PlaybackControlsSettings: React.FC = () => {
     <DisabledSetting disabled={disabled}>
       <ListGroup title={t("home.settings.other.other_title")} className='mb-4'>
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.video_orientation")}
           disabled={pluginSettings?.defaultVideoOrientation?.locked}
         >
@@ -152,6 +153,7 @@ export const PlaybackControlsSettings: React.FC = () => {
         </ListItem>
 
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.default_quality")}
           disabled={pluginSettings?.defaultBitrate?.locked}
         >
@@ -163,6 +165,7 @@ export const PlaybackControlsSettings: React.FC = () => {
         </ListItem>
 
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.default_playback_speed")}
           disabled={pluginSettings?.defaultPlaybackSpeed?.locked}
         >
@@ -221,6 +224,7 @@ export const PlaybackControlsSettings: React.FC = () => {
         </ListItem>
 
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.max_auto_play_episode_count")}
           disabled={
             !settings.autoPlayNextEpisode ||

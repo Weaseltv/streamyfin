@@ -47,6 +47,7 @@ import { NeonBoard, typeAccent } from "@/constants/Colors";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import useRouter from "@/hooks/useAppRouter";
 import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
@@ -335,7 +336,6 @@ const page: React.FC = () => {
     hasPreviousPage,
     isLoading,
     isFetching,
-    isRefetching,
     refetch,
     isError: itemsError,
   } = useInfiniteQuery({
@@ -402,6 +402,12 @@ const page: React.FC = () => {
     staleTime: 60_000,
     refetchInterval: nameSorted && isFocused ? 60_000 : false,
   });
+  const { refreshing, onRefresh } = useManualRefresh(() =>
+    Promise.all([
+      refetch({ throwOnError: true }),
+      nameSorted ? refetchAlphabet({ throwOnError: true }) : undefined,
+    ]),
+  );
   const showAlphabet =
     nameSorted &&
     (data?.pages[0]?.TotalRecordCount ?? alphabet?.totalCount ?? 0) > pageSize;
@@ -887,13 +893,7 @@ const page: React.FC = () => {
           contentInsetAdjustmentBehavior='automatic'
           data={flatData}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={() => {
-                void refetch();
-                if (nameSorted) void refetchAlphabet();
-              }}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           renderItem={renderItem}
           keyExtractor={keyExtractor}

@@ -12,6 +12,7 @@ import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
 import { MusicAlbumRowCard } from "@/components/music/MusicAlbumRowCard";
 import { Colors } from "@/constants/Colors";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 const ITEMS_PER_PAGE = 40;
@@ -72,6 +73,10 @@ export default function AlbumsScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(() =>
+    refetch({ throwOnError: true }),
+  );
+
   if (isLoading) {
     return (
       <View className='flex-1 justify-center items-center bg-black'>
@@ -99,8 +104,8 @@ export default function AlbumsScreen() {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refetch}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={Colors.primary}
           />
         }

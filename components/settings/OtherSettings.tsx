@@ -105,6 +105,7 @@ export const OtherSettings: React.FC = () => {
     <DisabledSetting disabled={disabled}>
       <ListGroup title={t("home.settings.other.other_title")}>
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.video_orientation")}
           disabled={pluginSettings?.defaultVideoOrientation?.locked}
         >
@@ -156,6 +157,7 @@ export const OtherSettings: React.FC = () => {
           />
         </ListItem>
         <ListItem
+          stackControlOnCompact
           onPress={() => router.push("/settings/hide-libraries/page")}
           title={t("home.settings.other.hide_libraries")}
           showArrow
@@ -183,6 +185,7 @@ export const OtherSettings: React.FC = () => {
           />
         </ListItem>
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.other.max_auto_play_episode_count")}
           disabled={pluginSettings?.maxAutoPlayEpisodeCount?.locked}
         >
