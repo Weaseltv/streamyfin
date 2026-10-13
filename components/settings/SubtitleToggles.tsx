@@ -149,10 +149,14 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           />
         </ListItem>
 
-        {Platform.OS === "ios" && !Platform.isTV && (
-          <ListItem title={t("home.settings.subtitles.subtitles_on_mute")}>
+        {!Platform.isTV && (
+          <ListItem
+            title={t("home.settings.subtitles.subtitles_on_mute")}
+            disabled={pluginSettings?.subtitlesOnMute?.locked}
+          >
             <SettingSwitch
               value={settings.subtitlesOnMute}
+              disabled={pluginSettings?.subtitlesOnMute?.locked}
               onValueChange={(value) =>
                 updateSettings({ subtitlesOnMute: value })
               }

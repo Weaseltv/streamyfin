@@ -43,6 +43,7 @@ import { ticksToMs } from "@/utils/time";
 import { BottomControls } from "./BottomControls";
 import { CenterControls } from "./CenterControls";
 import { CONTROLS_CONSTANTS } from "./constants";
+import { useVideoContext } from "./contexts/VideoContext";
 import { EpisodeList } from "./EpisodeList";
 import { GestureOverlay } from "./GestureOverlay";
 import { HeaderControls } from "./HeaderControls";
@@ -135,6 +136,7 @@ export const Controls: FC<Props> = ({
 }) => {
   const offline = useOfflineMode();
   const { settings } = useSettings();
+  const { getUserSubtitleIndex } = useVideoContext();
   const [autoPlayEpisodeCount, setAutoPlayEpisodeCount] = useAtom(
     autoPlayEpisodeCountAtom,
   );
@@ -394,7 +396,7 @@ export const Controls: FC<Props> = ({
       lightHapticFeedback();
       const previousIndexes = {
         subtitleIndex: subtitleIndex
-          ? Number.parseInt(subtitleIndex, 10)
+          ? getUserSubtitleIndex(Number.parseInt(subtitleIndex, 10))
           : undefined,
         audioIndex: audioIndex ? Number.parseInt(audioIndex, 10) : undefined,
       };
@@ -423,6 +425,7 @@ export const Controls: FC<Props> = ({
     },
     [
       settings,
+      getUserSubtitleIndex,
       subtitleIndex,
       audioIndex,
       mediaSource,

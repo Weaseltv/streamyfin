@@ -49,9 +49,12 @@ import { useAtomValue } from "jotai";
 import type React from "react";
 import {
   createContext,
+  type MutableRefObject,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -69,6 +72,11 @@ import {
   isImageBasedSubtitle,
 } from "@/utils/jellyfin/subtitleUtils";
 import { rememberSeriesTrackFromRow } from "@/utils/seriesTrackMemory";
+import { MediaVolumeSession } from "@/utils/subtitles/mediaVolumeSession";
+import {
+  MuteSubtitleAutomation,
+  muteSubtitleCandidate,
+} from "@/utils/subtitles/muteSubtitleAutomation";
 import {
   isLocalSubtitleIndex,
   SUBTITLES_OFF,
@@ -84,13 +92,17 @@ import { usePlayerContext, usePlayerControls } from "./PlayerContext";
 interface VideoContextProps {
   subtitleTracks: Track[] | null;
   audioTracks: Track[] | null;
+  volumeSession: MediaVolumeSession;
+  getUserSubtitleIndex: (index: number) => number;
 }
 
 const VideoContext = createContext<VideoContextProps | undefined>(undefined);
 
-export const VideoProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const VideoProvider: React.FC<{
+  children: ReactNode;
+  onMuteChanged?: (muted: boolean) => void;
+  subtitlePreferenceRef?: MutableRefObject<(index: number) => number>;
+}> = ({ children, onMuteChanged, subtitlePreferenceRef }) => {
   const [subtitleTracks, setSubtitleTracks] = useState<Track[] | null>(null);
   const [audioTracks, setAudioTracks] = useState<Track[] | null>(null);
 
@@ -100,6 +112,26 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
   const api = useAtomValue(apiAtom);
   const router = useRouter();
   const { settings } = useSettings();
+  const volumeSession = useMemo(
+    () => new MediaVolumeSession(),
+    [item?.Id, mediaSource?.Id],
+  );
+  const muteAutomation = useMemo(
+    () => new MuteSubtitleAutomation(),
+    [volumeSession],
+  );
+
+  const getUserSubtitleIndex = useCallback(
+    (index: number) => muteAutomation.preference(index),
+    [muteAutomation],
+  );
+  useLayoutEffect(() => {
+    if (!subtitlePreferenceRef) return;
+    subtitlePreferenceRef.current = getUserSubtitleIndex;
+    return () => {
+      subtitlePreferenceRef.current = (index) => index;
+    };
+  }, [subtitlePreferenceRef, getUserSubtitleIndex]);
 
   /**
    * Persist a deliberate pick as the series preference, exactly as the native
@@ -114,8 +146,10 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
   const rememberRef = useRef<
     (kind: "audio" | "subtitle", row: TrackMenuRow) => void
   >(() => {});
-  rememberRef.current = (kind, row) =>
+  rememberRef.current = (kind, row) => {
+    if (kind === "subtitle") muteAutomation.revoke();
     rememberSeriesTrackFromRow({ item, kind, row, settings });
+  };
 
   const { itemId, audioIndex, bitrateValue, subtitleIndex, playbackPosition } =
     useLocalSearchParams<{
@@ -153,6 +187,110 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
   const currentSubtitleIndex = asIndex(subtitleIndex) ?? SUBTITLES_OFF;
   const currentAudioIndex = asIndex(audioIndex);
 
+  const muteState = useRef({
+    settings,
+    currentSubtitleIndex,
+    mediaSource,
+    tracksReady,
+    offline,
+    api,
+    playerControls,
+    onMuteChanged,
+  });
+  muteState.current = {
+    settings,
+    currentSubtitleIndex,
+    mediaSource,
+    tracksReady,
+    offline,
+    api,
+    playerControls,
+    onMuteChanged,
+  };
+  useEffect(() => {
+    muteAutomation.selectionChanged(currentSubtitleIndex);
+    if (!settings?.subtitlesOnMute) {
+      const selection = muteAutomation.stopOwnedSelection(currentSubtitleIndex);
+      if (!selection) return;
+      const owner = playerControls.getSubtitleSelectionOwner();
+      const canCommit = () =>
+        muteAutomation.isCurrent(selection) &&
+        muteState.current.settings?.subtitlesOnMute !== true &&
+        playerControls.getSubtitleSelectionOwner() === owner;
+      void applyMpvSubtitleSelection(playerControls, {
+        subtitleStreams: mediaSource?.MediaStreams ?? [],
+        jellyfinSubtitleIndex: -1,
+        canCommit,
+      }).then((result) => {
+        if (canCommit() && result.kind === "disable")
+          router.setParams({ subtitleIndex: "-1" });
+      });
+    }
+  }, [
+    muteAutomation,
+    currentSubtitleIndex,
+    settings?.subtitlesOnMute,
+    playerControls,
+    mediaSource,
+    router,
+  ]);
+  useEffect(() => {
+    if (Platform.isTV) return;
+    const remove = volumeSession.subscribe((volume, initial) => {
+      const state = muteState.current;
+      state.onMuteChanged?.(volume === 0);
+      const streams = state.mediaSource?.MediaStreams ?? [];
+      const candidate = state.tracksReady
+        ? muteSubtitleCandidate(
+            streams,
+            state.settings?.defaultSubtitleLanguage
+              ?.ThreeLetterISOLanguageName ?? undefined,
+          )
+        : undefined;
+      const selection = muteAutomation.volume(volume, initial, {
+        enabled: state.settings?.subtitlesOnMute === true,
+        selected: state.currentSubtitleIndex,
+        transcoding:
+          !!state.mediaSource?.TranscodingUrl ||
+          (state.offline && downloadedItem?.userData?.isTranscoded === true),
+        candidate: candidate?.Index ?? undefined,
+      });
+      if (!selection) return;
+      const owner = state.playerControls.getSubtitleSelectionOwner();
+      const canCommit = () =>
+        muteAutomation.isCurrent(selection) &&
+        muteState.current.settings?.subtitlesOnMute === true &&
+        state.playerControls.getSubtitleSelectionOwner() === owner;
+      void applyMpvSubtitleSelection(state.playerControls, {
+        subtitleStreams: streams,
+        jellyfinSubtitleIndex: selection.index,
+        getExpectedExternalUrl: (stream) =>
+          getExternalSubtitleUrl(stream, {
+            offline: state.offline,
+            basePath: state.api?.basePath,
+          }),
+        canCommit,
+      }).then((result) => {
+        if (!canCommit()) return;
+        if (result.kind === "select" || result.kind === "disable") {
+          router.setParams({ subtitleIndex: String(selection.index) });
+        } else muteAutomation.failed(selection);
+      });
+    });
+    const VolumeManager = require("react-native-volume-manager");
+    const stop = volumeSession.start(VolumeManager);
+    return () => {
+      muteAutomation.reset();
+      remove();
+      stop();
+    };
+  }, [
+    volumeSession,
+    muteAutomation,
+    router,
+    downloadedItem?.userData?.isTranscoded,
+  ]);
+
   /** Client-side downloads that still exist on disk (the cache may be cleared). */
   const localSubFiles = useMemo(() => {
     if (!Platform.isTV || !itemId) return [];
@@ -185,10 +323,10 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
     // only exists in the dying player — the server must get "none" (-1) instead.
     // NaN (missing/blank param) fails the comparison and passes through as-is.
     const fallbackSubtitleIndex = isLocalSubtitleIndex(
-      Number.parseInt(subtitleIndex, 10),
+      getUserSubtitleIndex(Number.parseInt(subtitleIndex, 10)),
     )
       ? "-1"
-      : subtitleIndex;
+      : String(getUserSubtitleIndex(Number.parseInt(subtitleIndex, 10)));
     const queryParams = new URLSearchParams({
       itemId: itemId ?? "",
       audioIndex: params.audioIndex ?? audioIndex,
@@ -419,7 +557,14 @@ export const VideoProvider: React.FC<{ children: ReactNode }> = ({
   ]);
 
   return (
-    <VideoContext.Provider value={{ subtitleTracks, audioTracks }}>
+    <VideoContext.Provider
+      value={{
+        subtitleTracks,
+        audioTracks,
+        volumeSession,
+        getUserSubtitleIndex,
+      }}
+    >
       {children}
     </VideoContext.Provider>
   );
