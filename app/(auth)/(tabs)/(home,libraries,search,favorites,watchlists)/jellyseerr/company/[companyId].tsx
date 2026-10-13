@@ -64,18 +64,21 @@ export default function JellyseerrCompanyPage() {
   const backdrops = useMemo(
     () =>
       jellyseerrApi
-        ? flatData.map((r) =>
-            jellyseerrApi.imageProxy(
-              (r as TvResult | MovieResult).backdropPath,
-              "w1920_and_h800_multi_faces",
-            ),
-          )
+        ? flatData
+            .filter((r) => !!(r as TvResult | MovieResult).backdropPath)
+            .map((r) =>
+              jellyseerrApi.imageProxy(
+                (r as TvResult | MovieResult).backdropPath,
+                "w1920_and_h800_multi_faces",
+              ),
+            )
         : [],
     [jellyseerrApi, flatData],
   );
 
   return (
     <ParallaxSlideShow
+      backdropIdentity={`companyId:${jellyseerrApi?.axios.defaults.baseURL}:${companyId}`}
       data={flatData}
       images={backdrops}
       listHeader=''

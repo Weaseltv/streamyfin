@@ -3,10 +3,12 @@ import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
+import { Button } from "@/components/Button";
 import { InfiniteHorizontalScroll } from "@/components/common/InfiniteHorizontalScroll";
+import { ItemImage } from "@/components/common/ItemImage";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
@@ -40,49 +42,61 @@ const MobileActorPage: React.FC<{ personId: string }> = ({ personId }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
 
-  const { data: item, isLoading: l1 } = useQuery({
-    queryKey: ["item", personId],
+  const {
+    data: item,
+    isPending: l1,
+    isError,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ["item", personId, api?.basePath, user?.Id],
     queryFn: async () =>
       await getUserItemData({
         api,
         userId: user?.Id,
         itemId: personId,
       }),
-    enabled: !!personId && !!api,
+    enabled: !!personId && !!api && !!user?.Id,
     staleTime: Freshness.person,
   });
 
   const fetchItems = useCallback(
     async ({
       pageParam,
+      signal,
     }: {
       pageParam: number;
+      signal?: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
       if (!api || !user?.Id) return null;
 
-      const response = await getItemsApi(api).getItems({
-        userId: user.Id,
-        personIds: [personId],
-        startIndex: pageParam,
-        limit: 16,
-        sortOrder: ["Descending", "Descending", "Ascending"],
-        includeItemTypes: ["Movie", "Series"],
-        recursive: true,
-        fields: [
-          "ParentId",
-          "PrimaryImageAspectRatio",
-          "ParentId",
-          "PrimaryImageAspectRatio",
-        ],
-        sortBy: ["PremiereDate", "ProductionYear", "SortName"],
-        collapseBoxSetItems: false,
-      });
+      const response = await getItemsApi(api).getItems(
+        {
+          userId: user.Id,
+          personIds: [personId],
+          startIndex: pageParam,
+          limit: 16,
+          sortOrder: ["Descending", "Descending", "Ascending"],
+          includeItemTypes: ["Movie", "Series"],
+          recursive: true,
+          fields: [
+            "ParentId",
+            "PrimaryImageAspectRatio",
+            "ParentId",
+            "PrimaryImageAspectRatio",
+          ],
+          sortBy: ["PremiereDate", "ProductionYear", "SortName"],
+          collapseBoxSetItems: false,
+        },
+        { signal },
+      );
 
       return response.data;
     },
     [api, user?.Id, personId],
   );
 
+  const [failedBackdrop, setFailedBackdrop] = useState<string>();
   const backdropUrl = useMemo(
     () =>
       getBackdropUrl({
@@ -91,7 +105,7 @@ const MobileActorPage: React.FC<{ personId: string }> = ({ personId }) => {
         quality: 90,
         width: 1000,
       }),
-    [item],
+    [api, item],
   );
 
   if (l1)
@@ -101,23 +115,45 @@ const MobileActorPage: React.FC<{ personId: string }> = ({ personId }) => {
       </View>
     );
 
-  if (!item?.Id || !backdropUrl) return null;
+  if (!item?.Id)
+    return (
+      <View style={{ padding: 24, gap: 12 }}>
+        <Text variant='body' muted>
+          {t("home.section_failed")}
+        </Text>
+        <Button variant='border' loading={isFetching} onPress={() => refetch()}>
+          {t("home.retry")}
+        </Button>
+      </View>
+    );
 
   return (
     <ParallaxScrollView
       headerImage={
-        <Image
-          source={{
-            uri: backdropUrl,
-          }}
-          style={{
-            width: "100%",
-            height: "100%",
-          }}
-        />
+        backdropUrl && failedBackdrop !== backdropUrl ? (
+          <Image
+            source={{ uri: backdropUrl }}
+            onError={() => setFailedBackdrop(backdropUrl)}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        ) : (
+          <ItemImage item={item} variant='Primary' />
+        )
       }
     >
       <View className='flex flex-col space-y-4 my-4'>
+        {isError && (
+          <Button
+            variant='border'
+            loading={isFetching}
+            onPress={() => refetch()}
+          >
+            {t("home.retry")}
+          </Button>
+        )}
         <View className='px-4 mb-4'>
           <MoviesTitleHeader item={item} className='mb-4' />
           <OverviewText text={item.Overview} />
@@ -143,7 +179,13 @@ const MobileActorPage: React.FC<{ personId: string }> = ({ personId }) => {
             </TouchableItemRouter>
           )}
           queryFn={fetchItems}
-          queryKey={["actor", "movies", personId]}
+          queryKey={[
+            "actor",
+            "movies",
+            personId,
+            api?.basePath ?? "",
+            user?.Id ?? "",
+          ]}
         />
       </View>
     </ParallaxScrollView>
