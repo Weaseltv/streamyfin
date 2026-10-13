@@ -125,6 +125,9 @@ export default function DirectPlayerPage() {
     setIsPlaying(playing);
   }, []);
   const [isMuted, setIsMuted] = useState(false);
+  const subtitlePreferenceRef = useRef<(index: number) => number>(
+    (index) => index,
+  );
   const [isBuffering, setIsBuffering] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [tracksReady, setTracksReady] = useState(false);
@@ -1093,13 +1096,11 @@ export default function DirectPlayerPage() {
         // Currently not muted, so mute
         setPreviousVolume(currentVolumePercent);
         await VolumeManager.setVolume(0);
-        setIsMuted(true);
       } else {
         // Currently muted, so restore previous volume
         const volumeToRestore = previousVolume || 50; // Default to 50% if no previous volume
         await VolumeManager.setVolume(volumeToRestore / 100);
         setPreviousVolume(null);
-        setIsMuted(false);
       }
     } catch (error) {
       console.error("Error toggling mute:", error);
@@ -1247,7 +1248,11 @@ export default function DirectPlayerPage() {
           audioIndex: String(index),
           // A local (client-downloaded) sub only exists in the dying mpv
           // instance — the server must be asked for "none" (-1) instead.
-          subtitleIndex: String(toServerSubtitleIndex(currentSubtitleIndex)),
+          subtitleIndex: String(
+            toServerSubtitleIndex(
+              subtitlePreferenceRef.current(currentSubtitleIndex),
+            ),
+          ),
           mediaSourceId: stream?.mediaSource?.Id ?? "",
           bitrateValue: bitrateValue?.toString() ?? "",
           playbackPosition: msToTicks(progress.get()).toString(),
@@ -1323,7 +1328,11 @@ export default function DirectPlayerPage() {
         audioIndex: params.audioIndex ?? String(currentAudioIndex ?? ""),
         subtitleIndex:
           params.subtitleIndex ??
-          String(toServerSubtitleIndex(currentSubtitleIndex)),
+          String(
+            toServerSubtitleIndex(
+              subtitlePreferenceRef.current(currentSubtitleIndex),
+            ),
+          ),
         mediaSourceId: stream?.mediaSource?.Id ?? "",
         bitrateValue: params.bitrateValue ?? bitrateValue?.toString() ?? "",
         playbackPosition: msToTicks(progress.get()).toString(),
@@ -1475,7 +1484,7 @@ export default function DirectPlayerPage() {
     } = getDefaultPlaySettings(previousItem, settings, {
       indexes: {
         // Use the live selection, not the stale URL params (see goToNextItem).
-        subtitleIndex: currentSubtitleIndex,
+        subtitleIndex: subtitlePreferenceRef.current(currentSubtitleIndex),
         audioIndex: currentAudioIndex,
       },
       source: stream?.mediaSource ?? undefined,
@@ -1559,7 +1568,7 @@ export default function DirectPlayerPage() {
       indexes: {
         // Use the live selection (updated when the user changes tracks
         // mid-playback), not the stale URL params the episode started with.
-        subtitleIndex: currentSubtitleIndex,
+        subtitleIndex: subtitlePreferenceRef.current(currentSubtitleIndex),
         audioIndex: currentAudioIndex,
       },
       source: stream?.mediaSource ?? undefined,
@@ -1721,7 +1730,10 @@ export default function DirectPlayerPage() {
         tracksReady={tracksReady}
         downloadedItem={downloadedItem}
       >
-        <VideoProvider>
+        <VideoProvider
+          onMuteChanged={setIsMuted}
+          subtitlePreferenceRef={subtitlePreferenceRef}
+        >
           <View
             style={{
               flex: 1,

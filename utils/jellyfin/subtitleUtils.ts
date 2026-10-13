@@ -556,13 +556,17 @@ export const applyMpvSubtitleSelection = async (
     jellyfinSubtitleIndex: number;
     /** Build the exact URL/path an external sub was loaded into the player with. */
     getExpectedExternalUrl?: (sub: MediaStream) => string | undefined;
+    /** Session automation can be cancelled without a replacement selection. */
+    canCommit?: () => boolean;
   },
 ): Promise<SubtitleSelection> => {
   if (!player) return { kind: "notFound" };
   const owner = player.getSubtitleSelectionOwner?.() ?? player;
   const ticket = (subtitleSelectionTickets.get(owner) ?? 0) + 1;
   subtitleSelectionTickets.set(owner, ticket);
-  const isCurrent = () => subtitleSelectionTickets.get(owner) === ticket;
+  const isCurrent = () =>
+    subtitleSelectionTickets.get(owner) === ticket &&
+    (params.canCommit?.() ?? true);
 
   // Called fire-and-forget (`void applyMpvSubtitleSelection(...)`), so any native
   // rejection from getSubtitleTracks/setSubtitleTrack/disableSubtitles must be
@@ -571,6 +575,7 @@ export const applyMpvSubtitleSelection = async (
     // Short-circuit the outcomes that don't need the player's track list, so
     // the common subtitles-off case skips a full native enumeration.
     if (params.jellyfinSubtitleIndex === -1) {
+      if (!isCurrent()) return { kind: "superseded" };
       await player.disableSubtitles();
       return { kind: "disable" };
     }
