@@ -100,6 +100,9 @@ export interface DownloadsDatabase {
  * Represents the status of a download job.
  */
 export type JobStatus = {
+  /** Unique native event ownership for this attempt (legacy jobs omit it). */
+  nativeItemId?: string;
+  errorMessage?: string;
   /** Unique identifier for the download job (also the {@link itemId}) */
   id: string;
   /** The input URL for the media to be downloaded (passed in when first downloading) */

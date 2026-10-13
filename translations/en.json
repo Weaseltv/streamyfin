@@ -550,7 +550,8 @@
         "downloading": "Downloading",
         "completed": "Downloaded",
         "failed": "Download failed",
-        "queued": "Queued"
+        "queued": "Queued",
+        "preparing": "Preparing…"
       },
       "toasts": {
         "you_are_not_allowed_to_download_files": "You are not allowed to download files.",
@@ -574,6 +575,7 @@
         "could_not_get_download_url_for_item": "Could not get download URL for {{itemName}}",
         "file_deleted": "{{item}} deleted"
       },
+      "selected_subtitle_unavailable": "The selected subtitle could not be saved. Choose another track or retry.",
       "offline_library": "Offline library",
       "queue": "Queue",
       "of_total": "{{downloaded}} of {{total}}",

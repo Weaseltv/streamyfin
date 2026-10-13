@@ -15,7 +15,7 @@ import { t } from "i18next";
 import { useAtom } from "jotai";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Platform, Switch, View, type ViewProps } from "react-native";
+import { Platform, Switch, View, type ViewProps } from "react-native";
 import { toast } from "sonner-native";
 import { HEADER_ICON_SIZE } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
@@ -29,6 +29,7 @@ import { queueAtom } from "@/utils/atoms/queue";
 import { useSettings } from "@/utils/atoms/settings";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { getDownloadUrl } from "@/utils/jellyfin/media/getDownloadUrl";
+import { writeInfoLog } from "@/utils/log";
 import { AudioTrackSelector } from "./AudioTrackSelector";
 import { type Bitrate, BitrateSelector } from "./BitrateSelector";
 import { Button } from "./Button";
@@ -201,8 +202,13 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   }, [items, itemsNotDownloaded]);
   const itemsProcesses = useMemo(
     () =>
-      processes?.filter((p) => p?.item?.Id && itemIds.includes(p.item.Id)) ||
-      [],
+      processes?.filter(
+        (p) =>
+          p?.item?.Id &&
+          p.status !== "error" &&
+          p.status !== "completed" &&
+          itemIds.includes(p.item.Id),
+      ) || [],
     [processes, itemIds],
   );
 
@@ -249,109 +255,82 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   };
 
   const initiateDownload = useCallback(
-    async (...items: BaseItemDto[]) => {
-      if (
-        !api ||
-        !user?.Id ||
-        items.some((p) => !p.Id) ||
-        (itemsNotDownloaded.length === 1 && !selectedOptions?.mediaSource?.Id)
-      ) {
-        throw new Error(
-          "DownloadItem ~ initiateDownload: No api or user or item",
-        );
-      }
-      const downloadDetailsPromises = items.map(async (item) => {
-        // Ensure the snapshot we store offline carries the Chapters array.
-        // Page-level fetches sometimes use a fields filter that omits it; the
-        // offline player would then render no chapter ticks / list.
-        let itemForDownload = item;
-        if (!itemForDownload.Chapters && itemForDownload.Id) {
-          try {
-            const enriched = await getUserLibraryApi(api).getItem({
-              itemId: itemForDownload.Id,
-              userId: user.Id!,
-            });
-            if (enriched.data) {
-              itemForDownload = enriched.data;
-            }
-          } catch (e) {
-            console.warn(
-              "[DownloadItem] failed to refresh item for Chapters, falling back to original",
-              e,
-            );
-          }
-        }
-
-        const { mediaSource, audioIndex, subtitleIndex } =
-          itemsNotDownloaded.length > 1
-            ? getDefaultPlaySettings(itemForDownload, settings!)
-            : {
-                mediaSource: selectedOptions?.mediaSource,
-                audioIndex: selectedOptions?.audioIndex,
-                subtitleIndex: selectedOptions?.subtitleIndex,
+    async (...downloads: BaseItemDto[]) => {
+      if (!api || !user?.Id) throw new Error("download_parameters_missing");
+      const results = await Promise.allSettled(
+        downloads.map((original) => {
+          // startBackgroundDownload reserves synchronously and inserts Preparing
+          // before this resolver can await metadata or PlaybackInfo.
+          return startBackgroundDownload(
+            async (stage) => {
+              let item = original;
+              if (!item.Chapters && item.Id) {
+                try {
+                  item = (
+                    await getUserLibraryApi(api).getItem(
+                      { itemId: item.Id, userId: user.Id! },
+                      { signal: stage.signal },
+                    )
+                  ).data;
+                } catch {
+                  stage.assertActive();
+                }
+              }
+              stage.assertActive();
+              const choices =
+                itemsNotDownloaded.length > 1
+                  ? getDefaultPlaySettings(item, settings!)
+                  : {
+                      mediaSource: selectedOptions?.mediaSource,
+                      audioIndex: selectedOptions?.audioIndex,
+                      subtitleIndex: selectedOptions?.subtitleIndex,
+                    };
+              if (!choices.mediaSource?.Id)
+                throw new Error("download_source_missing");
+              const details = await getDownloadUrl({
+                api,
+                item,
+                userId: user.Id!,
+                mediaSource: choices.mediaSource,
+                audioStreamIndex: choices.audioIndex ?? -1,
+                subtitleStreamIndex: choices.subtitleIndex ?? -1,
+                maxBitrate: selectedOptions?.bitrate || defaultBitrate,
+                deviceId: api.deviceInfo.id,
+                audioMode: settings?.audioTranscodeMode,
+                signal: stage.signal,
+              });
+              stage.assertActive();
+              if (!details?.url || !details.mediaSource)
+                throw new Error("download_stream_unavailable");
+              writeInfoLog("Download preparation", {
+                stage: "resolution_complete",
+                result: details.mediaSource.TranscodingUrl
+                  ? "transcode"
+                  : "direct",
+              });
+              return {
+                url: details.url,
+                item,
+                mediaSource: details.mediaSource,
+                audioStreamIndex: choices.audioIndex,
+                subtitleStreamIndex: choices.subtitleIndex ?? -1,
               };
-
-        const downloadDetails = await getDownloadUrl({
-          api,
-          item: itemForDownload,
-          userId: user.Id!,
-          mediaSource: mediaSource!,
-          audioStreamIndex: audioIndex ?? -1,
-          subtitleStreamIndex: subtitleIndex ?? -1,
-          maxBitrate: selectedOptions?.bitrate || defaultBitrate,
-          deviceId: api.deviceInfo.id,
-          audioMode: settings?.audioTranscodeMode,
-        });
-
-        return {
-          url: downloadDetails?.url,
-          item: itemForDownload,
-          mediaSource: downloadDetails?.mediaSource,
-        };
-      });
-
-      const downloadDetails = await Promise.all(downloadDetailsPromises);
-      for (const { url, item, mediaSource } of downloadDetails) {
-        if (!url) {
-          Alert.alert(
-            t("home.downloads.something_went_wrong"),
-            t("home.downloads.could_not_get_stream_url_from_jellyfin"),
+            },
+            original,
+            downloads.length > 1
+              ? original.MediaSources?.[0]
+              : selectedOptions?.mediaSource,
+            selectedOptions?.bitrate || defaultBitrate,
           );
-          continue;
-        }
-        if (!mediaSource) {
-          console.error(`Could not get download URL for ${item.Name}`);
-          toast.error(
-            t("home.downloads.toasts.could_not_get_download_url_for_item", {
-              itemName: item.Name,
-            }),
-          );
-          continue;
-        }
-        // Get the audio/subtitle indices that were used for this download
-        const downloadAudioIndex =
-          itemsNotDownloaded.length > 1
-            ? getDefaultPlaySettings(item, settings!).audioIndex
-            : selectedOptions?.audioIndex;
-        const downloadSubtitleIndex =
-          itemsNotDownloaded.length > 1
-            ? getDefaultPlaySettings(item, settings!).subtitleIndex
-            : selectedOptions?.subtitleIndex;
-
-        await startBackgroundDownload(
-          url,
-          item,
-          mediaSource,
-          selectedOptions?.bitrate || defaultBitrate,
-          downloadAudioIndex,
-          downloadSubtitleIndex,
-        );
-      }
+        }),
+      );
+      if (results.some((result) => result.status === "rejected"))
+        toast.error(t("home.downloads.toasts.failed_to_start_download"));
     },
     [
       api,
       user?.Id,
-      itemsNotDownloaded,
+      itemsNotDownloaded.length,
       selectedOptions,
       settings,
       defaultBitrate,
@@ -362,15 +341,19 @@ export const DownloadItems: React.FC<DownloadProps> = ({
   const acceptDownloadOptions = useCallback(async () => {
     if (userCanDownload === true) {
       if (itemsToDownload.some((i) => !i.Id)) {
-        throw new Error("No item id");
+        toast.error(t("home.downloads.toasts.failed_to_start_download"));
+        return;
       }
 
       closeModal();
 
-      // Wait for modal dismiss animation to complete
-      setTimeout(() => {
-        initiateDownload(...itemsToDownload);
-      }, 300);
+      // Begin synchronously before dismiss can unmount this sheet. Every
+      // asynchronous rejection is observed; one failed batch item leaves the rest usable.
+      try {
+        await initiateDownload(...itemsToDownload);
+      } catch {
+        toast.error(t("home.downloads.toasts.failed_to_start_download"));
+      }
     } else {
       toast.error(
         t("home.downloads.toasts.you_are_not_allowed_to_download_files"),

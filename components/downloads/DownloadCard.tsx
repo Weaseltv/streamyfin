@@ -144,6 +144,14 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
   const accent = typeAccent(process.item);
   const badge = typeLabel(process.item);
   const active = process.status === "downloading";
+  const statusText =
+    process.status === "pending"
+      ? t("home.downloads.live_activity.preparing")
+      : process.status === "error"
+        ? process.errorMessage || t("home.downloads.live_activity.failed")
+        : process.status === "completed"
+          ? t("home.downloads.live_activity.completed")
+          : t("home.downloads.live_activity.queued");
   const totalText = estimatedSize
     ? `${isTranscoding ? "~" : ""}${formatBytes(estimatedSize)}`
     : null;
@@ -163,7 +171,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
         eta ? t("home.downloads.time_left", { time: eta }) : null,
         isTranscoding ? t("home.downloads.transcoding") : null,
       ]
-    : [t("home.downloads.live_activity.queued"), totalText];
+    : [statusText, totalText];
 
   const poster = (
     <View
@@ -248,7 +256,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
           />
         ) : null}
       </View>
-      {active ? (
+      {process.status !== "completed" ? (
         <TouchableOpacity
           onPress={() => handleDelete(process.id)}
           hitSlop={10}
@@ -264,7 +272,7 @@ export const DownloadCard = ({ process, ...props }: DownloadCardProps) => {
           <Feather name='x' size={22} color={NeonBoard.red} />
         </TouchableOpacity>
       ) : (
-        <Badge text={t("home.downloads.live_activity.queued")} />
+        <Badge text={statusText} />
       )}
     </TouchableOpacity>
   );

@@ -78,9 +78,16 @@ function useDownloadProvider() {
       updater:
         | Partial<JobStatus>
         | ((current: JobStatus) => Partial<JobStatus>),
+      nativeItemId?: string,
     ) => {
       setProcesses((prev) => {
-        const processIndex = prev.findIndex((p) => p.id === processId);
+        const processIndex = prev.findIndex(
+          (p) =>
+            p.id === processId &&
+            (!nativeItemId ||
+              !p.nativeItemId ||
+              p.nativeItemId === nativeItemId),
+        );
         if (processIndex === -1) return prev;
 
         const currentProcess = prev[processIndex];
@@ -103,10 +110,18 @@ function useDownloadProvider() {
   );
 
   const removeProcess = useCallback(
-    (id: string) => {
+    (id: string, nativeItemId?: string) => {
       // Use setTimeout to defer removal and avoid race conditions during rendering
       setTimeout(() => {
-        setProcesses((prev) => prev.filter((process) => process.id !== id));
+        setProcesses((prev) =>
+          prev.filter(
+            (process) =>
+              process.id !== id ||
+              (nativeItemId !== undefined &&
+                process.nativeItemId !== undefined &&
+                process.nativeItemId !== nativeItemId),
+          ),
+        );
       }, 0);
     },
     [setProcesses],

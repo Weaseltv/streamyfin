@@ -2,9 +2,10 @@ import type {
   BaseItemDto,
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import type { Bitrate } from "@/components/BitrateSelector";
 import type { DownloadActivityMetadata } from "@/modules/background-downloader";
+import { recordForDownloadEvent } from "@/utils/downloadEventIdentity";
 import { storage } from "@/utils/mmkv";
 import { addDownloadedItem } from "./database";
 import type { DownloadedItem, MediaTimeSegment, TrickPlayData } from "./types";
@@ -24,7 +25,9 @@ export interface PendingDownload {
   /** Jellyfin item id; the record key, and how native events are correlated back. */
   itemId: string;
   /** `queued` until the native started event fires, then `downloading`. */
-  status: "queued" | "downloading";
+  status: "queued" | "downloading" | "failed";
+  /** Non-secret source/settings identity; matching retries retain Android's partial. */
+  resumeKey?: string;
   enqueuedAt: string;
   /** Native task id, known once the download actually starts. */
   taskId?: number;
@@ -67,6 +70,10 @@ export function getPendingDownloads(): PendingDownload[] {
   return Object.values(readAll());
 }
 
+export function getPendingDownloadForEvent(nativeItemId: string | undefined) {
+  return recordForDownloadEvent(getPendingDownloads(), nativeItemId);
+}
+
 export function getPendingDownload(
   itemId: string,
 ): PendingDownload | undefined {
@@ -100,6 +107,34 @@ export function removePendingDownload(itemId: string): void {
 /** URI of the video file a pending download writes to (derived, never stored). */
 export function pendingDownloadFileUri(record: PendingDownload): string {
   return new File(Paths.document, record.videoFileName).uri;
+}
+
+/** Clean attempt-owned assets; failed videos remain resumable until retry or dismissal. */
+export function cleanupPendingRecordFiles(
+  record: PendingDownload,
+  keepVideo = false,
+): void {
+  const remove = (entry: File | Directory) => {
+    try {
+      if (entry.exists) entry.delete();
+    } catch {
+      /* Best effort own paths only. */
+    }
+  };
+  if (!keepVideo) {
+    for (const suffix of ["", ".part", ".part.json"])
+      remove(new File(Paths.document, `${record.videoFileName}${suffix}`));
+  }
+  if (record.trickPlayData?.path) {
+    const name = record.trickPlayData.path.replace(/\/$/, "").split("/").pop();
+    if (name) remove(new Directory(Paths.document, name));
+  }
+  for (const stream of record.mediaSource.MediaStreams ?? []) {
+    if (stream.Type !== "Subtitle" || !stream.DeliveryUrl?.startsWith("file:"))
+      continue;
+    const name = stream.DeliveryUrl.split("/").pop();
+    if (name) remove(new File(Paths.document, name));
+  }
 }
 
 /**

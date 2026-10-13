@@ -1,4 +1,4 @@
-import { File } from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type {
@@ -8,13 +8,17 @@ import type {
   DownloadStartedEvent,
 } from "@/modules";
 import { BackgroundDownloader } from "@/modules";
+import { preparationEventIdentity } from "@/utils/downloadEventIdentity";
+import { getDownloadedItemById } from "../database";
 import {
   getNotificationContent,
   sendDownloadNotification,
 } from "../notifications";
 import {
+  cleanupPendingRecordFiles,
   finalizePendingDownload,
   getPendingDownload,
+  getPendingDownloadForEvent,
   removePendingDownload,
   updatePendingDownload,
 } from "../pendingDownloads";
@@ -31,8 +35,9 @@ interface UseDownloadEventHandlersProps {
   updateProcess: (
     processId: string,
     updater: Partial<JobStatus> | ((current: JobStatus) => Partial<JobStatus>),
+    nativeItemId?: string,
   ) => void;
-  removeProcess: (id: string) => void;
+  removeProcess: (id: string, nativeItemId?: string) => void;
   onSuccess?: () => void;
   onDataChange?: () => void;
 }
@@ -63,14 +68,19 @@ export function useDownloadEventHandlers({
   useEffect(() => {
     const startedSub = BackgroundDownloader.addStartedListener(
       (event: DownloadStartedEvent) => {
-        const itemId = event.itemId;
-        if (!itemId || !getPendingDownload(itemId)) return;
+        const record = getPendingDownloadForEvent(event.itemId);
+        if (!record) return;
+        const itemId = record.itemId;
 
         updatePendingDownload(itemId, {
           status: "downloading",
           taskId: event.taskId,
         });
-        updateProcess(itemId, { status: "downloading", startTime: new Date() });
+        updateProcess(
+          itemId,
+          { status: "downloading", startTime: new Date() },
+          event.itemId,
+        );
       },
     );
 
@@ -84,10 +94,9 @@ export function useDownloadEventHandlers({
   useEffect(() => {
     const progressSub = BackgroundDownloader.addProgressListener(
       (event: DownloadProgressEvent) => {
-        const processId = event.itemId;
-        if (!processId) {
-          return;
-        }
+        const record = getPendingDownloadForEvent(event.itemId);
+        if (!record) return;
+        const processId = record.itemId;
 
         // Validate event data before processing
         if (
@@ -169,14 +178,18 @@ export function useDownloadEventHandlers({
         }
 
         // Update state (native layer already throttles events to every 500ms)
-        updateProcess(processId, {
-          progress,
-          bytesDownloaded: event.bytesWritten,
-          lastProgressUpdateTime: new Date(),
-          speed,
-          estimatedTotalSizeBytes: estimatedTotalBytes,
-          isTranscoding,
-        });
+        updateProcess(
+          processId,
+          {
+            progress,
+            bytesDownloaded: event.bytesWritten,
+            lastProgressUpdateTime: new Date(),
+            speed,
+            estimatedTotalSizeBytes: estimatedTotalBytes,
+            isTranscoding,
+          },
+          event.itemId,
+        );
       },
     );
 
@@ -187,11 +200,29 @@ export function useDownloadEventHandlers({
   useEffect(() => {
     const completeSub = BackgroundDownloader.addCompleteListener(
       async (event: DownloadCompleteEvent) => {
-        const itemId = event.itemId;
-        if (!itemId) return;
-
-        const record = getPendingDownload(itemId);
-        if (!record) return;
+        const record = getPendingDownloadForEvent(event.itemId);
+        if (!record) {
+          // A cancelled attempt may still deliver its own final file. Never
+          // delete a current database file or a path outside Documents.
+          const identity = preparationEventIdentity(event.itemId);
+          if (identity) {
+            const name = event.filePath.split("/").pop() ?? "";
+            const expected = new File(Paths.document, name);
+            const completed = getDownloadedItemById(identity.itemId);
+            if (
+              /_\d{13}-\d+\.mp4$/.test(name) &&
+              expected.uri === filePathToUri(event.filePath) &&
+              completed?.videoFileName !== name &&
+              getPendingDownload(identity.itemId)?.videoFileName !== name
+            ) {
+              try {
+                if (expected.exists) expected.delete();
+              } catch {}
+            }
+          }
+          return;
+        }
+        const itemId = record.itemId;
 
         try {
           const videoFile = new File(filePathToUri(event.filePath));
@@ -210,10 +241,14 @@ export function useDownloadEventHandlers({
             process?.isTranscoding,
           );
 
-          updateProcess(itemId, {
-            status: "completed",
-            progress: 100,
-          });
+          updateProcess(
+            itemId,
+            {
+              status: "completed",
+              progress: 100,
+            },
+            event.itemId,
+          );
 
           const notificationContent = getNotificationContent(
             record.item,
@@ -233,14 +268,20 @@ export function useDownloadEventHandlers({
 
           // Remove process after short delay
           setTimeout(() => {
-            removeProcess(itemId);
+            removeProcess(itemId, event.itemId);
           }, 2000);
-        } catch (error) {
-          console.error("Error handling download completion:", error);
-          removePendingDownload(itemId);
-          updateProcess(itemId, { status: "error" });
+        } catch {
+          console.error("Download completion bookkeeping failed");
+          if (
+            getDownloadedItemById(itemId)?.videoFileName !==
+            record.videoFileName
+          )
+            cleanupPendingRecordFiles(record);
+          if (getPendingDownloadForEvent(event.itemId))
+            removePendingDownload(itemId);
+          updateProcess(itemId, { status: "error" }, event.itemId);
           clearSpeedData(itemId);
-          removeProcess(itemId);
+          removeProcess(itemId, event.itemId);
         }
       },
     );
@@ -252,16 +293,15 @@ export function useDownloadEventHandlers({
   useEffect(() => {
     const errorSub = BackgroundDownloader.addErrorListener(
       async (event: DownloadErrorEvent) => {
-        const itemId = event.itemId;
-        if (!itemId) return;
-
-        const record = getPendingDownload(itemId);
+        const record = getPendingDownloadForEvent(event.itemId);
         if (!record) return;
+        const itemId = record.itemId;
 
-        console.error(`Download error for ${itemId}:`, event.error);
+        console.error("Download native event failed");
 
-        removePendingDownload(itemId);
-        updateProcess(itemId, { status: "error" });
+        cleanupPendingRecordFiles(record, true);
+        updatePendingDownload(itemId, { status: "failed" });
+        updateProcess(itemId, { status: "error" }, event.itemId);
 
         // Clean up speed data
         clearSpeedData(itemId);
@@ -276,10 +316,7 @@ export function useDownloadEventHandlers({
           notificationContent.body,
         );
 
-        // Remove process after short delay
-        setTimeout(() => {
-          removeProcess(itemId);
-        }, 3000);
+        // Retain the failed row so the resumable partial can be retried or dismissed.
       },
     );
 
