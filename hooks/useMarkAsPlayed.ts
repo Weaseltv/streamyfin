@@ -6,7 +6,7 @@ import { useHaptic } from "./useHaptic";
 import { usePlaybackManager } from "./usePlaybackManager";
 import { useInvalidatePlaybackProgressCache } from "./useRevalidatePlaybackProgressCache";
 
-export const useMarkAsPlayed = (items: BaseItemDto[]) => {
+export const useMarkAsPlayed = (items: BaseItemDto[], throwOnError = false) => {
   const queryClient = useQueryClient();
   const lightHapticFeedback = useHaptic("light");
   const { markItemPlayed, markItemUnplayed } = usePlaybackManager();
@@ -62,14 +62,17 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
             return played ? markItemPlayed(item.Id) : markItemUnplayed(item.Id);
           }),
         );
-      } catch (_error) {
+      } catch (error) {
         for (const { queries } of previousQueriesByItemId) {
           for (const [queryKey, data] of queries) {
             queryClient.setQueryData(queryKey, data);
           }
         }
+        if (throwOnError) throw error;
       } finally {
-        await invalidatePlaybackProgressCache();
+        const revalidation = invalidatePlaybackProgressCache();
+        if (throwOnError) void revalidation.catch(() => {});
+        else await revalidation;
         for (const itemId of itemIds) {
           queryClient.invalidateQueries({ queryKey: ["item", itemId] });
         }
@@ -83,6 +86,7 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
       markItemUnplayed,
       queryClient,
       undismissSeriesFromNextUp,
+      throwOnError,
     ],
   );
 

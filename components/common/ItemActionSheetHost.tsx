@@ -3,11 +3,21 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { toast } from "sonner-native";
+import { NeonBoard } from "@/constants/Colors";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useDownload } from "@/providers/DownloadProvider";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
+import { usePageAccent } from "@/utils/atoms/pageAccent";
+import {
+  admitItemAction,
+  canExecuteItemAction,
+  clearItemAction,
+} from "@/utils/itemActionOwnership";
 
 type Request = {
   item: BaseItemDto;
@@ -23,7 +33,12 @@ const itemActionAtom = atom<Request | null>(null);
 const requestItemActionsAtom = atom(
   null,
   (get, set, request: Omit<Request, "ownerKey">) => {
-    set(itemActionAtom, { ...request, ownerKey: ownerKeyFor(get(userAtom)) });
+    const current = get(itemActionAtom);
+    const ownerKey = ownerKeyFor(get(userAtom));
+    set(
+      itemActionAtom,
+      admitItemAction(current, { ...request, ownerKey }, ownerKey),
+    );
   },
 );
 export const useRequestItemActions = () => useSetAtom(requestItemActionsAtom);
@@ -36,7 +51,10 @@ export function ItemActionSheetHost() {
     setRequest((current) => (current?.ownerKey === ownerKey ? current : null));
   }, [ownerKey, setRequest]);
   const close = useCallback(
-    () => setRequest((current) => (current === request ? null : current)),
+    () =>
+      setRequest((current) =>
+        request ? clearItemAction(current, request) : current,
+      ),
     [request, setRequest],
   );
   return request && request.ownerKey === ownerKey ? (
@@ -54,12 +72,15 @@ function ItemActionSheet({
   const { item, isOffline } = request;
   const atomStore = useStore();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const accent = usePageAccent();
   const { showActionSheetWithOptions } = useActionSheet();
-  const markAsPlayedStatus = useMarkAsPlayed([item]);
-  const { isFavorite, toggleFavorite } = useFavorite(item);
+  const markAsPlayedStatus = useMarkAsPlayed([item], true);
+  const { isFavorite, favoriteMutation } = useFavorite(item, true);
   const { deleteFile } = useDownload();
   const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
   const presented = useRef<Request | null>(null);
+  const executed = useRef<Request | null>(null);
   const showActionSheet = useCallback(() => {
     if (
       !(
@@ -67,8 +88,10 @@ function ItemActionSheet({
         item.Type === "Episode" ||
         item.Type === "Series"
       )
-    )
+    ) {
+      close();
       return;
+    }
 
     const actions: { label: string; onPress: () => void | Promise<void> }[] = [
       {
@@ -83,7 +106,9 @@ function ItemActionSheet({
         label: isFavorite
           ? t("music.track_options.remove_from_favorites")
           : t("music.track_options.add_to_favorites"),
-        onPress: toggleFavorite,
+        onPress: async () => {
+          await favoriteMutation.mutateAsync(!isFavorite);
+        },
       },
     ];
     // Jellyfin's Next Up keeps offering a series' next unwatched episode for
@@ -110,19 +135,56 @@ function ItemActionSheet({
     const cancelButtonIndex = options.length - 1;
 
     showActionSheetWithOptions(
-      { options, cancelButtonIndex, destructiveButtonIndex },
+      {
+        options,
+        cancelButtonIndex,
+        destructiveButtonIndex,
+        ...(Platform.OS === "android" && !Platform.isTV
+          ? {
+              title: item.Name ?? undefined,
+              tintColor: NeonBoard.text,
+              cancelButtonTintColor: accent,
+              destructiveColor: NeonBoard.red,
+              titleTextStyle: { color: accent, fontWeight: "600" as const },
+              containerStyle: {
+                backgroundColor: NeonBoard.card,
+                paddingBottom: insets.bottom,
+                borderTopWidth: 2,
+                borderTopColor: accent,
+              },
+              showSeparators: true,
+              separatorStyle: { backgroundColor: NeonBoard.line },
+            }
+          : {}),
+      },
       async (selectedIndex) => {
+        if (
+          !canExecuteItemAction(
+            request,
+            atomStore.get(itemActionAtom),
+            ownerKeyFor(atomStore.get(userAtom)),
+            executed.current,
+          )
+        )
+          return;
+        executed.current = request;
+        let progressToast: string | number | undefined;
         try {
           // A global action-sheet overlay can outlive this component on
           // logout/account switch. Never invoke its old account's mutation.
-          if (ownerKeyFor(atomStore.get(userAtom)) !== request.ownerKey) return;
           if (
             selectedIndex === undefined ||
             selectedIndex === cancelButtonIndex
           )
             return;
-          await actions[selectedIndex]?.onPress();
+          const action = actions[selectedIndex];
+          if (!action) return;
+          progressToast = toast.loading(action.label);
+          await action.onPress();
+        } catch {
+          toast.error(t("login.an_unexpected_error_occurred"));
         } finally {
+          if (progressToast !== undefined) toast.dismiss(progressToast);
           close();
         }
       },
@@ -134,7 +196,11 @@ function ItemActionSheet({
     close,
     isFavorite,
     markAsPlayedStatus,
-    toggleFavorite,
+    favoriteMutation,
+    accent,
+    insets.bottom,
+    request,
+    item.Name,
     isOffline,
     deleteFile,
     dismissSeriesFromNextUp,
