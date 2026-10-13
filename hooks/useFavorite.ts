@@ -1,13 +1,14 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { FAVORITES_PREFIX } from "@/utils/query/favorites";
 
 /**
  * Optimistic favourite state, shared so a toggle in one place is reflected
- * everywhere the item appears. Keyed `userId:itemId` so a different account
+ * everywhere the item appears. Keyed by server, user and item so an account
  * can never read the previous one's entries.
  *
  * Consumers must NOT subscribe to this map directly: every mounted card uses
@@ -16,15 +17,19 @@ import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
  */
 const favoritesAtom = atom<Record<string, boolean>>({});
 
-export const useFavorite = (item: BaseItemDto) => {
+export const useFavorite = (item: BaseItemDto, forceNetwork = false) => {
   const queryClient = useQueryClient();
+  const atomStore = useStore();
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   // Write-only: subscribing here would defeat the per-item selector below.
   const setFavorites = useSetAtom(favoritesAtom);
 
   const itemId = item.Id ?? "";
-  const entryKey = itemId && user?.Id ? `${user.Id}:${itemId}` : "";
+  const entryKey =
+    itemId && user?.Id
+      ? `${user.ServerId || api?.basePath}:${user.Id}:${itemId}`
+      : "";
 
   // Derived per item, so this consumer only re-renders when *its* entry
   // changes. Created in a useMemo rather than a module-level registry: the
@@ -64,23 +69,24 @@ export const useFavorite = (item: BaseItemDto) => {
     [entryKey, setFavorites],
   );
 
-  // Use refs to avoid stale closure issues in mutationFn
-  const itemRef = useRef(item);
-  const apiRef = useRef(api);
-  const userRef = useRef(user);
-
-  // Keep refs updated
-  useEffect(() => {
-    itemRef.current = item;
-  }, [item]);
-
-  useEffect(() => {
-    apiRef.current = api;
-  }, [api]);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
+  const currentScope = useRef({ entryKey, api });
+  currentScope.current = { entryKey, api };
+  const snapshot = () => ({
+    entryKey,
+    api,
+    user,
+    item,
+    previousIsFavorite: isFavorite,
+  });
+  type FavoriteRequest = {
+    nextIsFavorite: boolean;
+    scope: ReturnType<typeof snapshot>;
+  };
+  const isCurrent = ({ scope }: FavoriteRequest) =>
+    scope.entryKey === currentScope.current.entryKey &&
+    scope.api === currentScope.current.api &&
+    atomStore.get(apiAtom) === scope.api &&
+    atomStore.get(userAtom)?.Id === scope.user?.Id;
 
   const itemQueryKeyPrefix = useMemo(
     () => ["item", item.Id] as const,
@@ -109,14 +115,21 @@ export const useFavorite = (item: BaseItemDto) => {
   );
 
   const favoriteMutation = useMutation({
-    mutationFn: async (nextIsFavorite: boolean) => {
-      const currentApi = apiRef.current;
-      const currentUser = userRef.current;
-      const currentItem = itemRef.current;
-
-      if (!currentApi || !currentUser?.Id || !currentItem?.Id) {
-        return;
-      }
+    networkMode: forceNetwork ? "always" : undefined,
+    mutationFn: async (request: FavoriteRequest) => {
+      const {
+        api: currentApi,
+        user: currentUser,
+        item: currentItem,
+      } = request.scope;
+      if (
+        !isCurrent(request) ||
+        !currentApi ||
+        !currentUser?.Id ||
+        !currentItem?.Id
+      )
+        throw new Error("favorite_session_obsolete");
+      const { nextIsFavorite } = request;
 
       // Use the same endpoint format as the web client:
       // POST /Users/{userId}/FavoriteItems/{itemId} - add favorite
@@ -128,10 +141,12 @@ export const useFavorite = (item: BaseItemDto) => {
         : await currentApi.delete(path, {});
       return response.data;
     },
-    onMutate: async (nextIsFavorite: boolean) => {
+    onMutate: async (request: FavoriteRequest) => {
+      const { nextIsFavorite } = request;
       await queryClient.cancelQueries({ queryKey: itemQueryKeyPrefix });
 
-      const previousIsFavorite = isFavorite;
+      if (!isCurrent(request)) return undefined;
+      const previousIsFavorite = request.scope.previousIsFavorite;
       const previousQueries = queryClient.getQueriesData<BaseItemDto | null>({
         queryKey: itemQueryKeyPrefix,
       });
@@ -141,7 +156,8 @@ export const useFavorite = (item: BaseItemDto) => {
 
       return { previousIsFavorite, previousQueries };
     },
-    onError: (_err, _nextIsFavorite, context) => {
+    onError: (_err, request, context) => {
+      if (!isCurrent(request)) return;
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
@@ -149,19 +165,26 @@ export const useFavorite = (item: BaseItemDto) => {
       }
       setIsFavorite(context?.previousIsFavorite);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, request) => {
+      if (!isCurrent(request)) return;
       queryClient.invalidateQueries({ queryKey: itemQueryKeyPrefix });
-      queryClient.invalidateQueries({ queryKey: ["home", "favorites"] });
+      queryClient.invalidateQueries({ queryKey: FAVORITES_PREFIX });
     },
   });
 
   const toggleFavorite = useCallback(() => {
-    favoriteMutation.mutate(!isFavorite);
+    favoriteMutation.mutate({ nextIsFavorite: !isFavorite, scope: snapshot() });
   }, [favoriteMutation, isFavorite]);
 
   return {
     isFavorite,
     toggleFavorite,
-    favoriteMutation,
+    favoriteMutation: {
+      ...favoriteMutation,
+      mutate: (nextIsFavorite: boolean) =>
+        favoriteMutation.mutate({ nextIsFavorite, scope: snapshot() }),
+      mutateAsync: (nextIsFavorite: boolean) =>
+        favoriteMutation.mutateAsync({ nextIsFavorite, scope: snapshot() }),
+    },
   };
 };

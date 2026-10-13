@@ -41,6 +41,7 @@ interface Props extends ViewProps {
   pageSize?: number;
   onPressSeeAll?: () => void;
   enabled?: boolean;
+  retry?: number;
   /**
    * Fires once per mount when the query *settles* — success or error. Home's
    * priority gate consumes this, so a failed rail must still report in;
@@ -64,6 +65,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   pageSize = 10,
   onPressSeeAll,
   enabled = true,
+  retry,
   onSettled,
   ...props
 }) => {
@@ -97,6 +99,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     enabled,
+    retry,
   });
 
   // Notify the parent once this rail settles either way.

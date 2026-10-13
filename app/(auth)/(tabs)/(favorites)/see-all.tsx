@@ -12,6 +12,7 @@ import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
@@ -21,6 +22,7 @@ import { ItemPoster } from "@/components/posters/ItemPoster";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { favoriteScope } from "@/utils/query/favorites";
 
 type FavoriteTypes =
   | "Series"
@@ -73,40 +75,60 @@ export default function FavoritesSeeAllScreen() {
   const pageSize = 50;
 
   const fetchItems = useCallback(
-    async ({ pageParam }: { pageParam: number }): Promise<BaseItemDto[]> => {
+    async ({
+      pageParam,
+      signal,
+    }: {
+      pageParam: number;
+      signal: AbortSignal;
+    }): Promise<BaseItemDto[]> => {
       if (!api || !user?.Id || !itemType) return [];
 
-      const response = await getItemsApi(api as Api).getItems({
-        userId: user.Id,
-        sortBy: ["SeriesSortName", "SortName"],
-        sortOrder: ["Ascending"],
-        filters: ["IsFavorite"],
-        recursive: true,
-        fields: ["PrimaryImageAspectRatio"],
-        collapseBoxSetItems: false,
-        excludeLocationTypes: ["Virtual"],
-        enableTotalRecordCount: true,
-        startIndex: pageParam,
-        limit: pageSize,
-        includeItemTypes: [itemType],
-      });
+      const response = await getItemsApi(api as Api).getItems(
+        {
+          userId: user.Id,
+          sortBy: ["SeriesSortName", "SortName"],
+          sortOrder: ["Ascending"],
+          filters: ["IsFavorite"],
+          recursive: true,
+          fields: ["PrimaryImageAspectRatio"],
+          collapseBoxSetItems: false,
+          excludeLocationTypes: ["Virtual"],
+          enableTotalRecordCount: true,
+          startIndex: pageParam,
+          limit: pageSize,
+          includeItemTypes: [itemType],
+        },
+        { signal },
+      );
 
       return response.data.Items || [];
     },
     [api, itemType, user?.Id],
   );
 
-  const { data, isFetching, fetchNextPage, hasNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["favorites", "see-all", itemType],
-      queryFn: ({ pageParam = 0 }) => fetchItems({ pageParam }),
-      getNextPageParam: (lastPage, pages) => {
-        if (!lastPage || lastPage.length < pageSize) return undefined;
-        return pages.reduce((acc, page) => acc + page.length, 0);
-      },
-      initialPageParam: 0,
-      enabled: !!api && !!user?.Id && !!itemType,
-    });
+  const {
+    data,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: [
+      ...favoriteScope(user?.ServerId || api?.basePath, user?.Id),
+      "see-all",
+      itemType,
+    ],
+    queryFn: ({ pageParam = 0, signal }) => fetchItems({ pageParam, signal }),
+    getNextPageParam: (lastPage, pages) => {
+      if (!lastPage || lastPage.length < pageSize) return undefined;
+      return pages.reduce((acc, page) => acc + page.length, 0);
+    },
+    initialPageParam: 0,
+    enabled: !!api && !!user?.Id && !!itemType,
+  });
 
   const flatData = useMemo(() => data?.pages.flat() ?? [], [data]);
 
@@ -187,6 +209,22 @@ export default function FavoritesSeeAllScreen() {
             paddingLeft: insets.left + Sizes.gutter,
             paddingRight: insets.right + Sizes.gutter,
           }}
+          ListHeaderComponent={
+            isError ? (
+              <View style={{ paddingVertical: 16, gap: 8 }}>
+                <Text variant='meta' muted>
+                  {t("home.section_failed")}
+                </Text>
+                <Button
+                  variant='border'
+                  loading={isFetching}
+                  onPress={() => refetch()}
+                >
+                  {t("home.retry")}
+                </Button>
+              </View>
+            ) : null
+          }
           ItemSeparatorComponent={() => (
             <View
               style={{
@@ -197,9 +235,11 @@ export default function FavoritesSeeAllScreen() {
           )}
           ListEmptyComponent={
             <View className='flex flex-col items-center justify-center h-full py-12'>
-              <Text variant='body' muted>
-                {t("home.no_items")}
-              </Text>
+              {!isError && (
+                <Text variant='body' muted>
+                  {t("home.no_items")}
+                </Text>
+              )}
             </View>
           }
           ListFooterComponent={

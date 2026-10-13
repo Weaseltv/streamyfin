@@ -1,22 +1,28 @@
-import { useCallback, useState } from "react";
+import { useAtomValue } from "jotai";
 import { Platform, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Favorites } from "@/components/home/Favorites";
 import { Favorites as TVFavorites } from "@/components/home/Favorites.tv";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
-import { useInvalidatePlaybackProgressCache } from "@/hooks/useRevalidatePlaybackProgressCache";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
+import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { favoriteScope } from "@/utils/query/favorites";
 
 const ACCENT = sectionAccent("watchlist");
 
 export default function FavoritesPage() {
-  const invalidateCache = useInvalidatePlaybackProgressCache();
-
-  const [loading, setLoading] = useState(false);
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    await invalidateCache();
-    setLoading(false);
-  }, []);
+  const client = useNetworkAwareQueryClient();
+  const api = useAtomValue(apiAtom);
+  const user = useAtomValue(userAtom);
+  const { refreshing: loading, onRefresh: refetch } = useManualRefresh(() =>
+    client.forceInvalidateQueries(
+      {
+        queryKey: favoriteScope(user?.ServerId || api?.basePath, user?.Id),
+      },
+      { throwOnError: true },
+    ),
+  );
   const insets = useSafeAreaInsets();
 
   if (Platform.isTV) {
