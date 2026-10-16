@@ -419,9 +419,10 @@ export default function SearchPage() {
 
   // Fuzzy title search, as on WeaselPlex TV (owner, 2026-10-16): the
   // member's own index of titles finds M*A*S*H for "MASH" and MobLand for
-  // "mob land", which the server's search misses. Its matches lead the
-  // movie, show and collection sections; the server's results follow. Typed
-  // and dictated searches both arrive here as the debounced query.
+  // "mob land", which the server's search misses. In the movie, show and
+  // collection sections its matches come first, then the server's results,
+  // then its typo matches. Typed and dictated searches both arrive here as
+  // the debounced query.
   const titleIndex = useTitleIndex(searchEngine === "Jellyfin");
   const titleMatches = useMemo(
     () =>

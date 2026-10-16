@@ -7,8 +7,9 @@ import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
  * nothing, "M.A.S.H." found M*A*S*H; spoken "mob land" missed MobLand). The
  * server matches substrings of names with punctuation turned into spaces, so
  * the app keeps its own index of the member's movies, shows and collections
- * and matches on a key without spaces or punctuation. Its matches lead each
- * of those search sections; the server's own results follow.
+ * and matches on a key without spaces or punctuation. In each of those search
+ * sections its matches come first, then the server's own results, then its
+ * typo matches.
  *
  * No React Native imports here, so the rules can be unit tested.
  */
@@ -24,6 +25,8 @@ export type TitleEntry = {
   year: number | null;
   /** `searchKey(name)` */
   key: string;
+  /** Where each of the name's words starts in the key: typos only match from there */
+  starts: number[];
 };
 
 export type TitleIndex = {
@@ -34,8 +37,17 @@ export type TitleIndex = {
   titles: TitleEntry[];
 };
 
-/** At most this many index matches per section. */
-const MAX_PER_TYPE = 50;
+/** At most this many matches (tiers 0–2) per section… */
+const MAX_MATCHES = 50;
+/** …and this many typo matches (tier 3). */
+const MAX_TYPOS = 10;
+
+const fold = (text: string) =>
+  text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/&/g, "and");
 
 /**
  * Accents and case fold away, "&" reads "and", and only letters and digits
@@ -43,12 +55,19 @@ const MAX_PER_TYPE = 50;
  * and "MASH" are all "mash", "Law & Order" is "lawandorder".
  */
 export function searchKey(text: string): string {
-  return text
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^\p{L}\p{N}]/gu, "");
+  return fold(text).replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/** A name's key and where its words (runs of letters and digits) start in it. */
+export function titleKey(name: string): { key: string; starts: number[] } {
+  const words = fold(name).match(/[\p{L}\p{N}]+/gu) ?? [];
+  const starts: number[] = [];
+  let offset = 0;
+  for (const word of words) {
+    starts.push(offset);
+    offset += word.length;
+  }
+  return { key: words.join(""), starts };
 }
 
 const isTitleType = (type: unknown): type is TitleType =>
@@ -80,23 +99,30 @@ export async function loadTitleIndex(
             name: item.Name,
             type: item.Type,
             year: item.ProductionYear ?? null,
-            key: searchKey(item.Name),
+            ...titleKey(item.Name),
           },
         ]
       : [],
   );
 }
 
-/** Bump when `searchKey` changes, so saved keys are worked out again. */
-const INDEX_VERSION = 1;
+/** Bump when the key or its word starts change, so saved ones are worked out again. */
+const INDEX_VERSION = 2;
 
-/** The compact form kept on the device: one `[id, name, type, year, key]` per title. */
+/** The compact form kept on the device: one `[id, name, type, year, key, starts]` per title. */
 export function serializeTitleIndex(index: TitleIndex): string {
   return JSON.stringify({
     v: INDEX_VERSION,
     owner: index.owner,
     at: index.at,
-    titles: index.titles.map((t) => [t.id, t.name, t.type, t.year, t.key]),
+    titles: index.titles.map((t) => [
+      t.id,
+      t.name,
+      t.type,
+      t.year,
+      t.key,
+      t.starts,
+    ]),
   });
 }
 
@@ -118,12 +144,14 @@ export function parseTitleIndex(
     const titles: TitleEntry[] = [];
     for (const row of saved.titles) {
       if (!Array.isArray(row)) continue;
-      const [id, name, type, year, key] = row;
+      const [id, name, type, year, key, starts] = row;
       if (
         typeof id !== "string" ||
         typeof name !== "string" ||
         !isTitleType(type) ||
-        typeof key !== "string"
+        typeof key !== "string" ||
+        !Array.isArray(starts) ||
+        !starts.every((start) => typeof start === "number")
       )
         continue;
       titles.push({
@@ -132,6 +160,7 @@ export function parseTitleIndex(
         type,
         year: typeof year === "number" ? year : null,
         key,
+        starts,
       });
     }
     return { owner, at: saved.at, titles };
@@ -140,51 +169,71 @@ export function parseTitleIndex(
   }
 }
 
-/** How many edits a query of this length may be from a title: tier 3 only for 4+ characters. */
+/**
+ * How many typos a query of this length may have: none under 5 characters
+ * ("mash" found "Christmas" and "Flash"), 1 up to 8, 2 from 9.
+ */
 export function typoTolerance(length: number) {
-  return length >= 8 ? 2 : length >= 4 ? 1 : 0;
+  return length >= 9 ? 2 : length >= 5 ? 1 : 0;
 }
 
 /**
- * The smallest edit distance between [query] and any substring of a key
- * (Sellers' algorithm: the match may start anywhere), for distances up to
- * [k]; anything above [k] comes back as some number above [k]. Ukkonen's
- * cut-off only works out the rows that can still be within [k], and one
- * column is reused for every key, so ~12k titles stay quick per keystroke.
+ * The smallest edit distance between [query] and the start of a key from any
+ * of its word starts (the match may end anywhere), for distances up to [k];
+ * anything above [k] comes back as some number above [k]. Only the band of
+ * cells within [k] of the diagonal can be within [k], so that's all it works
+ * out, in two rows reused for every key: ~12k titles stay quick per query.
  */
-export function substringDistance(query: string, k: number) {
+export function wordStartDistance(query: string, k: number) {
   const m = query.length;
   const pattern = new Uint16Array(m);
   for (let i = 0; i < m; i++) pattern[i] = query.charCodeAt(i);
-  const column = new Int32Array(m + 1);
-  return (key: string): number => {
-    for (let i = 0; i <= m; i++) column[i] = i;
-    let best = m;
-    // The last row that can still be within k in the next column
-    let last = Math.min(k + 1, m);
-    for (let j = 0; j < key.length; j++) {
-      const c = key.charCodeAt(j);
-      // Row 0 is 0 in every column: a match may start at any position
-      let diagonal = 0;
-      let above = 0;
-      for (let i = 1; i <= last; i++) {
-        const left = column[i];
-        let value = diagonal;
-        if (pattern[i - 1] !== c) {
-          if (above < value) value = above;
-          if (left < value) value = left;
-          value += 1;
+  const width = m + k + 1;
+  let previous = new Int32Array(width);
+  let current = new Int32Array(width);
+  const over = k + 1;
+
+  const fromStart = (key: string, start: number): number => {
+    // Past m + k characters the distance only grows
+    const length = Math.min(key.length - start, m + k);
+    if (length < m - k) return over;
+    for (let j = 0; j <= Math.min(length, k); j++) previous[j] = j;
+    for (let i = 1; i <= m; i++) {
+      const low = Math.max(0, i - k);
+      const high = Math.min(length, i + k);
+      const c = pattern[i - 1];
+      let rowBest = over;
+      for (let j = low; j <= high; j++) {
+        let value = i;
+        if (j > 0) {
+          value =
+            previous[j - 1] + (key.charCodeAt(start + j - 1) === c ? 0 : 1);
+          if (j <= i - 1 + k && previous[j] + 1 < value)
+            value = previous[j] + 1;
+          if (j > low && current[j - 1] + 1 < value) value = current[j - 1] + 1;
         }
-        diagonal = left;
-        column[i] = value;
-        above = value;
+        current[j] = value;
+        if (value < rowBest) rowBest = value;
       }
-      while (column[last] > k) last--;
-      if (last === m) {
-        if (column[m] < best) best = column[m];
-      } else {
-        last++;
-      }
+      // Rows never get better, so this start is out
+      if (rowBest > k) return over;
+      const swap = previous;
+      previous = current;
+      current = swap;
+    }
+    let best = over;
+    for (let j = Math.max(0, m - k); j <= Math.min(length, m + k); j++) {
+      if (previous[j] < best) best = previous[j];
+    }
+    return best;
+  };
+
+  return (key: string, starts: readonly number[]): number => {
+    let best = over;
+    for (const start of starts) {
+      const distance = fromStart(key, start);
+      if (distance < best) best = distance;
+      if (best === 0) break;
     }
     return best;
   };
@@ -197,104 +246,129 @@ type Ranked = {
   position: number;
 };
 
-const byRank = (a: Ranked, b: Ranked) =>
+const byName = (a: Ranked, b: Ranked) =>
+  a.title.name < b.title.name ? -1 : a.title.name > b.title.name ? 1 : 0;
+// Remaining ties keep the index's sort-name order
+const byMatch = (a: Ranked, b: Ranked) =>
   a.tier - b.tier ||
+  a.title.key.length - b.title.key.length ||
+  byName(a, b) ||
+  a.position - b.position;
+const byTypo = (a: Ranked, b: Ranked) =>
   a.distance - b.distance ||
   a.title.key.length - b.title.key.length ||
-  (a.title.name < b.title.name ? -1 : a.title.name > b.title.name ? 1 : 0) ||
+  byName(a, b) ||
   a.position - b.position;
 
-export type TitleMatches = Record<TitleType, TitleEntry[]>;
+/** One section's matches: tiers 0–2, and typos (tier 3), each best first. */
+export type SectionMatches = { matches: TitleEntry[]; typos: TitleEntry[] };
+export type TitleMatches = Record<TitleType, SectionMatches>;
 
 /**
- * The index's matches for [query], best first, at most 50 per type: the key
- * itself (tier 0), keys starting with it (1), keys containing it (2), then,
- * for 4+ characters, keys within 1 edit (4–7 characters) or 2 (8+) of a
- * substring (3). Ties go to the closer match, then the shorter key, then the
- * name. Under 2 characters, nothing.
+ * The index's matches for [query]. Matches: the key itself (tier 0), keys
+ * starting with it (1), keys containing it (2), by tier, then the shorter
+ * key, then the name, at most 50 per type. Typos, for 5+ characters: keys
+ * within 1 edit (5–8 characters) or 2 (9+) from one of the name's word
+ * starts (3), the closest first, then the shorter key, then the name, at most
+ * 10 per type. Under 2 characters, nothing.
  */
 export function matchTitles(
   titles: readonly TitleEntry[],
   query: string,
 ): TitleMatches {
-  const matches: Record<TitleType, Ranked[]> = {
-    Movie: [],
-    Series: [],
-    BoxSet: [],
+  const found = {
+    Movie: { matches: [] as Ranked[], typos: [] as Ranked[] },
+    Series: { matches: [] as Ranked[], typos: [] as Ranked[] },
+    BoxSet: { matches: [] as Ranked[], typos: [] as Ranked[] },
   };
   const q = searchKey(query);
   if (q.length >= 2) {
     const k = typoTolerance(q.length);
-    const distance = k > 0 ? substringDistance(q, k) : null;
+    const distance = k > 0 ? wordStartDistance(q, k) : null;
     for (let position = 0; position < titles.length; position++) {
       const title = titles[position];
       const key = title.key;
-      if (key === q) {
-        matches[title.type].push({ title, tier: 0, distance: 0, position });
-      } else if (key.startsWith(q)) {
-        matches[title.type].push({ title, tier: 1, distance: 0, position });
-      } else if (key.includes(q)) {
-        matches[title.type].push({ title, tier: 2, distance: 0, position });
-      } else if (distance && key.length >= q.length - k) {
-        const d = distance(key);
+      const tier =
+        key === q ? 0 : key.startsWith(q) ? 1 : key.includes(q) ? 2 : 3;
+      if (tier < 3) {
+        found[title.type].matches.push({ title, tier, distance: 0, position });
+      } else if (distance) {
+        const d = distance(key, title.starts);
         if (d <= k)
-          matches[title.type].push({ title, tier: 3, distance: d, position });
+          found[title.type].typos.push({ title, tier, distance: d, position });
       }
     }
   }
-  const ranked = (type: TitleType) =>
-    matches[type]
-      .sort(byRank)
-      .slice(0, MAX_PER_TYPE)
-      .map((match) => match.title);
+  const section = (type: TitleType): SectionMatches => ({
+    matches: found[type].matches
+      .sort(byMatch)
+      .slice(0, MAX_MATCHES)
+      .map((match) => match.title),
+    typos: found[type].typos
+      .sort(byTypo)
+      .slice(0, MAX_TYPOS)
+      .map((match) => match.title),
+  });
   return {
-    Movie: ranked("Movie"),
-    Series: ranked("Series"),
-    BoxSet: ranked("BoxSet"),
+    Movie: section("Movie"),
+    Series: section("Series"),
+    BoxSet: section("BoxSet"),
   };
 }
 
 const normalizedId = (id: string) => id.replace(/-/g, "").toLowerCase();
 
+export type IndexedItems = { matches: BaseItemDto[]; typos: BaseItemDto[] };
+
 /**
- * The index's matches as items, in rank order, fetched with the options the
- * search sections use so the cards look the same. Anything the member can't
- * see simply doesn't come back.
+ * A section's matches and typos as items, each in rank order, fetched in one
+ * request with the options the search sections use so the cards look the
+ * same. Anything the member can't see simply doesn't come back.
  */
 export async function loadIndexedTitles(
   api: Api,
   userId: string,
-  ids: readonly string[],
+  matchIds: readonly string[],
+  typoIds: readonly string[],
   signal?: AbortSignal,
-): Promise<BaseItemDto[]> {
-  if (ids.length === 0) return [];
+): Promise<IndexedItems> {
+  if (matchIds.length === 0 && typoIds.length === 0)
+    return { matches: [], typos: [] };
   const response = await getItemsApi(api).getItems(
-    { userId, ids: [...ids] },
+    { userId, ids: [...matchIds, ...typoIds] },
     { signal },
   );
   const byId = new Map<string, BaseItemDto>();
   for (const item of response.data.Items ?? []) {
     if (item.Id) byId.set(normalizedId(item.Id), item);
   }
-  return ids
-    .map((id) => byId.get(normalizedId(id)))
-    .filter((item): item is BaseItemDto => item !== undefined);
+  const inOrder = (ids: readonly string[]) =>
+    ids
+      .map((id) => byId.get(normalizedId(id)))
+      .filter((item): item is BaseItemDto => item !== undefined);
+  return { matches: inOrder(matchIds), typos: inOrder(typoIds) };
 }
 
 /**
  * A section's results: the index's matches first, in rank order, then the
- * server's own results it didn't already include, in the server's order (the
- * server also matches fields the index doesn't hold). Without index matches,
- * the server's results as they are.
+ * server's own results they didn't include, in the server's order (the
+ * server also matches fields the index doesn't hold), then the typo matches
+ * not already shown, so a guess never buries a real match. Without index
+ * matches, the server's results as they are.
  */
 export function mergeSearchResults<T extends { Id?: string | null }>(
-  indexed: T[] | undefined,
+  indexed: { matches: T[]; typos: T[] } | undefined,
   server: T[] | undefined,
 ): T[] | undefined {
-  if (!indexed?.length) return server;
+  if (!indexed || (!indexed.matches.length && !indexed.typos.length))
+    return server;
   const seen = new Set<string>();
   const merged: T[] = [];
-  for (const item of [...indexed, ...(server ?? [])]) {
+  for (const item of [
+    ...indexed.matches,
+    ...(server ?? []),
+    ...indexed.typos,
+  ]) {
     const id = item.Id ? normalizedId(item.Id) : null;
     if (id) {
       if (seen.has(id)) continue;

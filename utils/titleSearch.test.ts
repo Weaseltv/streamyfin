@@ -13,10 +13,11 @@ import {
   parseTitleIndex,
   searchKey,
   serializeTitleIndex,
-  substringDistance,
   type TitleEntry,
   type TitleType,
+  titleKey,
   typoTolerance,
+  wordStartDistance,
 } from "./titleSearch";
 
 const title = (
@@ -28,7 +29,7 @@ const title = (
   name,
   type,
   year,
-  key: searchKey(name),
+  ...titleKey(name),
 });
 
 /** A small library, in the server's sort-name order. */
@@ -36,10 +37,16 @@ const LIBRARY: TitleEntry[] = [
   title("AfterMASH", "Series", 1983),
   title("The Amazing Spider-Man", "Movie", 2012),
   title("Amélie", "Movie", 2001),
-  title("Breaking Bad", "Series", 2008),
-  title("Bad Boys", "Movie", 1995),
-  title("It", "Movie", 2017),
   title("At Close Range", "Movie", 1986),
+  title("Bad Boys", "Movie", 1995),
+  title("Breaking Bad", "Series", 2008),
+  title("A Christmas Story", "Movie", 1983),
+  title("The Flash", "Series", 2014),
+  title("Game of Thrones", "Series", 2011),
+  title("The Godfather", "Movie", 1972),
+  title("The Godfather Part II", "Movie", 1974),
+  title("Interstellar", "Movie", 2014),
+  title("It", "Movie", 2017),
   title("Law & Order", "Series", 1990),
   title("M*A*S*H", "Movie", 1970),
   title("M*A*S*H", "Series", 1972),
@@ -53,9 +60,15 @@ const LIBRARY: TitleEntry[] = [
   title("Spider-Man 3", "Movie", 2007),
   title("Spider-Man: No Way Home", "Movie", 2021),
   title("Spider-Man Collection", "BoxSet"),
+  title("Washington Black", "Series", 2025),
 ];
 
 const names = (entries: TitleEntry[]) => entries.map((entry) => entry.name);
+/** Every title the query finds, in any section or tier. */
+const everything = (query: string) =>
+  Object.values(matchTitles(LIBRARY, query)).flatMap((section) =>
+    names([...section.matches, ...section.typos]),
+  );
 
 describe("searchKey", () => {
   test("folds punctuation, spaces, case, accents and ampersands away", () => {
@@ -73,104 +86,175 @@ describe("searchKey", () => {
     expect(searchKey("Брат 2")).toBe("брат2");
     expect(searchKey("Ｆｕｌｌｗｉｄｔｈ ２")).toBe("fullwidth2");
   });
+
+  test("a title's key is its search key, with where each word starts", () => {
+    expect(titleKey("The Godfather Part II")).toEqual({
+      key: "thegodfatherpartii",
+      starts: [0, 3, 12, 16],
+    });
+    expect(titleKey("Law & Order")).toEqual({
+      key: "lawandorder",
+      starts: [0, 3, 6],
+    });
+    expect(titleKey("M*A*S*H")).toEqual({ key: "mash", starts: [0, 1, 2, 3] });
+    expect(titleKey("Amélie").key).toBe(searchKey("Amélie"));
+    expect(titleKey("***")).toEqual({ key: "", starts: [] });
+  });
 });
 
 describe("matchTitles", () => {
   test('"MASH" ranks M*A*S*H, movie and series, above AfterMASH and The Smashing Machine', () => {
     const matches = matchTitles(LIBRARY, "MASH");
-    expect(names(matches.Movie).slice(0, 2)).toEqual([
+    expect(names(matches.Movie.matches)).toEqual([
       "M*A*S*H",
       "The Smashing Machine",
     ]);
-    expect(names(matches.Series)).toEqual(["M*A*S*H", "AfterMASH"]);
-    // A typo match (tier 3) comes after every exact one
-    expect(names(matches.Movie)).toContain("The Mask");
-    expect(names(matches.Movie).indexOf("The Mask")).toBeGreaterThan(1);
+    expect(names(matches.Series.matches)).toEqual(["M*A*S*H", "AfterMASH"]);
+  });
+
+  test('"mash" never typo-matches: no Christmas, Flash or Washington; "flash" no Christmas', () => {
+    const mash = everything("mash");
+    for (const name of [
+      "A Christmas Story",
+      "The Flash",
+      "Washington Black",
+      "The Mask",
+    ])
+      expect(mash).not.toContain(name);
+    expect(everything("flash")).toEqual(["The Flash"]);
   });
 
   test('"mob land" and "mobland" both find MobLand and Mob Land', () => {
     for (const query of ["mob land", "mobland", "Mob Land"]) {
       const matches = matchTitles(LIBRARY, query);
-      expect(names(matches.Series)[0]).toBe("MobLand");
-      expect(names(matches.Movie)[0]).toBe("Mob Land");
+      expect(names(matches.Series.matches)[0]).toBe("MobLand");
+      expect(names(matches.Movie.matches)[0]).toBe("Mob Land");
     }
   });
 
   test('"spiderman" and "spider man" rank Spider-Man, then the sequels, then The Amazing Spider-Man', () => {
     for (const query of ["spiderman", "spider man", "Spider-Man"]) {
       const matches = matchTitles(LIBRARY, query);
-      expect(names(matches.Movie)).toEqual([
+      expect(names(matches.Movie.matches)).toEqual([
         "Spider-Man",
         "Spider-Man 2",
         "Spider-Man 3",
         "Spider-Man: No Way Home",
         "The Amazing Spider-Man",
       ]);
-      expect(names(matches.BoxSet)).toEqual(["Spider-Man Collection"]);
+      expect(names(matches.BoxSet.matches)).toEqual(["Spider-Man Collection"]);
     }
   });
 
-  test("typos, accents and ampersands", () => {
-    expect(names(matchTitles(LIBRARY, "breking bad").Series)).toEqual([
-      "Breaking Bad",
+  test("typos from a word start, accents and ampersands", () => {
+    const breaking = matchTitles(LIBRARY, "breking bad").Series;
+    expect(names(breaking.matches)).toEqual([]);
+    expect(names(breaking.typos)).toEqual(["Breaking Bad"]);
+    expect(names(matchTitles(LIBRARY, "godfater").Movie.typos)).toEqual([
+      "The Godfather",
+      "The Godfather Part II",
     ]);
-    expect(names(matchTitles(LIBRARY, "amelie").Movie)).toEqual(["Amélie"]);
-    expect(names(matchTitles(LIBRARY, "law and order").Series)).toEqual([
-      "Law & Order",
+    expect(names(matchTitles(LIBRARY, "interstelar").Movie.typos)).toEqual([
+      "Interstellar",
     ]);
+    expect(names(matchTitles(LIBRARY, "game of throns").Series.typos)).toEqual([
+      "Game of Thrones",
+    ]);
+    expect(names(matchTitles(LIBRARY, "amelie").Movie.matches)).toEqual([
+      "Amélie",
+    ]);
+    expect(names(matchTitles(LIBRARY, "law and order").Series.matches)).toEqual(
+      ["Law & Order"],
+    );
   });
 
-  test("2–3 character queries never use typo matching; under 2, nothing", () => {
+  test("queries under 5 characters never use typo matching; under 2, nothing", () => {
     // "at" is one edit from "it", "mib" one from "mob"
-    expect(names(matchTitles(LIBRARY, "it").Movie)).toEqual(["It"]);
-    expect(names(matchTitles(LIBRARY, "mob").Movie)).toEqual(["Mob Land"]);
-    expect(typoTolerance(2)).toBe(0);
-    expect(typoTolerance(3)).toBe(0);
-    expect(typoTolerance(4)).toBe(1);
-    expect(typoTolerance(7)).toBe(1);
-    expect(typoTolerance(8)).toBe(2);
-    const none = matchTitles(LIBRARY, "M.");
-    expect([...none.Movie, ...none.Series, ...none.BoxSet]).toEqual([]);
+    expect(everything("it")).toEqual(["It"]);
+    expect(everything("mob")).toEqual(["Mob Land", "MobLand"]);
+    expect(typoTolerance(4)).toBe(0);
+    expect(typoTolerance(5)).toBe(1);
+    expect(typoTolerance(8)).toBe(1);
+    expect(typoTolerance(9)).toBe(2);
+    expect(everything("M.")).toEqual([]);
   });
 
-  test("ranks by tier, then distance, then key length, then name; at most 50 per type", () => {
+  test("matches rank by tier, then key length, then name, at most 50", () => {
     const titles = [
       title("Zeta Mash"),
       title("Mash Up"),
-      title("Mast"),
       title("Smash"),
       title("Mash"),
       title("Ma Sh Two"),
+      title("Mash Uq"),
     ];
-    expect(names(matchTitles(titles, "mash").Movie)).toEqual([
+    expect(names(matchTitles(titles, "mash").Movie.matches)).toEqual([
       "Mash",
       "Mash Up",
+      "Mash Uq",
       "Ma Sh Two",
       "Smash",
       "Zeta Mash",
-      "Mast",
     ]);
     const many = Array.from({ length: 80 }, (_, i) => title(`Mash ${i}`));
-    expect(matchTitles(many, "mash").Movie).toHaveLength(50);
+    expect(matchTitles(many, "mash").Movie.matches).toHaveLength(50);
+  });
+
+  test("typos rank by distance, then key length, then name, at most 10; only from a word start", () => {
+    const titles = [
+      title("Abcdefgxyj"),
+      title("The Abcdefghxj"),
+      title("Abcdefghiqq"),
+      title("Abcdefghiz"),
+      title("Abcdefghiq"),
+      title("Xyabcdefghiq"),
+    ];
+    const { matches, typos } = matchTitles(titles, "abcdefghij").Movie;
+    expect(names(matches)).toEqual([]);
+    expect(names(typos)).toEqual([
+      "Abcdefghiq",
+      "Abcdefghiz",
+      "Abcdefghiqq",
+      "The Abcdefghxj",
+      "Abcdefgxyj",
+    ]);
+    const many = Array.from({ length: 30 }, (_, i) =>
+      title(`Interstelar ${i}`),
+    );
+    expect(matchTitles(many, "interstellar").Movie.typos).toHaveLength(10);
+  });
+
+  test("remaining ties keep the index's sort-name order", () => {
+    const titles = [
+      { ...title("Mash"), id: "first" },
+      { ...title("Mash"), id: "second" },
+    ];
+    expect(matchTitles(titles, "mash").Movie.matches.map((t) => t.id)).toEqual([
+      "first",
+      "second",
+    ]);
   });
 });
 
-describe("substringDistance", () => {
-  /** Sellers' algorithm in full, without the cut-off. */
-  const reference = (q: string, key: string) => {
-    let column = Array.from({ length: q.length + 1 }, (_, i) => i);
-    let best = column[q.length];
-    for (const c of key) {
-      const next = [0];
+describe("wordStartDistance", () => {
+  /** The prefix distance from every start in full, without the band. */
+  const reference = (q: string, key: string, starts: number[]) => {
+    let best = Number.POSITIVE_INFINITY;
+    for (const start of starts) {
+      const text = key.slice(start);
+      let row = Array.from({ length: text.length + 1 }, (_, j) => j);
       for (let i = 1; i <= q.length; i++) {
-        next[i] = Math.min(
-          column[i] + 1,
-          next[i - 1] + 1,
-          column[i - 1] + (q[i - 1] === c ? 0 : 1),
-        );
+        const next = [i];
+        for (let j = 1; j <= text.length; j++) {
+          next[j] = Math.min(
+            row[j] + 1,
+            next[j - 1] + 1,
+            row[j - 1] + (q[i - 1] === text[j - 1] ? 0 : 1),
+          );
+        }
+        row = next;
       }
-      column = next;
-      best = Math.min(best, column[q.length]);
+      best = Math.min(best, ...row);
     }
     return best;
   };
@@ -182,64 +266,75 @@ describe("substringDistance", () => {
       return seed / 2147483648;
     };
     const word = (length: number) =>
-      Array.from({ length }, () => "abcd"[Math.floor(random() * 4)]).join("");
+      Array.from({ length }, () => "abc"[Math.floor(random() * 3)]).join("");
     for (let run = 0; run < 3000; run++) {
-      const q = word(4 + Math.floor(random() * 8));
+      const q = word(5 + Math.floor(random() * 8));
       const k = typoTolerance(q.length);
-      const distance = substringDistance(q, k);
+      const distance = wordStartDistance(q, k);
       for (let n = 0; n < 4; n++) {
-        const key = word(Math.floor(random() * 20));
-        const expected = reference(q, key);
-        const actual = distance(key);
+        const key = word(Math.floor(random() * 24));
+        const starts = [0];
+        for (let i = 1; i < key.length; i++) if (random() < 0.2) starts.push(i);
+        const expected = reference(q, key, key ? starts : []);
+        const actual = distance(key, key ? starts : []);
         if (expected <= k) expect(actual).toBe(expected);
         else expect(actual).toBeGreaterThan(k);
       }
     }
   });
 
-  test("measures against the closest substring", () => {
-    expect(substringDistance("brekingbad", 2)("breakingbad")).toBe(1);
-    expect(substringDistance("mash", 1)("themask")).toBe(1);
-    expect(substringDistance("mash", 1)("aftermash")).toBe(0);
-    expect(substringDistance("mash", 1)("zzzz")).toBeGreaterThan(1);
+  test("measures from the closest word start", () => {
+    const { key, starts } = titleKey("Breaking Bad");
+    expect(wordStartDistance("brekingbad", 2)(key, starts)).toBe(1);
+    const godfather = titleKey("The Godfather");
+    expect(
+      wordStartDistance("godfater", 1)(godfather.key, godfather.starts),
+    ).toBe(1);
+    // "mas" isn't a word start in "christmas"
+    const christmas = titleKey("A Christmas Story");
+    expect(
+      wordStartDistance("masher", 1)(christmas.key, christmas.starts),
+    ).toBeGreaterThan(1);
   });
 });
 
 describe("mergeSearchResults", () => {
   const item = (Id: string): BaseItemDto => ({ Id, Name: Id });
+  const ids = (items: BaseItemDto[] | undefined) => items?.map((i) => i.Id);
 
-  test("index matches first, then the server's extras in its order, without duplicates", () => {
+  test("matches first, then the server's extras in its order, then typos, without duplicates", () => {
     const merged = mergeSearchResults(
-      [item("mash-series"), item("mash-movie")],
+      {
+        matches: [item("mash-series"), item("mash-movie")],
+        typos: [item("mush"), item("smashing")],
+      },
       [item("aftermash"), item("mash-movie"), item("smashing")],
     );
-    expect(merged?.map((i) => i.Id)).toEqual([
+    expect(ids(merged)).toEqual([
       "mash-series",
       "mash-movie",
       "aftermash",
       "smashing",
+      "mush",
     ]);
   });
 
   test("ids match with or without dashes", () => {
     const merged = mergeSearchResults(
-      [item("0123456789abcdef0123456789abcdef")],
+      { matches: [item("0123456789abcdef0123456789abcdef")], typos: [] },
       [item("01234567-89ab-cdef-0123-456789abcdef"), item("other")],
     );
-    expect(merged?.map((i) => i.Id)).toEqual([
-      "0123456789abcdef0123456789abcdef",
-      "other",
-    ]);
+    expect(ids(merged)).toEqual(["0123456789abcdef0123456789abcdef", "other"]);
   });
 
   test("without index matches the server's results stay as they are", () => {
     const server = [item("a"), item("b")];
     expect(mergeSearchResults(undefined, server)).toBe(server);
-    expect(mergeSearchResults([], server)).toBe(server);
+    expect(mergeSearchResults({ matches: [], typos: [] }, server)).toBe(server);
     expect(mergeSearchResults(undefined, undefined)).toBeUndefined();
     expect(
-      mergeSearchResults([item("a")], undefined)?.map((i) => i.Id),
-    ).toEqual(["a"]);
+      ids(mergeSearchResults({ matches: [], typos: [item("t")] }, undefined)),
+    ).toEqual(["t"]);
   });
 });
 
@@ -280,14 +375,29 @@ describe("the title index", () => {
       ],
     }));
     expect(await loadTitleIndex(api, "member", undefined)).toEqual([
-      { id: "a", name: "M*A*S*H", type: "Series", year: 1972, key: "mash" },
-      { id: "b", name: "Amélie", type: "Movie", year: null, key: "amelie" },
+      {
+        id: "a",
+        name: "M*A*S*H",
+        type: "Series",
+        year: 1972,
+        key: "mash",
+        starts: [0, 1, 2, 3],
+      },
+      {
+        id: "b",
+        name: "Amélie",
+        type: "Movie",
+        year: null,
+        key: "amelie",
+        starts: [0],
+      },
       {
         id: "c",
         name: "Spider-Man Collection",
         type: "BoxSet",
         year: null,
         key: "spidermancollection",
+        starts: [0, 6, 9],
       },
     ]);
     const [params] = requests;
@@ -309,31 +419,40 @@ describe("the title index", () => {
     expect(parseTitleIndex(json, "server:other")).toBeUndefined();
     expect(parseTitleIndex("not json", "server:member")).toBeUndefined();
     expect(parseTitleIndex(undefined, "server:member")).toBeUndefined();
+    // An index saved before word starts were kept is fetched again
     expect(
       parseTitleIndex(
-        JSON.stringify({ ...JSON.parse(json), v: 0 }),
+        JSON.stringify({ ...JSON.parse(json), v: 1 }),
         "server:member",
       ),
     ).toBeUndefined();
   });
 
-  test("matches are fetched by id in rank order; titles the member can't see drop out", async () => {
+  test("matches and typos are fetched by id in one request, in rank order; titles the member can't see drop out", async () => {
     const { api, requests } = server(() => ({
       Items: [
+        { Id: "breaking", Name: "Breaking Bad" },
         { Id: "aftermash", Name: "AfterMASH" },
         { Id: "mash", Name: "M*A*S*H" },
       ],
     }));
-    const items = await loadIndexedTitles(api, "member", [
-      "mash",
-      "hidden",
-      "aftermash",
-    ]);
-    expect(items.map((i) => i.Id)).toEqual(["mash", "aftermash"]);
+    const items = await loadIndexedTitles(
+      api,
+      "member",
+      ["mash", "hidden", "aftermash"],
+      ["breaking"],
+    );
+    expect(items.matches.map((i) => i.Id)).toEqual(["mash", "aftermash"]);
+    expect(items.typos.map((i) => i.Id)).toEqual(["breaking"]);
     expect(requests).toHaveLength(1);
     expect(requests[0].get("userId")).toBe("member");
-    expect(requests[0].getAll("ids").join(",")).toBe("mash,hidden,aftermash");
-    expect(await loadIndexedTitles(api, "member", [])).toEqual([]);
+    expect(requests[0].getAll("ids").join(",")).toBe(
+      "mash,hidden,aftermash,breaking",
+    );
+    expect(await loadIndexedTitles(api, "member", [], [])).toEqual({
+      matches: [],
+      typos: [],
+    });
     expect(requests).toHaveLength(1);
   });
 });

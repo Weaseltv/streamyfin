@@ -8,8 +8,8 @@ import {
   loadIndexedTitles,
   loadTitleIndex,
   parseTitleIndex,
+  type SectionMatches,
   serializeTitleIndex,
-  type TitleEntry,
   type TitleIndex,
 } from "@/utils/titleSearch";
 
@@ -79,24 +79,39 @@ export function useTitleIndex(enabled: boolean) {
 }
 
 /**
- * A section's index matches as items, in rank order. A failure leaves the
- * section with the server's results.
+ * A section's index matches and typo matches as items, each in rank order. A
+ * failure leaves the section with the server's results.
  */
 export function useIndexedTitles(
   section: string,
-  matches: readonly TitleEntry[] | undefined,
+  found: SectionMatches | undefined,
   enabled: boolean,
 ) {
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
-  const ids = useMemo(() => matches?.map((match) => match.id) ?? [], [matches]);
+  const matchIds = useMemo(
+    () => found?.matches.map((match) => match.id) ?? [],
+    [found],
+  );
+  const typoIds = useMemo(
+    () => found?.typos.map((typo) => typo.id) ?? [],
+    [found],
+  );
   return useQuery({
-    queryKey: ["search", section, "index", user?.Id, ids.join(",")],
+    queryKey: [
+      "search",
+      section,
+      "index",
+      user?.Id,
+      matchIds.join(","),
+      typoIds.join(","),
+    ],
     queryFn: ({ signal }) =>
       api && user?.Id
-        ? loadIndexedTitles(api, user.Id, ids, signal)
-        : Promise.resolve([]),
-    enabled: enabled && ids.length > 0 && !!api && !!user?.Id,
+        ? loadIndexedTitles(api, user.Id, matchIds, typoIds, signal)
+        : Promise.resolve({ matches: [], typos: [] }),
+    enabled:
+      enabled && matchIds.length + typoIds.length > 0 && !!api && !!user?.Id,
     retry: false,
   });
 }
