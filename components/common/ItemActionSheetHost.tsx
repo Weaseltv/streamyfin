@@ -1,5 +1,6 @@
 import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,10 +8,13 @@ import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { NeonBoard } from "@/constants/Colors";
+import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
+import { usePlayMedia } from "@/hooks/usePlayMedia";
+import { useShuffleQueue } from "@/hooks/useShuffleQueue";
 import { useDownload } from "@/providers/DownloadProvider";
-import { userAtom } from "@/providers/JellyfinProvider";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
 import {
@@ -79,6 +83,9 @@ function ItemActionSheet({
   const { isFavorite, favoriteMutation } = useFavorite(item, true);
   const { deleteFile } = useDownload();
   const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
+  const router = useRouter();
+  const playMedia = usePlayMedia();
+  const { startShuffle } = useShuffleQueue();
   const presented = useRef<Request | null>(null);
   const executed = useRef<Request | null>(null);
   const showActionSheet = useCallback(() => {
@@ -86,7 +93,8 @@ function ItemActionSheet({
       !(
         item.Type === "Movie" ||
         item.Type === "Episode" ||
-        item.Type === "Series"
+        item.Type === "Series" ||
+        item.Type === "Season"
       )
     ) {
       close();
@@ -111,6 +119,51 @@ function ItemActionSheet({
         },
       },
     ];
+    // A season, as on the TV: Play (from its first episode on), Shuffle (its
+    // episodes in random order), the usual marks, and Go to series
+    if (item.Type === "Season" && item.SeriesId && item.Id) {
+      const seriesId = item.SeriesId;
+      const seasonId = item.Id;
+      const loadEpisodes = async () => {
+        const api = atomStore.get(apiAtom);
+        const user = atomStore.get(userAtom);
+        if (!api || !user?.Id) return [];
+        const response = await getTvShowsApi(api).getEpisodes({
+          seriesId,
+          seasonId,
+          userId: user.Id,
+          fields: ["MediaSources"],
+        });
+        return (response.data.Items ?? []).filter(
+          (episode) => episode.LocationType !== "Virtual",
+        );
+      };
+      actions.unshift(
+        {
+          label: t("common.play"),
+          onPress: async () => {
+            const first = (await loadEpisodes())[0];
+            if (first?.Id)
+              await playMedia(
+                { itemId: first.Id, offline: isOffline },
+                { item: first },
+              );
+          },
+        },
+        {
+          label: t("player.shuffle"),
+          onPress: async () =>
+            startShuffle(seriesId, (await loadEpisodes()).slice(0, 100), {
+              isOffline,
+            }),
+        },
+      );
+      actions.push({
+        label: t("item_card.go_to_series"),
+        onPress: () =>
+          router.push({ pathname: "/series/[id]", params: { id: seriesId } }),
+      });
+    }
     // Jellyfin's Next Up keeps offering a series' next unwatched episode for
     // as long as an earlier one is marked watched, and has no way to exclude
     // a series. "Mark as not played" on that episode cannot remove it — this
@@ -207,6 +260,9 @@ function ItemActionSheet({
     item.Id,
     item.Type,
     item.SeriesId,
+    playMedia,
+    startShuffle,
+    router,
     t,
   ]);
 

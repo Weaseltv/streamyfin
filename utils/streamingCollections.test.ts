@@ -328,6 +328,7 @@ describe("Home rows as on the TV", () => {
     expect(streamingService("Netflix")).toEqual({
       wordmark: "netflix",
       brand: "#E50914",
+      code: "nfx",
     });
     expect(streamingService(" HBO Max ")?.wordmark).toBe("max");
     expect(streamingService("Apple TV")?.wordmark).toBe("apple_tv");

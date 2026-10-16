@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import type { ItemsApiGetItemsRequest } from "@jellyfin/sdk/lib/generated-client/api/items-api";
 import type {
   BaseItemDto,
@@ -38,6 +39,7 @@ import {
   type ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Chip } from "@/components/common/Chip";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { PageHead } from "@/components/common/PageHead";
 import { Image } from "@/components/common/ServerImage";
@@ -51,6 +53,11 @@ import { ResetFiltersButton } from "@/components/filters/ResetFiltersButton";
 import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
 import { LibraryAlphabetPicker } from "@/components/library/LibraryAlphabetPicker";
+import {
+  LibraryRecommended,
+  type LibraryView,
+  LibraryViewToggle,
+} from "@/components/library/LibraryRecommended";
 import { ItemPoster } from "@/components/posters/ItemPoster";
 import { SearchField } from "@/components/search/SearchField";
 import { TVFilterButton, TVFocusablePoster } from "@/components/tv";
@@ -93,6 +100,11 @@ import {
 } from "@/utils/atoms/filters";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
+import {
+  groupTag,
+  inGroupOrder,
+  orderedGroups,
+} from "@/utils/collectionGroups";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import {
   ALPHABET_RAIL_WIDTH,
@@ -101,6 +113,7 @@ import {
   getPreviousLibraryPage,
   loadLibraryAlphabet,
 } from "@/utils/libraryAlphabet";
+import { loadRandomItem } from "@/utils/randomItem";
 
 const GRID_GAP = 10;
 const GridSeparator = () => (
@@ -169,6 +182,15 @@ const Page = () => {
   // refocus fired one more request with the stale filters before the restore
   // below ran.
   const [filtersReady, setFiltersReady] = useState(false);
+  // Movies and TV Shows open on Recommended, as on the TV
+  const [view, setView] = useState<LibraryView>("recommended");
+  // The Collections library's group button; null is ALL
+  const [group, setGroup] = useState<string | null>(null);
+  const [randomBusy, setRandomBusy] = useState(false);
+  useEffect(() => {
+    setView("recommended");
+    setGroup(null);
+  }, [libraryId]);
   const nameSorted = !Platform.isTV && sortBy[0] === SortByOption.SortName;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<string>();
@@ -506,6 +528,25 @@ const Page = () => {
 
   const accent = libraryAccent(library?.CollectionType, library?.Name);
   useSetPageAccent(library ? accent : undefined);
+  // Movies and TV Shows (not Stand Up Comedy or Sports) have a Recommended view
+  const mainLibrary =
+    !Platform.isTV &&
+    (library?.CollectionType === "movies" ||
+      library?.CollectionType === "tvshows") &&
+    accent !== NeonBoard.standup &&
+    accent !== NeonBoard.sports;
+  const collectionsLibrary =
+    !Platform.isTV && library?.CollectionType === "boxsets";
+  // ALL by name in the Collections library lists every collection group by
+  // group, worked out here, as on the TV; other sorts and filters page from
+  // the server.
+  const groupedCollections =
+    collectionsLibrary &&
+    nameSorted &&
+    !searchTerm &&
+    selectedGenres.length === 0 &&
+    selectedYears.length === 0 &&
+    filterBy.length === 0;
 
   // If this See-All detail was deep-linked on top of the libraries index, collapse
   // the libraries stack to just this screen. Otherwise the stack is [index, detail],
@@ -556,7 +597,8 @@ const Page = () => {
       // ChildCount: collection cards show how many titles they hold
       fields: ["PrimaryImageAspectRatio", "SortName", "ChildCount"],
       genres: selectedGenres,
-      tags: selectedTags,
+      // A Collections group button filters by its group tag
+      tags: group ? [groupTag(group)] : selectedTags,
       years: selectedYears.map((year) => Number.parseInt(year, 10)),
       includeItemTypes: itemType ? [itemType] : undefined,
       searchTerm: searchTerm || undefined,
@@ -576,6 +618,7 @@ const Page = () => {
     sortOrder,
     filterBy,
     searchTerm,
+    group,
   ]);
 
   const fetchItems = useCallback(
@@ -624,6 +667,7 @@ const Page = () => {
       searchTerm,
       jumpStart,
       pageSize,
+      group,
     ],
     queryFn: fetchItems,
     getNextPageParam: (lastPage, _pages, lastPageParam) =>
@@ -645,15 +689,83 @@ const Page = () => {
       )
         ? 0
         : Freshness.catalog,
-    enabled: !!api && !!user?.Id && !!library && filtersReady,
+    enabled:
+      !!api &&
+      !!user?.Id &&
+      !!library &&
+      filtersReady &&
+      !groupedCollections &&
+      !(mainLibrary && view === "recommended"),
   });
 
+  // The Collections library: every collection at once for ALL by name, and
+  // the groups for its group buttons
+  const { data: allCollections, isFetching: allCollectionsFetching } = useQuery(
+    {
+      queryKey: [
+        "library-items",
+        libraryId,
+        "all-collections",
+        user?.Id,
+        sortOrder,
+      ],
+      queryFn: async ({ signal }) => {
+        if (!api) return [];
+        const response = await getItemsApi(api).getItems(
+          {
+            ...itemQuery,
+            tags: undefined,
+            fields: [...(itemQuery.fields ?? []), "Tags"],
+            enableTotalRecordCount: false,
+          },
+          { signal },
+        );
+        return response.data.Items ?? [];
+      },
+      enabled: collectionsLibrary && !!api && !!user?.Id && filtersReady,
+      staleTime: Freshness.catalog,
+    },
+  );
+  const groups = useMemo(
+    () => orderedGroups(allCollections ?? []),
+    [allCollections],
+  );
+
   const flatData = useMemo(() => {
+    if (groupedCollections) {
+      const all = allCollections ?? [];
+      return group
+        ? all.filter((item) => item.Tags?.includes(groupTag(group)))
+        : inGroupOrder(all);
+    }
     return (
       (data?.pages.flatMap((p) => p?.Items).filter(Boolean) as BaseItemDto[]) ||
       []
     );
-  }, [data]);
+  }, [data, groupedCollections, allCollections, group]);
+
+  // RANDOM: one random title from the server with this page's filters,
+  // opened (never played), as on the TV
+  const openRandom = useCallback(async () => {
+    if (!api || !user?.Id || randomBusy) return;
+    setRandomBusy(true);
+    try {
+      const item = await loadRandomItem(api, {
+        userId: user.Id,
+        parentId: itemQuery.parentId,
+        recursive: itemQuery.recursive,
+        includeItemTypes: itemQuery.includeItemTypes,
+        genres: itemQuery.genres,
+        tags: itemQuery.tags,
+        years: itemQuery.years,
+        filters: itemQuery.filters,
+        searchTerm: itemQuery.searchTerm,
+      });
+      if (item) router.push(getItemNavigation(item, "(libraries)") as any);
+    } finally {
+      setRandomBusy(false);
+    }
+  }, [api, user?.Id, randomBusy, itemQuery, router]);
 
   const flashListRef = useRef<FlashListRef<BaseItemDto>>(null);
 
@@ -681,15 +793,25 @@ const Page = () => {
         return response.data;
       }, signal);
     },
-    enabled: nameSorted && !!api && !!user?.Id && !!library && filtersReady,
+    enabled:
+      nameSorted &&
+      !groupedCollections &&
+      !(mainLibrary && view === "recommended") &&
+      !!api &&
+      !!user?.Id &&
+      !!library &&
+      filtersReady,
     staleTime: filterBy.length > 0 ? 0 : 5 * Freshness.catalog,
   });
   const availableLetters = useMemo(
     () => alphabet?.entries.map((entry) => entry.letter) ?? [],
     [alphabet],
   );
-  const totalCount = data?.pages?.[0]?.TotalRecordCount ?? alphabet?.totalCount;
-  const showAlphabet = nameSorted && (totalCount ?? 0) > pageSize;
+  const totalCount = groupedCollections
+    ? allCollections?.length
+    : (data?.pages?.[0]?.TotalRecordCount ?? alphabet?.totalCount);
+  const showAlphabet =
+    nameSorted && !groupedCollections && (totalCount ?? 0) > pageSize;
 
   const scrollToPendingLetter = useCallback(() => {
     const id = pendingJumpRef.current;
@@ -810,11 +932,12 @@ const Page = () => {
             width={cardWidth}
             badge={typedLibrary ? null : undefined}
           />
-          <ItemCardText item={item} />
+          {/* Collection art carries the title, as on the TV */}
+          {collectionsLibrary ? null : <ItemCardText item={item} />}
         </View>
       </TouchableItemRouter>
     ),
-    [nrOfCols, cardWidth, typedLibrary],
+    [nrOfCols, cardWidth, typedLibrary, collectionsLibrary],
   );
 
   const renderTVItem = useCallback(
@@ -966,6 +1089,13 @@ const Page = () => {
           accent={accent}
           bleedRule
         />
+        {mainLibrary ? (
+          <LibraryViewToggle
+            value='library'
+            accent={accent}
+            onChange={setView}
+          />
+        ) : null}
         <SearchField
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -986,6 +1116,24 @@ const Page = () => {
             gap: 8,
           }}
           data={[
+            {
+              key: "random",
+              component: (
+                <Chip
+                  label={t("library.random")}
+                  accent={accent}
+                  icon={
+                    <Ionicons
+                      name='dice-outline'
+                      size={14}
+                      color={NeonBoard.text}
+                    />
+                  }
+                  disabled={randomBusy}
+                  onPress={openRandom}
+                />
+              ),
+            },
             {
               key: "reset",
               component: <ResetFiltersButton libraryId={libraryId} />,
@@ -1022,7 +1170,8 @@ const Page = () => {
             },
             {
               key: "tags",
-              component: (
+              // The Collections library's group buttons replace its tags
+              component: collectionsLibrary ? null : (
                 <FilterButton
                   accent={accent}
                   id={libraryId}
@@ -1092,9 +1241,37 @@ const Page = () => {
           renderItem={({ item }) => item.component}
           keyExtractor={(item) => item.key}
         />
+        {collectionsLibrary && groups.length > 0 ? (
+          // The TV's group buttons: ALL, then each group in the owner's order
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              paddingHorizontal: Sizes.gutter,
+              paddingBottom: 12,
+            }}
+          >
+            {[null, ...groups].map((name) => (
+              <Chip
+                key={name ?? "__all__"}
+                label={name ?? t("library.all_groups")}
+                selected={group === name}
+                accent={accent}
+                onPress={() => setGroup(name)}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
     ),
     [
+      mainLibrary,
+      collectionsLibrary,
+      groups,
+      group,
+      randomBusy,
+      openRandom,
       libraryId,
       api,
       availableFilters,
@@ -1311,9 +1488,24 @@ const Page = () => {
       </View>
     );
 
+  if (!Platform.isTV && mainLibrary && view === "recommended" && library)
+    return (
+      <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
+        <LibraryRecommended
+          library={library}
+          accent={accent}
+          eyebrow={t("tabs.library")}
+          onChangeView={setView}
+        />
+      </View>
+    );
+
   // Mobile return
   if (!Platform.isTV) {
-    const busy = isLoading || isLibraryLoading;
+    const busy =
+      isLoading ||
+      isLibraryLoading ||
+      (groupedCollections && allCollectionsFetching && !allCollections);
     return (
       <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
         <LoadingLine accent={accent} active={busy || isFetching} />

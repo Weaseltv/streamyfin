@@ -30,6 +30,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import {
+  type QuickList,
+  QuickListRow,
+  TypeButtonRow,
+} from "@/components/common/BrowseButtonRows";
 import { Chip } from "@/components/common/Chip";
 import { Text } from "@/components/common/Text";
 import {
@@ -41,9 +46,10 @@ import { ItemCardText } from "@/components/ItemCardText";
 import { Loader } from "@/components/Loader";
 import { LibraryAlphabetPicker } from "@/components/library/LibraryAlphabetPicker";
 import { ItemPoster } from "@/components/posters/ItemPoster";
+import { StreamingServiceHeader } from "@/components/streaming/StreamingServiceHeader";
 import { TVFilterButton } from "@/components/tv";
 import { TVPosterCard } from "@/components/tv/TVPosterCard";
-import { NeonBoard, typeAccent } from "@/constants/Colors";
+import { NeonBoard } from "@/constants/Colors";
 import { useScaledTVPosterSizes } from "@/constants/TVPosterSizes";
 import useRouter from "@/hooks/useAppRouter";
 import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
@@ -62,16 +68,23 @@ import {
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import {
+  cachedJustWatchLists,
+  JUSTWATCH_STREAMING_PREFS,
+  loadRankedItems,
+} from "@/utils/justWatchLists";
+import {
   ALPHABET_RAIL_WIDTH,
   getLibraryLetter,
   getNextLibraryPage,
   getPreviousLibraryPage,
 } from "@/utils/libraryAlphabet";
+import { loadRandomItem } from "@/utils/randomItem";
 import {
   loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
   STREAMING_COLLECTION_TAG,
   type StreamingMediaType,
+  streamingService,
 } from "@/utils/streamingCollections";
 
 const TV_ITEM_GAP = 16;
@@ -101,6 +114,9 @@ const page: React.FC = () => {
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [mediaType, setMediaType] = useState<StreamingMediaType>("All");
+  // Streaming pages: POPULAR / TRENDING / TOP 10 / NEW, NEW by default (TV)
+  const [quickList, setQuickList] = useState<QuickList>("NEW");
+  const [randomBusy, setRandomBusy] = useState(false);
   const [sortBy, setSortBy] = useState<SortByOption[]>([
     SortByOption.PremiereDate,
   ]);
@@ -181,12 +197,13 @@ const page: React.FC = () => {
   const defaultSortOrder = isStreaming
     ? SortOrderOption.Descending
     : SortOrderOption.Ascending;
+  // A streaming service's brand colour drives its page's buttons, as on the
+  // TV; other collections are in the Collections yellow.
+  const service = isStreaming ? streamingService(collection?.Name) : null;
   const accent = isStreaming
-    ? mediaType === "All"
-      ? NeonBoard.volt
-      : typeAccent({ Type: mediaType })
-    : undefined;
-  useSetPageAccent(accent, isStreaming);
+    ? (service?.brand ?? NeonBoard.volt)
+    : NeonBoard.collections;
+  useSetPageAccent(accent, !!collection);
   const [filterScope, setFilterScope] = useState<string | null>(null);
   useEffect(() => {
     if (!collection || filterScope === collectionId) return;
@@ -194,6 +211,7 @@ const page: React.FC = () => {
     setSelectedYears([]);
     setSelectedTags([]);
     setMediaType("All");
+    setQuickList("NEW");
     setSortBy([defaultSortBy]);
     setSortOrder([defaultSortOrder]);
     setFilterScope(collectionId);
@@ -226,7 +244,9 @@ const page: React.FC = () => {
   }, [defaultSortBy, defaultSortOrder]);
 
   const pageSize = Platform.isTV ? 36 : 18;
-  const nameSorted = isStreaming && sortBy[0] === SortByOption.SortName;
+  const ranked = isStreaming && quickList !== "NEW";
+  const nameSorted =
+    isStreaming && !ranked && sortBy[0] === SortByOption.SortName;
   const filterSignature = JSON.stringify([
     api?.basePath,
     user?.Id,
@@ -260,6 +280,9 @@ const page: React.FC = () => {
     }
     return orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 3 : 5;
   }, [screenWidth, orientation]);
+
+  // Each poster fills its column's 89 % cell, so narrow phones don't clip it
+  const posterWidth = Math.floor((screenWidth / nrOfCols) * 0.89);
 
   const fetchItems = useCallback(
     async ({
@@ -300,7 +323,12 @@ const page: React.FC = () => {
         genres: selectedGenres,
         tags: selectedTags,
         years: selectedYears.map((year) => Number.parseInt(year, 10)),
-        includeItemTypes: ["Movie", "Series", "Season"],
+        includeItemTypes:
+          mediaType === "Movie"
+            ? ["Movie"]
+            : mediaType === "Series"
+              ? ["Series", "Season"]
+              : ["Movie", "Series", "Season"],
       });
 
       return response.data || null;
@@ -355,8 +383,89 @@ const page: React.FC = () => {
     staleTime: 60_000,
     refetchInterval: isStreaming && isFocused ? 60_000 : false,
     enabled:
-      !!api && !!user?.Id && !!collection && filterScope === collectionId,
+      !ranked &&
+      !!api &&
+      !!user?.Id &&
+      !!collection &&
+      filterScope === collectionId,
   });
+
+  // POPULAR / TRENDING / TOP 10: the lists the media server saves for every
+  // member (`justwatch-streaming`), in ranked order, filtered by type here;
+  // TOP 10 is the first 10 after the type filter, as on the TV.
+  const { data: rankedItems, isFetching: rankedFetching } = useQuery({
+    queryKey: [
+      "collection-ranked",
+      api?.basePath,
+      user?.Id,
+      collectionId,
+      quickList,
+    ],
+    queryFn: async ({ signal }) => {
+      if (!api || !user?.Id || !service) return [];
+      const lists = await cachedJustWatchLists(
+        api,
+        user.Id,
+        JUSTWATCH_STREAMING_PREFS,
+      );
+      const ids =
+        lists[`service_${quickList.toLowerCase()}_${service.code}`] ?? [];
+      return loadRankedItems(api, user.Id, ids, ids.length, signal);
+    },
+    enabled: ranked && !!service && !!api && !!user?.Id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const rankedVisible = useMemo(() => {
+    const items = (rankedItems ?? []).filter(
+      (item) => mediaType === "All" || item.Type === mediaType,
+    );
+    return quickList === "TOP_10" ? items.slice(0, 10) : items;
+  }, [rankedItems, mediaType, quickList]);
+
+  // RANDOM: one random title from the server with this page's filters, opened
+  // (never played), as on the TV
+  const openRandom = useCallback(async () => {
+    if (!api || !user?.Id || randomBusy) return;
+    setRandomBusy(true);
+    try {
+      const item = await loadRandomItem(api, {
+        userId: user.Id,
+        parentId: collectionId,
+        recursive: !isStreaming,
+        includeItemTypes:
+          mediaType === "Movie"
+            ? ["Movie"]
+            : mediaType === "Series"
+              ? isStreaming
+                ? ["Series"]
+                : ["Series", "Season"]
+              : isStreaming
+                ? ["Movie", "Series"]
+                : ["Movie", "Series", "Season"],
+        ...(isStreaming
+          ? {}
+          : {
+              genres: selectedGenres,
+              tags: selectedTags,
+              years: selectedYears.map((year) => Number.parseInt(year, 10)),
+            }),
+      });
+      if (item) router.push(getItemNavigation(item, "(home)") as any);
+    } finally {
+      setRandomBusy(false);
+    }
+  }, [
+    api,
+    user?.Id,
+    randomBusy,
+    collectionId,
+    isStreaming,
+    mediaType,
+    selectedGenres,
+    selectedTags,
+    selectedYears,
+    router,
+  ]);
 
   const collectionKeys = useMemo(
     () => [["collection-items", api?.basePath, user?.Id, collectionId]],
@@ -365,11 +474,12 @@ const page: React.FC = () => {
   useRefreshLibraryOnFocus(collectionKeys, 60_000);
 
   const flatData = useMemo(() => {
+    if (ranked) return rankedVisible;
     return (
       (data?.pages.flatMap((p) => p?.Items).filter(Boolean) as BaseItemDto[]) ||
       []
     );
-  }, [data]);
+  }, [data, ranked, rankedVisible]);
 
   const {
     data: alphabet,
@@ -499,12 +609,12 @@ const page: React.FC = () => {
             width: "89%",
           }}
         >
-          <ItemPoster item={item} />
+          <ItemPoster item={item} width={posterWidth} />
           <ItemCardText item={item} />
         </View>
       </TouchableItemRouter>
     ),
-    [orientation],
+    [orientation, posterWidth],
   );
 
   const renderTVItem = useCallback(
@@ -630,7 +740,11 @@ const page: React.FC = () => {
                       ]
                     : sortOptions.map((s) => s.key)
                 }
-                set={setSortBy}
+                set={(value) => {
+                  setSortBy(value);
+                  // Choosing a sort leaves the quick lists, as on the TV
+                  setQuickList("NEW");
+                }}
                 values={sortBy}
                 title={t("library.filters.sort_by")}
                 renderItemLabel={(item) =>
@@ -875,11 +989,17 @@ const page: React.FC = () => {
         <FlashList
           ref={flashListRef}
           ListEmptyComponent={
-            <View className='flex flex-col items-center justify-center h-full'>
-              <Text className='font-bold text-xl text-neutral-500'>
-                {t("search.no_results")}
-              </Text>
-            </View>
+            ranked && rankedFetching ? (
+              <View style={{ paddingTop: 40, alignItems: "center" }}>
+                <Loader />
+              </View>
+            ) : (
+              <View className='flex flex-col items-center justify-center h-full'>
+                <Text className='font-bold text-xl text-neutral-500'>
+                  {t("search.no_results")}
+                </Text>
+              </View>
+            )
           }
           contentInsetAdjustmentBehavior='automatic'
           data={flatData}
@@ -916,51 +1036,36 @@ const page: React.FC = () => {
           }}
           onEndReachedThreshold={0.5}
           ListHeaderComponent={
-            isStreaming ? (
-              <View
-                onLayout={(event) =>
-                  setHeaderHeight(event.nativeEvent.layout.height)
-                }
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    gap: 8,
-                    paddingHorizontal: 15,
-                    paddingTop: 16,
-                  }}
-                >
-                  {(["All", "Movie", "Series"] as const).map((type) => (
-                    <Chip
-                      key={type}
-                      label={t(
-                        type === "All"
-                          ? "library.filters.all"
-                          : type === "Movie"
-                            ? "item_card.movies"
-                            : "item_card.shows",
-                      )}
-                      selected={mediaType === type}
-                      // Always in their type colour, as on the TV
-                      tone={
-                        type === "All"
-                          ? NeonBoard.volt
-                          : typeAccent({ Type: type })
-                      }
-                      accent={
-                        type === "All"
-                          ? NeonBoard.volt
-                          : typeAccent({ Type: type })
-                      }
-                      onPress={() => setMediaType(type)}
-                    />
-                  ))}
-                </View>
-                {listHeader}
-              </View>
-            ) : (
-              listHeader
-            )
+            <View
+              onLayout={(event) =>
+                setHeaderHeight(event.nativeEvent.layout.height)
+              }
+            >
+              {isStreaming && service ? (
+                <StreamingServiceHeader
+                  collection={collection}
+                  wordmark={service.wordmark}
+                  brand={service.brand}
+                />
+              ) : null}
+              <TypeButtonRow
+                value={mediaType}
+                onChange={setMediaType}
+                onRandom={openRandom}
+                randomBusy={randomBusy}
+              />
+              {isStreaming ? (
+                <QuickListRow
+                  value={quickList}
+                  accent={accent}
+                  // Tapping the selected list again goes back to NEW
+                  onChange={(list) =>
+                    setQuickList((current) => (current === list ? "NEW" : list))
+                  }
+                />
+              ) : null}
+              {listHeader}
+            </View>
           }
           contentContainerStyle={{
             paddingBottom: 24,
