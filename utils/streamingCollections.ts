@@ -39,31 +39,16 @@ export function collectionCardPresentation(
   return { imageOnly, width: layout.width };
 }
 
-export const STREAMING_SERVICE_ORDER: readonly string[] = [
-  "Netflix",
-  "Disney+",
-  "Hulu",
-  "Max",
-  "Prime Video",
-  "Paramount+",
-  "Peacock",
-  "Apple TV+",
-  "AMC+",
-  "MGM+",
-  "Starz",
-  "BritBox",
-  "Crunchyroll",
-  "Hallmark",
-  "Angel",
-];
-
-/** Server naming aliases, as on the TV (`StreamingCollections.serviceIndex`). */
+/**
+ * The names the server used before, and other spellings of the same service
+ * (owner, 2026-10-16: Max is now HBO Max and Apple TV+ is Apple TV).
+ */
 const SERVICE_ALIASES: Record<string, string> = {
-  "hbo max": "max",
-  "max (hbo)": "max",
-  hbo: "max",
-  "apple tv": "apple tv+",
-  "apple tv plus": "apple tv+",
+  max: "hbo max",
+  "max (hbo)": "hbo max",
+  hbo: "hbo max",
+  "apple tv+": "apple tv",
+  "apple tv plus": "apple tv",
   "hallmark+": "hallmark",
   "hallmark plus": "hallmark",
   "angel studios": "angel",
@@ -80,42 +65,40 @@ const normalizedService = (name: string | null | undefined) => {
   return SERVICE_ALIASES[value] ?? value;
 };
 
-const serviceRank = (name: string | null | undefined) => {
-  const index = STREAMING_SERVICE_ORDER.findIndex(
-    (service) => service.toLowerCase() === normalizedService(name),
-  );
-  return index < 0 ? STREAMING_SERVICE_ORDER.length : index;
-};
-
 /**
- * Each service's bundled wordmark, brand colour and JustWatch code (its first
- * JustWatch package, which keys the server's lists), as on the TV
- * (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`,
- * `StreamingCollections.justWatchPackages`), in `STREAMING_SERVICE_ORDER`.
+ * The services the app has a bundled wordmark, brand colour and JustWatch code
+ * for (its first JustWatch package, which keys the server's lists), as on the
+ * TV (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`,
+ * `StreamingCollections.justWatchPackages`), by collection name. Services the
+ * server adds without these (YouTube, Tubi…) still show in the row with
+ * their poster; they just have no logo header or ranked lists.
  */
-const SERVICES: readonly { wordmark: string; brand: string; code: string }[] = [
-  { wordmark: "netflix", brand: "#E50914", code: "nfx" },
-  { wordmark: "disney", brand: "#113CCF", code: "dnp" },
-  { wordmark: "hulu", brand: "#1CE783", code: "hlu" },
-  { wordmark: "max", brand: "#002BE7", code: "mxx" },
-  { wordmark: "prime_video", brand: "#00A8E1", code: "amp" },
-  { wordmark: "paramount", brand: "#0064FF", code: "ppp" },
-  { wordmark: "peacock", brand: "#FDB927", code: "pct" },
-  { wordmark: "apple_tv", brand: "#A2AAAD", code: "atp" },
-  { wordmark: "amc", brand: "#00EEE6", code: "acp" },
-  { wordmark: "mgm", brand: "#EFBE73", code: "epx" },
-  { wordmark: "starz", brand: "#F5E000", code: "stz" },
-  { wordmark: "britbox", brand: "#66D3EB", code: "bbo" },
-  { wordmark: "crunchyroll", brand: "#FF5E00", code: "cru" },
-  { wordmark: "hallmark", brand: "#613790", code: "hmc" },
-  { wordmark: "angel", brand: "#E8B923", code: "agl" },
-];
+const SERVICES: Record<
+  string,
+  { wordmark: string; brand: string; code: string }
+> = {
+  netflix: { wordmark: "netflix", brand: "#E50914", code: "nfx" },
+  "disney+": { wordmark: "disney", brand: "#113CCF", code: "dnp" },
+  hulu: { wordmark: "hulu", brand: "#1CE783", code: "hlu" },
+  "hbo max": { wordmark: "max", brand: "#002BE7", code: "mxx" },
+  "prime video": { wordmark: "prime_video", brand: "#00A8E1", code: "amp" },
+  "paramount+": { wordmark: "paramount", brand: "#0064FF", code: "ppp" },
+  peacock: { wordmark: "peacock", brand: "#FDB927", code: "pct" },
+  "apple tv": { wordmark: "apple_tv", brand: "#A2AAAD", code: "atp" },
+  "amc+": { wordmark: "amc", brand: "#00EEE6", code: "acp" },
+  "mgm+": { wordmark: "mgm", brand: "#EFBE73", code: "epx" },
+  starz: { wordmark: "starz", brand: "#F5E000", code: "stz" },
+  britbox: { wordmark: "britbox", brand: "#66D3EB", code: "bbo" },
+  crunchyroll: { wordmark: "crunchyroll", brand: "#FF5E00", code: "cru" },
+  hallmark: { wordmark: "hallmark", brand: "#613790", code: "hmc" },
+  angel: { wordmark: "angel", brand: "#E8B923", code: "agl" },
+};
 
 /** The bundled wordmark, brand colour and JustWatch code for a streaming collection, if it's a known service. */
 export function streamingService(
   name: string | null | undefined,
 ): { wordmark: string; brand: string; code: string } | null {
-  return SERVICES[serviceRank(name)] ?? null;
+  return SERVICES[normalizedService(name)] ?? null;
 }
 
 /** Saved ids first in their saved order, then the rest in the default order. */
@@ -131,14 +114,6 @@ export function applyStreamingOrder(
     ...saved,
     ...items.filter((item) => !item.Id || !position.has(item.Id)),
   ];
-}
-
-export function sortStreamingCollections(items: BaseItemDto[]) {
-  return [...items].sort(
-    (a, b) =>
-      serviceRank(a.Name) - serviceRank(b.Name) ||
-      (a.Name ?? "").localeCompare(b.Name ?? ""),
-  );
 }
 
 export type StreamingMediaType = "All" | "Movie" | "Series";
@@ -218,6 +193,10 @@ async function loadTaggedCollections(
       includeItemTypes: ["BoxSet"],
       recursive: true,
       tags: [tag],
+      // The owner's order: each collection's sort name is its row position
+      // (~01 Netflix … ~23 Criterion Channel)
+      sortBy: ["SortName"],
+      sortOrder: ["Ascending"],
       fields: ["ChildCount", "Overview", "Tags"],
       enableUserData: false,
     },
@@ -240,8 +219,9 @@ async function loadTaggedCollections(
 }
 
 /**
- * The streaming collections in the default order, or in the member's own
- * [order] (collection ids, see `utils/streamingOrder.ts`) when they have one.
+ * Every collection tagged as a streaming service, in the server's sort-name
+ * order (the owner's row order), however many there are; or in the member's
+ * own [order] (collection ids, see `utils/streamingOrder.ts`) when they have one.
  */
 export async function loadStreamingCollections(
   api: Api,
@@ -250,14 +230,7 @@ export async function loadStreamingCollections(
   order: readonly string[] = [],
 ) {
   return applyStreamingOrder(
-    sortStreamingCollections(
-      await loadTaggedCollections(
-        api,
-        userId,
-        STREAMING_COLLECTION_TAG,
-        signal,
-      ),
-    ),
+    await loadTaggedCollections(api, userId, STREAMING_COLLECTION_TAG, signal),
     order,
   );
 }

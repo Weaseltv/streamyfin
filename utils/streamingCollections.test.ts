@@ -13,7 +13,6 @@ import {
   loadStreamingCollections,
   rowBadges,
   STREAMING_COLLECTION_TAG,
-  STREAMING_SERVICE_ORDER,
   streamingService,
 } from "./streamingCollections";
 
@@ -128,29 +127,48 @@ describe("streaming collections via the Jellyfin SDK", () => {
       expect(item.Name).toBe("Art already carries the title");
     }
   });
-  test("discovers by tag, scopes to the member, hides empty collections, and orders services before new names", async () => {
-    const services = STREAMING_SERVICE_ORDER.map((name) =>
-      collection(name, 12),
-    ).reverse();
+  test("discovers by tag, scopes to the member, hides empty collections, and keeps the server's sort-name order", async () => {
+    // The owner's order, as the server sorts it (~01 Netflix … ~23 Criterion Channel)
+    const owners = [
+      "Netflix",
+      "YouTube",
+      "Prime Video",
+      "Disney+",
+      "HBO Max",
+      "Hulu",
+      "Paramount+",
+      "Showtime",
+      "Peacock",
+      "Apple TV",
+      "Tubi",
+      "Pluto TV",
+      "Starz",
+      "Crunchyroll",
+      "Discovery+",
+      "AMC+",
+      "MGM+",
+      "Hallmark",
+      "BritBox",
+      "Shudder",
+      "Acorn TV",
+      "Angel",
+      "Criterion Channel",
+    ];
     const { api, requests, headers } = server((params) => {
-      // Untagged sports collections are never returned by this query.
+      // Untagged collections (Showtime Network, sports) are never returned by this query.
       if (params.get("tags") !== STREAMING_COLLECTION_TAG)
-        return { Items: [collection("Boxing", 7)] };
+        return { Items: [collection("Showtime Network", 7)] };
       return {
         Items: [
-          ...services,
-          collection("Z service", 1),
-          collection("A service", 2),
+          ...owners.map((name) => collection(name, 12)),
           collection("Empty service", 0),
         ],
       };
     });
     const items = await loadStreamingCollections(api, "member-a");
-    expect(items.map((item) => item.Name)).toEqual([
-      ...STREAMING_SERVICE_ORDER,
-      "A service",
-      "Z service",
-    ]);
+    expect(items.map((item) => item.Name)).toEqual(owners);
+    expect(requests[0].get("sortBy")).toBe("SortName");
+    expect(requests[0].get("sortOrder")).toBe("Ascending");
     expect(requests[0].get("userId")).toBe("member-a");
     expect(requests[0].get("includeItemTypes")).toBe("BoxSet");
     expect(requests[0].get("recursive")).toBe("true");
@@ -330,28 +348,31 @@ describe("Home rows as on the TV", () => {
       brand: "#E50914",
       code: "nfx",
     });
-    expect(streamingService(" HBO Max ")?.wordmark).toBe("max");
-    expect(streamingService("Apple TV")?.wordmark).toBe("apple_tv");
+    expect(streamingService(" HBO Max ")?.code).toBe("mxx");
+    expect(streamingService("Max")?.code).toBe("mxx");
+    expect(streamingService("Apple TV")?.code).toBe("atp");
+    expect(streamingService("Apple TV+")?.code).toBe("atp");
+    expect(streamingService("YouTube")).toBeNull();
     expect(streamingService("Hallmark+")?.wordmark).toBe("hallmark");
     expect(streamingService("Angel Studios")?.wordmark).toBe("angel");
     expect(streamingService("Some new service")).toBeNull();
   });
 
   test("the member's saved order comes first, then the default order; an empty order resets", async () => {
-    const items = ["Netflix", "Hulu", "Max", "Starz"].map((name) =>
+    const items = ["Netflix", "Hulu", "HBO Max", "Starz"].map((name) =>
       collection(name, 3),
     );
     expect(
-      applyStreamingOrder(items, ["Max", "Netflix"]).map((i) => i.Name),
-    ).toEqual(["Max", "Netflix", "Hulu", "Starz"]);
+      applyStreamingOrder(items, ["HBO Max", "Netflix"]).map((i) => i.Name),
+    ).toEqual(["HBO Max", "Netflix", "Hulu", "Starz"]);
     expect(applyStreamingOrder(items, ["Gone"]).map((i) => i.Name)).toEqual([
       "Netflix",
       "Hulu",
-      "Max",
+      "HBO Max",
       "Starz",
     ]);
 
-    const { api } = server(() => ({ Items: [...items].reverse() }));
+    const { api } = server(() => ({ Items: [...items] }));
     expect(
       (
         await loadStreamingCollections(api, "member-order", undefined, [
@@ -359,9 +380,9 @@ describe("Home rows as on the TV", () => {
           "Hulu",
         ])
       ).map((i) => i.Name),
-    ).toEqual(["Starz", "Hulu", "Netflix", "Max"]);
+    ).toEqual(["Starz", "Hulu", "Netflix", "HBO Max"]);
     expect(
       (await loadStreamingCollections(api, "member-order")).map((i) => i.Name),
-    ).toEqual(["Netflix", "Hulu", "Max", "Starz"]);
+    ).toEqual(["Netflix", "Hulu", "HBO Max", "Starz"]);
   });
 });

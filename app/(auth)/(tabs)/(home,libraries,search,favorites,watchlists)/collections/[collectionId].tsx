@@ -1055,7 +1055,9 @@ const page: React.FC = () => {
                 onRandom={openRandom}
                 randomBusy={randomBusy}
               />
-              {isStreaming ? (
+              {/* Ranked lists only for services the server keeps JustWatch
+                  lists for; the others (YouTube, Tubi…) stay on NEW */}
+              {isStreaming && service ? (
                 <QuickListRow
                   value={quickList}
                   accent={accent}

@@ -15,18 +15,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import { ItemImage } from "@/components/common/ItemImage";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
-import { StreamingServicePoster } from "@/components/streaming/StreamingServicePoster";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import {
-  loadStreamingCollections,
-  streamingService,
-} from "@/utils/streamingCollections";
+import { imageWidthFor } from "@/utils/imageSizes";
+import { loadStreamingCollections } from "@/utils/streamingCollections";
 import { loadStreamingOrder, saveStreamingOrder } from "@/utils/streamingOrder";
 
 interface Props {
@@ -39,9 +37,10 @@ const HEIGHT = Math.round(WIDTH * 1.5);
 
 /**
  * Home's Streaming Services row, as on WeaselPlex TV: "COLLECTIONS" over
- * "STREAMING SERVICES" in the Collections yellow, each service a bundled
- * wordmark on its brand gradient. Long press a service to reorder the row or
- * reset it; the order is saved on this device for this member, as on the TV.
+ * "STREAMING SERVICES" in the Collections yellow, every collection tagged as a
+ * streaming service in the server's order, each with the owner's poster. Long
+ * press a service to reorder the row or reset it; the order is saved on this
+ * device for this member, as on the TV.
  */
 export const StreamingServicesRow: React.FC<Props> = ({
   queryKey,
@@ -140,45 +139,36 @@ export const StreamingServicesRow: React.FC<Props> = ({
       />
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className='flex flex-row px-4' style={{ gap: RAIL_GAP }}>
-          {data.map((item) => {
-            const service = streamingService(item.Name);
-            return (
-              <TouchableItemRouter
-                key={item.Id}
-                item={item}
-                onLongPress={() => showMenu(item)}
-                accessible
-                accessibilityRole='button'
-                accessibilityLabel={item.Name ?? undefined}
-                style={{ width: WIDTH }}
+          {data.map((item) => (
+            <TouchableItemRouter
+              key={item.Id}
+              item={item}
+              onLongPress={() => showMenu(item)}
+              accessible
+              accessibilityRole='button'
+              accessibilityLabel={item.Name ?? undefined}
+              style={{ width: WIDTH }}
+            >
+              {/* The owner's poster card for the service, from the server */}
+              <View
+                style={{
+                  width: WIDTH,
+                  height: HEIGHT,
+                  borderWidth: 1,
+                  borderColor: NeonBoard.line2,
+                  backgroundColor: NeonBoard.card2,
+                  overflow: "hidden",
+                }}
               >
-                {service ? (
-                  <StreamingServicePoster
-                    wordmark={service.wordmark}
-                    brand={service.brand}
-                    width={WIDTH}
-                    height={HEIGHT}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: WIDTH,
-                      height: HEIGHT,
-                      borderWidth: 1,
-                      borderColor: NeonBoard.line2,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 8,
-                    }}
-                  >
-                    <Text variant='cardTitle' style={{ textAlign: "center" }}>
-                      {item.Name}
-                    </Text>
-                  </View>
-                )}
-              </TouchableItemRouter>
-            );
-          })}
+                <ItemImage
+                  item={item}
+                  variant='Primary'
+                  width={imageWidthFor(WIDTH)}
+                  style={{ width: "100%", height: "100%" }}
+                />
+              </View>
+            </TouchableItemRouter>
+          ))}
         </View>
       </ScrollView>
       <Modal
