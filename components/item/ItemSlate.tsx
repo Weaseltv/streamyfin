@@ -68,7 +68,8 @@ export const ItemMetaLine: React.FC<{
 
 /**
  * The item slate that overlaps the backdrop: optional 108×162 poster with a
- * 1pt `line2` border, eyebrow "MOVIE · GENRES", Condensed 30 title, meta line.
+ * 1pt `line2` border, eyebrow "MOVIE · GENRES", the title in Audiowide (large,
+ * shrinking to fit two lines, as the TV's hero title does), meta line.
  */
 export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
   const accent = typeAccent(item);
@@ -113,7 +114,14 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
         <Text variant='eyebrow' accent={accent} numberOfLines={1}>
           {eyebrow}
         </Text>
-        <Text variant='display' numberOfLines={2} style={{ marginTop: 4 }}>
+        <Text
+          variant='heroTitle'
+          accent='#FFFFFF'
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.55}
+          style={{ marginTop: 4 }}
+        >
           {item.Type === "Episode" ? item.SeriesName : item.Name}
         </Text>
         {item.Type === "Episode" ? (

@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type ListRenderItem } from "@shopify/flash-list";
@@ -40,7 +41,6 @@ import {
 } from "@/utils/downloads/offline-series";
 import { Text } from "../common/Text";
 import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
-import { DropdownTrigger } from "../PlatformDropdown";
 import { PlayedStatus } from "../PlayedStatus";
 import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
@@ -51,6 +51,8 @@ type Props = {
   currentEpisodeId?: string | null;
   headerImage: ReactElement;
   pageHeader: ReactNode;
+  /** Below the episodes (More Like This). */
+  pageFooter?: ReactNode;
 };
 
 const AnimatedEpisodes = Animated.createAnimatedComponent(
@@ -65,6 +67,7 @@ export const SeasonPicker: React.FC<Props> = ({
   currentEpisodeId,
   headerImage,
   pageHeader,
+  pageFooter,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -329,16 +332,35 @@ export const SeasonPicker: React.FC<Props> = ({
                 )
               }
             >
-              <DropdownTrigger
-                accent={NeonBoard.show}
-                disabled={sortedSeasons.length === 0}
-                value={
-                  selectedSeason
+              {/* Styled like the TV's season tabs: the chosen season in
+                  red on the dark backing the TV puts behind buttons */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  height: Sizes.chip,
+                  paddingLeft: 11,
+                  paddingRight: 8,
+                  borderWidth: 1,
+                  borderColor: NeonBoard.show,
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  opacity: sortedSeasons.length === 0 ? 0.5 : 1,
+                }}
+              >
+                <Text
+                  variant='chip'
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                  style={{ color: NeonBoard.show, maxWidth: 200 }}
+                >
+                  {selectedSeason
                     ? selectedSeason.Name ||
                       `${t("item_card.season")} ${selectedSeason.IndexNumber}`
-                    : t("item_card.seasons")
-                }
-              />
+                    : t("item_card.seasons")}
+                </Text>
+                <Feather name='chevron-down' size={16} color={NeonBoard.show} />
+              </View>
             </TouchableOpacity>
           </View>
           {episodes?.length && !isOffline ? (
@@ -383,6 +405,7 @@ export const SeasonPicker: React.FC<Props> = ({
         keyExtractor={(episode) => episode.Id!}
         renderItem={renderEpisode}
         ListHeaderComponent={header}
+        ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
         ListEmptyComponent={
           !isPending ? (
             <View

@@ -27,6 +27,11 @@ export const itemRouter = (item: BaseItemDto, from: string) => {
     return `/(auth)/(tabs)/${from}/series/${item.Id}`;
   }
 
+  // A season opens its series at that season
+  if (item.Type === "Season" && item.SeriesId) {
+    return `/(auth)/(tabs)/${from}/series/${item.SeriesId}?seasonIndex=${item.IndexNumber ?? ""}`;
+  }
+
   if (item.Type === "Person") {
     return `/(auth)/(tabs)/${from}/persons/${item.Id}`;
   }
@@ -68,6 +73,17 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
     return {
       pathname: "/series/[id]" as const,
       params: { id: item.Id! },
+    };
+  }
+
+  // A season opens its series at that season
+  if (item.Type === "Season" && item.SeriesId) {
+    return {
+      pathname: "/series/[id]" as const,
+      params: {
+        id: item.SeriesId,
+        seasonIndex: String(item.IndexNumber ?? ""),
+      },
     };
   }
 
@@ -164,7 +180,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   }, [from, item, router]);
 
   const showActionSheet = useCallback(() => {
-    if (["Movie", "Episode", "Series"].includes(item.Type ?? "")) {
+    if (["Movie", "Episode", "Series", "Season"].includes(item.Type ?? "")) {
       requestActions({ item, isOffline });
     }
   }, [item, isOffline, requestActions]);

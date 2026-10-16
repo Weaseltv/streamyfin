@@ -733,7 +733,23 @@
     },
     "libraries_count": "{{count}} libraries",
     "title": "Libraries",
-    "eyebrow": "WeaselPlex · {{count}} libraries"
+    "eyebrow": "WeaselPlex · {{count}} libraries",
+    "random": "Random",
+    "quick_list_popular": "Popular",
+    "quick_list_trending": "Trending",
+    "quick_list_top_10": "Top 10",
+    "quick_list_new": "New",
+    "all_groups": "All",
+    "tab_recommended": "Recommended",
+    "tab_library": "Library",
+    "kicker_just": "Just",
+    "released": "Released",
+    "added": "Added",
+    "kicker_your": "Your",
+    "suggestions": "Suggestions",
+    "kicker_top_10": "Top 10",
+    "on_service": "On {{service}}",
+    "groups": "Groups"
   },
   "favorites": {
     "series": "Series",
@@ -745,8 +761,7 @@
     "noDataTitle": "Nothing on your watchlist yet",
     "noData": "Items you add to your watchlist show up here.",
     "eyebrow": "WeaselPlex · Your favorites, saved",
-    "saved_count": "{{count}} saved",
-    "people": "People"
+    "saved_count": "{{count}} saved"
   },
   "custom_links": {
     "no_links": "No links"
@@ -848,7 +863,7 @@
     "select_season": "Select season",
     "no_episodes_for_this_season": "No episodes for this season",
     "more_with": "More with {{name}}",
-    "similar_items": "Similar items",
+    "similar_items": "More Like This",
     "no_similar_items_found": "No similar items found",
     "video": "Video",
     "media_options": "Media options",
@@ -885,7 +900,20 @@
     "resume_playback_description": "Do you want to continue where you left off or start from the beginning?",
     "play_from_start": "Play from start",
     "continue_from": "Continue from {{time}}",
-    "no_data_available": "No data available"
+    "no_data_available": "No data available",
+    "add_to_watchlist": "Add to Watchlist",
+    "remove_from_watchlist": "Remove from Watchlist",
+    "play_trailer": "Play trailer",
+    "trailers": "Trailers",
+    "no_trailers": "No trailers",
+    "random": "Random",
+    "shuffle": "Shuffle",
+    "mark_series_played": "Mark entire series as played?",
+    "mark_series_unplayed": "Mark entire series as unplayed?",
+    "local_trailer": "Local",
+    "external_trailer": "External",
+    "youtube": "YouTube",
+    "go_to_series": "Go to series"
   },
   "live_tv": {
     "title": "Live TV",

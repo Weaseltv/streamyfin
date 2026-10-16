@@ -88,32 +88,33 @@ const serviceRank = (name: string | null | undefined) => {
 };
 
 /**
- * Each service's bundled wordmark and brand colour, as on the TV
- * (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`), in
- * `STREAMING_SERVICE_ORDER`.
+ * Each service's bundled wordmark, brand colour and JustWatch code (its first
+ * JustWatch package, which keys the server's lists), as on the TV
+ * (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`,
+ * `StreamingCollections.justWatchPackages`), in `STREAMING_SERVICE_ORDER`.
  */
-const SERVICES: readonly { wordmark: string; brand: string }[] = [
-  { wordmark: "netflix", brand: "#E50914" },
-  { wordmark: "disney", brand: "#113CCF" },
-  { wordmark: "hulu", brand: "#1CE783" },
-  { wordmark: "max", brand: "#002BE7" },
-  { wordmark: "prime_video", brand: "#00A8E1" },
-  { wordmark: "paramount", brand: "#0064FF" },
-  { wordmark: "peacock", brand: "#FDB927" },
-  { wordmark: "apple_tv", brand: "#A2AAAD" },
-  { wordmark: "amc", brand: "#00EEE6" },
-  { wordmark: "mgm", brand: "#EFBE73" },
-  { wordmark: "starz", brand: "#F5E000" },
-  { wordmark: "britbox", brand: "#66D3EB" },
-  { wordmark: "crunchyroll", brand: "#FF5E00" },
-  { wordmark: "hallmark", brand: "#613790" },
-  { wordmark: "angel", brand: "#E8B923" },
+const SERVICES: readonly { wordmark: string; brand: string; code: string }[] = [
+  { wordmark: "netflix", brand: "#E50914", code: "nfx" },
+  { wordmark: "disney", brand: "#113CCF", code: "dnp" },
+  { wordmark: "hulu", brand: "#1CE783", code: "hlu" },
+  { wordmark: "max", brand: "#002BE7", code: "mxx" },
+  { wordmark: "prime_video", brand: "#00A8E1", code: "amp" },
+  { wordmark: "paramount", brand: "#0064FF", code: "ppp" },
+  { wordmark: "peacock", brand: "#FDB927", code: "pct" },
+  { wordmark: "apple_tv", brand: "#A2AAAD", code: "atp" },
+  { wordmark: "amc", brand: "#00EEE6", code: "acp" },
+  { wordmark: "mgm", brand: "#EFBE73", code: "epx" },
+  { wordmark: "starz", brand: "#F5E000", code: "stz" },
+  { wordmark: "britbox", brand: "#66D3EB", code: "bbo" },
+  { wordmark: "crunchyroll", brand: "#FF5E00", code: "cru" },
+  { wordmark: "hallmark", brand: "#613790", code: "hmc" },
+  { wordmark: "angel", brand: "#E8B923", code: "agl" },
 ];
 
-/** The bundled wordmark and brand colour for a streaming collection, if it's a known service. */
+/** The bundled wordmark, brand colour and JustWatch code for a streaming collection, if it's a known service. */
 export function streamingService(
   name: string | null | undefined,
-): { wordmark: string; brand: string } | null {
+): { wordmark: string; brand: string; code: string } | null {
   return SERVICES[serviceRank(name)] ?? null;
 }
 
