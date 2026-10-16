@@ -16,6 +16,13 @@ export const JUSTWATCH_HOME_PREFS = "justwatch-home";
 export const JUSTWATCH_STREAMING_PREFS = "justwatch-streaming";
 const PREFS_CLIENT = "WeaselPlex";
 
+/**
+ * `justwatch-home`'s map of streaming collections to the codes that key their
+ * lists (`<collectionId>=<code>`, comma-separated; owner, 2026-10-16), so a
+ * service added on the server gets its lists without an app release.
+ */
+export const SERVICE_CODES_KEY = "service_codes";
+
 /** Ids per request, so the URL stays short. */
 const IDS_PER_REQUEST = 50;
 
@@ -108,9 +115,54 @@ export async function loadJustWatchLists(
   const lists: Record<string, string[]> = {};
   for (const [key, value] of Object.entries(prefs)) {
     if (typeof value !== "string" || key === "updated") continue;
-    lists[key] = value.split(",").filter((id) => /^[0-9a-f]{32}$/i.test(id));
+    lists[key] =
+      key === SERVICE_CODES_KEY
+        ? value
+            .split(",")
+            .map((pair) => pair.trim())
+            .filter(Boolean)
+        : value.split(",").filter((id) => /^[0-9a-f]{32}$/i.test(id));
   }
   return lists;
+}
+
+const collectionKey = (id: string) => id.replace(/-/g, "").toLowerCase();
+
+/**
+ * The server's streaming collection codes by collection id (no dashes, lower
+ * case, as the TV holds UUIDs), from the `service_codes` pairs. `null` when
+ * the server doesn't send any (an older job, or before its first run): then
+ * the app's built-in table applies.
+ */
+export function parseServiceCodes(
+  pairs: readonly string[] | undefined,
+): Map<string, string> | null {
+  if (!pairs?.length) return null;
+  const codes = new Map<string, string>();
+  for (const pair of pairs) {
+    const split = pair.indexOf("=");
+    const id = pair.slice(0, split).trim();
+    const code = pair.slice(split + 1).trim();
+    if (split > 0 && id && code) codes.set(collectionKey(id), code);
+  }
+  return codes;
+}
+
+/** The code that keys a collection's lists in the server's mapping, if it has one. */
+export function serverServiceCode(
+  codes: ReadonlyMap<string, string>,
+  collectionId: string | null | undefined,
+): string | null {
+  return collectionId ? (codes.get(collectionKey(collectionId)) ?? null) : null;
+}
+
+/** The member's `service_codes`, from the same cached `justwatch-home` read as Home's rows. */
+export async function cachedServiceCodes(
+  api: Api,
+  userId: string,
+): Promise<Map<string, string> | null> {
+  const lists = await cachedJustWatchLists(api, userId, JUSTWATCH_HOME_PREFS);
+  return parseServiceCodes(lists[SERVICE_CODES_KEY]);
 }
 
 /**

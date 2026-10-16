@@ -70,6 +70,7 @@ import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
 import {
   cachedJustWatchLists,
+  cachedServiceCodes,
   JUSTWATCH_STREAMING_PREFS,
   loadRankedItems,
 } from "@/utils/justWatchLists";
@@ -86,6 +87,7 @@ import {
   STREAMING_COLLECTION_TAG,
   type StreamingMediaType,
   streamingService,
+  streamingServiceCode,
 } from "@/utils/streamingCollections";
 
 /** What a collection's ALL / MOVIES / SHOWS list, as on the TV (SHOWS takes episodes too). */
@@ -213,6 +215,19 @@ const page: React.FC = () => {
     ? (service?.brand ?? NeonBoard.volt)
     : NeonBoard.collections;
   useSetPageAccent(accent, !!collection);
+  // The code keying its POPULAR / TRENDING / TOP 10, from the server's
+  // `service_codes` (owner, 2026-10-16: new services need no app release);
+  // the built-in table until they're read, or if they can't be
+  const { data: serverCodes } = useQuery({
+    queryKey: ["streaming-service-codes", api?.basePath, user?.Id],
+    queryFn: () => (api && user?.Id ? cachedServiceCodes(api, user.Id) : null),
+    enabled: isStreaming && !!api && !!user?.Id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const listCode =
+    isStreaming && collection
+      ? streamingServiceCode(collection, serverCodes)
+      : null;
   const [filterScope, setFilterScope] = useState<string | null>(null);
   useEffect(() => {
     if (!collection || filterScope === collectionId) return;
@@ -253,7 +268,7 @@ const page: React.FC = () => {
   }, [defaultSortBy, defaultSortOrder]);
 
   const pageSize = Platform.isTV ? 36 : 18;
-  const ranked = isStreaming && quickList !== "NEW";
+  const ranked = isStreaming && !!listCode && quickList !== "NEW";
   const nameSorted =
     isStreaming && !ranked && sortBy[0] === SortByOption.SortName;
   const filterSignature = JSON.stringify([
@@ -406,19 +421,19 @@ const page: React.FC = () => {
       user?.Id,
       collectionId,
       quickList,
+      listCode,
     ],
     queryFn: async ({ signal }) => {
-      if (!api || !user?.Id || !service) return [];
+      if (!api || !user?.Id || !listCode) return [];
       const lists = await cachedJustWatchLists(
         api,
         user.Id,
         JUSTWATCH_STREAMING_PREFS,
       );
-      const ids =
-        lists[`service_${quickList.toLowerCase()}_${service.code}`] ?? [];
+      const ids = lists[`service_${quickList.toLowerCase()}_${listCode}`] ?? [];
       return loadRankedItems(api, user.Id, ids, ids.length, signal);
     },
-    enabled: ranked && !!service && !!api && !!user?.Id,
+    enabled: ranked && !!api && !!user?.Id,
     staleTime: 5 * 60 * 1000,
   });
   const rankedVisible = useMemo(() => {
@@ -1058,7 +1073,7 @@ const page: React.FC = () => {
               />
               {/* Ranked lists only for services the server keeps JustWatch
                   lists for; any other streaming collection stays on NEW */}
-              {isStreaming && service ? (
+              {isStreaming && listCode ? (
                 <QuickListRow
                   value={quickList}
                   accent={accent}

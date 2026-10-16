@@ -5,6 +5,7 @@ import type {
   SortOrder,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
+import { serverServiceCode } from "./justWatchLists";
 import { loadLibraryAlphabet } from "./libraryAlphabet";
 
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
@@ -73,7 +74,7 @@ const normalizedService = (name: string | null | undefined) => {
 
 /**
  * A streaming service's JustWatch code (which keys the server's lists) and,
- * where the app bundles them, its wordmark and brand colour.
+ * where the app bundles them, its wordmark and brand color.
  */
 export type StreamingService = {
   code: string;
@@ -106,7 +107,7 @@ const SERVICES: Record<string, StreamingService> = {
   crunchyroll: { wordmark: "crunchyroll", brand: "#FF5E00", code: "cru" },
   hallmark: { wordmark: "hallmark", brand: "#613790", code: "hmc" },
   angel: { wordmark: "angel", brand: "#E8B923", code: "agl" },
-  // Listed 2026-10-16, without a bundled wordmark or brand colour
+  // Listed 2026-10-16, without a bundled wordmark or brand color
   tubi: { code: "tbv" },
   "pluto tv": { code: "ptv" },
   "discovery+": { code: "dpu" },
@@ -119,11 +120,26 @@ const SERVICES: Record<string, StreamingService> = {
   showtime: { code: "sho" },
 };
 
-/** The JustWatch code, and any bundled wordmark and brand colour, for a streaming collection, if it's a known service. */
+/** The built-in JustWatch code, and any bundled wordmark and brand color, for a streaming collection, if it's a known service. */
 export function streamingService(
   name: string | null | undefined,
 ): StreamingService | null {
   return SERVICES[normalizedService(name)] ?? null;
+}
+
+/**
+ * The code that keys a streaming collection's lists: from the server's
+ * `service_codes` when it sends them (a collection without an entry has no
+ * lists), otherwise the built-in table by name. The wordmark, brand color and
+ * logo header stay by name.
+ */
+export function streamingServiceCode(
+  collection: Pick<BaseItemDto, "Id" | "Name">,
+  serverCodes: ReadonlyMap<string, string> | null | undefined,
+): string | null {
+  return serverCodes
+    ? serverServiceCode(serverCodes, collection.Id)
+    : (streamingService(collection.Name)?.code ?? null);
 }
 
 /** Saved ids first in their saved order, then the rest in the default order. */

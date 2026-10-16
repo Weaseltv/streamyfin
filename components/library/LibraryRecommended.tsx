@@ -10,6 +10,7 @@ import { ScrollingCollectionList } from "@/components/home/ScrollingCollectionLi
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import {
   cachedJustWatchLists,
+  cachedServiceCodes,
   JUSTWATCH_HOME_PREFS,
   loadRankedItems,
 } from "@/utils/justWatchLists";
@@ -20,7 +21,7 @@ import {
 } from "@/utils/libraryRecommended";
 import {
   loadStreamingCollections,
-  streamingService,
+  streamingServiceCode,
 } from "@/utils/streamingCollections";
 import { loadStreamingOrder } from "@/utils/streamingOrder";
 
@@ -64,7 +65,7 @@ export const LibraryViewToggle: React.FC<{
  * JUST / RELEASED, JUST / ADDED, YOUR / SUGGESTIONS, then TOP 10 / ON
  * <SERVICE> for every streaming service in the member's order, from the lists
  * the media server saves (`justwatch-home`, `top_10_movies_<code>` /
- * `top_10_shows_<code>`).
+ * `top_10_shows_<code>`, each collection's code from its `service_codes`).
  */
 export const LibraryRecommended: React.FC<{
   library: BaseItemDto;
@@ -84,16 +85,19 @@ export const LibraryRecommended: React.FC<{
     queryKey: ["library-recommended", "services", user?.Id],
     queryFn: async ({ signal }) => {
       if (!api || !user?.Id) return [];
-      const collections = await loadStreamingCollections(
-        api,
-        user.Id,
-        signal,
-        loadStreamingOrder(user.Id),
-      );
+      const [collections, serverCodes] = await Promise.all([
+        loadStreamingCollections(
+          api,
+          user.Id,
+          signal,
+          loadStreamingOrder(user.Id),
+        ),
+        // The built-in table if the server's codes can't be read
+        cachedServiceCodes(api, user.Id).catch(() => null),
+      ]);
       return collections.flatMap((collection) => {
-        const service = streamingService(collection.Name);
-        if (!service) return [];
-        return [{ code: service.code, name: collection.Name ?? "" }];
+        const code = streamingServiceCode(collection, serverCodes);
+        return code ? [{ code, name: collection.Name ?? "" }] : [];
       });
     },
     enabled: !!api && !!user?.Id,

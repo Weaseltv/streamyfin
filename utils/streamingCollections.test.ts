@@ -14,6 +14,7 @@ import {
   rowBadges,
   STREAMING_COLLECTION_TAG,
   streamingService,
+  streamingServiceCode,
 } from "./streamingCollections";
 
 const collection = (name: string, children?: number): BaseItemDto => ({
@@ -357,7 +358,7 @@ describe("Home rows as on the TV", () => {
     expect(streamingService("Some new service")).toBeNull();
   });
 
-  test("the services listed 2026-10-16 have JustWatch codes but no bundled wordmark or brand colour", () => {
+  test("the services listed 2026-10-16 have JustWatch codes but no bundled wordmark or brand color", () => {
     const codes: Record<string, string> = {
       Tubi: "tbv",
       "Pluto TV": "ptv",
@@ -385,6 +386,32 @@ describe("Home rows as on the TV", () => {
     expect(streamingService("Showtime")).toEqual({ code: "sho" });
     expect(streamingService("Paramount+")?.code).toBe("ppp");
     expect(streamingService("Showtime Network")).toBeNull();
+  });
+
+  test("the server's `service_codes` key a collection's lists, over the built-in table", () => {
+    const netflix = {
+      Id: "5f1c0000-0000-0000-0000-000000000AE2",
+      Name: "Netflix",
+    };
+    const fubo = { Id: "1234567890abcdef1234567890abcdef", Name: "Fubo" };
+    const youtube = { Id: "fedcba0987654321fedcba0987654321", Name: "YouTube" };
+    const codes = new Map([
+      ["5f1c0000000000000000000000000ae2", "nfa"],
+      ["1234567890abcdef1234567890abcdef", "fub"],
+    ]);
+    // The server's mapping wins, ids matched without dashes or case
+    expect(streamingServiceCode(netflix, codes)).toBe("nfa");
+    // A service added on the server gets lists without an app release
+    expect(streamingServiceCode(fubo, codes)).toBe("fub");
+    // With the mapping present, a collection without an entry has no lists
+    expect(streamingServiceCode(youtube, codes)).toBeNull();
+    expect(streamingServiceCode(netflix, new Map())).toBeNull();
+    // Without it (an older server job), the built-in table by name
+    for (const missing of [null, undefined]) {
+      expect(streamingServiceCode(netflix, missing)).toBe("nfx");
+      expect(streamingServiceCode(youtube, missing)).toBe("yfr");
+      expect(streamingServiceCode(fubo, missing)).toBeNull();
+    }
   });
 
   test("the member's saved order comes first, then the default order; an empty order resets", async () => {
