@@ -7,13 +7,14 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
-import { AddToFavorites } from "@/components/AddToFavorites";
 import { HeaderButtonGroup } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Image } from "@/components/common/ServerImage";
 import { DownloadItems } from "@/components/DownloadItem";
+import { SimilarItems } from "@/components/SimilarItems";
 import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
+import { SeriesButtons } from "@/components/series/SeriesButtons";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
 import { TVSeriesPage } from "@/components/series/TVSeriesPage";
 import { NeonBoard } from "@/constants/Colors";
@@ -154,8 +155,8 @@ const page: React.FC = () => {
     navigation.setOptions({
       headerRight: () =>
         !isLoading && item && allEpisodes && allEpisodes.length > 0 ? (
+          // ADD TO WATCHLIST is one of the page's buttons now, as on the TV
           <HeaderButtonGroup>
-            <AddToFavorites item={item} />
             {!Platform.isTV && (
               <DownloadItems
                 size='large'
@@ -227,8 +228,18 @@ const page: React.FC = () => {
               seasons={seasonCount}
               episodes={allEpisodes?.length}
             />
+            {!isOffline && <SeriesButtons item={item} />}
             {!isOffline && <NextUp seriesId={seriesId} />}
           </View>
+        }
+        pageFooter={
+          isOffline ? null : (
+            <SimilarItems
+              itemId={seriesId}
+              accent={NeonBoard.show}
+              style={{ marginTop: 16 }}
+            />
+          )
         }
       />
     </OfflineModeProvider>

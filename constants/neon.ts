@@ -120,6 +120,14 @@ export const Type = {
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
+  /** A title page's name (TV: Audiowide 48sp, shrinking to fit). */
+  heroTitle: {
+    ...FontFace.display,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
   pageTitle: {
     ...FontFace.display,
     fontSize: 24,

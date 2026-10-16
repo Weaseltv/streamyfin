@@ -5,9 +5,10 @@ import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
-import { ItemCard } from "@/components/home/ItemCard";
+import { ItemCard, railCardWidth } from "@/components/home/ItemCard";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { rowBadges } from "@/utils/streamingCollections";
 import { HorizontalScroll } from "./common/HorizontalScroll";
 import { SectionHeader } from "./common/SectionHeader";
 import { TouchableItemRouter } from "./common/TouchableItemRouter";
@@ -18,6 +19,12 @@ interface SimilarItemsProps extends ViewProps {
   accent?: string;
 }
 
+const CARD_WIDTH = railCardWidth("vertical");
+
+/**
+ * MORE LIKE THIS, as on WeaselPlex TV: the server's similar titles (movies
+ * and shows), 25 of them, with MOVIE / SHOW badges when they're mixed.
+ */
 export const SimilarItems: React.FC<SimilarItemsProps> = ({
   itemId,
   accent,
@@ -28,13 +35,13 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
   const { t } = useTranslation();
 
   const { data: similarItems, isLoading } = useQuery<BaseItemDto[]>({
-    queryKey: ["similarItems", itemId],
+    queryKey: ["similarItems", itemId, 25],
     queryFn: async () => {
       if (!api || !user?.Id || !itemId) return [];
       const response = await getLibraryApi(api).getSimilarItems({
         itemId,
         userId: user.Id,
-        limit: 5,
+        limit: 25,
       });
 
       return response.data.Items || [];
@@ -43,27 +50,38 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const movies = useMemo(
-    () => similarItems?.filter((i) => i.Type === "Movie") || [],
+  const items = useMemo(
+    () =>
+      similarItems?.filter((i) => i.Type === "Movie" || i.Type === "Series") ||
+      [],
     [similarItems],
   );
+  const badgeFor = useMemo(() => rowBadges(items), [items]);
 
   return (
     <View {...props}>
       <SectionHeader
         title={t("item_card.similar_items")}
         accent={accent}
-        count={isLoading ? undefined : movies.length}
+        count={isLoading ? undefined : items.length}
       />
       <HorizontalScroll
-        data={movies}
+        data={items}
         loading={isLoading}
         height={POSTER_CAROUSEL_HEIGHT}
         noItemsText={t("item_card.no_similar_items_found")}
         renderItem={(item: BaseItemDto, idx: number) => (
-          <TouchableItemRouter key={idx} item={item} style={{ width: 110 }}>
+          <TouchableItemRouter
+            key={idx}
+            item={item}
+            style={{ width: CARD_WIDTH }}
+          >
             <View>
-              <ItemCard item={item} orientation='vertical' badge={null} />
+              <ItemCard
+                item={item}
+                orientation='vertical'
+                badge={badgeFor(item)}
+              />
               <ItemCardText item={item} />
             </View>
           </TouchableItemRouter>
