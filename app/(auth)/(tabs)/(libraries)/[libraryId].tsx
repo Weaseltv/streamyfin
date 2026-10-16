@@ -191,6 +191,11 @@ const Page = () => {
     setView("recommended");
     setGroup(null);
   }, [libraryId]);
+  // Switching group starts at the top of the list (ALL after a group used
+  // to keep the old scroll position, landing mid-list)
+  useEffect(() => {
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [group]);
   const nameSorted = !Platform.isTV && sortBy[0] === SortByOption.SortName;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<string>();

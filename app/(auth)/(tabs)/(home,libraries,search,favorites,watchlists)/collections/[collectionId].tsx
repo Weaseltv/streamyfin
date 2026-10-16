@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
+  BaseItemKind,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import {
   getFilterApi,
@@ -86,6 +87,14 @@ import {
   type StreamingMediaType,
   streamingService,
 } from "@/utils/streamingCollections";
+
+/** What a collection's ALL / MOVIES / SHOWS list, as on the TV (SHOWS takes episodes too). */
+const collectionTypes = (mediaType: StreamingMediaType): BaseItemKind[] =>
+  mediaType === "Movie"
+    ? ["Movie"]
+    : mediaType === "Series"
+      ? ["Series", "Season", "Episode"]
+      : ["Movie", "Series", "Season", "Episode", "Video", "BoxSet"];
 
 const TV_ITEM_GAP = 16;
 const TV_SCALE_PADDING = 20;
@@ -318,17 +327,14 @@ const page: React.FC = () => {
           "CanDelete",
           "MediaSourceCount",
         ],
-        // true is needed for merged versions
-        recursive: true,
+        // The collection's own members, as on the TV. Recursing also
+        // returned every season of every show in it, and its "Top 25
+        // Episodes" collections hold episodes.
+        recursive: false,
         genres: selectedGenres,
         tags: selectedTags,
         years: selectedYears.map((year) => Number.parseInt(year, 10)),
-        includeItemTypes:
-          mediaType === "Movie"
-            ? ["Movie"]
-            : mediaType === "Series"
-              ? ["Series", "Season"]
-              : ["Movie", "Series", "Season"],
+        includeItemTypes: collectionTypes(mediaType),
       });
 
       return response.data || null;
@@ -431,17 +437,12 @@ const page: React.FC = () => {
       const item = await loadRandomItem(api, {
         userId: user.Id,
         parentId: collectionId,
-        recursive: !isStreaming,
-        includeItemTypes:
-          mediaType === "Movie"
-            ? ["Movie"]
-            : mediaType === "Series"
-              ? isStreaming
-                ? ["Series"]
-                : ["Series", "Season"]
-              : isStreaming
-                ? ["Movie", "Series"]
-                : ["Movie", "Series", "Season"],
+        recursive: false,
+        includeItemTypes: isStreaming
+          ? mediaType === "All"
+            ? ["Movie", "Series"]
+            : [mediaType]
+          : collectionTypes(mediaType),
         ...(isStreaming
           ? {}
           : {
