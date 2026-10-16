@@ -48,6 +48,7 @@ import {
   getItemNavigation,
   TouchableItemRouter,
 } from "@/components/common/TouchableItemRouter";
+import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
 import { FilterButton } from "@/components/filters/FilterButton";
 import { ResetFiltersButton } from "@/components/filters/ResetFiltersButton";
 import { ItemCardText } from "@/components/ItemCardText";
@@ -73,6 +74,7 @@ import { useFilterReset } from "@/hooks/useFilterReset";
 import { useOrientation } from "@/hooks/useOrientation";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
+import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import {
   FilterByOption,
@@ -187,6 +189,7 @@ const Page = () => {
   // The Collections library's group button; null is ALL
   const [group, setGroup] = useState<string | null>(null);
   const [randomBusy, setRandomBusy] = useState(false);
+  const { showModal, hideModal } = useGlobalModal();
   useEffect(() => {
     setView("recommended");
     setGroup(null);
@@ -1265,25 +1268,46 @@ const Page = () => {
           keyExtractor={(item) => item.key}
         />
         {collectionsLibrary && groups.length > 0 ? (
-          // The TV's group buttons: ALL, then each group in the owner's order
+          // Phone only (owner, 2026-10-16): ALL, then a GROUPS menu holding
+          // the TV's group buttons in the owner's order
           <View
             style={{
               flexDirection: "row",
-              flexWrap: "wrap",
               gap: 8,
               paddingHorizontal: Sizes.gutter,
               paddingBottom: 12,
             }}
           >
-            {[null, ...groups].map((name) => (
-              <Chip
-                key={name ?? "__all__"}
-                label={name ?? t("library.all_groups")}
-                selected={group === name}
-                accent={accent}
-                onPress={() => setGroup(name)}
-              />
-            ))}
+            <Chip
+              label={t("library.all_groups")}
+              selected={group === null}
+              accent={accent}
+              onPress={() => setGroup(null)}
+            />
+            <Chip
+              label={
+                group ? `${t("library.groups")}: ${group}` : t("library.groups")
+              }
+              selected={group !== null}
+              accent={accent}
+              caret
+              onPress={() =>
+                showModal(
+                  <WheelPickerSheet
+                    title={t("library.groups")}
+                    accent={accent}
+                    options={groups.map((name) => ({
+                      value: name,
+                      title: name,
+                    }))}
+                    selection={group ?? groups[0]}
+                    onCommit={(value) => setGroup(value)}
+                    onClose={hideModal}
+                  />,
+                  { enablePanDownToClose: true },
+                )
+              }
+            />
           </View>
         ) : null}
       </View>
@@ -1293,6 +1317,8 @@ const Page = () => {
       collectionsLibrary,
       groups,
       group,
+      showModal,
+      hideModal,
       randomBusy,
       openRandom,
       libraryId,

@@ -748,7 +748,8 @@
     "kicker_your": "Your",
     "suggestions": "Suggestions",
     "kicker_top_10": "Top 10",
-    "on_service": "On {{service}}"
+    "on_service": "On {{service}}",
+    "groups": "Groups"
   },
   "favorites": {
     "series": "Series",
