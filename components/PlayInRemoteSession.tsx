@@ -39,16 +39,9 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const api = useAtomValue(apiAtom);
-  // Only the open chooser polls; the closed icon stays neutral.
+  // Only the open chooser polls.
   const { sessions, isLoading } = useAllSessions({ enabled: modalVisible });
   const { t } = useTranslation();
-  const isPlayingElsewhere =
-    modalVisible &&
-    !!sessions?.some(
-      (session) =>
-        session.NowPlayingItem?.Id === item.Id &&
-        session.DeviceId !== api?.deviceInfo.id,
-    );
   const handlePlayInSession = async (session: SessionInfoDto) => {
     if (!api || !item.Id || !session.Id) return;
     const device = session.DeviceName || session.Client || "";
@@ -78,9 +71,10 @@ export const PlayInRemoteSessionButton: React.FC<Props> = ({
   return (
     <View {...props}>
       <SquareButton onPress={() => setModalVisible(true)} size={props.size}>
+        {/* The cast glyph, white like the header icons (owner, 2026-10-16). */}
         <HeaderIcon
           name='remoteSession'
-          tintColor={isPlayingElsewhere ? NeonBoard.text : NeonBoard.mid}
+          tintColor={NeonBoard.text}
           size={props.size === "large" ? undefined : 18}
         />
       </SquareButton>

@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Koble til Seerr forekomsten og be om filmer direkte i appen.",
       "downloads_feature_title": "Nedlastinger",
       "downloads_feature_description": "Last ned filmer og tv-serier for å se offline. Bruk enten standardmetoden eller installer den optimaliserer serveren for å laste ned filer i bakgrunnen.",
-      "chromecast_feature_description": "Kast filmer og tv-viser til Chromecast-enhetene dine.",
       "centralised_settings_plugin_title": "Programtillegg for sentraliserte innstillinger",
       "centralised_settings_plugin_description": "Konfigurer innstillinger sentralt på din Jellyfin-server. Alle brukeres klientinnstillinger synkroniseres automatisk.",
       "done_button": "Ferdig",
@@ -695,8 +694,6 @@
     "error": "Feil",
     "failed_to_get_stream_url": "Kan ikke hente nettadressen for stream",
     "an_error_occurred_while_playing_the_video": "En feil oppstod under video. Sjekk loggene i innstillingene.",
-    "client_error": "Feil med annonsør",
-    "could_not_create_stream_for_chromecast": "Kan ikke opprette en strøm for Chromecast",
     "message_from_server": "Melding fra tjener: {{message}}",
     "next_episode": "Neste Episode",
     "continue_watching": "Fortsett å se",
@@ -738,8 +735,7 @@
     "stopPlayback": "Stopp avspilling",
     "stopPlayingTitle": "Stoppe avspillingen av «{{title}}»?",
     "stopPlayingConfirm": "Er du sikker på at du vil stoppe avspillingen?",
-    "downloaded": "Nedlastet",
-    "missing_parameters": "Mangler avspillingsparametere"
+    "downloaded": "Nedlastet"
   },
   "chapters": {
     "title": "Kapitler",

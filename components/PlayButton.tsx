@@ -1,20 +1,9 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
-import CastContext, {
-  CastButton,
-  MediaHlsSegmentFormat,
-  MediaHlsVideoSegmentFormat,
-  MediaStreamType,
-  PlayServicesState,
-  useMediaStatus,
-  useRemoteMediaClient,
-} from "react-native-google-cast";
 import Animated, {
   Easing,
   interpolate,
@@ -26,22 +15,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { NeonBoard, typeAccent } from "@/constants/Colors";
 import { glowButton, Sizes } from "@/constants/neon";
-import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import type { ThemeColors } from "@/hooks/useImageColorsReturn";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { getDownloadedItemById } from "@/providers/Downloads/database";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
-import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSettings } from "@/utils/atoms/settings";
-import { getParentBackdropImageUrl } from "@/utils/jellyfin/image/getParentBackdropImageUrl";
-import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
-import { getStreamUrl } from "@/utils/jellyfin/media/getStreamUrl";
 import type { PlayRequest } from "@/utils/nativePlayer/playRequest";
 import { formatDuration, runtimeTicksToMinutes } from "@/utils/time";
-import { chromecast } from "../utils/profiles/chromecast";
-import { chromecasth265 } from "../utils/profiles/chromecasth265";
 import { Button } from "./Button";
 import { Text } from "./common/Text";
 import type { SelectedOptions } from "./ItemContent";
@@ -64,16 +46,8 @@ export const PlayButton: React.FC<Props> = ({
   selectedOptions,
 }: Props) => {
   const isOffline = useOfflineMode();
-  const { showActionSheetWithOptions } = useActionSheet();
-  const client = useRemoteMediaClient();
-  const mediaStatus = useMediaStatus();
   const { t } = useTranslation();
   const { showModal, hideModal } = useGlobalModal();
-
-  const api = useAtomValue(apiAtom);
-  const user = useAtomValue(userAtom);
-
-  const router = useRouter();
 
   const startWidth = useSharedValue(0);
   const targetWidth = useSharedValue(0);
@@ -97,210 +71,9 @@ export const PlayButton: React.FC<Props> = ({
         playbackPositionTicks: positionTicks,
       };
 
-      if (!client) {
-        await playMedia(playRequest, { item });
-        return;
-      }
-
-      const options = ["Chromecast", "Device", "Cancel"];
-      const cancelButtonIndex = 2;
-      showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex,
-        },
-        async (selectedIndex: number | undefined) => {
-          if (!api) return;
-          const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
-          const isOpeningCurrentlyPlayingMedia =
-            currentTitle && currentTitle === item?.Name;
-
-          switch (selectedIndex) {
-            case 0:
-              await CastContext.getPlayServicesState().then(async (state) => {
-                if (state && state !== PlayServicesState.SUCCESS) {
-                  CastContext.showPlayServicesErrorDialog(state);
-                } else {
-                  // Check if user wants H265 for Chromecast
-                  const enableH265 = settings.enableH265ForChromecast;
-
-                  // Validate required parameters before calling getStreamUrl
-                  if (!api) {
-                    console.warn("API not available for Chromecast streaming");
-                    Alert.alert(
-                      t("player.client_error"),
-                      t("player.missing_parameters"),
-                    );
-                    return;
-                  }
-                  if (!user?.Id) {
-                    console.warn(
-                      "User not authenticated for Chromecast streaming",
-                    );
-                    Alert.alert(
-                      t("player.client_error"),
-                      t("player.missing_parameters"),
-                    );
-                    return;
-                  }
-                  if (!item?.Id) {
-                    console.warn("Item not available for Chromecast streaming");
-                    Alert.alert(
-                      t("player.client_error"),
-                      t("player.missing_parameters"),
-                    );
-                    return;
-                  }
-
-                  // Get a new URL with the Chromecast device profile
-                  try {
-                    const data = await getStreamUrl({
-                      api,
-                      item,
-                      deviceProfile: enableH265 ? chromecasth265 : chromecast,
-                      startTimeTicks: positionTicks,
-                      userId: user.Id,
-                      audioStreamIndex: selectedOptions.audioIndex,
-                      maxStreamingBitrate: selectedOptions.bitrate?.value,
-                      mediaSourceId: selectedOptions.mediaSource?.Id,
-                      subtitleStreamIndex: selectedOptions.subtitleIndex,
-                    });
-
-                    if (!data?.url) {
-                      console.warn("No URL returned from getStreamUrl", data);
-                      Alert.alert(
-                        t("player.client_error"),
-                        t("player.could_not_create_stream_for_chromecast"),
-                      );
-                      return;
-                    }
-
-                    // Calculate start time in seconds from playback position
-                    const startTimeSeconds = positionTicks / 10000000;
-
-                    // Calculate stream duration in seconds from runtime
-                    const streamDurationSeconds = item.RunTimeTicks
-                      ? item.RunTimeTicks / 10000000
-                      : undefined;
-
-                    // HLS transcodes must be declared as HLS, otherwise the
-                    // receiver tries to parse the m3u8 playlist as an MP4 file
-                    // and the cast session dies immediately.
-                    const isHls = data.url.includes(".m3u8");
-                    // Jellyfin puts the HLS segment container in the URL; the
-                    // receiver needs the matching hint (HEVC only works in fMP4).
-                    const isFmp4 = data.url.includes("SegmentContainer=mp4");
-
-                    client
-                      .loadMedia({
-                        mediaInfo: {
-                          contentId: item.Id,
-                          contentUrl: data?.url,
-                          contentType: isHls
-                            ? "application/x-mpegURL"
-                            : "video/mp4",
-                          ...(isHls && {
-                            hlsSegmentFormat: isFmp4
-                              ? MediaHlsSegmentFormat.FMP4
-                              : MediaHlsSegmentFormat.TS,
-                            hlsVideoSegmentFormat: isFmp4
-                              ? MediaHlsVideoSegmentFormat.FMP4
-                              : MediaHlsVideoSegmentFormat.MPEG2_TS,
-                          }),
-                          streamType: MediaStreamType.BUFFERED,
-                          streamDuration: streamDurationSeconds,
-                          metadata:
-                            item.Type === "Episode"
-                              ? {
-                                  type: "tvShow",
-                                  title: item.Name || "",
-                                  episodeNumber: item.IndexNumber || 0,
-                                  seasonNumber: item.ParentIndexNumber || 0,
-                                  seriesTitle: item.SeriesName || "",
-                                  images: [
-                                    {
-                                      url: getParentBackdropImageUrl({
-                                        api,
-                                        item,
-                                        quality: 90,
-                                        width: 2000,
-                                      })!,
-                                    },
-                                  ],
-                                }
-                              : item.Type === "Movie"
-                                ? {
-                                    type: "movie",
-                                    title: item.Name || "",
-                                    subtitle: item.Overview || "",
-                                    images: [
-                                      {
-                                        url: getPrimaryImageUrl({
-                                          api,
-                                          item,
-                                          quality: 90,
-                                          width: 2000,
-                                        })!,
-                                      },
-                                    ],
-                                  }
-                                : {
-                                    type: "generic",
-                                    title: item.Name || "",
-                                    subtitle: item.Overview || "",
-                                    images: [
-                                      {
-                                        url: getPrimaryImageUrl({
-                                          api,
-                                          item,
-                                          quality: 90,
-                                          width: 2000,
-                                        })!,
-                                      },
-                                    ],
-                                  },
-                        },
-                        startTime: startTimeSeconds,
-                      })
-                      .then(() => {
-                        // state is already set when reopening current media, so skip it here.
-                        if (isOpeningCurrentlyPlayingMedia) {
-                          return;
-                        }
-                        CastContext.showExpandedControls();
-                      })
-                      .catch((e) => {
-                        console.error("Chromecast loadMedia failed:", e);
-                      });
-                  } catch (e) {
-                    console.log(e);
-                  }
-                }
-              });
-              break;
-            case 1:
-              await playMedia(playRequest, { item });
-              break;
-            case cancelButtonIndex:
-              break;
-          }
-        },
-      );
+      await playMedia(playRequest, { item });
     },
-    [
-      item,
-      client,
-      settings,
-      api,
-      user,
-      router,
-      showActionSheetWithOptions,
-      mediaStatus,
-      selectedOptions,
-      playMedia,
-      isOffline,
-      t,
-    ],
+    [item, selectedOptions, playMedia, isOffline],
   );
 
   const startPlayback = useCallback(
@@ -562,21 +335,6 @@ export const PlayButton: React.FC<Props> = ({
         >
           {label}
         </Text>
-        {client ? (
-          <View>
-            <Feather name='cast' size={18} color={NeonBoard.onAccent} />
-            {/* Kept mounted so Android discovery stays alive. It must not
-                open the system cast dialog, whose status line is clipped. */}
-            {Platform.OS === "android" ? (
-              <View
-                pointerEvents='none'
-                style={{ position: "absolute", opacity: 0 }}
-              >
-                <CastButton tintColor='transparent' />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
       </View>
     </TouchableOpacity>
   );

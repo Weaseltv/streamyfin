@@ -36,9 +36,9 @@ const ITEM_TYPES: BaseItemKind[] = [
 ];
 const ACCENT = sectionAccent("watchlist");
 const RAILS = [
-  { type: "Series", label: "favorites.series", accent: NeonBoard.yellow },
-  { type: "Movie", label: "favorites.movies", accent: NeonBoard.orange },
-  { type: "Episode", label: "favorites.episodes", accent: NeonBoard.yellow },
+  { type: "Series", label: "favorites.series", accent: NeonBoard.show },
+  { type: "Movie", label: "favorites.movies", accent: NeonBoard.movie },
+  { type: "Episode", label: "favorites.episodes", accent: NeonBoard.show },
   { type: "Person", label: "favorites.people", accent: ACCENT },
   { type: "Video", label: "favorites.videos", accent: ACCENT },
   { type: "BoxSet", label: "favorites.boxsets", accent: ACCENT },

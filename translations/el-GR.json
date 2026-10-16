@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Συνδεθείτε με την παρουσία σας στο Seerr και ζητήστε ταινίες απευθείας στην εφαρμογή.",
       "downloads_feature_title": "Λήψεις",
       "downloads_feature_description": "Κατεβάστε ταινίες και tv-shows για να δείτε εκτός σύνδεσης. Χρησιμοποιήστε είτε την προεπιλεγμένη μέθοδο ή εγκαταστήστε το βελτιστοποιημένο διακομιστή για να κατεβάσετε αρχεία στο παρασκήνιο.",
-      "chromecast_feature_description": "Μετάδοση ταινιών και τηλεοπτικών σειρών στις συσκευές σας Chromecast.",
       "centralised_settings_plugin_title": "Πρόσθετο Κεντρικών Ρυθμίσεων",
       "centralised_settings_plugin_description": "Ρυθμίστε τις ρυθμίσεις κεντρικά στον διακομιστή Jellyfin σας. Οι ρυθμίσεις του προγράμματος-πελάτη κάθε χρήστη συγχρονίζονται αυτόματα.",
       "done_button": "Ολοκληρώθηκε",
@@ -695,8 +694,6 @@
     "error": "Σφάλμα",
     "failed_to_get_stream_url": "Αποτυχία λήψης του URL ροής",
     "an_error_occurred_while_playing_the_video": "Παρουσιάστηκε σφάλμα κατά την αναπαραγωγή του βίντεο. Ελέγξτε τα αρχεία καταγραφής στις ρυθμίσεις.",
-    "client_error": "Σφάλμα Πελάτη",
-    "could_not_create_stream_for_chromecast": "Αδυναμία δημιουργίας ροής για το Chromecast",
     "message_from_server": "Μήνυμα από το διακομιστή: {{message}}",
     "next_episode": "Επόμενο Επεισόδιο",
     "continue_watching": "Συνέχεια Παρακολούθησης",
@@ -738,8 +735,7 @@
     "stopPlayback": "Διακοπή αναπαραγωγής",
     "stopPlayingTitle": "Διακοπή αναπαραγωγής του «{{title}}»;",
     "stopPlayingConfirm": "Είστε βέβαιοι ότι θέλετε να διακόψετε την αναπαραγωγή;",
-    "downloaded": "Ελήφθη",
-    "missing_parameters": "Λείπουν παράμετροι αναπαραγωγής"
+    "downloaded": "Ελήφθη"
   },
   "chapters": {
     "title": "Κεφάλαια",

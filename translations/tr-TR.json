@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Jellyseerr örneğinizle bağlantı kurun ve uygulama içinde doğrudan film talep edin.",
       "downloads_feature_title": "İndirmeler",
       "downloads_feature_description": "Filmleri ve TV dizilerini çevrimdışı izlemek için indirin. Varsayılan yöntemi veya dosyaları arka planda indirmek için optimize sunucuyu kurabilirsiniz.",
-      "chromecast_feature_description": "Filmleri ve TV dizilerini Chromecast cihazlarınıza aktarın.",
       "centralised_settings_plugin_title": "Merkezi Ayarlar Eklentisi",
       "centralised_settings_plugin_description": "Ayarları Jellyfin sunucunuzda merkezi olarak yapılandırın. Her kullanıcının istemci ayarları otomatik olarak senkronize edilir.",
       "done_button": "Tamam",
@@ -695,8 +694,6 @@
     "error": "Hata",
     "failed_to_get_stream_url": "Yayın URL'si alınamadı",
     "an_error_occurred_while_playing_the_video": "Video oynatılırken bir hata oluştu. Ayarlardaki günlüklere bakın.",
-    "client_error": "İstemci hatası",
-    "could_not_create_stream_for_chromecast": "Chromecast için yayın oluşturulamadı",
     "message_from_server": "Sunucudan mesaj: {{message}}",
     "next_episode": "Sonraki bölüm",
     "continue_watching": "İzlemeye devam et",
@@ -738,8 +735,7 @@
     "stopPlayback": "Oynatmayı Durdur",
     "stopPlayingTitle": "\"{{title}}\" oynatılması durdurulsun mu?",
     "stopPlayingConfirm": "Oynatmayı durdurmak istediğinizden emin misiniz?",
-    "downloaded": "İndirildi",
-    "missing_parameters": "Eksik oynatma parametreleri"
+    "downloaded": "İndirildi"
   },
   "chapters": {
     "title": "Bölümler",

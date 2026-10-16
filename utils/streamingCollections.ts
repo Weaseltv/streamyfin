@@ -10,6 +10,24 @@ import { loadLibraryAlphabet } from "./libraryAlphabet";
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
 export const CURATED_COLLECTION_TAG = "WeaselPlex Curated";
 
+/**
+ * As on the TV, a row shows MOVIE / SHOW badges only when it mixes movies and
+ * shows. Returns `null` (badges hidden) otherwise, `undefined` (each card's
+ * own type label) for a mixed row.
+ */
+export function rowBadge(
+  items: readonly Pick<BaseItemDto, "Type">[],
+): null | undefined {
+  const movies = items.some((item) => item.Type === "Movie");
+  const shows = items.some(
+    (item) =>
+      item.Type === "Series" ||
+      item.Type === "Season" ||
+      item.Type === "Episode",
+  );
+  return movies && shows ? undefined : null;
+}
+
 /** Collection art identifies the card; ordinary items keep their captions. */
 export function collectionCardPresentation(
   item: Pick<BaseItemDto, "Type" | "Tags">,

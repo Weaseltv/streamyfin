@@ -46,7 +46,6 @@ import { AddToWatchlist } from "./AddToWatchlist";
 import { ItemHeader } from "./ItemHeader";
 import { PlayInRemoteSessionButton } from "./PlayInRemoteSession";
 
-const Chromecast = !Platform.isTV ? require("./Chromecast") : null;
 const ItemContentTV = Platform.isTV
   ? require("./ItemContent.tv").ItemContentTV
   : null;
@@ -82,7 +81,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   const { orientation } = useOrientation();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [user] = useAtom(userAtom);
+  const [_user] = useAtom(userAtom);
   const { t } = useTranslation();
 
   const headerHeight =
@@ -149,7 +148,6 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     () =>
       headerItem && (
         <HeaderButtonGroup>
-          <Chromecast.Chromecast />
           {headerItem.Type !== "Program" &&
             !settings.hideRemoteSessionButton && (
               <PlayInRemoteSessionButton

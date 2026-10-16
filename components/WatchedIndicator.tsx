@@ -4,7 +4,6 @@ import React from "react";
 import { Platform, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/common/Text";
 import { NeonBoard } from "@/constants/Colors";
-import { glowChip } from "@/constants/neon";
 import { scaleSize } from "@/utils/scaleSize";
 
 const isAggregateType = (item: BaseItemDto) =>
@@ -25,8 +24,8 @@ const tvBadgeBase: ViewStyle = {
 /** Phone: a 20 square, top-right, on the card. */
 const squareBase: ViewStyle = {
   position: "absolute",
-  top: 4,
-  right: 4,
+  top: 6,
+  right: 6,
   height: 20,
   minWidth: 20,
   alignItems: "center",
@@ -34,19 +33,22 @@ const squareBase: ViewStyle = {
 };
 
 /**
- * Renders the unplayed-episode count badge for Series/BoxSet items that still
- * have episodes left to watch. Returns null for non-aggregate types, fully
- * watched items, or items with no unplayed count, so it is safe to mount
- * unconditionally as an overlay.
+ * The count badge top-right: a collection's number of titles (phone, as on
+ * the TV), or a series' unplayed-episode count. Returns null for other types,
+ * fully watched series, or no count, so it is safe to mount unconditionally as
+ * an overlay.
  */
 export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
   ({ item }) => {
     if (!isAggregateType(item)) return null;
-    if (item.UserData?.Played) return null;
-    const unplayed = item.UserData?.UnplayedItemCount ?? 0;
-    if (unplayed <= 0) return null;
+    const titles = !Platform.isTV && item.Type === "BoxSet";
+    if (!titles && item.UserData?.Played) return null;
+    const count = titles
+      ? (item.ChildCount ?? 0)
+      : (item.UserData?.UnplayedItemCount ?? 0);
+    if (count <= 0) return null;
     // Cap at 1k+ to keep the badge compact (jellyfin-web caps at 99+).
-    const label = unplayed >= 1000 ? "1k+" : String(unplayed);
+    const label = count >= 1000 ? "1k+" : String(count);
 
     if (Platform.isTV) {
       return (
@@ -69,22 +71,21 @@ export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
       );
     }
 
+    // The TV's count badge: black at 75 %, rounded, Exo 2 400 11 in `text`
     return (
       <View
         style={[
           squareBase,
           {
             paddingHorizontal: 5,
-            backgroundColor: NeonBoard.stage,
-            borderWidth: 1,
-            borderColor: NeonBoard.yellow,
+            borderRadius: 4,
+            backgroundColor: "rgba(0,0,0,0.75)",
           },
         ]}
       >
         <Text
-          variant='badge'
           allowFontScaling={false}
-          accent={NeonBoard.yellow}
+          style={{ fontSize: 11, lineHeight: 14, color: NeonBoard.text }}
         >
           {label}
         </Text>
@@ -94,9 +95,9 @@ export const UnplayedCountBadge: React.FC<{ item: BaseItemDto }> = React.memo(
 );
 
 /**
- * Played state on a card. Phone: a 20 green square with a check glyph and a
- * green glow, top-right; a Series / BoxSet with episodes left shows the count
- * in a yellow hairline badge instead.
+ * Played state on a card. Phone: a 20 green square with a dark check and a
+ * hairline black edge, top-right, as on the TV; a collection shows its title
+ * count and a series with episodes left its unplayed count instead.
  */
 export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
   const isMovieOrEpisode = item.Type === "Movie" || item.Type === "Episode";
@@ -116,16 +117,20 @@ export const WatchedIndicator: React.FC<{ item: BaseItemDto }> = ({ item }) => {
     return <UnplayedCountBadge item={item} />;
   }
 
-  if (isPlayed && (isMovieOrEpisode || isAggregate)) {
+  if (isPlayed && (isMovieOrEpisode || item.Type === "Series")) {
     return (
       <View
         style={[
           squareBase,
-          { width: 20, backgroundColor: NeonBoard.green },
-          glowChip(NeonBoard.green),
+          {
+            width: 20,
+            backgroundColor: NeonBoard.green,
+            borderWidth: 0.5,
+            borderColor: "#000000",
+          },
         ]}
       >
-        <Ionicons name='checkmark' size={14} color={NeonBoard.onAccent} />
+        <Ionicons name='checkmark' size={15} color={NeonBoard.onAccent} />
       </View>
     );
   }

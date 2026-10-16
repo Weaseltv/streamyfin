@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Verbind met je Jellyseerr instantie en vraag films direct in de app aan.",
       "downloads_feature_title": "Downloads",
       "downloads_feature_description": "Download films en series om offline te kijken. Gebruik de standaardmethode of installeer de optimalisatieserver om bestanden op de achtergrond te downloaden.",
-      "chromecast_feature_description": "Cast films en series naar je Chromecast toestellen.",
       "centralised_settings_plugin_title": "Plugin voor gecentraliseerde instellingen",
       "centralised_settings_plugin_description": "Configureer instellingen centraal op je Jellyfin server. De clientinstellingen van elke gebruiker worden automatisch gesynchroniseerd.",
       "done_button": "Gedaan",
@@ -695,8 +694,6 @@
     "error": "Fout",
     "failed_to_get_stream_url": "De stream-URL kon niet worden verkregen",
     "an_error_occurred_while_playing_the_video": "Er is een fout opgetreden tijdens het afspelen van de video. Controleer de logs in de instellingen.",
-    "client_error": "Fout van de client",
-    "could_not_create_stream_for_chromecast": "Kon geen stream maken voor Chromecast",
     "message_from_server": "Bericht van de server",
     "next_episode": "Volgende Aflevering",
     "continue_watching": "Verder kijken",
@@ -738,8 +735,7 @@
     "stopPlayback": "Afspelen stoppen",
     "stopPlayingTitle": "Afspelen van “{{title}}” stoppen?",
     "stopPlayingConfirm": "Weet je zeker dat je het afspelen wilt stoppen?",
-    "downloaded": "Gedownload",
-    "missing_parameters": "Afspeelparameters ontbreken"
+    "downloaded": "Gedownload"
   },
   "chapters": {
     "title": "Hoofdstukken",

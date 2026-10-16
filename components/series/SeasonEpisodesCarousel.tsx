@@ -100,7 +100,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
     <View>
       <SectionHeader
         title={item?.SeasonName ?? t("item_card.season")}
-        accent={NeonBoard.yellow}
+        accent={NeonBoard.show}
         count={episodes?.length}
       />
       <HorizontalScroll

@@ -288,10 +288,7 @@ export const SeasonPicker: React.FC<Props> = ({
           }}
         />
         {pageHeader}
-        <SectionHeader
-          title={t("item_card.seasons")}
-          accent={NeonBoard.yellow}
-        />
+        <SectionHeader title={t("item_card.seasons")} accent={NeonBoard.show} />
         <View
           className='flex flex-row items-center'
           style={{ paddingLeft: Sizes.gutter, paddingRight: 4, gap: 8 }}
@@ -310,7 +307,7 @@ export const SeasonPicker: React.FC<Props> = ({
                 showModal(
                   <WheelPickerSheet
                     title={t("item_card.seasons")}
-                    accent={NeonBoard.yellow}
+                    accent={NeonBoard.show}
                     options={sortedSeasons.map((season) => ({
                       value: season.Id ?? String(season.IndexNumber),
                       title:
@@ -333,7 +330,7 @@ export const SeasonPicker: React.FC<Props> = ({
               }
             >
               <DropdownTrigger
-                accent={NeonBoard.yellow}
+                accent={NeonBoard.show}
                 disabled={sortedSeasons.length === 0}
                 value={
                   selectedSeason
@@ -369,7 +366,7 @@ export const SeasonPicker: React.FC<Props> = ({
           ) : null}
         </View>
         <View style={{ marginTop: 10 }}>
-          <LoadingLine accent={NeonBoard.yellow} active={isPending} />
+          <LoadingLine accent={NeonBoard.show} active={isPending} />
         </View>
       </View>
     </View>

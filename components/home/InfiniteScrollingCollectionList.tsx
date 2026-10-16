@@ -16,11 +16,14 @@ import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Loader } from "@/components/Loader";
 import { Sizes } from "@/constants/neon";
 import { useSettings } from "@/utils/atoms/settings";
+import { rowBadge } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
 
 interface Props extends ViewProps {
   title?: string | null;
+  /** Small line over the title, as on the TV ("NEXT UP &"). */
+  kicker?: string;
   orientation?: "horizontal" | "vertical";
   /** Rule colour: volt on Home; the type colour elsewhere. */
   accent?: string;
@@ -53,6 +56,7 @@ interface Props extends ViewProps {
 
 export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   title,
+  kicker,
   orientation = "vertical",
   accent,
   badge,
@@ -131,14 +135,24 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return deduped;
   }, [data, excludeItem]);
 
+  // Type badges only on rows that mix movies and shows, unless the caller decides
+  const rowBadgeValue = useMemo(
+    () => (badge === undefined ? rowBadge(allItems) : badge),
+    [badge, allItems],
+  );
   const cardExtras = useMemo(
     () => ({
       useEpisodePoster: settings?.useEpisodeImagesForNextUp,
-      badge,
+      badge: rowBadgeValue,
       badgeColor,
       orientation,
     }),
-    [settings?.useEpisodeImagesForNextUp, badge, badgeColor, orientation],
+    [
+      settings?.useEpisodeImagesForNextUp,
+      rowBadgeValue,
+      badgeColor,
+      orientation,
+    ],
   );
   const renderRailItem = useCallback(
     ({ item }: { item: BaseItemDto }) => (
@@ -178,6 +192,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     <View {...props}>
       <SectionHeader
         title={title}
+        kicker={kicker}
         accent={accent}
         actionLabel={
           onPressSeeAll

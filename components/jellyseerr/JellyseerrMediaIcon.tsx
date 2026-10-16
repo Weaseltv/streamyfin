@@ -6,7 +6,7 @@ import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 
 /** Accent for a Seerr media type: movies orange, series yellow. */
 export const jellyseerrTypeAccent = (mediaType?: "tv" | "movie" | MediaType) =>
-  mediaType === MediaType.MOVIE ? NeonBoard.orange : NeonBoard.yellow;
+  mediaType === MediaType.MOVIE ? NeonBoard.movie : NeonBoard.show;
 
 /** The MOVIE / SERIES type badge in the type colour. */
 const JellyseerrMediaIcon: React.FC<{

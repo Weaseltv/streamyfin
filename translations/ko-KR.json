@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Seerr 서버에 연결하여 앱에서 바로 영화를 요청할 수 있습니다.",
       "downloads_feature_title": "다운로드된 컨텐츠",
       "downloads_feature_description": "영화와 시리즈를 다운로드하여 오프라인으로 시청.",
-      "chromecast_feature_description": "영화와 TV 프로그램을 Chromecast 기기로 전송하기",
       "centralised_settings_plugin_title": "중앙 설정 플러그인",
       "centralised_settings_plugin_description": "Jellyfin 서버에서 설정을 중앙 관리할 수 있습니다. 모든 사용자의 클라이언트 설정이 자동으로 동기화됩니다.",
       "done_button": "완료",
@@ -695,8 +694,6 @@
     "error": "오류",
     "failed_to_get_stream_url": "스트림 URL을 가져오지 못했습니다",
     "an_error_occurred_while_playing_the_video": "비디오 재생 중 오류가 발생했습니다. 설정에서 로그를 확인하세요.",
-    "client_error": "클라이언트 오류",
-    "could_not_create_stream_for_chromecast": "Chromecast용 스트림을 생성하지 못했습니다",
     "message_from_server": "서버 메시지: {{message}}",
     "next_episode": "다음 에피소드",
     "continue_watching": "이어서 시청",
@@ -738,8 +735,7 @@
     "stopPlayback": "재생 정지",
     "stopPlayingTitle": "\"{{title}}\" 재생을 중지하시겠습니까?",
     "stopPlayingConfirm": "정말 재생을 중지하시겠습니까?",
-    "downloaded": "다운로드됨",
-    "missing_parameters": "재생에 필요한 매개변수가 없습니다"
+    "downloaded": "다운로드됨"
   },
   "chapters": {
     "title": "챕터",

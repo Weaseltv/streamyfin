@@ -75,9 +75,9 @@ export const EpisodeRow = memo(function EpisodeRow({
               top: 0,
               bottom: 0,
               width: Sizes.tally,
-              backgroundColor: NeonBoard.yellow,
+              backgroundColor: NeonBoard.show,
             },
-            glowRule(NeonBoard.yellow),
+            glowRule(NeonBoard.show),
           ]}
         />
       ) : null}
@@ -128,7 +128,7 @@ export const EpisodeRow = memo(function EpisodeRow({
           </View>
         ) : pct > 0 ? (
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-            <NeonProgress progress={pct} color={NeonBoard.yellow} />
+            <NeonProgress progress={pct} color={NeonBoard.show} />
           </View>
         ) : null}
       </View>
@@ -159,7 +159,7 @@ export const EpisodeRow = memo(function EpisodeRow({
         }
         style={{ width: 28, alignItems: "flex-end" }}
       >
-        <Feather name='play' size={18} color={NeonBoard.yellow} />
+        <Feather name='play' size={18} color={NeonBoard.show} />
       </Pressable>
     </TouchableItemRouter>
   );

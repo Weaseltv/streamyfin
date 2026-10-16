@@ -135,11 +135,11 @@ export const SeasonDropdown: React.FC<Props> = ({
             style={[
               {
                 height: 30,
-                backgroundColor: NeonBoard.yellow,
+                backgroundColor: NeonBoard.show,
                 borderWidth: 1,
-                borderColor: NeonBoard.yellow,
+                borderColor: NeonBoard.show,
               },
-              glowChip(NeonBoard.yellow),
+              glowChip(NeonBoard.show),
             ]}
           >
             <Text variant='chip' style={{ color: NeonBoard.onAccent }}>

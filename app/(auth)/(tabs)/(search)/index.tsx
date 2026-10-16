@@ -966,20 +966,20 @@ export default function SearchPage() {
           <View>
             <SearchItemWrapper
               header={t("search.movies")}
-              accent={NeonBoard.orange}
+              accent={NeonBoard.movie}
               items={movies}
               renderItem={renderMovieResult}
             />
             <SearchItemWrapper
               items={series}
               header={t("search.series")}
-              accent={NeonBoard.yellow}
+              accent={NeonBoard.show}
               renderItem={renderSeriesResult}
             />
             <SearchItemWrapper
               items={episodes}
               header={t("search.episodes")}
-              accent={NeonBoard.yellow}
+              accent={NeonBoard.show}
               renderItem={renderEpisodeResult}
             />
             <SearchItemWrapper

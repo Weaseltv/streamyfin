@@ -6,13 +6,7 @@ import type {
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtom } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -27,14 +21,11 @@ import DraggableFlatList, {
   type RenderItemParams,
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
-import { CastState } from "react-native-google-cast";
 import { useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TextTicker from "react-native-text-ticker";
 import type { VolumeResult } from "react-native-volume-manager";
 import { Badge } from "@/components/Badge";
-import { CastDialog } from "@/components/cast/CastDialog";
-import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import { CreatePlaylistModal } from "@/components/music/CreatePlaylistModal";
@@ -43,8 +34,7 @@ import { TrackOptionsSheet } from "@/components/music/TrackOptionsSheet";
 import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
-import { useMusicCast } from "@/hooks/useMusicCast";
-import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { apiAtom } from "@/providers/JellyfinProvider";
 import {
   type RepeatMode,
   useMusicPlayer,
@@ -78,22 +68,12 @@ type ViewMode = "player" | "queue";
 export default function NowPlayingScreen() {
   const { t } = useTranslation();
   const [api] = useAtom(apiAtom);
-  const [user] = useAtom(userAtom);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [viewMode, setViewMode] = useState<ViewMode>("player");
   const [trackOptionsOpen, setTrackOptionsOpen] = useState(false);
   const [playlistPickerOpen, setPlaylistPickerOpen] = useState(false);
   const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
-
-  const {
-    isConnected: isCastConnected,
-    castQueue,
-    castState,
-  } = useMusicCast({
-    api,
-    userId: user?.Id,
-  });
 
   const {
     currentTrack,
@@ -117,7 +97,6 @@ export default function NowPlayingScreen() {
     removeFromQueue,
     reorderQueue,
     stop,
-    pause,
   } = useMusicPlayer();
 
   const { isFavorite, toggleFavorite } = useFavorite(
@@ -135,21 +114,6 @@ export default function NowPlayingScreen() {
   useEffect(() => {
     sliderMax.value = duration > 0 ? duration : 1;
   }, [duration, sliderMax]);
-
-  // Auto-cast queue when Chromecast becomes connected and pause local playback
-  const prevCastState = useRef<CastState | null | undefined>(null);
-  useEffect(() => {
-    if (
-      castState === CastState.CONNECTED &&
-      prevCastState.current !== CastState.CONNECTED &&
-      queue.length > 0
-    ) {
-      // Just connected - pause local playback and cast the queue
-      pause();
-      castQueue({ queue, startIndex: queueIndex });
-    }
-    prevCastState.current = castState;
-  }, [castState, queue, queueIndex, castQueue, pause]);
 
   const imageUrl = useMemo(() => {
     if (!api || !currentTrack) return null;
@@ -324,7 +288,6 @@ export default function NowPlayingScreen() {
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
             onOptionsPress={handleOptionsPress}
-            isCastConnected={isCastConnected}
           />
         ) : (
           <QueueView
@@ -386,7 +349,6 @@ interface PlayerViewProps {
   isFavorite: boolean | undefined;
   onToggleFavorite: () => void;
   onOptionsPress: () => void;
-  isCastConnected: boolean;
 }
 
 const PlayerView: React.FC<PlayerViewProps> = ({
@@ -415,9 +377,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   isFavorite,
   onToggleFavorite,
   onOptionsPress,
-  isCastConnected,
 }) => {
-  const { t } = useTranslation();
   const audioStream = useMemo(() => {
     return mediaSource?.MediaStreams?.find((stream) => stream.Type === "Audio");
   }, [mediaSource]);
@@ -427,7 +387,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   const volumeMin = useSharedValue(0);
   const volumeMax = useSharedValue(1);
   const isTv = Platform.isTV;
-  const [castOpen, setCastOpen] = useState(false);
 
   useEffect(() => {
     if (isTv || !VolumeManager) return;
@@ -457,267 +416,244 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   const hasAudioStats =
     mediaSource && (fileSize || codec || bitrate || sampleRate);
   return (
-    <>
-      <ScrollView className='flex-1 px-6' showsVerticalScrollIndicator={false}>
-        {/* Album artwork */}
+    <ScrollView className='flex-1 px-6' showsVerticalScrollIndicator={false}>
+      {/* Album artwork */}
+      <View
+        className='self-center mb-8 mt-4'
+        style={{
+          width: ARTWORK_SIZE,
+          height: ARTWORK_SIZE,
+          borderRadius: 0,
+          overflow: "hidden",
+          backgroundColor: "#1a1a1a",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
+          elevation: 10,
+        }}
+      >
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit='cover'
+            cachePolicy='memory-disk'
+          />
+        ) : (
+          <View className='flex-1 items-center justify-center bg-neutral-800'>
+            <Ionicons name='musical-note' size={80} color='#666' />
+          </View>
+        )}
+      </View>
+
+      {/* Track info with actions */}
+      <View className='mb-6'>
+        <View className='flex-row items-start justify-between'>
+          <View className='flex-1 mr-4'>
+            <TextTicker
+              style={{ color: "white", fontSize: 24, fontWeight: "bold" }}
+              duration={Math.max(4000, (currentTrack.Name?.length || 0) * 250)}
+              loop
+              bounce={false}
+              repeatSpacer={80}
+              marqueeDelay={1500}
+              scroll={false}
+              animationType='scroll'
+              easing={(t) => t}
+            >
+              {currentTrack.Name}
+            </TextTicker>
+            <TextTicker
+              style={{ color: "#a3a3a3", fontSize: 18 }}
+              duration={Math.max(
+                4000,
+                (
+                  currentTrack.Artists?.join(", ") ||
+                  currentTrack.AlbumArtist ||
+                  ""
+                ).length * 250,
+              )}
+              loop
+              bounce={false}
+              repeatSpacer={80}
+              marqueeDelay={2000}
+              scroll={false}
+              animationType='scroll'
+              easing={(t) => t}
+            >
+              {currentTrack.Artists?.join(", ") || currentTrack.AlbumArtist}
+            </TextTicker>
+          </View>
+          <TouchableOpacity
+            onPress={onToggleFavorite}
+            className='p-2'
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={24}
+              color={isFavorite ? "#ec4899" : "white"}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onOptionsPress} className='p-2'>
+            <Ionicons name='ellipsis-horizontal' size={24} color='white' />
+          </TouchableOpacity>
+        </View>
+
+        {/* Audio Stats */}
+        {hasAudioStats && (
+          <View className='flex-row flex-wrap gap-1.5 mt-3'>
+            {fileSize && <Badge variant='gray' text={fileSize} />}
+            {codec && <Badge variant='gray' text={codec} />}
+            <Badge
+              variant='gray'
+              text={playbackMethod}
+              iconLeft={
+                <Ionicons
+                  name={isTranscoding ? "swap-horizontal" : "play"}
+                  size={12}
+                  color='white'
+                />
+              }
+            />
+            {bitrate && bitrate !== "N/A" && (
+              <Badge variant='gray' text={bitrate} />
+            )}
+            {sampleRate && <Badge variant='gray' text={sampleRate} />}
+          </View>
+        )}
+      </View>
+
+      {/* Progress slider */}
+      <View className='mb-4'>
+        <Slider
+          theme={{
+            maximumTrackTintColor: "rgba(255,255,255,0.2)",
+            minimumTrackTintColor: "#fff",
+            bubbleBackgroundColor: "#fff",
+            bubbleTextColor: "#666",
+          }}
+          progress={sliderProgress}
+          minimumValue={sliderMin}
+          maximumValue={sliderMax}
+          onSlidingComplete={onSliderComplete}
+          renderThumb={() => null}
+          sliderHeight={8}
+          containerStyle={{ borderRadius: 0 }}
+          renderBubble={() => null}
+        />
+        <View className='flex flex-row justify-between mt-2'>
+          <Text className='text-neutral-500 text-xs'>{progressText}</Text>
+          <Text className='text-neutral-500 text-xs'>{remainingText}</Text>
+        </View>
+      </View>
+
+      {/* Main Controls with Shuffle & Repeat */}
+      <View className='flex flex-row items-center justify-center mb-6'>
+        <TouchableOpacity onPress={onToggleShuffle} className='p-3'>
+          <Ionicons
+            name='shuffle'
+            size={24}
+            color={shuffleEnabled ? Colors.primary : "#666"}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onPrevious}
+          disabled={!canGoPrevious || isLoading}
+          className='p-4'
+          style={{ opacity: canGoPrevious && !isLoading ? 1 : 0.3 }}
+        >
+          <Ionicons name='play-skip-back' size={32} color='white' />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onTogglePlayPause}
+          disabled={isLoading}
+          className='mx-4 bg-white p-4'
+        >
+          {isLoading ? (
+            <ActivityIndicator size={36} color={Colors.background} />
+          ) : (
+            <Ionicons
+              name={isPlaying ? "pause" : "play"}
+              size={36}
+              color={Colors.background}
+              style={isPlaying ? {} : { marginLeft: 4 }}
+            />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onNext}
+          disabled={!canGoNext || isLoading}
+          className='p-4'
+          style={{ opacity: canGoNext && !isLoading ? 1 : 0.3 }}
+        >
+          <Ionicons name='play-skip-forward' size={32} color='white' />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onCycleRepeat} className='p-3 relative'>
+          <Ionicons
+            name={getRepeatIcon() as any}
+            size={24}
+            color={repeatMode !== "off" ? Colors.primary : "#666"}
+          />
+          {repeatMode === "one" && (
+            <View className='absolute right-0 top-1 bg-volt w-4 h-4 items-center justify-center'>
+              <Text className='text-white text-[10px] font-bold'>1</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Volume Slider */}
+      {!isTv && VolumeManager && (
+        <View className='flex-row items-center mb-6'>
+          <Ionicons name='volume-low' size={20} color='#666' />
+          <View className='flex-1 mx-3'>
+            <Slider
+              theme={{
+                maximumTrackTintColor: "rgba(255,255,255,0.2)",
+                minimumTrackTintColor: "#fff",
+              }}
+              progress={volumeProgress}
+              minimumValue={volumeMin}
+              maximumValue={volumeMax}
+              onSlidingComplete={handleVolumeChange}
+              renderThumb={() => null}
+              sliderHeight={8}
+              containerStyle={{ borderRadius: 0 }}
+              renderBubble={() => null}
+            />
+          </View>
+          <Ionicons name='volume-high' size={20} color='#666' />
+        </View>
+      )}
+
+      {/* AirPlay (iOS only) */}
+      {!isTv && Platform.OS === "ios" && (
         <View
-          className='self-center mb-8 mt-4'
           style={{
-            width: ARTWORK_SIZE,
-            height: ARTWORK_SIZE,
-            borderRadius: 0,
-            overflow: "hidden",
-            backgroundColor: "#1a1a1a",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.4,
-            shadowRadius: 16,
-            elevation: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 32,
+            marginBottom: 16,
           }}
         >
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit='cover'
-              cachePolicy='memory-disk'
+          <View style={{ transform: [{ scale: 2.8 }] }}>
+            <ExpoAvRoutePickerView
+              style={{ width: 24, height: 24 }}
+              tintColor='#666666'
+              activeTintColor={Colors.primary}
             />
-          ) : (
-            <View className='flex-1 items-center justify-center bg-neutral-800'>
-              <Ionicons name='musical-note' size={80} color='#666' />
-            </View>
-          )}
-        </View>
-
-        {/* Track info with actions */}
-        <View className='mb-6'>
-          <View className='flex-row items-start justify-between'>
-            <View className='flex-1 mr-4'>
-              <TextTicker
-                style={{ color: "white", fontSize: 24, fontWeight: "bold" }}
-                duration={Math.max(
-                  4000,
-                  (currentTrack.Name?.length || 0) * 250,
-                )}
-                loop
-                bounce={false}
-                repeatSpacer={80}
-                marqueeDelay={1500}
-                scroll={false}
-                animationType='scroll'
-                easing={(t) => t}
-              >
-                {currentTrack.Name}
-              </TextTicker>
-              <TextTicker
-                style={{ color: "#a3a3a3", fontSize: 18 }}
-                duration={Math.max(
-                  4000,
-                  (
-                    currentTrack.Artists?.join(", ") ||
-                    currentTrack.AlbumArtist ||
-                    ""
-                  ).length * 250,
-                )}
-                loop
-                bounce={false}
-                repeatSpacer={80}
-                marqueeDelay={2000}
-                scroll={false}
-                animationType='scroll'
-                easing={(t) => t}
-              >
-                {currentTrack.Artists?.join(", ") || currentTrack.AlbumArtist}
-              </TextTicker>
-            </View>
-            <TouchableOpacity
-              onPress={onToggleFavorite}
-              className='p-2'
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={isFavorite ? "heart" : "heart-outline"}
-                size={24}
-                color={isFavorite ? "#ec4899" : "white"}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onOptionsPress} className='p-2'>
-              <Ionicons name='ellipsis-horizontal' size={24} color='white' />
-            </TouchableOpacity>
-          </View>
-
-          {/* Audio Stats */}
-          {hasAudioStats && (
-            <View className='flex-row flex-wrap gap-1.5 mt-3'>
-              {fileSize && <Badge variant='gray' text={fileSize} />}
-              {codec && <Badge variant='gray' text={codec} />}
-              <Badge
-                variant='gray'
-                text={playbackMethod}
-                iconLeft={
-                  <Ionicons
-                    name={isTranscoding ? "swap-horizontal" : "play"}
-                    size={12}
-                    color='white'
-                  />
-                }
-              />
-              {bitrate && bitrate !== "N/A" && (
-                <Badge variant='gray' text={bitrate} />
-              )}
-              {sampleRate && <Badge variant='gray' text={sampleRate} />}
-            </View>
-          )}
-        </View>
-
-        {/* Progress slider */}
-        <View className='mb-4'>
-          <Slider
-            theme={{
-              maximumTrackTintColor: "rgba(255,255,255,0.2)",
-              minimumTrackTintColor: "#fff",
-              bubbleBackgroundColor: "#fff",
-              bubbleTextColor: "#666",
-            }}
-            progress={sliderProgress}
-            minimumValue={sliderMin}
-            maximumValue={sliderMax}
-            onSlidingComplete={onSliderComplete}
-            renderThumb={() => null}
-            sliderHeight={8}
-            containerStyle={{ borderRadius: 0 }}
-            renderBubble={() => null}
-          />
-          <View className='flex flex-row justify-between mt-2'>
-            <Text className='text-neutral-500 text-xs'>{progressText}</Text>
-            <Text className='text-neutral-500 text-xs'>{remainingText}</Text>
           </View>
         </View>
-
-        {/* Main Controls with Shuffle & Repeat */}
-        <View className='flex flex-row items-center justify-center mb-6'>
-          <TouchableOpacity onPress={onToggleShuffle} className='p-3'>
-            <Ionicons
-              name='shuffle'
-              size={24}
-              color={shuffleEnabled ? Colors.primary : "#666"}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onPrevious}
-            disabled={!canGoPrevious || isLoading}
-            className='p-4'
-            style={{ opacity: canGoPrevious && !isLoading ? 1 : 0.3 }}
-          >
-            <Ionicons name='play-skip-back' size={32} color='white' />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onTogglePlayPause}
-            disabled={isLoading}
-            className='mx-4 bg-white p-4'
-          >
-            {isLoading ? (
-              <ActivityIndicator size={36} color={Colors.background} />
-            ) : (
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={36}
-                color={Colors.background}
-                style={isPlaying ? {} : { marginLeft: 4 }}
-              />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onNext}
-            disabled={!canGoNext || isLoading}
-            className='p-4'
-            style={{ opacity: canGoNext && !isLoading ? 1 : 0.3 }}
-          >
-            <Ionicons name='play-skip-forward' size={32} color='white' />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onCycleRepeat} className='p-3 relative'>
-            <Ionicons
-              name={getRepeatIcon() as any}
-              size={24}
-              color={repeatMode !== "off" ? Colors.primary : "#666"}
-            />
-            {repeatMode === "one" && (
-              <View className='absolute right-0 top-1 bg-volt w-4 h-4 items-center justify-center'>
-                <Text className='text-white text-[10px] font-bold'>1</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Volume Slider */}
-        {!isTv && VolumeManager && (
-          <View className='flex-row items-center mb-6'>
-            <Ionicons name='volume-low' size={20} color='#666' />
-            <View className='flex-1 mx-3'>
-              <Slider
-                theme={{
-                  maximumTrackTintColor: "rgba(255,255,255,0.2)",
-                  minimumTrackTintColor: "#fff",
-                }}
-                progress={volumeProgress}
-                minimumValue={volumeMin}
-                maximumValue={volumeMax}
-                onSlidingComplete={handleVolumeChange}
-                renderThumb={() => null}
-                sliderHeight={8}
-                containerStyle={{ borderRadius: 0 }}
-                renderBubble={() => null}
-              />
-            </View>
-            <Ionicons name='volume-high' size={20} color='#666' />
-          </View>
-        )}
-
-        {/* AirPlay & Chromecast Buttons */}
-        {!isTv && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 32,
-              marginBottom: 16,
-            }}
-          >
-            {/* AirPlay (iOS only) */}
-            {Platform.OS === "ios" && (
-              <View style={{ transform: [{ scale: 2.8 }] }}>
-                <ExpoAvRoutePickerView
-                  style={{ width: 24, height: 24 }}
-                  tintColor='#666666'
-                  activeTintColor={Colors.primary}
-                />
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={() => setCastOpen(true)}
-              accessibilityRole='button'
-              accessibilityLabel={t("cast.cast_to")}
-              hitSlop={8}
-            >
-              <HeaderIcon
-                name='cast'
-                size={24}
-                tintColor={isCastConnected ? Colors.primary : "#666"}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-      {!isTv ? (
-        <CastDialog visible={castOpen} onClose={() => setCastOpen(false)} />
-      ) : null}
-    </>
+      )}
+    </ScrollView>
   );
 };
 

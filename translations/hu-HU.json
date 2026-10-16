@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Csatlakozz a Jellyseerrhez és kérj filmeket közvetlenül az alkalmazásból.",
       "downloads_feature_title": "Letöltések",
       "downloads_feature_description": "Töltsd le a filmeket és sorozatokat az offline megtekintéshez. Használhatod az alapértelmezett módszert, vagy telepítheted az 'optimise server'-t a háttérben történő letöltéshez.",
-      "chromecast_feature_description": "Játszd le a filmeket és sorozatokat a  Chromecast eszközeiden.",
       "centralised_settings_plugin_title": "Központosított Beállítások Bővítmény",
       "centralised_settings_plugin_description": "Konfiguráld a beállításokat központilag a Jellyfin szervereden. Minden felhasználó kliensbeállításai automatikusan szinkronizálódnak.",
       "done_button": "Kész",
@@ -695,8 +694,6 @@
     "error": "Hiba",
     "failed_to_get_stream_url": "Nem sikerült lekérni a stream URL-t",
     "an_error_occurred_while_playing_the_video": "Hiba történt a videó lejátszása közben. Ellenőrizd a naplókat a beállításokban.",
-    "client_error": "Kliens Hiba",
-    "could_not_create_stream_for_chromecast": "A Chromecast stream létrehozása sikertelen volt",
     "message_from_server": "Üzenet a szervertől: {{message}}",
     "next_episode": "Következő Epizód",
     "continue_watching": "Folytatás",
@@ -738,8 +735,7 @@
     "stopPlayback": "Lejátszás leállítása",
     "stopPlayingTitle": "Leállítod a(z) „{{title}}” lejátszását?",
     "stopPlayingConfirm": "Biztosan leállítod a lejátszást?",
-    "downloaded": "Letöltve",
-    "missing_parameters": "Hiányzó lejátszási paraméterek"
+    "downloaded": "Letöltve"
   },
   "chapters": {
     "title": "Fejezetek",

@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Підключіться до вашого екземпляру Jellyseerr і запитуватуйте фільми безпосередньо в застосунку.",
       "downloads_feature_title": "Завантаження",
       "downloads_feature_description": "Завантажуйте фільми і серіали для перегляду офлайн. Використовуйте або метод за замовчуванням або встановіть оптимізований сервер для завантаження файлів у фоні.",
-      "chromecast_feature_description": "Транслюйте фільми і серіали на ваші Chromecast прилади.",
       "centralised_settings_plugin_title": "Плагін централізованих налаштувань",
       "centralised_settings_plugin_description": "Налаштуйте параметри централізовано на вашому сервері Jellyfin. Клієнтські налаштування кожного користувача синхронізуються автоматично.",
       "done_button": "Готово",
@@ -695,8 +694,6 @@
     "error": "Помилка",
     "failed_to_get_stream_url": "Не вдалося отримати URL-адресу потоку",
     "an_error_occurred_while_playing_the_video": "Під час відтворення відео сталася помилка. Перевірте журнал в налаштуваннях.",
-    "client_error": "Помилка клієнту",
-    "could_not_create_stream_for_chromecast": "Не вдалося створити потік для Chromecast",
     "message_from_server": "Повідомлення від серверу: {{message}}",
     "next_episode": "Наступний Епізод",
     "continue_watching": "Продовжити перегляд",
@@ -738,8 +735,7 @@
     "stopPlayback": "Зупинити відтворення",
     "stopPlayingTitle": "Зупинити відтворення «{{title}}»?",
     "stopPlayingConfirm": "Ви впевнені, що хочете зупинити відтворення?",
-    "downloaded": "Завантажено",
-    "missing_parameters": "Відсутні параметри відтворення"
+    "downloaded": "Завантажено"
   },
   "chapters": {
     "title": "Розділи",

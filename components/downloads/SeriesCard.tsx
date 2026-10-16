@@ -67,7 +67,7 @@ export const SeriesHeader: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
     >
       <SectionHeader
         title={items[0]?.SeriesName ?? ""}
-        accent={NeonBoard.yellow}
+        accent={NeonBoard.show}
         count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
         className='px-4'
         bleedRule

@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Forbind til din Jellyseerr instans og anmod om film direkte i appen.",
       "downloads_feature_title": "Downloads",
       "downloads_feature_description": "Download film og tv-serier til offline visning. Brug enten standardmetoden eller installer optimiseret server for at downloade filer i baggrunden.",
-      "chromecast_feature_description": "Cast film og tv-serier til dine Chromecast enheder.",
       "centralised_settings_plugin_title": "Centraliseret indstillingsplugin",
       "centralised_settings_plugin_description": "Konfigurer indstillinger centralt på din Jellyfin server. Alle brugeres klientindstillinger synkroniseres automatisk.",
       "done_button": "Færdig",
@@ -695,8 +694,6 @@
     "error": "Fejl",
     "failed_to_get_stream_url": "Kunne ikke hente stream URL'en",
     "an_error_occurred_while_playing_the_video": "Der opstod en fejl under afspilning af videoen. Tjek logfilerne i indstillinger.",
-    "client_error": "Klientfejl",
-    "could_not_create_stream_for_chromecast": "Kunne ikke oprette en stream til Chromecast",
     "message_from_server": "Besked fra server: {{message}}",
     "next_episode": "Næste episode",
     "continue_watching": "Fortsæt med at se",
@@ -738,8 +735,7 @@
     "stopPlayback": "Stop afspilning",
     "stopPlayingTitle": "Stop afspilning af “{{title}}”?",
     "stopPlayingConfirm": "Er du sikker på, at du vil stoppe afspilningen?",
-    "downloaded": "Downloadet",
-    "missing_parameters": "Manglende afspilningsparametre"
+    "downloaded": "Downloadet"
   },
   "chapters": {
     "title": "Kapitler",

@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Conecte sua instância de Jellyfin e solicite filmes diretamente pelo app.",
       "downloads_feature_title": "Downloads",
       "downloads_feature_description": "Baixe filmes e séries para assistir sem internet. Use o método padrão ou instale o servidor de otimização para fazer o download de arquivos em segundo plano.",
-      "chromecast_feature_description": "Transmita filmes e séries para seu dispositivo Chromecast.",
       "centralised_settings_plugin_title": "Plugin de configurações centralizado",
       "centralised_settings_plugin_description": "Configure configurações através de um local centralizado no seu servidor Jellyfin. Todos as configurações de cliente serão sincronizadas para todos os usuários.",
       "done_button": "Ok",
@@ -695,8 +694,6 @@
     "error": "Erro",
     "failed_to_get_stream_url": "Falha ao obter a URL de stream",
     "an_error_occurred_while_playing_the_video": "Ocorreu um erro ao reproduzir o vídeo. Verifique os logs nas configurações.",
-    "client_error": "Erro no cliente",
-    "could_not_create_stream_for_chromecast": "Não foi possível criar um stream para o Chromecast",
     "message_from_server": "Mensagem do servidor: {{message}}",
     "next_episode": "Próximo episódio",
     "continue_watching": "Continuar assistindo",
@@ -738,8 +735,7 @@
     "stopPlayback": "Stop Playback",
     "stopPlayingTitle": "Parar a reprodução de \"{{title}}\"?",
     "stopPlayingConfirm": "Tem certeza que deseja parar a reprodução?",
-    "downloaded": "Baixado",
-    "missing_parameters": "Faltam parâmetros de reprodução"
+    "downloaded": "Baixado"
   },
   "chapters": {
     "title": "Capítulos",

@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Conectează-te la Jellyseerr și solicită filme direct în aplicație.",
       "downloads_feature_title": "Descărcări",
       "downloads_feature_description": "Descarcă filme și seriale pentru a le viziona offline. Folosește fie metoda implicită, fie instalează serverul de optimizare pentru a descărca fișiere în fundal.",
-      "chromecast_feature_description": "Transmiteți filme și seriale pe dispozitivele dvs. Chromecast.",
       "centralised_settings_plugin_title": "Plugin de setări centralizate",
       "centralised_settings_plugin_description": "Configurați setările central pe serverul Jellyfin. Setările clientului fiecărui utilizator se sincronizează automat.",
       "done_button": "Efectuat",
@@ -695,8 +694,6 @@
     "error": "Eroare",
     "failed_to_get_stream_url": "Nu s-a putut obține adresa URL a fluxului",
     "an_error_occurred_while_playing_the_video": "A apărut o eroare la redarea videoclipului. Verificați jurnalele în setări.",
-    "client_error": "Eroare client",
-    "could_not_create_stream_for_chromecast": "Nu s-a putut crea un flux pentru Chromecast",
     "message_from_server": "Mesaj de la server: {{message}}",
     "next_episode": "Episodul următor",
     "continue_watching": "Continuă să vizionezi",
@@ -738,8 +735,7 @@
     "stopPlayback": "Oprește redarea",
     "stopPlayingTitle": "Oprești redarea „{{title}}”?",
     "stopPlayingConfirm": "Sigur vrei să oprești redarea?",
-    "downloaded": "Descărcat",
-    "missing_parameters": "Lipsesc parametrii de redare"
+    "downloaded": "Descărcat"
   },
   "chapters": {
     "title": "Capitole",

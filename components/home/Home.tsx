@@ -83,6 +83,8 @@ const HomeTV = Platform.isTV ? require("./Home.tv").Home : null;
 type InfiniteScrollingCollectionListSection = {
   type: "InfiniteScrollingCollectionList";
   title?: string;
+  /** Small line over the title, as on the TV. */
+  kicker?: string;
   queryKey: (string | undefined | null)[];
   queryFn: QueryFunction<BaseItemDto[], any, number>;
   orientation?: "horizontal" | "vertical";
@@ -115,7 +117,7 @@ type Section =
   | CuratedSection;
 
 const HomeMobile = () => {
-  useSetPageAccent(NeonBoard.volt);
+  useSetPageAccent(NeonBoard.home);
   const router = useRouter();
   const { t } = useTranslation();
   const api = useAtomValue(apiAtom);
@@ -360,20 +362,24 @@ const HomeMobile = () => {
     const latestMediaViews = collections.map((c) => {
       const includeItemTypes: BaseItemKind[] =
         c.CollectionType === "tvshows" ? ["Series"] : ["Movie"];
-      const title = t("home.recently_added_in", { libraryName: c.Name });
+      // As on the TV: "NEW IN" over the library name
+      const title = c.Name ?? "";
       const queryKey: string[] = [
         "home",
         `recentlyAddedIn${c.CollectionType}`,
         user.Id!,
         c.Id!,
       ];
-      return createCollectionConfig(
-        title || "",
-        queryKey,
-        includeItemTypes,
-        c.Id,
-        10,
-      );
+      return {
+        ...createCollectionConfig(
+          title || "",
+          queryKey,
+          includeItemTypes,
+          c.Id,
+          10,
+        ),
+        kicker: t("home.kicker_new_in"),
+      };
     });
 
     // Helper to sort items by most recent activity
@@ -399,7 +405,9 @@ const HomeMobile = () => {
     const firstSections: Section[] = settings.mergeNextUpAndContinueWatching
       ? [
           {
-            title: t("home.continue_and_next_up"),
+            // As on the TV: "NEXT UP &" over "CONTINUE WATCHING"
+            title: t("home.continue_watching"),
+            kicker: t("home.kicker_next_up"),
             queryKey: ["home", "continueAndNextUp"],
             queryFn: async ({ pageParam = 0 }) => {
               // There is no combined server endpoint, so the merged list is
@@ -954,6 +962,7 @@ const HomeMobile = () => {
               <View>
                 <ScrollingCollectionList
                   title={t("home.streaming")}
+                  kicker={t("home.kicker_collections")}
                   collectionTag={STREAMING_COLLECTION_TAG}
                   badge={null}
                   queryKey={section.queryKey}
@@ -1007,6 +1016,7 @@ const HomeMobile = () => {
               <View key={index} className='flex flex-col space-y-4'>
                 <InfiniteScrollingCollectionList
                   title={section.title}
+                  kicker={section.kicker}
                   queryKey={section.queryKey}
                   queryFn={section.queryFn}
                   orientation={section.orientation}

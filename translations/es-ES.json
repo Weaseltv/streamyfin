@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Conéctate a tu servidor de Jellyseer y pide películas directamente desde la app.",
       "downloads_feature_title": "Descargas",
       "downloads_feature_description": "Descarga películas y series para ver sin conexión. Usa el método por defecto o el servidor optimizado para descargar archivos en segundo plano.",
-      "chromecast_feature_description": "Envía pelícuas y series a tus dispositivos Chromecast.",
       "centralised_settings_plugin_title": "Plugin de configuración centralizada",
       "centralised_settings_plugin_description": "Configura los ajustes de forma centralizada en tu servidor Jellyfin. Los ajustes de cliente de cada usuario se sincronizan automáticamente.",
       "done_button": "Hecho",
@@ -695,8 +694,6 @@
     "error": "Error",
     "failed_to_get_stream_url": "Error al obtener la URL del Steam",
     "an_error_occurred_while_playing_the_video": "Ha ocurrido un error al reproducir el vídeo. Comprueba los registros en la configuración.",
-    "client_error": "Error del cliente",
-    "could_not_create_stream_for_chromecast": "No se pudo crear el Steam para Chromecast",
     "message_from_server": "Mensaje del servidor: {{message}}",
     "next_episode": "Siguiente episodio",
     "continue_watching": "Continuar viendo",
@@ -738,8 +735,7 @@
     "stopPlayback": "Detener la reproducción",
     "stopPlayingTitle": "¿Detener la reproducción de «{{title}}»?",
     "stopPlayingConfirm": "¿Seguro que quieres detener la reproducción?",
-    "downloaded": "Descargado",
-    "missing_parameters": "Faltan parámetros de reproducción"
+    "downloaded": "Descargado"
   },
   "chapters": {
     "title": "Capítulos",

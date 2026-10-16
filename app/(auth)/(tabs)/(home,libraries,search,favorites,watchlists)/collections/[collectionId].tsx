@@ -950,6 +950,12 @@ const page: React.FC = () => {
                             : "item_card.shows",
                       )}
                       selected={mediaType === type}
+                      // Always in their type colour, as on the TV
+                      tone={
+                        type === "All"
+                          ? NeonBoard.volt
+                          : typeAccent({ Type: type })
+                      }
                       accent={
                         type === "All"
                           ? NeonBoard.volt

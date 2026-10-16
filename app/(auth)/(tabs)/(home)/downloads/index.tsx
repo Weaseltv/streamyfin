@@ -235,7 +235,7 @@ export default function DownloadsPage() {
                   : "home.downloads.other_media",
               )}
               accent={
-                row.section === "movies" ? NeonBoard.orange : NeonBoard.volt
+                row.section === "movies" ? NeonBoard.movie : NeonBoard.volt
               }
               count={row.count}
               className='px-4'

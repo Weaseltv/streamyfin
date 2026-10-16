@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Verbinde dich mit deiner Jellyseerr-Instanz und frage Filme direkt in der App an.",
       "downloads_feature_title": "Downloads",
       "downloads_feature_description": "Lade Filme und Serien herunter, um sie offline anzusehen. Nutze entweder die Standardmethode oder installiere den optimierten Server, um Dateien im Hintergrund herunterzuladen.",
-      "chromecast_feature_description": "Übertrage Filme und Serien auf deine Chromecast-Geräte.",
       "centralised_settings_plugin_title": "Zentralisiertes Einstellungsplugin",
       "centralised_settings_plugin_description": "Konfiguriere Einstellungen zentral auf deinem Jellyfin-Server. Die Client-Einstellungen aller Benutzer werden automatisch synchronisiert.",
       "done_button": "Fertig",
@@ -695,8 +694,6 @@
     "error": "Fehler",
     "failed_to_get_stream_url": "Fehler beim Abrufen der Stream-URL",
     "an_error_occurred_while_playing_the_video": "Ein Fehler ist beim Abspielen des Videos aufgetreten. Logs in den Einstellungen überprüfen.",
-    "client_error": "Client-Fehler",
-    "could_not_create_stream_for_chromecast": "Konnte keinen Stream für Chromecast erstellen",
     "message_from_server": "Nachricht vom Server: {{message}}",
     "next_episode": "Nächste Episode",
     "continue_watching": "Fortsetzen",
@@ -738,8 +735,7 @@
     "stopPlayback": "Wiedergabe beenden",
     "stopPlayingTitle": "Wiedergabe von \"{{title}}\" beenden?",
     "stopPlayingConfirm": "Bist du sicher, dass du die Wiedergabe beenden möchtest?",
-    "downloaded": "Heruntergeladen",
-    "missing_parameters": "Wiedergabeparameter fehlen"
+    "downloaded": "Heruntergeladen"
   },
   "chapters": {
     "title": "Kapitel",

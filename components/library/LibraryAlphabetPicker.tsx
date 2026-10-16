@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
-import { NeonBoard } from "@/constants/Colors";
+import { glowOf, NeonBoard } from "@/constants/Colors";
 import { FontFace } from "@/constants/neon";
 import {
   getAlphabetTouchLetter,
@@ -154,13 +154,17 @@ export function LibraryAlphabetPicker({
                   allowFontScaling={false}
                   style={[
                     styles.letterText,
-                    {
-                      color: !enabled(letter)
-                        ? NeonBoard.line2
-                        : (preview ?? activeLetter) === letter
-                          ? accent
-                          : NeonBoard.mid,
-                    },
+                    // As on the TV: white letters, the current one in the
+                    // page colour with a glow
+                    !enabled(letter)
+                      ? { color: NeonBoard.line2 }
+                      : (preview ?? activeLetter) === letter
+                        ? {
+                            color: accent,
+                            textShadowColor: glowOf(accent),
+                            textShadowRadius: 6,
+                          }
+                        : { color: "#FFFFFF" },
                   ]}
                 >
                   {letter}

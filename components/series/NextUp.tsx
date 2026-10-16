@@ -59,7 +59,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
 
   return (
     <View>
-      <SectionHeader title={t("item_card.next_up")} accent={NeonBoard.yellow} />
+      <SectionHeader title={t("item_card.next_up")} accent={NeonBoard.show} />
       <TouchableItemRouter
         item={item}
         style={{
@@ -82,9 +82,9 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
               top: 0,
               bottom: 0,
               width: Sizes.tally,
-              backgroundColor: NeonBoard.yellow,
+              backgroundColor: NeonBoard.show,
             },
-            glowRule(NeonBoard.yellow),
+            glowRule(NeonBoard.show),
           ]}
         />
         <ContinueWatchingPoster item={item} useEpisodePoster size='tiny' />
@@ -101,7 +101,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
         </View>
         <Button
           compact
-          accent={NeonBoard.yellow}
+          accent={NeonBoard.show}
           // Size to its label, never to the row: the shared Button lays its
           // content out at w-full, so without these it grows to fill whatever
           // the row will give it and pushes the title out of existence.

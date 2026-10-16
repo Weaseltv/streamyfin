@@ -553,7 +553,8 @@ const Page = () => {
       // true is needed for merged versions
       recursive: true,
       imageTypeLimit: 1,
-      fields: ["PrimaryImageAspectRatio", "SortName"],
+      // ChildCount: collection cards show how many titles they hold
+      fields: ["PrimaryImageAspectRatio", "SortName", "ChildCount"],
       genres: selectedGenres,
       tags: selectedTags,
       years: selectedYears.map((year) => Number.parseInt(year, 10)),

@@ -104,7 +104,6 @@
         "react-native-udp",
         "react-native-volume-manager",
         "react-native-track-player",
-        "react-native-google-cast",
         "react-native-bottom-tabs",
         "react-native-device-info",
         "@bottom-tabs/react-navigation",

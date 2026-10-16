@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "התחברות עם שרת Seerr כך שניתן לבקש סרטים ישירות מתוך האפליקציה.",
       "downloads_feature_title": "הורדות",
       "downloads_feature_description": "הורדת סרטים וסדרות לצפייה במצב לא-מקוון. השתמשו בדרך ברירת המחדל או התקינו את הגרסה האופטימלית של השרת כדי להוריד ברקע.",
-      "chromecast_feature_description": "הקרן סרטים וסדרות למכשרי הChromecast שברשותך.",
       "centralised_settings_plugin_title": "תוסף הגדרות מרוכז",
       "centralised_settings_plugin_description": "הגדר את ההגדרות באופן מרוכז בשרת ה-Jellyfin שלך. הגדרות הקליינט של כל משתמש מסונכרנות אוטומטית.",
       "done_button": "בוצע",
@@ -695,8 +694,6 @@
     "error": "שגיאה",
     "failed_to_get_stream_url": "נכשל בהשגת קישור הזרם",
     "an_error_occurred_while_playing_the_video": "קרתה תקלה במהלך הניגון של הקובץ. בדוק את הלוגים בהגדרות.",
-    "client_error": "שגיאת לקוח",
-    "could_not_create_stream_for_chromecast": "נכשל ביצירת זרם עבור Chromecast",
     "message_from_server": "הודעה מהשרת: {{message}}",
     "next_episode": "הפרק הבא",
     "continue_watching": "המשך לצפות",
@@ -738,8 +735,7 @@
     "stopPlayback": "עצירת הניגון",
     "stopPlayingTitle": "להפסיק את הניגון של “{{title}}”?",
     "stopPlayingConfirm": "האם אתם בטוחים שברצונכם להפסיק את הניגון?",
-    "downloaded": "הורד",
-    "missing_parameters": "חסרים פרמטרים לניגון"
+    "downloaded": "הורד"
   },
   "chapters": {
     "title": "פרקים",

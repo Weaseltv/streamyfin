@@ -100,7 +100,7 @@ const page: React.FC = () => {
     });
   }, [isOffline, base64Image, api, item]);
 
-  useSetPageAccent(NeonBoard.yellow);
+  useSetPageAccent(NeonBoard.show);
 
   const { data: allEpisodes, isLoading } = useQuery({
     queryKey: ["AllEpisodes", seriesId, isOffline, offlineRevision],

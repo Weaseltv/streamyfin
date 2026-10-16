@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Connectez-vous à votre instance Seerr et demandez des films directement dans l'application.",
       "downloads_feature_title": "Téléchargements",
       "downloads_feature_description": "Téléchargez des films et des séries pour les regarder hors ligne. Utilisez la méthode par défaut ou installez le serveur d'optimisation pour télécharger les fichiers en arrière-plan.",
-      "chromecast_feature_description": "Diffusez des films et des séries sur vos appareils Chromecast.",
       "centralised_settings_plugin_title": "Plugin de paramètres centralisés",
       "centralised_settings_plugin_description": "Configurez les paramètres de façon centralisée sur votre serveur Jellyfin. Les paramètres client de chaque utilisateur se synchronisent automatiquement.",
       "done_button": "Terminé",
@@ -695,8 +694,6 @@
     "error": "Erreur",
     "failed_to_get_stream_url": "Échec de l'obtention de l'URL du flux",
     "an_error_occurred_while_playing_the_video": "Une erreur s’est produite lors de la lecture de la vidéo. Vérifiez les journaux dans les paramètres.",
-    "client_error": "Erreur du client",
-    "could_not_create_stream_for_chromecast": "Impossible de créer un flux sur la Chromecast",
     "message_from_server": "Message du serveur : {{message}}",
     "next_episode": "Épisode suivant",
     "continue_watching": "Continuer à regarder",
@@ -738,8 +735,7 @@
     "stopPlayback": "Arrêter la lecture",
     "stopPlayingTitle": "Arrêter de lire « {{title}} » ?",
     "stopPlayingConfirm": "Êtes-vous sûr de vouloir arrêter la lecture ?",
-    "downloaded": "Téléchargé",
-    "missing_parameters": "Paramètres de lecture manquants"
+    "downloaded": "Téléchargé"
   },
   "chapters": {
     "title": "Chapitres",
