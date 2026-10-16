@@ -6,14 +6,15 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import axios, { type AxiosRequestConfig } from "axios";
 import {
-  CURATED_COLLECTION_TAG,
+  applyStreamingOrder,
   collectionCardPresentation,
-  loadCuratedCollections,
   loadStreamingCollectionAlphabet,
   loadStreamingCollectionItems,
   loadStreamingCollections,
+  rowBadges,
   STREAMING_COLLECTION_TAG,
   STREAMING_SERVICE_ORDER,
+  streamingService,
 } from "./streamingCollections";
 
 const collection = (name: string, children?: number): BaseItemDto => ({
@@ -54,8 +55,8 @@ function server(respond: (params: URLSearchParams) => BaseItemDtoQueryResult) {
 describe("collection poster presentation", () => {
   const layout = () => ({ width: 132 });
 
-  test("only the two exact tags on BoxSets remove captions, irrespective of names", () => {
-    for (const tag of [STREAMING_COLLECTION_TAG, CURATED_COLLECTION_TAG]) {
+  test("only the exact streaming tag on BoxSets removes captions, irrespective of names", () => {
+    for (const tag of [STREAMING_COLLECTION_TAG]) {
       expect(
         collectionCardPresentation(
           { Type: "BoxSet", Tags: ["Other", tag] },
@@ -78,8 +79,9 @@ describe("collection poster presentation", () => {
       null,
       [],
       ["Sports"],
-      ["WeaselPlex Curated extra"],
-      ["weaselplex curated"],
+      ["WeaselPlex Curated"],
+      ["WeaselPlex Streaming extra"],
+      ["weaselplex streaming"],
     ]) {
       expect(
         collectionCardPresentation({ Type: "BoxSet", Tags }, layout())
@@ -88,9 +90,9 @@ describe("collection poster presentation", () => {
     }
   });
 
-  test("Picks and streaming collections keep the standard rail width", () => {
+  test("streaming collections keep the standard rail width", () => {
     for (const width of [116, 132]) {
-      for (const tag of [STREAMING_COLLECTION_TAG, CURATED_COLLECTION_TAG]) {
+      for (const tag of [STREAMING_COLLECTION_TAG]) {
         expect(
           collectionCardPresentation(
             { Type: "BoxSet", Tags: [tag] },
@@ -103,7 +105,7 @@ describe("collection poster presentation", () => {
 });
 
 describe("streaming collections via the Jellyfin SDK", () => {
-  test("both row queries request and retain Tags for data-driven artwork cards", async () => {
+  test("the row query requests and retains Tags for data-driven artwork cards", async () => {
     const { api, requests } = server((params) => ({
       Items: [
         {
@@ -112,7 +114,7 @@ describe("streaming collections via the Jellyfin SDK", () => {
         },
       ],
     }));
-    for (const load of [loadStreamingCollections, loadCuratedCollections]) {
+    for (const load of [loadStreamingCollections]) {
       const [item] = await load(api, "member-art");
       expect(requests.at(-1)!.getAll("fields")).toContain("Tags");
       expect(
@@ -126,83 +128,6 @@ describe("streaming collections via the Jellyfin SDK", () => {
       expect(item.Name).toBe("Art already carries the title");
     }
   });
-  test("Picks requests member-scoped curated BoxSets in server SortName order without reordering names", async () => {
-    const { api, requests, headers } = server((params) => ({
-      Items:
-        params.get("tags") === CURATED_COLLECTION_TAG
-          ? [
-              collection("Spooky Season", 8),
-              collection("Z picks", 3),
-              collection("Empty", 0),
-              collection("A picks", 2),
-            ]
-          : [collection("Netflix", 10), collection("Sports", 10)],
-    }));
-    const items = await loadCuratedCollections(api, "member-picks");
-    expect(items.map((item) => item.Name)).toEqual([
-      "Spooky Season",
-      "Z picks",
-      "A picks",
-    ]);
-    expect(requests).toHaveLength(1);
-    const params = requests[0];
-    expect(params.get("userId")).toBe("member-picks");
-    expect(params.getAll("includeItemTypes")).toEqual(["BoxSet"]);
-    expect(params.getAll("tags")).toEqual(["WeaselPlex Curated"]);
-    expect(params.get("recursive")).toBe("true");
-    expect(params.getAll("sortBy")).toEqual(["SortName"]);
-    expect(params.getAll("sortOrder")).toEqual(["Ascending"]);
-    expect(params.getAll("fields")).toEqual(["ChildCount", "Overview", "Tags"]);
-    expect(params.has("parentId")).toBe(false);
-    expect(headers[0]).toStartWith("MediaBrowser ");
-    expect(headers[0]).toContain('Token="test-token"');
-  });
-
-  test("Picks rediscovers replacement seasonal IDs and Monday's order on every request", async () => {
-    let items: BaseItemDto[] = [
-      { ...collection("Spooky Season", 4), Id: "old-season" },
-      collection("Spin the Wheel", 1),
-    ];
-    const { api, requests } = server(() => ({ Items: items }));
-    expect((await loadCuratedCollections(api, "member-picks"))[0].Id).toBe(
-      "old-season",
-    );
-    items = [];
-    expect(await loadCuratedCollections(api, "member-picks")).toEqual([]);
-    items = [
-      collection("Spin the Wheel", 7),
-      { ...collection("Cozy Season", 5), Id: "new-season" },
-    ];
-    expect(await loadCuratedCollections(api, "member-picks")).toEqual(items);
-    expect(requests).toHaveLength(3);
-    expect(
-      requests.every((p) => p.get("tags") === CURATED_COLLECTION_TAG),
-    ).toBe(true);
-  });
-
-  test("Picks probes missing child counts with userId without changing the server's order", async () => {
-    const { api, requests } = server((params) => {
-      if (!params.has("parentId"))
-        return {
-          Items: [
-            collection("Z picks"),
-            collection("Empty"),
-            collection("A picks", 1),
-          ],
-        };
-      return {
-        Items: params.get("parentId") === "Z picks" ? [{ Id: "movie" }] : [],
-      };
-    });
-    expect(
-      (await loadCuratedCollections(api, "member-picks")).map((i) => i.Name),
-    ).toEqual(["Z picks", "A picks"]);
-    for (const params of requests.slice(1)) {
-      expect(params.get("userId")).toBe("member-picks");
-      expect(params.get("limit")).toBe("1");
-    }
-  });
-
   test("discovers by tag, scopes to the member, hides empty collections, and orders services before new names", async () => {
     const services = STREAMING_SERVICE_ORDER.map((name) =>
       collection(name, 12),
@@ -377,5 +302,65 @@ describe("streaming collections via the Jellyfin SDK", () => {
       expect(params.get("enableImages")).toBe("false");
       expect(params.get("enableUserData")).toBe("false");
     }
+  });
+});
+
+describe("Home rows as on the TV", () => {
+  test("MOVIE / SHOW badges only on rows that mix movies and shows; episodes read SHOW", () => {
+    const mixed = rowBadges([{ Type: "Movie" }, { Type: "Episode" }]);
+    expect(mixed({ Type: "Movie" })).toBe("MOVIE");
+    expect(mixed({ Type: "Episode" })).toBe("SHOW");
+    expect(mixed({ Type: "Season" })).toBe("SHOW");
+    expect(mixed({ Type: "Series" })).toBe("SHOW");
+    expect(mixed({ Type: "BoxSet" })).toBeNull();
+    for (const items of [
+      [{ Type: "Movie" }, { Type: "Movie" }],
+      [{ Type: "Series" }, { Type: "Episode" }],
+      [],
+    ] as const) {
+      const badge = rowBadges(items);
+      expect(badge({ Type: "Movie" })).toBeNull();
+      expect(badge({ Type: "Series" })).toBeNull();
+    }
+  });
+
+  test("services resolve to their bundled wordmark and brand colour, including server aliases", () => {
+    expect(streamingService("Netflix")).toEqual({
+      wordmark: "netflix",
+      brand: "#E50914",
+    });
+    expect(streamingService(" HBO Max ")?.wordmark).toBe("max");
+    expect(streamingService("Apple TV")?.wordmark).toBe("apple_tv");
+    expect(streamingService("Hallmark+")?.wordmark).toBe("hallmark");
+    expect(streamingService("Angel Studios")?.wordmark).toBe("angel");
+    expect(streamingService("Some new service")).toBeNull();
+  });
+
+  test("the member's saved order comes first, then the default order; an empty order resets", async () => {
+    const items = ["Netflix", "Hulu", "Max", "Starz"].map((name) =>
+      collection(name, 3),
+    );
+    expect(
+      applyStreamingOrder(items, ["Max", "Netflix"]).map((i) => i.Name),
+    ).toEqual(["Max", "Netflix", "Hulu", "Starz"]);
+    expect(applyStreamingOrder(items, ["Gone"]).map((i) => i.Name)).toEqual([
+      "Netflix",
+      "Hulu",
+      "Max",
+      "Starz",
+    ]);
+
+    const { api } = server(() => ({ Items: [...items].reverse() }));
+    expect(
+      (
+        await loadStreamingCollections(api, "member-order", undefined, [
+          "Starz",
+          "Hulu",
+        ])
+      ).map((i) => i.Name),
+    ).toEqual(["Starz", "Hulu", "Netflix", "Max"]);
+    expect(
+      (await loadStreamingCollections(api, "member-order")).map((i) => i.Name),
+    ).toEqual(["Netflix", "Hulu", "Max", "Starz"]);
   });
 });

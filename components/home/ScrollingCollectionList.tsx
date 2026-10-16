@@ -16,7 +16,7 @@ import { useInView } from "@/hooks/useInView";
 import { useSettings } from "@/utils/atoms/settings";
 import {
   collectionCardPresentation,
-  rowBadge,
+  rowBadges,
 } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
@@ -173,7 +173,9 @@ export const ScrollingCollectionList: React.FC<Props> = ({
                     orientation={orientation}
                     useEpisodePoster={settings?.useEpisodeImagesForNextUp}
                     // Type badges only on rows that mix movies and shows
-                    badge={badge === undefined ? rowBadge(data ?? []) : badge}
+                    badge={
+                      badge === undefined ? rowBadges(data ?? [])(item) : badge
+                    }
                     badgeColor={badgeColor}
                   />
                   {!card.imageOnly && <ItemCardText item={item} />}

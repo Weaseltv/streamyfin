@@ -2,11 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
-  BaseItemKind,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import {
   getItemsApi,
-  getSuggestionsApi,
   getTvShowsApi,
   getUserLibraryApi,
   getUserViewsApi,
@@ -25,16 +23,16 @@ import { OfflineNotice } from "@/components/common/OfflineNotice";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
-import { HeroBand } from "@/components/home/HeroBand";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
 import { ScrollingCollectionList } from "@/components/home/ScrollingCollectionList";
+import { StreamingServicesRow } from "@/components/home/StreamingServicesRow";
 import { StreamystatsPromotedWatchlists } from "@/components/home/StreamystatsPromotedWatchlists";
 import { StreamystatsRecommendations } from "@/components/home/StreamystatsRecommendations";
 import { ItemCardText } from "@/components/ItemCardText";
 import { MediaListSection } from "@/components/medialists/MediaListSection";
-import { NeonBoard } from "@/constants/Colors";
+import { libraryAccent, NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useManualRefresh } from "@/hooks/useManualRefresh";
@@ -61,14 +59,14 @@ import {
   startupSessionKey,
 } from "@/utils/atoms/startupReady";
 import { eventBus } from "@/utils/eventBus";
+import {
+  cachedJustWatchLists,
+  JUSTWATCH_HOME_PREFS,
+  JUSTWATCH_HOME_ROWS,
+  loadRankedItems,
+} from "@/utils/justWatchLists";
 import { storage } from "@/utils/mmkv";
 import { serverHost } from "@/utils/serverHost";
-import {
-  CURATED_COLLECTION_TAG,
-  loadCuratedCollections,
-  loadStreamingCollections,
-  STREAMING_COLLECTION_TAG,
-} from "@/utils/streamingCollections";
 
 // Conditionally load TV version
 /**
@@ -85,6 +83,8 @@ type InfiniteScrollingCollectionListSection = {
   title?: string;
   /** Small line over the title, as on the TV. */
   kicker?: string;
+  /** Stay on screen when empty, explaining what will show up (Continue Watching). */
+  explainWhenEmpty?: boolean;
   queryKey: (string | undefined | null)[];
   queryFn: QueryFunction<BaseItemDto[], any, number>;
   orientation?: "horizontal" | "vertical";
@@ -105,8 +105,10 @@ type StreamingSection = {
   queryKey: string[];
 };
 
-type CuratedSection = {
-  type: "Curated";
+/** One of the six JustWatch rows the media server works out (`justwatch-home`). */
+type JustWatchSection = {
+  type: "JustWatch";
+  row: (typeof JUSTWATCH_HOME_ROWS)[number];
   queryKey: string[];
 };
 
@@ -114,7 +116,7 @@ type Section =
   | InfiniteScrollingCollectionListSection
   | MediaListSectionType
   | StreamingSection
-  | CuratedSection;
+  | JustWatchSection;
 
 const HomeMobile = () => {
   useSetPageAccent(NeonBoard.home);
@@ -213,27 +215,6 @@ const HomeMobile = () => {
     }
   }, [navigation]);
 
-  // The hero band: the first few resume items with their streams, so the
-  // quality badge and time left can be drawn. Off when the popular plugin
-  // owns the band.
-  const { data: heroItems } = useQuery({
-    queryKey: ["home", "hero", user?.Id],
-    queryFn: async () => {
-      if (!api || !user?.Id) return [];
-      const response = await getItemsApi(api).getResumeItems({
-        userId: user.Id,
-        enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-        includeItemTypes: ["Movie", "Episode"],
-        fields: ["MediaStreams"],
-        startIndex: 0,
-        limit: 5,
-      });
-      return response.data.Items || [];
-    },
-    enabled: !!api && !!user?.Id && settings?.usePopularPlugin !== true,
-    staleTime: 60 * 1000,
-  });
-
   useEffect(() => {
     cleanCacheDirectory().catch((_e) =>
       console.error("Something went wrong cleaning cache directory"),
@@ -281,11 +262,21 @@ const HomeMobile = () => {
     [data, settings?.hiddenLibraries],
   );
 
+  // The libraries in Recently Added, as on the TV: every movie and show
+  // library except Stand Up Comedy and Sports (Boxing and UFC count as Sports).
   const collections = useMemo(() => {
     const allow = ["movies", "tvshows"];
+    const excluded = [NeonBoard.standup, NeonBoard.sports];
     return (
       userViews?.filter(
-        (c) => c.CollectionType && allow.includes(c.CollectionType),
+        (c) =>
+          c.CollectionType &&
+          allow.includes(c.CollectionType) &&
+          !excluded.includes(
+            libraryAccent(c.CollectionType, c.Name) as
+              | typeof NeonBoard.standup
+              | typeof NeonBoard.sports,
+          ),
       ) || []
     );
   }, [userViews]);
@@ -309,78 +300,54 @@ const HomeMobile = () => {
     },
   );
 
-  const createCollectionConfig = useCallback(
-    (
-      title: string,
-      queryKey: string[],
-      includeItemTypes: BaseItemKind[],
-      parentId: string | undefined,
-      pageSize: number = 10,
-    ): InfiniteScrollingCollectionListSection => ({
-      title,
-      queryKey,
-      queryFn: async ({ pageParam = 0 }) => {
-        if (!api) return [];
-        // Use getItems (not getLatestMedia) so we get item-level results
-        // filtered by type from a specific library. getLatestMedia is
-        // episode-oriented and groups results, which drops Series when
-        // combined with a parentId + includeItemTypes filter.
-        //
-        // The specific reason for this is jellyfin 12.0 returns episodes, seasons, or shows,
-        // but we only handle shows in our recently added in [shows] section. So we need to filter by type at the item level.
-        //
-        // For Series we sort by DateLastContentAdded so shows bubble up when
-        // a new episode is added (series cards for new episodes, matching how
-        // Jellyfin's "Latest" row worked pre-12.0). Movies use DateCreated.
-        const response = await getItemsApi(api).getItems({
-          userId: user?.Id,
-          parentId,
-          includeItemTypes,
-          recursive: true,
-          sortBy: includeItemTypes.includes("Series")
-            ? ["DateLastContentAdded"]
-            : ["DateCreated"],
-          sortOrder: ["Descending"],
-          startIndex: pageParam,
-          limit: pageSize,
-          fields: ["PrimaryImageAspectRatio"],
-          imageTypeLimit: 1,
-          enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-        });
-        return response.data.Items || [];
-      },
-      type: "InfiniteScrollingCollectionList",
-      pageSize,
-      parentId,
-    }),
-    [api, user?.Id],
-  );
-
   const defaultSections = useMemo(() => {
     if (!api || !user?.Id) return [];
 
-    const latestMediaViews = collections.map((c) => {
-      const includeItemTypes: BaseItemKind[] =
-        c.CollectionType === "tvshows" ? ["Series"] : ["Movie"];
-      // As on the TV: "NEW IN" over the library name
-      const title = c.Name ?? "";
-      const queryKey: string[] = [
+    // As on the TV: one "RECENTLY ADDED" / "MOVIES AND TV SHOWS" row. Each
+    // main library's latest items (grouped by the server, so a series with
+    // several new episodes is one card), merged newest first.
+    const recentlyAdded: InfiniteScrollingCollectionListSection = {
+      type: "InfiniteScrollingCollectionList",
+      title: t("home.movies_and_tv_shows"),
+      kicker: t("home.kicker_recently_added"),
+      queryKey: [
         "home",
-        `recentlyAddedIn${c.CollectionType}`,
-        user.Id!,
-        c.Id!,
-      ];
-      return {
-        ...createCollectionConfig(
-          title || "",
-          queryKey,
-          includeItemTypes,
-          c.Id,
-          10,
-        ),
-        kicker: t("home.kicker_new_in"),
-      };
-    });
+        "recentlyAddedCombined",
+        user.Id,
+        ...collections.map((c) => c.Id),
+      ],
+      queryFn: async ({ pageParam = 0 }) => {
+        if (pageParam > 0) return [];
+        const latest = await Promise.all(
+          collections.map((c) =>
+            getUserLibraryApi(api)
+              .getLatestMedia({
+                userId: user.Id,
+                parentId: c.Id,
+                groupItems: true,
+                limit: 25,
+                fields: ["DateCreated", "PrimaryImageAspectRatio"],
+                imageTypeLimit: 1,
+                enableImageTypes: ["Primary", "Backdrop", "Thumb"],
+              })
+              .then((response) => response.data)
+              // A library that fails just adds nothing, as on the TV
+              .catch(() => [] as BaseItemDto[]),
+          ),
+        );
+        return latest
+          .flat()
+          .sort(
+            (a, b) =>
+              new Date(b.DateCreated ?? 0).getTime() -
+              new Date(a.DateCreated ?? 0).getTime(),
+          )
+          .slice(0, 25);
+      },
+      orientation: "vertical",
+      pageSize: 25,
+      priority: 2,
+    };
 
     // Helper to sort items by most recent activity
     const sortByRecentActivity = (items: BaseItemDto[]): BaseItemDto[] => {
@@ -408,6 +375,7 @@ const HomeMobile = () => {
             // As on the TV: "NEXT UP &" over "CONTINUE WATCHING"
             title: t("home.continue_watching"),
             kicker: t("home.kicker_next_up"),
+            explainWhenEmpty: true,
             queryKey: ["home", "continueAndNextUp"],
             queryFn: async ({ pageParam = 0 }) => {
               // There is no combined server endpoint, so the merged list is
@@ -495,43 +463,15 @@ const HomeMobile = () => {
           },
         ];
 
-    const ss: Section[] = [
-      ...firstSections,
-      ...latestMediaViews.map((s) => ({ ...s, priority: 2 as const })),
-      // Only show Jellyfin suggested movies if StreamyStats recommendations are disabled
-      ...(!settings?.streamyStatsMovieRecommendations
-        ? [
-            {
-              title: t("home.suggested_movies"),
-              queryKey: ["home", "suggestedMovies", user?.Id],
-              queryFn: async ({ pageParam = 0 }: { pageParam?: number }) =>
-                (
-                  await getSuggestionsApi(api).getSuggestions({
-                    userId: user?.Id,
-                    startIndex: pageParam,
-                    limit: 10,
-                    mediaType: ["Video"],
-                    type: ["Movie"],
-                  })
-                ).data.Items || [],
-              type: "InfiniteScrollingCollectionList" as const,
-              orientation: "vertical" as const,
-              pageSize: 10,
-              priority: 2 as const,
-            },
-          ]
-        : []),
-    ];
-    return ss;
-  }, [
-    api,
-    user?.Id,
-    collections,
-    t,
-    createCollectionConfig,
-    settings?.streamyStatsMovieRecommendations,
-    settings.mergeNextUpAndContinueWatching,
-  ]);
+    const justWatch: JustWatchSection[] = JUSTWATCH_HOME_ROWS.map((row) => ({
+      type: "JustWatch",
+      row,
+      queryKey: ["home", "justwatch", row.key, user.Id!],
+    }));
+
+    // The Streaming Services row goes in after the first rows (see `sections`)
+    return [...firstSections, recentlyAdded, ...justWatch];
+  }, [api, user?.Id, collections, t, settings.mergeNextUpAndContinueWatching]);
 
   const customSections = useMemo(() => {
     if (!api || !user?.Id || !settings?.home?.sections) return [];
@@ -614,9 +554,9 @@ const HomeMobile = () => {
   const sections = useMemo(() => {
     const base = settings?.home?.sections ? customSections : defaultSections;
     if (!api || !user?.Id) return base;
-    // Follow Continue Watching / Next Up; custom layouts keep their first two
-    // rows. The tagged rows are local and never require server plugin settings.
-    // The Weasel's Picks closes the list, matching the Android TV home.
+    // Follow Continue Watching / Next Up, as on the TV; custom layouts keep
+    // their first two rows. The tagged rows are local and never require
+    // server plugin settings.
     const index = settings?.home?.sections
       ? Math.min(2, base.length)
       : settings.mergeNextUpAndContinueWatching
@@ -626,11 +566,7 @@ const HomeMobile = () => {
       type: "Streaming",
       queryKey: ["home", "streaming", api.basePath, user.Id],
     };
-    const curated: CuratedSection = {
-      type: "Curated",
-      queryKey: ["home", "curated", api.basePath, user.Id],
-    };
-    return [...base.slice(0, index), streaming, ...base.slice(index), curated];
+    return [...base.slice(0, index), streaming, ...base.slice(index)];
   }, [
     api,
     user?.Id,
@@ -645,11 +581,6 @@ const HomeMobile = () => {
     [api?.basePath, user?.Id],
   );
   useRefreshLibraryOnFocus(streamingKeys, 60_000);
-  const curatedKeys = useMemo(
-    () => [["home", "curated", api?.basePath, user?.Id]],
-    [api?.basePath, user?.Id],
-  );
-  useRefreshLibraryOnFocus(curatedKeys, 0);
 
   // Get all high priority section keys and check if all have loaded
   const highPrioritySectionKeys = useMemo(() => {
@@ -903,25 +834,11 @@ const HomeMobile = () => {
         }}
         ItemSeparatorComponent={SectionGap}
         ListHeaderComponent={
-          settings?.usePopularPlugin ? (
-            <LargeMovieCarousel />
-          ) : heroItems && heroItems.length > 0 ? (
-            <HeroBand items={heroItems} eyebrow={t("home.continue_watching")} />
-          ) : null
+          settings?.usePopularPlugin ? <LargeMovieCarousel /> : null
         }
         renderItem={({ item: section, index }) => {
-          // Render Streamystats sections after Recently Added sections
-          // For default sections: place after Recently Added, before Suggested Movies (if present)
-          // For custom sections: place at the very end
-          const hasSuggestedMovies =
-            !settings?.streamyStatsMovieRecommendations &&
-            !settings?.home?.sections;
-          const hasCurated = sections.at(-1)?.type === "Curated";
-          const streamystatsIndex =
-            sections.length -
-            1 -
-            (hasSuggestedMovies ? 1 : 0) -
-            (hasCurated ? 1 : 0);
+          // Streamystats rows (a phone-only plugin) follow the last row
+          const streamystatsIndex = sections.length - 1;
           const hasStreamystatsContent =
             settings.streamyStatsMovieRecommendations ||
             settings.streamyStatsSeriesRecommendations ||
@@ -960,40 +877,50 @@ const HomeMobile = () => {
           if (section.type === "Streaming") {
             return (
               <View>
-                <ScrollingCollectionList
-                  title={t("home.streaming")}
-                  kicker={t("home.kicker_collections")}
-                  collectionTag={STREAMING_COLLECTION_TAG}
-                  badge={null}
+                <StreamingServicesRow
                   queryKey={section.queryKey}
-                  queryFn={({ signal }) =>
-                    api && user?.Id
-                      ? loadStreamingCollections(api, user.Id, signal)
-                      : Promise.resolve([])
-                  }
                   refetchInterval={isFocused && reachable ? 60_000 : false}
-                  hideIfEmpty
                 />
                 {streamystatsSections}
               </View>
             );
           }
-          if (section.type === "Curated") {
+          if (section.type === "JustWatch") {
+            const { row } = section;
             return (
-              <ScrollingCollectionList
-                title={t("home.weaselplex_picks")}
-                collectionTag={CURATED_COLLECTION_TAG}
-                badge={null}
-                queryKey={section.queryKey}
-                queryFn={({ signal }) =>
-                  api && user?.Id
-                    ? loadCuratedCollections(api, user.Id, signal)
-                    : Promise.resolve([])
-                }
-                cache={false}
-                refetchInterval={isFocused && reachable ? 60_000 : false}
-                hideIfEmpty
-              />
+              <View>
+                <ScrollingCollectionList
+                  title={t(row.title)}
+                  kicker={t(row.kicker)}
+                  accent={
+                    row.accent === "movie"
+                      ? NeonBoard.movie
+                      : row.accent === "show"
+                        ? NeonBoard.show
+                        : undefined
+                  }
+                  queryKey={section.queryKey}
+                  queryFn={({ signal }) =>
+                    api && user?.Id
+                      ? cachedJustWatchLists(
+                          api,
+                          user.Id,
+                          JUSTWATCH_HOME_PREFS,
+                        ).then((lists) =>
+                          loadRankedItems(
+                            api,
+                            user.Id!,
+                            lists[row.key] ?? [],
+                            row.size,
+                            signal,
+                          ),
+                        )
+                      : Promise.resolve([])
+                  }
+                  hideIfEmpty
+                />
+                {streamystatsSections}
+              </View>
             );
           }
           if (section.type === "InfiniteScrollingCollectionList") {
@@ -1029,6 +956,11 @@ const HomeMobile = () => {
                       : undefined
                   }
                   hideIfEmpty
+                  emptyState={
+                    section.explainWhenEmpty ? (
+                      <ContinueWatchingEmpty />
+                    ) : undefined
+                  }
                   pageSize={section.pageSize}
                   enabled={isHighPriority || allHighPrioritySettled}
                   onSettled={
@@ -1056,6 +988,42 @@ const HomeMobile = () => {
           return null;
         }}
       />
+    </View>
+  );
+};
+
+/**
+ * Next Up & Continue Watching with nothing in it, as on the TV: a panel that
+ * explains what will show up, instead of hiding the row.
+ */
+const ContinueWatchingEmpty = () => {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={{
+        marginHorizontal: Sizes.gutter,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        gap: 6,
+        backgroundColor: "rgba(11,13,18,0.72)",
+        borderWidth: 1,
+        borderColor: NeonBoard.line2,
+      }}
+    >
+      {[
+        "home.continue_watching_empty_start",
+        "home.continue_watching_empty_next",
+        "home.continue_watching_empty_season",
+      ].map((key) => (
+        <View key={key} style={{ flexDirection: "row", gap: 10 }}>
+          <Text variant='body' accent='#FFFFFF'>
+            •
+          </Text>
+          <Text variant='body' accent='#FFFFFF' style={{ flex: 1 }}>
+            {t(key)}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 };

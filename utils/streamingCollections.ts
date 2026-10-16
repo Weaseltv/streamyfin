@@ -8,24 +8,24 @@ import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { loadLibraryAlphabet } from "./libraryAlphabet";
 
 export const STREAMING_COLLECTION_TAG = "WeaselPlex Streaming";
-export const CURATED_COLLECTION_TAG = "WeaselPlex Curated";
+
+const isShowType = (type?: string | null) =>
+  type === "Series" || type === "Season" || type === "Episode";
 
 /**
  * As on the TV, a row shows MOVIE / SHOW badges only when it mixes movies and
- * shows. Returns `null` (badges hidden) otherwise, `undefined` (each card's
- * own type label) for a mixed row.
+ * shows (episodes and seasons read SHOW). Returns each card's badge: `null`
+ * hides it.
  */
-export function rowBadge(
+export function rowBadges(
   items: readonly Pick<BaseItemDto, "Type">[],
-): null | undefined {
-  const movies = items.some((item) => item.Type === "Movie");
-  const shows = items.some(
-    (item) =>
-      item.Type === "Series" ||
-      item.Type === "Season" ||
-      item.Type === "Episode",
-  );
-  return movies && shows ? undefined : null;
+): (item: Pick<BaseItemDto, "Type">) => string | null {
+  const mixed =
+    items.some((item) => item.Type === "Movie") &&
+    items.some((item) => isShowType(item.Type));
+  if (!mixed) return () => null;
+  return (item) =>
+    item.Type === "Movie" ? "MOVIE" : isShowType(item.Type) ? "SHOW" : null;
 }
 
 /** Collection art identifies the card; ordinary items keep their captions. */
@@ -35,10 +35,7 @@ export function collectionCardPresentation(
 ) {
   const imageOnly =
     item.Type === "BoxSet" &&
-    Boolean(
-      item.Tags?.includes(STREAMING_COLLECTION_TAG) ||
-        item.Tags?.includes(CURATED_COLLECTION_TAG),
-    );
+    Boolean(item.Tags?.includes(STREAMING_COLLECTION_TAG));
   return { imageOnly, width: layout.width };
 }
 
@@ -60,10 +57,80 @@ export const STREAMING_SERVICE_ORDER: readonly string[] = [
   "Angel",
 ];
 
+/** Server naming aliases, as on the TV (`StreamingCollections.serviceIndex`). */
+const SERVICE_ALIASES: Record<string, string> = {
+  "hbo max": "max",
+  "max (hbo)": "max",
+  hbo: "max",
+  "apple tv": "apple tv+",
+  "apple tv plus": "apple tv+",
+  "hallmark+": "hallmark",
+  "hallmark plus": "hallmark",
+  "angel studios": "angel",
+  "disney plus": "disney+",
+  "amazon prime video": "prime video",
+  "paramount plus": "paramount+",
+  "amc plus": "amc+",
+  "mgm plus": "mgm+",
+  "brit box": "britbox",
+};
+
+const normalizedService = (name: string | null | undefined) => {
+  const value = (name ?? "").trim().toLowerCase();
+  return SERVICE_ALIASES[value] ?? value;
+};
+
 const serviceRank = (name: string | null | undefined) => {
-  const index = STREAMING_SERVICE_ORDER.indexOf(name ?? "");
+  const index = STREAMING_SERVICE_ORDER.findIndex(
+    (service) => service.toLowerCase() === normalizedService(name),
+  );
   return index < 0 ? STREAMING_SERVICE_ORDER.length : index;
 };
+
+/**
+ * Each service's bundled wordmark and brand colour, as on the TV
+ * (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`), in
+ * `STREAMING_SERVICE_ORDER`.
+ */
+const SERVICES: readonly { wordmark: string; brand: string }[] = [
+  { wordmark: "netflix", brand: "#E50914" },
+  { wordmark: "disney", brand: "#113CCF" },
+  { wordmark: "hulu", brand: "#1CE783" },
+  { wordmark: "max", brand: "#002BE7" },
+  { wordmark: "prime_video", brand: "#00A8E1" },
+  { wordmark: "paramount", brand: "#0064FF" },
+  { wordmark: "peacock", brand: "#FDB927" },
+  { wordmark: "apple_tv", brand: "#A2AAAD" },
+  { wordmark: "amc", brand: "#00EEE6" },
+  { wordmark: "mgm", brand: "#EFBE73" },
+  { wordmark: "starz", brand: "#F5E000" },
+  { wordmark: "britbox", brand: "#66D3EB" },
+  { wordmark: "crunchyroll", brand: "#FF5E00" },
+  { wordmark: "hallmark", brand: "#613790" },
+  { wordmark: "angel", brand: "#E8B923" },
+];
+
+/** The bundled wordmark and brand colour for a streaming collection, if it's a known service. */
+export function streamingService(
+  name: string | null | undefined,
+): { wordmark: string; brand: string } | null {
+  return SERVICES[serviceRank(name)] ?? null;
+}
+
+/** Saved ids first in their saved order, then the rest in the default order. */
+export function applyStreamingOrder(
+  items: readonly BaseItemDto[],
+  ids: readonly string[],
+): BaseItemDto[] {
+  const position = new Map(ids.map((id, index) => [id, index]));
+  const saved = items
+    .filter((item) => item.Id && position.has(item.Id))
+    .sort((a, b) => position.get(a.Id!)! - position.get(b.Id!)!);
+  return [
+    ...saved,
+    ...items.filter((item) => !item.Id || !position.has(item.Id)),
+  ];
+}
 
 export function sortStreamingCollections(items: BaseItemDto[]) {
   return [...items].sort(
@@ -150,9 +217,6 @@ async function loadTaggedCollections(
       includeItemTypes: ["BoxSet"],
       recursive: true,
       tags: [tag],
-      // Picks order belongs entirely to the server, including seasonal changes.
-      sortBy: tag === CURATED_COLLECTION_TAG ? ["SortName"] : undefined,
-      sortOrder: tag === CURATED_COLLECTION_TAG ? ["Ascending"] : undefined,
       fields: ["ChildCount", "Overview", "Tags"],
       enableUserData: false,
     },
@@ -174,20 +238,25 @@ async function loadTaggedCollections(
   return visible.filter((item): item is BaseItemDto => item !== null);
 }
 
+/**
+ * The streaming collections in the default order, or in the member's own
+ * [order] (collection ids, see `utils/streamingOrder.ts`) when they have one.
+ */
 export async function loadStreamingCollections(
   api: Api,
   userId: string,
   signal?: AbortSignal,
+  order: readonly string[] = [],
 ) {
-  return sortStreamingCollections(
-    await loadTaggedCollections(api, userId, STREAMING_COLLECTION_TAG, signal),
+  return applyStreamingOrder(
+    sortStreamingCollections(
+      await loadTaggedCollections(
+        api,
+        userId,
+        STREAMING_COLLECTION_TAG,
+        signal,
+      ),
+    ),
+    order,
   );
-}
-
-export function loadCuratedCollections(
-  api: Api,
-  userId: string,
-  signal?: AbortSignal,
-) {
-  return loadTaggedCollections(api, userId, CURATED_COLLECTION_TAG, signal);
 }
