@@ -93,10 +93,7 @@ export const LibraryRecommended: React.FC<{
       return collections.flatMap((collection) => {
         const service = streamingService(collection.Name);
         if (!service) return [];
-        // "Apple TV+" reads "On Apple TV", as on the TV
-        const name =
-          collection.Name === "Apple TV+" ? "Apple TV" : collection.Name;
-        return [{ code: service.code, name: name ?? "" }];
+        return [{ code: service.code, name: collection.Name ?? "" }];
       });
     },
     enabled: !!api && !!user?.Id,
