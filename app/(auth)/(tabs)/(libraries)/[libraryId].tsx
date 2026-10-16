@@ -704,33 +704,51 @@ const Page = () => {
   });
 
   // The Collections library: every collection at once for ALL by name, and
-  // the groups for its group buttons
-  const { data: allCollections, isFetching: allCollectionsFetching } = useQuery(
-    {
-      queryKey: [
-        "library-items",
-        libraryId,
-        "all-collections",
-        user?.Id,
-        sortOrder,
-      ],
-      queryFn: async ({ signal }) => {
-        if (!api) return [];
-        const response = await getItemsApi(api).getItems(
-          {
-            ...itemQuery,
-            tags: undefined,
-            fields: [...(itemQuery.fields ?? []), "Tags"],
-            enableTotalRecordCount: false,
-          },
-          { signal },
-        );
-        return response.data.Items ?? [];
-      },
-      enabled: collectionsLibrary && !!api && !!user?.Id && filtersReady,
-      staleTime: Freshness.catalog,
+  // the groups for its group buttons. As on the TV, the list comes first
+  // without watched and Watchlist marks (working those out for every
+  // collection is most of the server's time), then again with them.
+  const loadAllCollections = useCallback(
+    async (withUserData: boolean, signal?: AbortSignal) => {
+      if (!api) return [];
+      const response = await getItemsApi(api).getItems(
+        {
+          ...itemQuery,
+          tags: undefined,
+          fields: [...(itemQuery.fields ?? []), "Tags"],
+          enableUserData: withUserData,
+          enableTotalRecordCount: false,
+        },
+        { signal },
+      );
+      return response.data.Items ?? [];
     },
+    [api, itemQuery],
   );
+  const allCollectionsKey = [
+    "library-items",
+    libraryId,
+    "all-collections",
+    user?.Id,
+    sortOrder,
+  ];
+  const {
+    data: collectionsWithoutMarks,
+    isFetching: allCollectionsFetching,
+    isError: allCollectionsError,
+    refetch: refetchAllCollections,
+  } = useQuery({
+    queryKey: [...allCollectionsKey, "plain"],
+    queryFn: ({ signal }) => loadAllCollections(false, signal),
+    enabled: collectionsLibrary && !!api && !!user?.Id && filtersReady,
+    staleTime: Freshness.catalog,
+  });
+  const { data: collectionsWithMarks } = useQuery({
+    queryKey: [...allCollectionsKey, "marks"],
+    queryFn: ({ signal }) => loadAllCollections(true, signal),
+    enabled: collectionsLibrary && !!collectionsWithoutMarks,
+    staleTime: Freshness.catalog,
+  });
+  const allCollections = collectionsWithMarks ?? collectionsWithoutMarks;
   const groups = useMemo(
     () => orderedGroups(allCollections ?? []),
     [allCollections],
@@ -1511,6 +1529,7 @@ const Page = () => {
       isLoading ||
       isLibraryLoading ||
       (groupedCollections && allCollectionsFetching && !allCollections);
+    const listError = groupedCollections ? allCollectionsError : isError;
     return (
       <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
         <LoadingLine accent={accent} active={busy || isFetching} />
@@ -1518,7 +1537,13 @@ const Page = () => {
           ref={flashListRef}
           key={orientation}
           ListEmptyComponent={
-            busy ? null : (
+            // A slow server can take many seconds over a big library (the
+            // Collections page loads every collection at once): say so.
+            busy ? (
+              <View style={{ alignItems: "center", paddingVertical: 48 }}>
+                <Loader />
+              </View>
+            ) : (
               <View
                 style={{
                   alignItems: "center",
@@ -1528,14 +1553,18 @@ const Page = () => {
               >
                 <Text variant='section' muted>
                   {t(
-                    isError
+                    listError
                       ? "library.alphabet.load_error"
                       : "library.no_results",
                   )}
                 </Text>
-                {isError && (
+                {listError && (
                   <Pressable
-                    onPress={() => void refetch()}
+                    onPress={() =>
+                      void (groupedCollections
+                        ? refetchAllCollections()
+                        : refetch())
+                    }
                     accessibilityRole='button'
                     style={{ padding: 16 }}
                   >
