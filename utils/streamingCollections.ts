@@ -58,6 +58,12 @@ const SERVICE_ALIASES: Record<string, string> = {
   "amc plus": "amc+",
   "mgm plus": "mgm+",
   "brit box": "britbox",
+  "discovery plus": "discovery+",
+  "the criterion channel": "criterion channel",
+  pluto: "pluto tv",
+  "tubi tv": "tubi",
+  acorn: "acorn tv",
+  // Not "showtime network": that's a TV Networks collection, not a service.
 };
 
 const normalizedService = (name: string | null | undefined) => {
@@ -66,17 +72,25 @@ const normalizedService = (name: string | null | undefined) => {
 };
 
 /**
- * The services the app has a bundled wordmark, brand colour and JustWatch code
- * for (its first JustWatch package, which keys the server's lists), as on the
- * TV (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`,
- * `StreamingCollections.justWatchPackages`), by collection name. Services the
- * server adds without these (YouTube, Tubi…) still show in the row with
- * their poster; they just have no logo header or ranked lists.
+ * A streaming service's JustWatch code (which keys the server's lists) and,
+ * where the app bundles them, its wordmark and brand colour.
  */
-const SERVICES: Record<
-  string,
-  { wordmark: string; brand: string; code: string }
-> = {
+export type StreamingService = {
+  code: string;
+  wordmark?: string;
+  brand?: string;
+};
+
+/**
+ * The services the server keeps JustWatch lists for, as on the TV
+ * (`StreamingProviderHeader.kt`, `Neon.kt` `streamingProviderAccent`,
+ * `StreamingCollections.justWatchPackages`), by collection name. The code is
+ * usually the service's first JustWatch package. Services without a wordmark
+ * keep the plain page (no logo header, default accent); collections the
+ * server adds that aren't here still show in the row with their poster, with
+ * no ranked lists.
+ */
+const SERVICES: Record<string, StreamingService> = {
   netflix: { wordmark: "netflix", brand: "#E50914", code: "nfx" },
   "disney+": { wordmark: "disney", brand: "#113CCF", code: "dnp" },
   hulu: { wordmark: "hulu", brand: "#1CE783", code: "hlu" },
@@ -92,12 +106,23 @@ const SERVICES: Record<
   crunchyroll: { wordmark: "crunchyroll", brand: "#FF5E00", code: "cru" },
   hallmark: { wordmark: "hallmark", brand: "#613790", code: "hmc" },
   angel: { wordmark: "angel", brand: "#E8B923", code: "agl" },
+  // Listed 2026-10-16, without a bundled wordmark or brand colour
+  tubi: { code: "tbv" },
+  "pluto tv": { code: "ptv" },
+  "discovery+": { code: "dpu" },
+  shudder: { code: "shd" },
+  "acorn tv": { code: "act" },
+  "criterion channel": { code: "crc" },
+  youtube: { code: "yfr" },
+  // Showtime has no JustWatch service of its own any more: the server ranks
+  // Paramount+ Premium's lists within the Showtime collection under `sho`
+  showtime: { code: "sho" },
 };
 
-/** The bundled wordmark, brand colour and JustWatch code for a streaming collection, if it's a known service. */
+/** The JustWatch code, and any bundled wordmark and brand colour, for a streaming collection, if it's a known service. */
 export function streamingService(
   name: string | null | undefined,
-): { wordmark: string; brand: string; code: string } | null {
+): StreamingService | null {
   return SERVICES[normalizedService(name)] ?? null;
 }
 

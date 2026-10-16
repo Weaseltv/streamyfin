@@ -1042,7 +1042,8 @@ const page: React.FC = () => {
                 setHeaderHeight(event.nativeEvent.layout.height)
               }
             >
-              {isStreaming && service ? (
+              {/* The logo header only for services with a bundled wordmark */}
+              {isStreaming && service?.wordmark && service.brand ? (
                 <StreamingServiceHeader
                   collection={collection}
                   wordmark={service.wordmark}
@@ -1056,7 +1057,7 @@ const page: React.FC = () => {
                 randomBusy={randomBusy}
               />
               {/* Ranked lists only for services the server keeps JustWatch
-                  lists for; the others (YouTube, Tubi…) stay on NEW */}
+                  lists for; any other streaming collection stays on NEW */}
               {isStreaming && service ? (
                 <QuickListRow
                   value={quickList}

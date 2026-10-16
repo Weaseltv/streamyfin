@@ -352,10 +352,39 @@ describe("Home rows as on the TV", () => {
     expect(streamingService("Max")?.code).toBe("mxx");
     expect(streamingService("Apple TV")?.code).toBe("atp");
     expect(streamingService("Apple TV+")?.code).toBe("atp");
-    expect(streamingService("YouTube")).toBeNull();
     expect(streamingService("Hallmark+")?.wordmark).toBe("hallmark");
     expect(streamingService("Angel Studios")?.wordmark).toBe("angel");
     expect(streamingService("Some new service")).toBeNull();
+  });
+
+  test("the services listed 2026-10-16 have JustWatch codes but no bundled wordmark or brand colour", () => {
+    const codes: Record<string, string> = {
+      Tubi: "tbv",
+      "Pluto TV": "ptv",
+      "Discovery+": "dpu",
+      Shudder: "shd",
+      "Acorn TV": "act",
+      "Criterion Channel": "crc",
+      YouTube: "yfr",
+    };
+    for (const [name, code] of Object.entries(codes)) {
+      expect(streamingService(name)).toEqual({ code });
+    }
+    for (const [alias, code] of [
+      ["Discovery Plus", "dpu"],
+      ["The Criterion Channel", "crc"],
+      ["Pluto", "ptv"],
+      ["Tubi TV", "tbv"],
+      ["Acorn", "act"],
+    ]) {
+      expect(streamingService(alias)?.code).toBe(code);
+    }
+  });
+
+  test("Showtime keeps its own code for Paramount+ Premium's lists; the Showtime network collection is not a service", () => {
+    expect(streamingService("Showtime")).toEqual({ code: "sho" });
+    expect(streamingService("Paramount+")?.code).toBe("ppp");
+    expect(streamingService("Showtime Network")).toBeNull();
   });
 
   test("the member's saved order comes first, then the default order; an empty order resets", async () => {

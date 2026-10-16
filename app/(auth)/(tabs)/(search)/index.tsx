@@ -48,6 +48,7 @@ import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
+import { useIndexedTitles, useTitleIndex } from "@/hooks/useTitleSearch";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { usePageAccent, useSetPageAccent } from "@/utils/atoms/pageAccent";
@@ -63,6 +64,7 @@ import type {
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
 import { createStreamystatsApi } from "@/utils/streamystats";
+import { matchTitles, mergeSearchResults } from "@/utils/titleSearch";
 
 type SearchType = "Library" | "Discover";
 
@@ -337,7 +339,7 @@ export default function SearchPage() {
   }, []);
 
   const {
-    data: movies,
+    data: serverMovies,
     isFetching: l1,
     isError: e1,
     refetch: r1,
@@ -353,7 +355,7 @@ export default function SearchPage() {
   });
 
   const {
-    data: series,
+    data: serverSeries,
     isFetching: l2,
     isError: e2,
     refetch: r2,
@@ -379,7 +381,8 @@ export default function SearchPage() {
   const secondaryEnabled =
     librarySearchEnabled &&
     (Platform.isTV ||
-      ((movies !== undefined || e1) && (series !== undefined || e2)) ||
+      ((serverMovies !== undefined || e1) &&
+        (serverSeries !== undefined || e2)) ||
       secondaryQuery === debouncedSearch);
 
   const {
@@ -399,7 +402,7 @@ export default function SearchPage() {
   });
 
   const {
-    data: collections,
+    data: serverCollections,
     isFetching: l7,
     isError: e7,
     refetch: r7,
@@ -413,6 +416,47 @@ export default function SearchPage() {
       }),
     enabled: secondaryEnabled,
   });
+
+  // Fuzzy title search, as on WeaselPlex TV (owner, 2026-10-16): the
+  // member's own index of titles finds M*A*S*H for "MASH" and MobLand for
+  // "mob land", which the server's search misses. Its matches lead the
+  // movie, show and collection sections; the server's results follow. Typed
+  // and dictated searches both arrive here as the debounced query.
+  const titleIndex = useTitleIndex(searchEngine === "Jellyfin");
+  const titleMatches = useMemo(
+    () =>
+      titleIndex && librarySearchEnabled && searchEngine === "Jellyfin"
+        ? matchTitles(titleIndex.titles, debouncedSearch)
+        : undefined,
+    [titleIndex, librarySearchEnabled, searchEngine, debouncedSearch],
+  );
+  const { data: indexedMovies, isFetching: i1 } = useIndexedTitles(
+    "movies",
+    titleMatches?.Movie,
+    librarySearchEnabled,
+  );
+  const { data: indexedSeries, isFetching: i2 } = useIndexedTitles(
+    "series",
+    titleMatches?.Series,
+    librarySearchEnabled,
+  );
+  const { data: indexedCollections, isFetching: i7 } = useIndexedTitles(
+    "collections",
+    titleMatches?.BoxSet,
+    secondaryEnabled,
+  );
+  const movies = useMemo(
+    () => mergeSearchResults(indexedMovies, serverMovies),
+    [indexedMovies, serverMovies],
+  );
+  const series = useMemo(
+    () => mergeSearchResults(indexedSeries, serverSeries),
+    [indexedSeries, serverSeries],
+  );
+  const collections = useMemo(
+    () => mergeSearchResults(indexedCollections, serverCollections),
+    [indexedCollections, serverCollections],
+  );
 
   const {
     data: actors,
@@ -530,7 +574,10 @@ export default function SearchPage() {
       l9 ||
       l10 ||
       l11 ||
-      l12
+      l12 ||
+      i1 ||
+      i2 ||
+      i7
     );
   }, [
     librarySearchEnabled,
@@ -544,6 +591,9 @@ export default function SearchPage() {
     l10,
     l11,
     l12,
+    i1,
+    i2,
+    i7,
   ]);
 
   /**

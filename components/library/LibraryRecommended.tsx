@@ -159,6 +159,8 @@ export const LibraryRecommended: React.FC<{
             t("library.suggestions"),
             (signal) => loadSuggestions(api, user.Id!, target, signal),
           )}
+          {/* A service without a weekly chart (Showtime, whose would repeat
+              Paramount+'s) has an empty list, so its rows stay hidden */}
           {(services ?? []).map((service) =>
             row(
               `top10-${service.code}`,
