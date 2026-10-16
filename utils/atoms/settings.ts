@@ -341,7 +341,6 @@ export type Settings = {
   jellyseerrServerUrl?: string;
   useKefinTweaks: boolean;
   hiddenLibraries?: string[];
-  enableH265ForChromecast: boolean;
   maxAutoPlayEpisodeCount: MaxAutoPlayEpisodeCount;
   autoPlayNextEpisode: boolean;
   /** Ask whether to resume or start over when playing an in-progress item. */
@@ -483,7 +482,6 @@ export const defaultValues: Settings = {
   jellyseerrServerUrl: undefined,
   useKefinTweaks: false,
   hiddenLibraries: [],
-  enableH265ForChromecast: false,
   maxAutoPlayEpisodeCount: { key: "3", value: 3 },
   autoPlayNextEpisode: true,
   showResumeDialog: true,

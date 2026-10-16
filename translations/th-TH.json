@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "เชื่อมต่อกับ Seerr ของคุณและขอภาพยนตร์ได้โดยตรงในแอป",
       "downloads_feature_title": "ดาวน์โหลด",
       "downloads_feature_description": "ดาวน์โหลดภาพยนตร์และซีรีส์เพื่อดูแบบออฟไลน์",
-      "chromecast_feature_description": "แคสต์ภาพยนตร์และซีรีส์ไปยังอุปกรณ์ Chromecast ของคุณ",
       "centralised_settings_plugin_title": "ปลั๊กอินตั้งค่าแบบรวมศูนย์",
       "centralised_settings_plugin_description": "ตั้งค่าแบบรวมศูนย์บนเซิร์ฟเวอร์ Jellyfin ของคุณ การตั้งค่าไคลเอนต์ของผู้ใช้ทุกคนจะซิงค์กันโดยอัตโนมัติ.",
       "done_button": "เสร็จสิ้น",
@@ -695,8 +694,6 @@
     "error": "ข้อผิดพลาด",
     "failed_to_get_stream_url": "ไม่สามารถรับ URL สตรีมได้",
     "an_error_occurred_while_playing_the_video": "เกิดข้อผิดพลาดขณะเล่นวิดีโอ ตรวจสอบบันทึกในการตั้งค่า",
-    "client_error": "ข้อผิดพลาดของไคลเอนต์",
-    "could_not_create_stream_for_chromecast": "ไม่สามารถสร้างสตรีมสำหรับ Chromecast ได้",
     "message_from_server": "ข้อความจากเซิร์ฟเวอร์: {{message}}",
     "next_episode": "ตอนถัดไป",
     "continue_watching": "ดูต่อ",
@@ -738,8 +735,7 @@
     "stopPlayback": "หยุดเล่น",
     "stopPlayingTitle": "หยุดเล่น “{{title}}” หรือไม่?",
     "stopPlayingConfirm": "คุณแน่ใจหรือไม่ว่าต้องการหยุดการเล่น?",
-    "downloaded": "ดาวน์โหลดแล้ว",
-    "missing_parameters": "ไม่มีพารามิเตอร์การเล่น"
+    "downloaded": "ดาวน์โหลดแล้ว"
   },
   "chapters": {
     "title": "บท",

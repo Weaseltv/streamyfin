@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Połącz się ze swoim serwerem Jellyseerr i zamawiaj filmy bezpośrednio w aplikacji.",
       "downloads_feature_title": "Pobieranie",
       "downloads_feature_description": "Pobieraj filmy oraz seriale do oglądania offline. Użyj domyślnej metody lub zainstaluj serwer do optymalizacji, aby pobierać pliki w tle.",
-      "chromecast_feature_description": "Przesyłaj filmy i seriale na urządzenia Chromecast.",
       "centralised_settings_plugin_title": "Scentralizowana wtyczka ustawień",
       "centralised_settings_plugin_description": "Konfiguruj ustawienia centralnie na serwerze Jellyfin. Ustawienia klienta każdego użytkownika synchronizują się automatycznie.",
       "done_button": "Gotowe",
@@ -695,8 +694,6 @@
     "error": "Błąd",
     "failed_to_get_stream_url": "Nie udało się pobrać adresu strumienia",
     "an_error_occurred_while_playing_the_video": "Wystąpił błąd podczas odtwarzania wideo. Sprawdź logi w ustawieniach.",
-    "client_error": "Błąd klienta",
-    "could_not_create_stream_for_chromecast": "Nie udało się utworzyć strumienia dla Chromecasta",
     "message_from_server": "Wiadomość z serwera: {{message}}",
     "next_episode": "Następny odcinek",
     "continue_watching": "Kontynuuj oglądanie",
@@ -738,8 +735,7 @@
     "stopPlayback": "Zatrzymaj odtwarzanie",
     "stopPlayingTitle": "Zatrzymać odtwarzanie „{{title}}”?",
     "stopPlayingConfirm": "Czy na pewno chcesz zatrzymać odtwarzanie?",
-    "downloaded": "Pobrano",
-    "missing_parameters": "Brak parametrów odtwarzania"
+    "downloaded": "Pobrano"
   },
   "chapters": {
     "title": "Rozdziały",

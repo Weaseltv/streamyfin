@@ -26,12 +26,13 @@ import { HEADER_ICON_SIZE } from "./HeaderButton";
  * tense (`favorited`, `watchlisted`, `played`) are the "on" state of a toggle.
  */
 const HEADER_ICONS = {
-  // No `ios` entry on purpose: Cast is a Google mark, so SF Symbols has no
+  // No `ios` entry on purpose: the cast mark is Google's, so SF Symbols has no
   // equivalent, and every near-miss reads as something else — `airplayvideo` is
   // AirPlay, which the app offers separately in now-playing. iOS falls back to
   // the Feather glyph below; Android has the real mark in Material Symbols.
-  cast: { android: "cast" },
-  sessions: { ios: "play.circle", android: "play_circle" },
+  // Sessions and Play on device use it (owner, 2026-10-16): both send to
+  // another screen through Sessions.
+  sessions: { android: "cast" },
   settings: { ios: "gearshape", android: "settings" },
   // `downloaded` is the filled counterpart of `downloads`, not a checkmark —
   // the state being shown is "this is downloaded", and a tick reads as "done"
@@ -42,7 +43,7 @@ const HEADER_ICONS = {
     android: "download_for_offline",
   },
   queued: { ios: "hourglass", android: "hourglass" },
-  remoteSession: { ios: "play.rectangle", android: "personal_video" },
+  remoteSession: { android: "cast" },
   played: { ios: "checkmark.circle.fill", android: "check_circle" },
   unplayed: { ios: "checkmark.circle", android: "check_circle" },
   favorited: { ios: "heart.fill", android: "favorite" },
@@ -70,7 +71,8 @@ export type HeaderIconName = keyof typeof HEADER_ICONS;
 const FALLBACK_GLYPHS: Partial<
   Record<HeaderIconName, keyof typeof Feather.glyphMap>
 > = {
-  cast: "cast",
+  sessions: "cast",
+  remoteSession: "cast",
 };
 
 interface Props {

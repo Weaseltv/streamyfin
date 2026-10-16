@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "連接到您的 Jellyseerr 實例並直接在應用程序中請求電影。",
       "downloads_feature_title": "下載",
       "downloads_feature_description": "下載電影和電視節目以離線觀看。使用默認方法或安裝 Optimized Server 以在背景中下載文件。",
-      "chromecast_feature_description": "將電影和電視節目投射到您的 Chromecast 設備。",
       "centralised_settings_plugin_title": "統一設置插件",
       "centralised_settings_plugin_description": "從 Jellyfin 伺服器上的統一位置改變設置。所有用戶的所有客戶端設置將會自動同步。",
       "done_button": "完成",
@@ -695,8 +694,6 @@
     "error": "錯誤",
     "failed_to_get_stream_url": "無法獲取流 URL",
     "an_error_occurred_while_playing_the_video": "播放影片時發生錯誤。請在設定中查看紀錄。",
-    "client_error": "客戶端錯誤",
-    "could_not_create_stream_for_chromecast": "無法為 Chromecast 建立串流",
     "message_from_server": "來自伺服器的訊息：{{message}}",
     "next_episode": "下一集",
     "continue_watching": "繼續觀看",
@@ -738,8 +735,7 @@
     "stopPlayback": "Stop Playback",
     "stopPlayingTitle": "停止播放「{{title}}」？",
     "stopPlayingConfirm": "確定要停止播放嗎？",
-    "downloaded": "已下載",
-    "missing_parameters": "缺少播放參數"
+    "downloaded": "已下載"
   },
   "chapters": {
     "title": "章節",

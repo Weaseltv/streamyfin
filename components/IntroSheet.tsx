@@ -86,18 +86,11 @@ export const IntroSheet = forwardRef<IntroSheetRef>((_, ref) => {
             icon='inbox'
           />
           {!Platform.isTV && (
-            <>
-              <NeonSheetRow
-                label={t("home.intro.downloads_feature_title")}
-                subtitle={t("home.intro.downloads_feature_description")}
-                icon='download'
-              />
-              <NeonSheetRow
-                label='Chromecast'
-                subtitle={t("home.intro.chromecast_feature_description")}
-                icon='cast'
-              />
-            </>
+            <NeonSheetRow
+              label={t("home.intro.downloads_feature_title")}
+              subtitle={t("home.intro.downloads_feature_description")}
+              icon='download'
+            />
           )}
         </View>
       </NeonSheet>

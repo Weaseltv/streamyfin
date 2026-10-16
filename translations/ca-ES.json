@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Connecteu-vos a la vostra instància de Jellyseerr i sol·liciteu pel·lícules directament des de l'aplicació.",
       "downloads_feature_title": "Descàrregues",
       "downloads_feature_description": "Descarregueu pel·lícules i sèries per veure-les sense connexió. Utilitzeu el mètode per defecte o instal·leu el servidor optimitzat per descarregar fitxers en segon pla.",
-      "chromecast_feature_description": "Envieu pel·lícules i sèries als vostres dispositius Chromecast.",
       "centralised_settings_plugin_title": "Plugin de configuració centralitzada",
       "centralised_settings_plugin_description": "Configureu els ajustos de manera centralitzada al vostre servidor Jellyfin. Els ajustos de client de cada usuari se sincronitzen automàticament.",
       "done_button": "Fet",
@@ -695,8 +694,6 @@
     "error": "Error",
     "failed_to_get_stream_url": "No s'ha pogut obtenir l'URL del flux",
     "an_error_occurred_while_playing_the_video": "S'ha produït un error en reproduir el vídeo. Consulteu els registres a la configuració.",
-    "client_error": "Error del client",
-    "could_not_create_stream_for_chromecast": "No s'ha pogut crear un flux per a Chromecast",
     "message_from_server": "Missatge del servidor: {{message}}",
     "next_episode": "Episodi següent",
     "continue_watching": "Continuar veient",
@@ -738,8 +735,7 @@
     "stopPlayback": "Atura la reproducció",
     "stopPlayingTitle": "Vols aturar la reproducció de «{{title}}»?",
     "stopPlayingConfirm": "Segur que vols aturar la reproducció?",
-    "downloaded": "Descarregat",
-    "missing_parameters": "Falten paràmetres de reproducció"
+    "downloaded": "Descarregat"
   },
   "chapters": {
     "title": "Capítols",

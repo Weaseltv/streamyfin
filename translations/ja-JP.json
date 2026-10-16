@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Jellyseerrインスタンスに接続し、アプリ内で直接映画をリクエストします。",
       "downloads_feature_title": "ダウンロード",
       "downloads_feature_description": "映画やテレビ番組をダウンロードしてオフラインで視聴します。デフォルトの方法を使用するか、バックグラウンドでファイルをダウンロードするために最適化されたサーバーをインストールしてください。",
-      "chromecast_feature_description": "映画とテレビ番組をChromecastデバイスにキャストします。",
       "centralised_settings_plugin_title": "集中設定プラグイン",
       "centralised_settings_plugin_description": "Jellyfinサーバーで設定を一元管理できます。すべてのユーザーのクライアント設定が自動的に同期されます。",
       "done_button": "完了",
@@ -695,8 +694,6 @@
     "error": "エラー",
     "failed_to_get_stream_url": "ストリームURLを取得できませんでした",
     "an_error_occurred_while_playing_the_video": "動画の再生中にエラーが発生しました。設定でログを確認してください。",
-    "client_error": "クライアントエラー",
-    "could_not_create_stream_for_chromecast": "Chromecastのストリームを作成できませんでした",
     "message_from_server": "サーバーからのメッセージ",
     "next_episode": "次のエピソード",
     "continue_watching": "視聴を続ける",
@@ -738,8 +735,7 @@
     "stopPlayback": "再生を停止",
     "stopPlayingTitle": "「{{title}}」の再生を停止しますか？",
     "stopPlayingConfirm": "再生を停止してもよろしいですか？",
-    "downloaded": "ダウンロード済み",
-    "missing_parameters": "再生パラメーターがありません"
+    "downloaded": "ダウンロード済み"
   },
   "chapters": {
     "title": "チャプター",

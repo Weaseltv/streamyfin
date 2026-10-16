@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Conecte-se à sua instância do Seerr e solicite filmes diretamente no aplicativo.",
       "downloads_feature_title": "Transferências",
       "downloads_feature_description": "Transfira filmes e séries para ver sem ligação à Internet.",
-      "chromecast_feature_description": "Transmita filmes e séries para os seus dispositivos Chromecast.",
       "centralised_settings_plugin_title": "Plugin de definições centralizadas",
       "centralised_settings_plugin_description": "Defina as opções de forma centralizada no seu servidor Jellyfin. As definições de cliente de cada utilizador sincronizam automaticamente.",
       "done_button": "Concluído",
@@ -695,8 +694,6 @@
     "error": "ERRO",
     "failed_to_get_stream_url": "Falha ao obter a URL de transmissão",
     "an_error_occurred_while_playing_the_video": "Ocorreu um erro ao reproduzir o vídeo. Consulte os registos nas definições.",
-    "client_error": "Erro do cliente",
-    "could_not_create_stream_for_chromecast": "Não foi possível criar um fluxo para o Chromecast",
     "message_from_server": "Mensagem do servidor: {{message}}",
     "next_episode": "Episódio seguinte",
     "continue_watching": "Continuar a ver",
@@ -738,8 +735,7 @@
     "stopPlayback": "Parar a reprodução",
     "stopPlayingTitle": "Parar a reprodução de «{{title}}»?",
     "stopPlayingConfirm": "Tem a certeza de que pretende parar a reprodução?",
-    "downloaded": "Transferido",
-    "missing_parameters": "Faltam parâmetros de reprodução"
+    "downloaded": "Transferido"
   },
   "chapters": {
     "title": "Capítulos",

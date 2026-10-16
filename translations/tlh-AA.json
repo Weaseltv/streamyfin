@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Jellyseerr yIngoq 'ej DIS pe'vIl yISov.",
       "downloads_feature_title": "Qaw' Doch",
       "downloads_feature_description": "DIS 'ej Hem Qaw'laH. Qaw' mIw tu'lu'.",
-      "chromecast_feature_description": "DIS 'ej Hem Chromecast vI' ghoS.",
       "centralised_settings_plugin_title": "wa'DIch men mIw",
       "centralised_settings_plugin_description": "Jellyfin Ho'Do' veSDaq men yISeH. tlhIngan chIch.",
       "done_button": "Qapla'",
@@ -695,8 +694,6 @@
     "error": "ghIq",
     "failed_to_get_stream_url": "tlhol ret URL tu'laHbe'",
     "an_error_occurred_while_playing_the_video": "mu'tlhegh tlholDI' ghIq. menDaq De' qon mej.",
-    "client_error": "lut 'el ghIq",
-    "could_not_create_stream_for_chromecast": "Chromecast tlhol ret qonlaHbe'",
     "message_from_server": "Ho'Do' veS jach: {{message}}",
     "next_episode": "wej HemHom",
     "continue_watching": "tlhol yIHaDqa'",
@@ -738,8 +735,7 @@
     "stopPlayback": "chu' yImev",
     "stopPlayingTitle": "«{{title}}» chu' yImev'a'?",
     "stopPlayingConfirm": "chu' Damev''a'?",
-    "downloaded": "Suqta'",
-    "missing_parameters": "chu' De' Hutlh"
+    "downloaded": "Suqta'"
   },
   "chapters": {
     "title": "'ay'mey",

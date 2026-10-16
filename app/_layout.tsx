@@ -55,9 +55,6 @@ import {
 import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
-const CastDialogHost = Platform.isTV
-  ? null
-  : require("@/components/cast/CastDialog").CastDialogHost;
 
 import { getSessionApi } from "@jellyfin/sdk/lib/utils/api/session-api";
 import { getLocales } from "expo-localization";
@@ -688,9 +685,6 @@ function Layout() {
                                       closeButton
                                     />
                                     {!Platform.isTV && <GlobalModal />}
-                                    {!Platform.isTV && CastDialogHost ? (
-                                      <CastDialogHost />
-                                    ) : null}
                                     {!Platform.isTV && <ConfirmDeleteHost />}
                                     {!Platform.isTV && (
                                       <PendingAccountSaveModal />

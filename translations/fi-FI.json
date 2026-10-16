@@ -118,7 +118,6 @@
       "jellyseerr_feature_description": "Yhdistä Jellyseerr-instanssiisi ja pyydä elokuvia suoraan sovelluksessa.",
       "downloads_feature_title": "Lataukset",
       "downloads_feature_description": "Lataa elokuvia ja TV-sarjoja katsottavaksi offline-tilassa. Käytä joko oletusmenetelmää tai asenna optimoitu palvelin ladataksesi tiedostoja taustalla.",
-      "chromecast_feature_description": "Toista elokuvia ja TV-sarjoja Chromecast-laitteillesi.",
       "centralised_settings_plugin_title": "Keskitetty asetusten liitännäinen",
       "centralised_settings_plugin_description": "Määritä asetukset keskitetysti Jellyfin-palvelimellasi. Jokaisen käyttäjän asiakasasetukset synkronoidaan automaattisesti.",
       "done_button": "Valmis",
@@ -695,8 +694,6 @@
     "error": "Virhe",
     "failed_to_get_stream_url": "Lähetyksen URL-osoitteen haku epäonnistui",
     "an_error_occurred_while_playing_the_video": "Videon toiston yhteydessä tapahtui virhe. Tarkista lokit asetuksista.",
-    "client_error": "Asiakkaan Virhe",
-    "could_not_create_stream_for_chromecast": "Suoratoistoa ei voitu luoda Chromecastia varten",
     "message_from_server": "Viesti palvelimelta: {{message}}",
     "next_episode": "Seuraava Jakso",
     "continue_watching": "Jatka katsomista",
@@ -738,8 +735,7 @@
     "stopPlayback": "Lopeta toisto",
     "stopPlayingTitle": "Lopetetaanko kohteen ”{{title}}” toisto?",
     "stopPlayingConfirm": "Haluatko varmasti lopettaa toiston?",
-    "downloaded": "Ladattu",
-    "missing_parameters": "Toistoparametrit puuttuvat"
+    "downloaded": "Ladattu"
   },
   "chapters": {
     "title": "Luvut",

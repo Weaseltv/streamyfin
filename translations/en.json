@@ -128,7 +128,6 @@
       "jellyseerr_feature_description": "Request movies, shows & episodes directly in the app.",
       "downloads_feature_title": "Offline viewing",
       "downloads_feature_description": "Download your own media to this device to watch offline.",
-      "chromecast_feature_description": "Cast movies and shows to your Chromecast devices.",
       "done_button": "Done",
       "go_to_settings_button": "Go to Settings"
     },
@@ -491,10 +490,6 @@
         "copy": "Copy",
         "copied": "Copied to clipboard"
       },
-      "chromecast": {
-        "title": "Chromecast",
-        "enable_h265": "Enable H265 for Chromecast"
-      },
       "languages": {
         "title": "Languages",
         "app_language": "App language",
@@ -770,8 +765,6 @@
     "error": "Error",
     "failed_to_get_stream_url": "Failed to get the stream URL",
     "an_error_occurred_while_playing_the_video": "An error occurred while playing the video. Check logs in settings.",
-    "client_error": "Client error",
-    "could_not_create_stream_for_chromecast": "Could not create a stream for Chromecast",
     "message_from_server": "Message from server: {{message}}",
     "next_episode": "Next episode",
     "continue_watching": "Continue watching",
@@ -814,8 +807,7 @@
     "stopPlayback": "Stop playback",
     "stopPlayingTitle": "Stop playing \"{{title}}\"?",
     "stopPlayingConfirm": "Are you sure you want to stop playback?",
-    "downloaded": "Downloaded",
-    "missing_parameters": "Missing playback parameters"
+    "downloaded": "Downloaded"
   },
   "chapters": {
     "title": "Chapters",
@@ -1203,21 +1195,6 @@
     "downloaded": "Downloaded",
     "episodes_count": "{{count}} episodes",
     "seasons_count": "{{count}} seasons"
-  },
-  "cast": {
-    "cast_to": "Cast to",
-    "select_device": "Select a device",
-    "casting_to": "Casting to {{device}}",
-    "airplay_bluetooth": "AirPlay & Bluetooth devices",
-    "screen_mirroring": "Screen mirroring",
-    "screen_mirroring_unavailable": "This phone has no screen mirroring picker. Look for Cast, Smart View or Screen mirroring in your phone's Settings.",
-    "no_media_selected": "No media selected",
-    "stop_casting": "Stop casting",
-    "searching": "Looking for devices…",
-    "no_devices": "Make sure this phone and your TV are on the same Wi-Fi.",
-    "connecting": "Connecting…",
-    "mute": "Mute",
-    "unmute": "Unmute"
   },
   "states": {
     "retry": "Retry",
