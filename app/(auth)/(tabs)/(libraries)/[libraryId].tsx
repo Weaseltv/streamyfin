@@ -194,11 +194,6 @@ const Page = () => {
     setView("recommended");
     setGroup(null);
   }, [libraryId]);
-  // Switching group starts at the top of the list (ALL after a group used
-  // to keep the old scroll position, landing mid-list)
-  useEffect(() => {
-    flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [group]);
   const nameSorted = !Platform.isTV && sortBy[0] === SortByOption.SortName;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<string>();
@@ -1561,7 +1556,10 @@ const Page = () => {
         <LoadingLine accent={accent} active={busy || isFetching} />
         <FlashList
           ref={flashListRef}
-          key={orientation}
+          // A fresh list per Collections group, so switching (ALL included)
+          // starts at the top. Scrolling the old list to the top while its
+          // data jumped from one group to all 676 left it drawing nothing.
+          key={`${orientation}-${group ?? "all"}`}
           ListEmptyComponent={
             // A slow server can take many seconds over a big library (the
             // Collections page loads every collection at once): say so.
