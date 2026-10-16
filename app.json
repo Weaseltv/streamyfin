@@ -2,7 +2,7 @@
   "expo": {
     "name": "WeaselPlex",
     "slug": "weaselfin",
-    "version": "1.28",
+    "version": "1.29",
     "orientation": "default",
     "icon": "./assets/images/weaselplex-icon-1024.png",
     "scheme": "weaselfin",
@@ -50,7 +50,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
-      "versionCode": 29
+      "versionCode": 30
     },
     "plugins": [
       [
