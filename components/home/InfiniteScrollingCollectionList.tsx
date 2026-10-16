@@ -5,7 +5,7 @@ import {
   type QueryKey,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
@@ -16,7 +16,7 @@ import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Loader } from "@/components/Loader";
 import { Sizes } from "@/constants/neon";
 import { useSettings } from "@/utils/atoms/settings";
-import { rowBadge } from "@/utils/streamingCollections";
+import { rowBadges } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
 
@@ -34,6 +34,8 @@ interface Props extends ViewProps {
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[], QueryKey, number>;
   hideIfEmpty?: boolean;
+  /** Shown instead of the cards when the rail is empty; the rail then never hides (Continue Watching). */
+  emptyState?: ReactNode;
   /**
    * Drop items from the rendered rail without touching the query. Used by the
    * Continue & Next Up / Next Up rails to hide series the user dismissed —
@@ -65,6 +67,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   queryFn,
   queryKey,
   hideIfEmpty = false,
+  emptyState,
   excludeItem,
   pageSize = 10,
   onPressSeeAll,
@@ -136,23 +139,19 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   }, [data, excludeItem]);
 
   // Type badges only on rows that mix movies and shows, unless the caller decides
-  const rowBadgeValue = useMemo(
-    () => (badge === undefined ? rowBadge(allItems) : badge),
+  const badgeFor = useMemo(
+    () =>
+      badge === undefined ? rowBadges(allItems) : (_item: BaseItemDto) => badge,
     [badge, allItems],
   );
   const cardExtras = useMemo(
     () => ({
       useEpisodePoster: settings?.useEpisodeImagesForNextUp,
-      badge: rowBadgeValue,
+      badgeFor,
       badgeColor,
       orientation,
     }),
-    [
-      settings?.useEpisodeImagesForNextUp,
-      rowBadgeValue,
-      badgeColor,
-      orientation,
-    ],
+    [settings?.useEpisodeImagesForNextUp, badgeFor, badgeColor, orientation],
   );
   const renderRailItem = useCallback(
     ({ item }: { item: BaseItemDto }) => (
@@ -164,7 +163,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
           item={item}
           orientation={cardExtras.orientation}
           useEpisodePoster={cardExtras.useEpisodePoster}
-          badge={cardExtras.badge}
+          badge={cardExtras.badgeFor(item)}
           badgeColor={cardExtras.badgeColor}
         />
         <ItemCardText item={item} />
@@ -181,7 +180,13 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   // `isError` deliberately overrides hideIfEmpty: a rail that failed is not an
   // empty rail, and silently removing it is what made a partial outage look
   // like an empty Home screen.
-  if (hideIfEmpty === true && allItems.length === 0 && !isLoading && !isError)
+  if (
+    hideIfEmpty === true &&
+    !emptyState &&
+    allItems.length === 0 &&
+    !isLoading &&
+    !isError
+  )
     return null;
   if (disabled || !title) return null;
 
@@ -201,7 +206,11 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
         }
         actionDisabled={isLoading}
         onPressAction={onPressSeeAll}
-        count={isLoading || onPressSeeAll ? undefined : allItems.length}
+        count={
+          isLoading || onPressSeeAll || allItems.length === 0
+            ? undefined
+            : allItems.length
+        }
       />
       {isError && allItems.length === 0 && (
         <View style={{ paddingHorizontal: Sizes.gutter, gap: 8 }}>
@@ -218,13 +227,16 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
           </Button>
         </View>
       )}
-      {isLoading === false && !isError && allItems.length === 0 && (
-        <View style={{ paddingHorizontal: Sizes.gutter }}>
-          <Text variant='meta' muted>
-            {t("home.no_items")}
-          </Text>
-        </View>
-      )}
+      {isLoading === false &&
+        !isError &&
+        allItems.length === 0 &&
+        (emptyState ?? (
+          <View style={{ paddingHorizontal: Sizes.gutter }}>
+            <Text variant='meta' muted>
+              {t("home.no_items")}
+            </Text>
+          </View>
+        ))}
       {isLoading ? (
         <RailSkeleton orientation={orientation} />
       ) : (
