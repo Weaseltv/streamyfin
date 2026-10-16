@@ -135,11 +135,13 @@ export const Type = {
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
+  // Row titles; 16 to 20 at the owner's request (2026-10-16). A long title
+  // takes a second line on a narrow phone.
   section: {
     ...FontFace.display,
-    fontSize: 16,
-    lineHeight: 21,
-    letterSpacing: 1,
+    fontSize: 20,
+    lineHeight: 25,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   tally: {
