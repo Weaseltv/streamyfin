@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type { PropsWithChildren } from "react";
 import { type StyleProp, View, type ViewStyle } from "react-native";
@@ -8,6 +8,10 @@ import { WatchedIndicator } from "@/components/WatchedIndicator";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { glowChip } from "@/constants/neon";
 import { useDownloadedItem } from "@/hooks/useDownloadedItem";
+import { STREAMING_COLLECTION_TAG } from "@/utils/streamingCollections";
+
+/** The TV's Watchlist heart (`ItemCardImage.kt`). */
+const HEART = "#FF4444";
 
 interface Props {
   item: BaseItemDto;
@@ -26,9 +30,11 @@ interface Props {
 }
 
 /**
- * The card frame every poster and thumb shares: 1pt `line` border, radius 0,
- * badge top-left, played square top-right, progress at the bottom edge, and
- * the green `download` glyph bottom-right when the item is downloaded.
+ * The card frame every poster and thumb shares: 1pt `line` border (`line2` on
+ * streaming services, so Max's dark art keeps an edge), radius 0, badge
+ * top-left, played square or count top-right, the Watchlist heart
+ * bottom-right as on the TV, progress at the bottom edge, and the green
+ * `download` glyph when the item is downloaded.
  */
 export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
   item,
@@ -45,6 +51,10 @@ export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
   const accent = badgeColor ?? typeAccent(item);
   const label = badge === undefined ? typeLabel(item) : badge;
   const downloaded = useDownloadedItem(item.Id);
+  const favorite = item.UserData?.IsFavorite === true;
+  const streaming =
+    item.Type === "BoxSet" &&
+    item.Tags?.includes(STREAMING_COLLECTION_TAG) === true;
 
   return (
     <View
@@ -53,7 +63,7 @@ export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
           width,
           height,
           borderWidth: 1,
-          borderColor: NeonBoard.line,
+          borderColor: streaming ? NeonBoard.line2 : NeonBoard.line,
           backgroundColor: NeonBoard.card2,
           overflow: "hidden",
         },
@@ -89,8 +99,15 @@ export const PosterFrame: React.FC<PropsWithChildren<Props>> = ({
           </View>
         )
       ) : null}
-      {downloaded ? (
+      {favorite ? (
         <View style={{ position: "absolute", right: 6, bottom: 8 }}>
+          <Ionicons name='heart' size={14} color={HEART} />
+        </View>
+      ) : null}
+      {downloaded ? (
+        <View
+          style={{ position: "absolute", right: favorite ? 24 : 6, bottom: 8 }}
+        >
           <Feather name='download' size={14} color={NeonBoard.green} />
         </View>
       ) : null}

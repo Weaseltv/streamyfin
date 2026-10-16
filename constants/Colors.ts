@@ -3,10 +3,10 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 /**
  * WeaselTV "Neon Board" palette for WeaselPlex phone.
  *
- * Flat stage, hairline rows, one neon per section. Values are shared with
- * WeaselTV iOS / Android, theweasel.tv and WeaselPlex Android TV. Keep
- * `tailwind.config.js` in step - that file is the source of truth for
- * classNames, this one for anything styled from JS.
+ * Flat stage, hairline rows, one neon per section. Values match WeaselPlex
+ * Android TV (`Neon.kt`, `NeonSectionPalette.kt`; owner palette of
+ * 2026-10-08). Keep `tailwind.config.js` in step - that file is the source of
+ * truth for classNames, this one for anything styled from JS.
  */
 export const NeonBoard = {
   stage: "#050608",
@@ -20,39 +20,48 @@ export const NeonBoard = {
   mid: "#8B95A5",
   low: "#6B7686",
   onAccent: "#050608",
-  volt: "#D4F63F",
-  green: "#39FF14",
-  cyan: "#00F0FF",
-  orange: "#FF7A00",
-  yellow: "#FFD400",
-  red: "#FF3B4E",
+  volt: "#C6FF00",
+  green: "#3DFF6E",
+  cyan: "#00E5FF",
+  orange: "#FF5200",
+  yellow: "#FFE600",
+  red: "#FF2A3D",
   warn: "#F5B93D",
-  // Section neons, one per rail item on WeaselPlex Android TV (`Neon.kt`).
-  blue: "#5268FF",
-  mint: "#00FF8A",
-  violet: "#C026FF",
-  magenta: "#FF2EF7",
-  pink: "#FF2D95",
-  azure: "#00A3FF",
+  // Movies and shows: cards, badges, progress bars and title pages.
+  movie: "#00B8D9",
+  show: "#E8112D",
+  // Section borders, one per TV rail item (their glows are in `NeonGlow`).
+  home: "#0B8A42",
+  search: "#0A2CFF",
+  watchlist: "#FF5200",
+  requests: "#009A93",
+  collections: "#FFD300",
+  standup: "#5A00FF",
+  sports: "#FF0099",
+  settings: "#EAF2FF",
   // Phone only: the Library hub tab (the TV rail lists libraries directly).
-  indigo: "#8A5CFF",
+  library: "#7B4DFF",
 } as const;
 
-export type NeonAccent =
-  | typeof NeonBoard.volt
-  | typeof NeonBoard.green
-  | typeof NeonBoard.cyan
-  | typeof NeonBoard.orange
-  | typeof NeonBoard.yellow
-  | typeof NeonBoard.red
-  | typeof NeonBoard.warn
-  | typeof NeonBoard.blue
-  | typeof NeonBoard.mint
-  | typeof NeonBoard.violet
-  | typeof NeonBoard.magenta
-  | typeof NeonBoard.pink
-  | typeof NeonBoard.azure
-  | typeof NeonBoard.indigo;
+/**
+ * Each section's glow, as on the TV: solid strokes and ink use the border
+ * colour, glows (and row kickers) use these. Look one up with `glowOf`.
+ */
+const NeonGlow: Record<string, string> = {
+  [NeonBoard.home]: "#00E04B",
+  [NeonBoard.search]: "#00A3FF",
+  [NeonBoard.watchlist]: "#FF7900",
+  [NeonBoard.requests]: "#00F2D6",
+  [NeonBoard.collections]: "#FFFF33",
+  [NeonBoard.movie]: "#00E1FF",
+  [NeonBoard.show]: "#FF1A1A",
+  [NeonBoard.standup]: "#9B30FF",
+  [NeonBoard.sports]: "#FF85D0",
+};
+
+/** The glow colour for a section or type colour; any other colour glows as itself. */
+export const glowOf = (accent: string): string =>
+  NeonGlow[accent.toUpperCase()] ?? accent;
 
 /** Sections of the app that own a page accent. */
 export type NeonSection =
@@ -62,6 +71,7 @@ export type NeonSection =
   | "watchlists"
   | "library"
   | "requests"
+  | "collections"
   | "downloads"
   | "settings"
   | "login"
@@ -72,26 +82,31 @@ export type NeonSection =
   | "guide";
 
 /**
- * Every section owns its neon, shared with the WeaselPlex Android TV rail:
- * Home volt, Search cyan, Watchlist (favourites) hyper blue, Requests mint,
- * Settings violet. The Library hub is indigo; the rest stay volt.
+ * Every section owns its colour, shared with the WeaselPlex Android TV rail:
+ * Home green, Search blue, Watchlist orange, Requests teal, Collections
+ * yellow, Movies cyan, TV Shows red, Settings ice white. The phone's Library
+ * hub is violet; the rest stay volt.
  */
 export const sectionAccent = (section: NeonSection): string => {
   switch (section) {
+    case "home":
+      return NeonBoard.home;
     case "search":
-      return NeonBoard.cyan;
+      return NeonBoard.search;
     case "watchlist":
-      return NeonBoard.blue;
+      return NeonBoard.watchlist;
     case "library":
-      return NeonBoard.indigo;
+      return NeonBoard.library;
     case "requests":
-      return NeonBoard.mint;
+      return NeonBoard.requests;
+    case "collections":
+      return NeonBoard.collections;
     case "settings":
-      return NeonBoard.violet;
+      return NeonBoard.settings;
     case "movies":
-      return NeonBoard.orange;
+      return NeonBoard.movie;
     case "tv":
-      return NeonBoard.yellow;
+      return NeonBoard.show;
     case "livetv":
       return NeonBoard.green;
     case "guide":
@@ -101,20 +116,23 @@ export const sectionAccent = (section: NeonSection): string => {
   }
 };
 
-/**
- * Libraries that own a neon by name, as on the Android TV rail. The 4K
- * libraries are not listed: they fall through to their collection type and
- * so match their regular movie / show counterparts.
- */
+/** Libraries that own a colour by name, as on the Android TV rail. */
 const LIBRARY_ACCENT_BY_NAME: Record<string, string> = {
-  "stand up comedy": NeonBoard.magenta,
-  boxing: NeonBoard.pink,
-  ufc: NeonBoard.azure,
+  collections: NeonBoard.collections,
+  movies: NeonBoard.movie,
+  "tv shows": NeonBoard.show,
+  sports: NeonBoard.sports,
+  boxing: NeonBoard.sports,
+  ufc: NeonBoard.sports,
+  "stand up comedy": NeonBoard.standup,
+  "standup comedy": NeonBoard.standup,
+  "stand-up comedy": NeonBoard.standup,
 };
 
 /**
- * Accent for a library: its own neon by name, else by CollectionType -
- * `movies` orange, `tvshows` yellow, `livetv` green, everything else volt.
+ * Accent for a library: its own colour by name, else by CollectionType -
+ * `movies` cyan, `tvshows` red, `livetv` green, `boxsets` yellow, everything
+ * else volt.
  */
 export const libraryAccent = (
   collectionType?: string | null,
@@ -124,11 +142,13 @@ export const libraryAccent = (
   if (named) return named;
   switch (collectionType) {
     case "movies":
-      return NeonBoard.orange;
+      return NeonBoard.movie;
     case "tvshows":
-      return NeonBoard.yellow;
+      return NeonBoard.show;
     case "livetv":
       return NeonBoard.green;
+    case "boxsets":
+      return NeonBoard.collections;
     default:
       return NeonBoard.volt;
   }
@@ -139,7 +159,7 @@ type TypedItem = Pick<BaseItemDto, "Type" | "CollectionType" | "Name"> & {
 };
 
 /**
- * Accent for an item by type: Movie orange; Series / Season / Episode yellow;
+ * Accent for an item by type: Movie cyan; Series / Season / Episode red;
  * live channels and programmes green; music volt; a library (CollectionFolder)
  * by its name or CollectionType.
  */
@@ -147,11 +167,11 @@ export const typeAccent = (item?: TypedItem | null): string => {
   if (!item) return NeonBoard.volt;
   switch (item.Type) {
     case "Movie":
-      return NeonBoard.orange;
+      return NeonBoard.movie;
     case "Series":
     case "Season":
     case "Episode":
-      return NeonBoard.yellow;
+      return NeonBoard.show;
     case "TvChannel":
     case "TvProgram":
     case "LiveTvProgram":
@@ -205,8 +225,8 @@ export const typeLabel = (item?: TypedItem | null): string | undefined => {
  */
 export const Colors = {
   primary: NeonBoard.volt,
-  primaryRGB: "rgb(212 246 63)",
-  primaryLightRGB: "rgb(212 246 63)",
+  primaryRGB: "rgb(198 255 0)",
+  primaryLightRGB: "rgb(198 255 0)",
   text: NeonBoard.text,
   background: NeonBoard.stage,
   tint: NeonBoard.volt,

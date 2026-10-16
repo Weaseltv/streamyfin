@@ -75,46 +75,41 @@
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/Barlow-Regular.ttf",
-            "./assets/fonts/Barlow-Medium.ttf",
-            "./assets/fonts/Barlow-SemiBold.ttf",
-            "./assets/fonts/Barlow-Bold.ttf",
-            "./assets/fonts/BarlowCondensed-Bold.ttf",
-            "./assets/fonts/BarlowCondensed-ExtraBold.ttf"
+            "./assets/fonts/Exo2-Regular.ttf",
+            "./assets/fonts/Exo2-Medium.ttf",
+            "./assets/fonts/Exo2-SemiBold.ttf",
+            "./assets/fonts/Exo2-Bold.ttf",
+            "./assets/fonts/Audiowide-Regular.ttf"
           ],
           "android": {
             "fonts": [
               {
-                "fontFamily": "Barlow",
+                "fontFamily": "Exo 2",
                 "fontDefinitions": [
                   {
-                    "path": "./assets/fonts/Barlow-Regular.ttf",
+                    "path": "./assets/fonts/Exo2-Regular.ttf",
                     "weight": 400
                   },
                   {
-                    "path": "./assets/fonts/Barlow-Medium.ttf",
+                    "path": "./assets/fonts/Exo2-Medium.ttf",
                     "weight": 500
                   },
                   {
-                    "path": "./assets/fonts/Barlow-SemiBold.ttf",
+                    "path": "./assets/fonts/Exo2-SemiBold.ttf",
                     "weight": 600
                   },
                   {
-                    "path": "./assets/fonts/Barlow-Bold.ttf",
+                    "path": "./assets/fonts/Exo2-Bold.ttf",
                     "weight": 700
                   }
                 ]
               },
               {
-                "fontFamily": "Barlow Condensed",
+                "fontFamily": "Audiowide",
                 "fontDefinitions": [
                   {
-                    "path": "./assets/fonts/BarlowCondensed-Bold.ttf",
-                    "weight": 700
-                  },
-                  {
-                    "path": "./assets/fonts/BarlowCondensed-ExtraBold.ttf",
-                    "weight": 800
+                    "path": "./assets/fonts/Audiowide-Regular.ttf",
+                    "weight": 400
                   }
                 ]
               }
@@ -149,7 +144,7 @@
             "enableJetifier": true,
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# Playback services and Cast entry points must survive release shrinking.\n-keep class com.doublesymmetry.trackplayer.** { *; }\n-keep class com.reactnative.googlecast.** { *; }\n-keep class * extends com.google.android.gms.cast.framework.OptionsProvider { *; }\n# RNDeviceInfo calls the install-referrer API through Class.forName/getMethod.\n-keep class com.android.installreferrer.api.** { *; }\n"
+            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# Playback services must survive release shrinking.\n-keep class com.doublesymmetry.trackplayer.** { *; }\n# RNDeviceInfo calls the install-referrer API through Class.forName/getMethod.\n-keep class com.android.installreferrer.api.** { *; }\n"
           }
         }
       ],

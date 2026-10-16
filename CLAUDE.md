@@ -14,7 +14,7 @@ Navigation:
 
 UI/Headers:
 - `macos-header-buttons-fix` | macOS Catalyst: use RNGH Pressable, not RN TouchableOpacity
-- `header-button-locations` | Defined in _layout.tsx, HeaderBackButton, Chromecast, RoundButton, etc.
+- `header-button-locations` | Defined in _layout.tsx, HeaderBackButton, RoundButton, etc.
 - `stack-screen-header-configuration` | Sub-pages need explicit Stack.Screen with headerTransparent + back button
 
 State/Data:
@@ -36,7 +36,7 @@ TV Platform:
 
 ## Project Overview
 
-Streamyfin is a cross-platform Jellyfin video streaming client built with Expo (React Native). It supports mobile (iOS/Android) and TV platforms, with features including offline downloads, Chromecast support, and Jellyseerr integration.
+Streamyfin is a cross-platform Jellyfin video streaming client built with Expo (React Native). It supports mobile (iOS/Android) and TV platforms, with features including offline downloads and Jellyseerr integration. WeaselPlex removed Chromecast on 2026-10-16; the Sessions remote control replaces it.
 
 ## Development Commands
 
@@ -169,7 +169,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 
 - TV version uses `:tv` suffix for scripts
 - Platform checks: `Platform.isTV`, `Platform.OS === "android"` or `"ios"`
-- Some features disabled on TV (e.g., notifications, Chromecast)
+- Some features disabled on TV (e.g., notifications)
 - **TV Design**: Don't use purple accent colors on TV. Use white for focused states and `expo-blur` (`BlurView`) for backgrounds/overlays.
 - **TV Typography**: Use `TVTypography` from `@/components/tv/TVTypography` for all text on TV. It provides consistent font sizes optimized for TV viewing distance.
 - **TV Button Sizing**: Ensure buttons placed next to each other have the same size for visual consistency.

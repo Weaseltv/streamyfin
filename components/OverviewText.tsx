@@ -31,7 +31,12 @@ export const OverviewText: React.FC<Props> = ({
         }
       >
         <View>
-          <Text variant='body' muted style={{ fontSize: 13, lineHeight: 20 }}>
+          {/* White, as on the TV; tap to expand stays on phones (owner, 2026-10-16) */}
+          <Text
+            variant='body'
+            accent='#FFFFFF'
+            style={{ fontSize: 13, lineHeight: 20 }}
+          >
             {tc(text, limit)}
           </Text>
           {text.length > characterLimit && (

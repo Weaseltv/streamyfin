@@ -8,7 +8,7 @@ type ItemCardProps = {
   item: BaseItemDto;
 };
 
-/** Card caption: title 13/600 on one line, meta 12 in `mid`. */
+/** Card caption, as on the TV: title Exo 2 600 on up to two lines, meta in `mid` on one. */
 export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
   const left =
     item.RunTimeTicks && item.UserData?.PlaybackPositionTicks
@@ -18,7 +18,7 @@ export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
     <View className='mt-1.5 flex flex-col'>
       {item.Type === "Episode" ? (
         <>
-          <Text variant='cardTitle' numberOfLines={1} ellipsizeMode='tail'>
+          <Text variant='cardTitle' numberOfLines={2} ellipsizeMode='tail'>
             {item.SeriesName ?? item.Name}
           </Text>
           <Text variant='meta' muted numberOfLines={1}>
@@ -27,7 +27,7 @@ export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
         </>
       ) : (
         <>
-          <Text variant='cardTitle' numberOfLines={1} ellipsizeMode='tail'>
+          <Text variant='cardTitle' numberOfLines={2} ellipsizeMode='tail'>
             {item.Name}
           </Text>
           <Text variant='meta' muted numberOfLines={1}>

@@ -48,9 +48,11 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
     <Text
       variant='section'
       allowFontScaling={false}
+      // Audiowide is wide: at this size the wordmark and three header icons
+      // fit a 360-wide phone.
       style={{
-        fontSize: size * 0.58,
-        lineHeight: size * 0.67,
+        fontSize: size * 0.4,
+        lineHeight: size * 0.5,
         letterSpacing: 0.5,
       }}
     >
@@ -60,8 +62,8 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
         allowFontScaling={false}
         accent={NeonBoard.volt}
         style={{
-          fontSize: size * 0.58,
-          lineHeight: size * 0.67,
+          fontSize: size * 0.4,
+          lineHeight: size * 0.5,
           letterSpacing: 0.5,
         }}
       >

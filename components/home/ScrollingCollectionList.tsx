@@ -14,12 +14,17 @@ import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Sizes } from "@/constants/neon";
 import { useInView } from "@/hooks/useInView";
 import { useSettings } from "@/utils/atoms/settings";
-import { collectionCardPresentation } from "@/utils/streamingCollections";
+import {
+  collectionCardPresentation,
+  rowBadge,
+} from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
 
 interface Props extends ViewProps {
   title?: string | null;
+  /** Small line over the title, as on the TV ("NEXT UP &"). */
+  kicker?: string;
   /** Query tag for matching loading placeholders; real cards use their own Tags. */
   collectionTag?: string;
   orientation?: "horizontal" | "vertical";
@@ -41,6 +46,7 @@ interface Props extends ViewProps {
 
 export const ScrollingCollectionList: React.FC<Props> = ({
   title,
+  kicker,
   collectionTag,
   orientation = "vertical",
   accent,
@@ -102,6 +108,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
     <View ref={ref} onLayout={onLayout} {...props}>
       <SectionHeader
         title={title}
+        kicker={kicker}
         accent={accent}
         count={shouldShowSkeleton ? undefined : data?.length}
       />
@@ -165,7 +172,8 @@ export const ScrollingCollectionList: React.FC<Props> = ({
                     item={item}
                     orientation={orientation}
                     useEpisodePoster={settings?.useEpisodeImagesForNextUp}
-                    badge={badge}
+                    // Type badges only on rows that mix movies and shows
+                    badge={badge === undefined ? rowBadge(data ?? []) : badge}
                     badgeColor={badgeColor}
                   />
                   {!card.imageOnly && <ItemCardText item={item} />}

@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { NeonBoard } from "@/constants/Colors";
-import { glowChip, Sizes } from "@/constants/neon";
+import { chipOn, Sizes } from "@/constants/neon";
 import { useAccent } from "@/utils/atoms/pageAccent";
 import { Text } from "./Text";
 
@@ -15,8 +15,14 @@ interface Props {
   label: string;
   selected?: boolean;
   disabled?: boolean;
-  /** Accent for the selected fill. Defaults to volt. */
+  /** Accent for the selected border and fill. Defaults to the page accent. */
   accent?: string;
+  /**
+   * Border and label colour at rest, for buttons that always wear their
+   * colour (ALL / MOVIES / SHOWS in volt / cyan / red). Defaults to `line2`
+   * border and `text` label.
+   */
+  tone?: string;
   /** Optional 14 glyph before the label. */
   icon?: ReactNode;
   /** Show a caret after the label (pickers). */
@@ -26,21 +32,23 @@ interface Props {
 }
 
 /**
- * A 30 compact chip: `card2` fill, 1pt `line2`, 12/700 label; selected =
- * filled accent with `onAccent` text and a glow.
+ * A 36 outline chip, as the TV's filter and quick-list buttons: transparent,
+ * 1pt `line2` border, Exo 2 700 uppercase label; selected = 2pt accent border
+ * on the accent-tinted fill.
  */
 export const Chip: React.FC<PropsWithChildren<Props>> = ({
   label,
   selected = false,
   disabled = false,
   accent: accentProp,
+  tone,
   icon,
   caret = false,
   onPress,
   style,
 }) => {
   const accent = useAccent(accentProp);
-  const color = selected ? NeonBoard.onAccent : NeonBoard.text;
+  const color = tone ?? NeonBoard.text;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -51,16 +59,15 @@ export const Chip: React.FC<PropsWithChildren<Props>> = ({
       style={[
         {
           height: Sizes.chip,
-          paddingHorizontal: 14,
+          paddingHorizontal: selected ? 10 : 11,
           flexDirection: "row",
           alignItems: "center",
-          gap: 8,
-          backgroundColor: selected ? accent : NeonBoard.card2,
-          borderWidth: 1,
-          borderColor: selected ? accent : NeonBoard.line2,
+          gap: 6,
+          backgroundColor: selected ? chipOn(accent) : "transparent",
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? accent : (tone ?? NeonBoard.line2),
           opacity: disabled ? 0.5 : 1,
         },
-        selected ? glowChip(accent) : null,
         style,
       ]}
     >
@@ -73,7 +80,7 @@ export const Chip: React.FC<PropsWithChildren<Props>> = ({
       >
         {label}
       </Text>
-      {caret ? <Feather name='chevron-down' size={15} color={color} /> : null}
+      {caret ? <Feather name='chevron-down' size={14} color={color} /> : null}
     </TouchableOpacity>
   );
 };

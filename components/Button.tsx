@@ -102,10 +102,11 @@ export interface ButtonProps
 }
 
 /**
- * Neon Board button. Primary: 48 high, filled accent, `onAccent` Condensed
- * 800 15 upper label, glow `0 0 18` at 0.45. Outline: 44 high, 1pt accent
- * border, accent label. Pressed = 0.85 opacity, disabled = `line2` border
- * with a `low` label.
+ * Neon Board button, styled after WeaselPlex TV. Primary: 56 high, filled
+ * accent, `onAccent` Exo 2 700 uppercase label, glow `0 0 18` at 0.45.
+ * Outline: 52 high, 1pt `line2` border and white label (accent, red or white
+ * when asked). Pressed = 0.85 opacity, disabled = `line2` border with a
+ * `low` label.
  */
 export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   onPress,
@@ -203,13 +204,18 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
           : pageAccent);
   const isOutline =
     variant === "border" || color === "black" || color === "transparent";
-  const quiet = color === "black" || color === "transparent";
+  // As on the TV, a plain outline button rests on a grey `line2` border with
+  // a white label; only an explicit accent, red or white colours it.
+  const quiet =
+    color === "black" ||
+    color === "transparent" ||
+    (color === "primary" && !accent);
 
   const box: ViewStyle = isOutline
     ? {
         height: compact ? Sizes.buttonCompact : Sizes.outline,
         borderWidth: 1,
-        borderColor: isInactive ? NeonBoard.line2 : tone,
+        borderColor: isInactive || quiet ? NeonBoard.line2 : tone,
         backgroundColor: "transparent",
       }
     : {

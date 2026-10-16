@@ -119,6 +119,9 @@
     "streaming": "Streaming Providers",
     "weaselplex_picks": "The Weasel’s Picks",
     "recently_added_in": "Recently added in {{libraryName}}",
+    "kicker_new_in": "New in",
+    "kicker_next_up": "Next Up &",
+    "kicker_collections": "Collections",
     "suggested_movies": "Suggested movies",
     "suggested_episodes": "Suggested episodes",
     "intro": {
