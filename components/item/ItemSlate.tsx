@@ -9,7 +9,7 @@ import { Text } from "@/components/common/Text";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { imageWidthFor } from "@/utils/imageSizes";
-import { runtimeTicksToMinutes } from "@/utils/time";
+import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 
 interface Props {
   item: BaseItemDto;
@@ -19,14 +19,19 @@ interface Props {
   extraMeta?: (string | null | undefined)[];
 }
 
-/** Year · runtime · rating · score in the type colour · RT badge. */
+/**
+ * Year (an episode's air date, as on the TV) · runtime · rating · score in
+ * the type colour · RT badge.
+ */
 export const ItemMetaLine: React.FC<{
   item: BaseItemDto;
   extra?: (string | null | undefined)[];
 }> = ({ item, extra = [] }) => {
   const accent = typeAccent(item);
+  const airDate =
+    item.Type === "Episode" ? formatAirDate(item.PremiereDate) : null;
   const parts = [
-    item.ProductionYear ? String(item.ProductionYear) : null,
+    airDate ?? (item.ProductionYear ? String(item.ProductionYear) : null),
     item.RunTimeTicks ? runtimeTicksToMinutes(item.RunTimeTicks) : null,
     ...extra,
     item.OfficialRating ?? null,

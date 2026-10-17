@@ -20,6 +20,27 @@ export const runtimeTicksToMinutes = (
   return `${minutes}m`;
 };
 
+/**
+ * An episode's air date as the TV app shows it ("Oct 16, 2026"), in the
+ * device's language. Read in UTC: the server keeps it as midnight US Eastern
+ * (04:00 or 05:00 UTC), so the device's own time zone would show the day
+ * before anywhere west of Eastern.
+ */
+export const formatAirDate = (
+  date: string | null | undefined,
+  locale?: string,
+): string | null => {
+  if (!date) return null;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+};
+
 export const runtimeTicksToSeconds = (
   ticks: number | null | undefined,
 ): string => {
