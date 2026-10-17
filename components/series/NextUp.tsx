@@ -11,14 +11,15 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import { runtimeTicksToMinutes } from "@/utils/time";
+import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
 /**
  * The series page's next-up row: a 70 row with a yellow tally, 96×54 thumb
- * with progress, "S2:E4 · The Desk", runtime · time left, compact RESUME.
+ * with progress, "S2:E4 · The Desk", air date · runtime · time left,
+ * compact RESUME.
  */
 export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const [user] = useAtom(userAtom);
@@ -49,6 +50,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const position = item.UserData?.PlaybackPositionTicks ?? 0;
   const runtime = item.RunTimeTicks ?? 0;
   const meta = [
+    formatAirDate(item.PremiereDate),
     runtime ? runtimeTicksToMinutes(runtime) : null,
     position > 0 && runtime
       ? `${runtimeTicksToMinutes(runtime - position)} left`

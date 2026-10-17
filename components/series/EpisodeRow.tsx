@@ -14,7 +14,7 @@ import { useDownloadedItem } from "@/hooks/useDownloadedItem";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import { runtimeTicksToMinutes } from "@/utils/time";
+import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 
 interface Props {
   episode: BaseItemDto;
@@ -26,7 +26,7 @@ interface Props {
 
 /**
  * A 64 episode row: Condensed 700 20 number in `low`, an 84×48 thumb with
- * the green played check or yellow progress, title 14/600, runtime ·
+ * the green played check or yellow progress, title 14/600, air date · runtime ·
  * downloaded meta, and a yellow play glyph.
  */
 export const EpisodeRow = memo(function EpisodeRow({
@@ -45,6 +45,7 @@ export const EpisodeRow = memo(function EpisodeRow({
     ? `${api.basePath}/Items/${episode.Id}/Images/Primary?fillHeight=200&quality=80`
     : undefined;
   const meta = [
+    formatAirDate(episode.PremiereDate),
     episode.RunTimeTicks ? runtimeTicksToMinutes(episode.RunTimeTicks) : null,
     downloaded ? t("item.downloaded").toLowerCase() : null,
   ]

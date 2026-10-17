@@ -492,19 +492,6 @@ const Page = () => {
     );
   }, [screenWidth, orientation]);
 
-  const cardWidth = useMemo(
-    () =>
-      Math.floor(
-        (screenWidth -
-          insets.left -
-          insets.right -
-          Sizes.gutter * 2 -
-          (nameSorted ? ALPHABET_RAIL_WIDTH : 0) -
-          GRID_GAP * (nrOfCols - 1)) /
-          nrOfCols,
-      ),
-    [screenWidth, nrOfCols, insets.left, insets.right, nameSorted],
-  );
   // Whole rows keep prepended pages aligned, including tablets/landscape.
   const pageSize = Platform.isTV ? 36 : Math.ceil(36 / nrOfCols) * nrOfCols;
 
@@ -550,6 +537,25 @@ const Page = () => {
     selectedGenres.length === 0 &&
     selectedYears.length === 0 &&
     filterBy.length === 0;
+  // The gutter the A–Z rail needs, kept whenever the rail can show so the
+  // posters don't resize when it appears. The grouped Collections list never
+  // shows it, so it gets the full width (owner, 2026-10-17: an empty strip ran
+  // down the right of Collections).
+  const railGutter =
+    nameSorted && !groupedCollections ? ALPHABET_RAIL_WIDTH : 0;
+  const cardWidth = useMemo(
+    () =>
+      Math.floor(
+        (screenWidth -
+          insets.left -
+          insets.right -
+          Sizes.gutter * 2 -
+          railGutter -
+          GRID_GAP * (nrOfCols - 1)) /
+          nrOfCols,
+      ),
+    [screenWidth, nrOfCols, insets.left, insets.right, railGutter],
+  );
 
   // If this See-All detail was deep-linked on top of the libraries index, collapse
   // the libraries stack to just this screen. Otherwise the stack is [index, detail],
@@ -1069,11 +1075,7 @@ const Page = () => {
         onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
         style={{
           marginLeft: -(insets.left + Sizes.gutter),
-          marginRight: -(
-            insets.right +
-            Sizes.gutter +
-            (nameSorted ? ALPHABET_RAIL_WIDTH : 0)
-          ),
+          marginRight: -(insets.right + Sizes.gutter + railGutter),
           paddingLeft: insets.left,
           paddingRight: insets.right,
         }}
@@ -1325,7 +1327,7 @@ const Page = () => {
       totalCount,
       libraryTypeLabel,
       sortLabel,
-      nameSorted,
+      railGutter,
       showAlphabet,
       t,
       insets.left,
@@ -1637,10 +1639,7 @@ const Page = () => {
           contentContainerStyle={{
             paddingBottom: 24,
             paddingLeft: insets.left + Sizes.gutter,
-            paddingRight:
-              insets.right +
-              Sizes.gutter +
-              (nameSorted ? ALPHABET_RAIL_WIDTH : 0),
+            paddingRight: insets.right + Sizes.gutter + railGutter,
           }}
           ItemSeparatorComponent={GridSeparator}
         />
