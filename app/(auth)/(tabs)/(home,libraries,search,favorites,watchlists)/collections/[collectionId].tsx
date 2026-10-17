@@ -1003,6 +1003,12 @@ const page: React.FC = () => {
     return (
       <View style={{ flex: 1 }}>
         <FlashList
+          // A fresh grid per list and filter, opening at the top. FlashList
+          // keeps the first visible title in place when its data changes
+          // (which keeps the place when earlier pages load), so switching
+          // POPULAR to TRENDING jumped down to wherever that title is in the
+          // new list, taking the buttons off screen (owner, 2026-10-17).
+          key={`${filterSignature}:${ranked ? quickList : "NEW"}`}
           ref={flashListRef}
           ListEmptyComponent={
             ranked && rankedFetching ? (
