@@ -5,7 +5,7 @@ import {
   type QueryKey,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
@@ -34,8 +34,6 @@ interface Props extends ViewProps {
   queryKey: QueryKey;
   queryFn: QueryFunction<BaseItemDto[], QueryKey, number>;
   hideIfEmpty?: boolean;
-  /** Shown instead of the cards when the rail is empty; the rail then never hides (Continue Watching). */
-  emptyState?: ReactNode;
   /**
    * Drop items from the rendered rail without touching the query. Used by the
    * Continue & Next Up / Next Up rails to hide series the user dismissed —
@@ -67,7 +65,6 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   queryFn,
   queryKey,
   hideIfEmpty = false,
-  emptyState,
   excludeItem,
   pageSize = 10,
   onPressSeeAll,
@@ -180,13 +177,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   // `isError` deliberately overrides hideIfEmpty: a rail that failed is not an
   // empty rail, and silently removing it is what made a partial outage look
   // like an empty Home screen.
-  if (
-    hideIfEmpty === true &&
-    !emptyState &&
-    allItems.length === 0 &&
-    !isLoading &&
-    !isError
-  )
+  if (hideIfEmpty === true && allItems.length === 0 && !isLoading && !isError)
     return null;
   if (disabled || !title) return null;
 
@@ -227,16 +218,13 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
           </Button>
         </View>
       )}
-      {isLoading === false &&
-        !isError &&
-        allItems.length === 0 &&
-        (emptyState ?? (
-          <View style={{ paddingHorizontal: Sizes.gutter }}>
-            <Text variant='meta' muted>
-              {t("home.no_items")}
-            </Text>
-          </View>
-        ))}
+      {isLoading === false && !isError && allItems.length === 0 && (
+        <View style={{ paddingHorizontal: Sizes.gutter }}>
+          <Text variant='meta' muted>
+            {t("home.no_items")}
+          </Text>
+        </View>
+      )}
       {isLoading ? (
         <RailSkeleton orientation={orientation} />
       ) : (

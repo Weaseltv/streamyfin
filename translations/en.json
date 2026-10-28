@@ -136,9 +136,6 @@
     "streaming_move_up": "Move {{name}} up",
     "streaming_move_down": "Move {{name}} down",
     "streaming_save_order": "Save order",
-    "continue_watching_empty_start": "Start a movie or show, and you can pick up right where you left off.",
-    "continue_watching_empty_next": "When you finish an episode, the next one shows up here automatically.",
-    "continue_watching_empty_season": "If you're caught up on a show, episode 1 of its next season appears here as soon as it's added.",
     "suggested_movies": "Suggested movies",
     "suggested_episodes": "Suggested episodes",
     "intro": {
