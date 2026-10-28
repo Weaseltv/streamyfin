@@ -83,8 +83,6 @@ type InfiniteScrollingCollectionListSection = {
   title?: string;
   /** Small line over the title, as on the TV. */
   kicker?: string;
-  /** Stay on screen when empty, explaining what will show up (Continue Watching). */
-  explainWhenEmpty?: boolean;
   queryKey: (string | undefined | null)[];
   queryFn: QueryFunction<BaseItemDto[], any, number>;
   orientation?: "horizontal" | "vertical";
@@ -375,7 +373,6 @@ const HomeMobile = () => {
             // As on the TV: "NEXT UP &" over "CONTINUE WATCHING"
             title: t("home.continue_watching"),
             kicker: t("home.kicker_next_up"),
-            explainWhenEmpty: true,
             queryKey: ["home", "continueAndNextUp"],
             queryFn: async ({ pageParam = 0 }) => {
               // There is no combined server endpoint, so the merged list is
@@ -956,11 +953,6 @@ const HomeMobile = () => {
                       : undefined
                   }
                   hideIfEmpty
-                  emptyState={
-                    section.explainWhenEmpty ? (
-                      <ContinueWatchingEmpty />
-                    ) : undefined
-                  }
                   pageSize={section.pageSize}
                   enabled={isHighPriority || allHighPrioritySettled}
                   onSettled={
@@ -988,42 +980,6 @@ const HomeMobile = () => {
           return null;
         }}
       />
-    </View>
-  );
-};
-
-/**
- * Next Up & Continue Watching with nothing in it, as on the TV: a panel that
- * explains what will show up, instead of hiding the row.
- */
-const ContinueWatchingEmpty = () => {
-  const { t } = useTranslation();
-  return (
-    <View
-      style={{
-        marginHorizontal: Sizes.gutter,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        gap: 6,
-        backgroundColor: "rgba(11,13,18,0.72)",
-        borderWidth: 1,
-        borderColor: NeonBoard.line2,
-      }}
-    >
-      {[
-        "home.continue_watching_empty_start",
-        "home.continue_watching_empty_next",
-        "home.continue_watching_empty_season",
-      ].map((key) => (
-        <View key={key} style={{ flexDirection: "row", gap: 10 }}>
-          <Text variant='body' accent='#FFFFFF'>
-            •
-          </Text>
-          <Text variant='body' accent='#FFFFFF' style={{ flex: 1 }}>
-            {t(key)}
-          </Text>
-        </View>
-      ))}
     </View>
   );
 };
