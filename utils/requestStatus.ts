@@ -221,6 +221,12 @@ export function deriveRequestRowStage(
 ): RequestStage {
   return fresh ? deriveRequestStage(request) : (previous ?? stage("CHECKING"));
 }
+export function isPinnedRequestServer(server?: string): boolean {
+  return (
+    server?.replace(/\/+$/, "").toLowerCase() ===
+    "https://requests.theweasel.tv"
+  );
+}
 export function requestScope(server: string, userId: number): string {
   const url = server.replace(/\/+$/, "").toLowerCase();
   const key = /^https?:\/\/requests\.theweasel\.tv$/.test(url)

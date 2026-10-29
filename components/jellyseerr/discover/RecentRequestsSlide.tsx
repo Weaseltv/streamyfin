@@ -4,7 +4,6 @@ import type { ViewProps } from "react-native";
 import Slide, { type SlideProps } from "@/components/jellyseerr/discover/Slide";
 import JellyseerrPoster from "@/components/posters/JellyseerrPoster";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
-import { useRequestStatus } from "@/providers/RequestStatusProvider";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 import type MediaRequest from "@/utils/jellyseerr/server/entity/MediaRequest";
 import type { NonFunctionProperties } from "@/utils/jellyseerr/server/interfaces/api/common";
@@ -17,14 +16,14 @@ type ExtendedMediaRequest = NonFunctionProperties<MediaRequest> & {
 const RequestCard: React.FC<{ request: ExtendedMediaRequest }> = ({
   request,
 }) => {
-  const { jellyseerrApi } = useJellyseerr();
-  const requestStatus = useRequestStatus();
+  const { jellyseerrApi, jellyseerrUser } = useJellyseerr();
 
   const { data: details } = useQuery({
     queryKey: [
       "jellyseerr",
       "detail",
-      requestStatus.scope,
+      jellyseerrApi?.axios.defaults.baseURL,
+      jellyseerrUser?.id,
       request.media.mediaType,
       request.media.tmdbId,
     ],
@@ -38,16 +37,12 @@ const RequestCard: React.FC<{ request: ExtendedMediaRequest }> = ({
     staleTime: 0,
   });
 
-  const state = useRequestStatus();
-  const refreshedRequest = state.rows.find(
-    (r) => r.request.id === request.id,
-  )?.request;
-
   return (
     <JellyseerrPoster
       horizontal
+      showDownloadInfo
       item={details}
-      mediaRequest={refreshedRequest as unknown as MediaRequest}
+      mediaRequest={request as unknown as MediaRequest}
     />
   );
 };
@@ -56,8 +51,20 @@ const RecentRequestsSlide: React.FC<SlideProps & ViewProps> = ({
   slide,
   ...props
 }) => {
-  const state = useRequestStatus();
-  const requests = { results: state.rows.slice(0, 10).map((r) => r.request) };
+  const { jellyseerrApi, jellyseerrUser } = useJellyseerr();
+
+  const { data: requests } = useQuery({
+    queryKey: [
+      "jellyseerr",
+      "recent_requests",
+      jellyseerrApi?.axios.defaults.baseURL,
+      jellyseerrUser?.id,
+    ],
+    queryFn: async () => jellyseerrApi?.requests(),
+    enabled: !!jellyseerrApi,
+    refetchOnMount: true,
+    staleTime: 0,
+  });
 
   return (
     requests &&
@@ -69,9 +76,9 @@ const RecentRequestsSlide: React.FC<SlideProps & ViewProps> = ({
         data={
           requests.results.map((item) => ({
             ...item,
-            profileName: "Unknown",
-            canRemove: item.status === 1,
-          })) as unknown as ExtendedMediaRequest[]
+            profileName: item.profileName ?? "Unknown",
+            canRemove: Boolean(item.canRemove),
+          })) as ExtendedMediaRequest[]
         }
         keyExtractor={(item) => item.id.toString()}
         renderItem={(item: ExtendedMediaRequest) => (

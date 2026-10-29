@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { usePathname } from "expo-router";
 import { useAtomValue } from "jotai";
 import {
   createContext,
@@ -24,12 +23,16 @@ import { requestWeaselSeerrReconnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useNativePlayer } from "@/providers/NativePlayerProvider";
-import { requestSheetCountAtom } from "@/utils/atoms/requestStatus";
+import {
+  requestBrowsingAtom,
+  requestSheetCountAtom,
+} from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { storage } from "@/utils/mmkv";
 import {
   deriveRequestStage,
+  isPinnedRequestServer,
   type OwnRequest,
   type RequestStatusRow,
   reconcileRequestJournal,
@@ -50,7 +53,6 @@ import {
   type OwnRequestsSnapshot,
   syncOwnRequests,
 } from "@/utils/syncOwnRequests";
-import { WEASEL_SEERR_URL } from "@/utils/weaselSeerr";
 
 interface RequestsContextValue {
   scope?: string;
@@ -121,6 +123,7 @@ export function RequestStatusProvider({ children }: PropsWithChildren) {
   const mismatchCleared = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (
+      !isPinnedRequestServer(settings?.jellyseerrServerUrl) ||
       !jellyseerrUser ||
       !mediaUser?.Id ||
       requestAccountMatches(jellyseerrUser.jellyfinUserId, mediaUser.Id)
@@ -130,7 +133,7 @@ export function RequestStatusProvider({ children }: PropsWithChildren) {
     if (mismatchCleared.current === pair) return;
     mismatchCleared.current = pair;
     clearJellyseerrStorageData();
-    if (settings?.jellyseerrServerUrl === WEASEL_SEERR_URL)
+    if (isPinnedRequestServer(settings?.jellyseerrServerUrl))
       requestWeaselSeerrReconnect();
   }, [jellyseerrUser, mediaUser?.Id, settings?.jellyseerrServerUrl]);
   const current = useRef(session);
@@ -225,7 +228,7 @@ export function RequestStatusProvider({ children }: PropsWithChildren) {
               validateStatus: () => true,
             });
             if (
-              settings?.jellyseerrServerUrl === WEASEL_SEERR_URL &&
+              isPinnedRequestServer(settings?.jellyseerrServerUrl) &&
               currentSession() &&
               !signal.aborted &&
               [401, 403].includes(response.status)
@@ -315,6 +318,7 @@ export function RequestStatusProvider({ children }: PropsWithChildren) {
         delta > 0 &&
         visible === 0 &&
         enabled &&
+        !query.isFetching &&
         Date.now() - query.dataUpdatedAt > 60_000
       )
         void query.refetch();
@@ -365,7 +369,7 @@ function RequestUpdateBanner({
 }) {
   const { scope, notifications } = useRequestStatus();
   const { t } = useTranslation();
-  const pathname = usePathname();
+  const browsing = useAtomValue(requestBrowsingAtom);
   const { isActive } = useNativePlayer();
   const requestSheets = useAtomValue(requestSheetCountAtom);
   const { isVisible } = useGlobalModal();
@@ -392,7 +396,7 @@ function RequestUpdateBanner({
     !isVisible &&
     requestSheets === 0 &&
     !typing &&
-    !/player|playback|now-playing|login|request-modal/.test(pathname);
+    browsing;
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => setTyping(true));
     const hide = Keyboard.addListener("keyboardDidHide", () =>
@@ -405,14 +409,19 @@ function RequestUpdateBanner({
   }, []);
   useEffect(() => {
     setKeys([]);
-  }, [scope]);
+  }, [scope, notifications]);
   useEffect(() => {
     if (!safe || !scope) return;
     const pending = readRequestJournal(scope).pending;
     const claimed = pending.filter((key) =>
       claimRequestPresentation(scope, key),
     );
-    if (claimed.length) setKeys((old) => [...new Set([...old, ...claimed])]);
+    if (claimed.length)
+      setKeys((old) => [
+        ...new Map(
+          [...old, ...claimed].map((key) => [key.split("|")[1], key]),
+        ).values(),
+      ]);
   }, [scope, safe, version]);
   useEffect(() => {
     if (!safe || !keys.length) return;

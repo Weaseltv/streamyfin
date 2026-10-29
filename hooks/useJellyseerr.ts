@@ -61,6 +61,7 @@ import {
   type RequestSearchResults as SearchResults,
 } from "@/utils/requestSearch";
 import {
+  isPinnedRequestServer,
   type OwnRequest,
   requestAccountMatches,
   requestScope,
@@ -580,7 +581,11 @@ export const useJellyseerr = () => {
         () =>
           store.get(jellyseerrUserAtom) === jellyseerrUser &&
           store.get(userAtom)?.Id === mediaUser?.Id &&
-          requestAccountMatches(jellyseerrUser.jellyfinUserId, mediaUser?.Id),
+          (!isPinnedRequestServer(settings.jellyseerrServerUrl) ||
+            requestAccountMatches(
+              jellyseerrUser.jellyfinUserId,
+              mediaUser?.Id,
+            )),
       );
     }
     return undefined;

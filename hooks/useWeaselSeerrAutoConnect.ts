@@ -5,6 +5,7 @@ import { jellyseerrUserAtom } from "@/hooks/useJellyseerr";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
+import { isPinnedRequestServer } from "@/utils/requestStatus";
 import { store } from "@/utils/store";
 import { provisionPinnedSeerr, WEASEL_SEERR_URL } from "@/utils/weaselSeerr";
 import {
@@ -85,7 +86,7 @@ export const useWeaselSeerrAutoConnect = () => {
     }
     if (
       settings?.jellyseerrServerUrl &&
-      settings.jellyseerrServerUrl !== WEASEL_SEERR_URL
+      !isPinnedRequestServer(settings.jellyseerrServerUrl)
     ) {
       return;
     }

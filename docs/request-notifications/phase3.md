@@ -24,7 +24,7 @@ rows get an owned detail read; two 404s on separate syncs confirm removal.
 Poll every minute while My requests is visible or a download/import is active,
 five minutes for other nonterminal work, 30 minutes idle; failures back off
 1/2/5/10 minutes. Background cancels reads; resume and opening stale My requests
-refresh. The old Recent requests five-second per-card poll is gone. Metadata is
+refresh. The old Recent requests five-second per-card poll is gone; its original admin/TV/manual-server list and download information remain available. Metadata is
 lazy, cached per account and isolated from sync failures.
 
 The request user's normalized Jellyfin UUID must match the current signed-in
@@ -45,7 +45,7 @@ off drains/suppresses pending updates instead of accumulating a later flood.
 The switch is in My requests and is per request account. The journal retains up
 to 5,000 known request IDs and 10,000 presentation keys; active sync caps at 1,000.
 
-The in-app banner waits for foreground browsing with no playback, open request
+The in-app banner reads a browsing-focus atom published by the tabs layout, with no provider-level router/path hooks. It waits for foreground browsing with no playback, open request
 sheet/global dialog or keyboard. It offers View requests / Dismiss, batches
 updates, and hides for unsafe moments. Its batch is account-scoped. Native
 notification permissions, registration, push foreground handling and tap routing
@@ -60,5 +60,5 @@ The executable parity, transitions and presentation tests consume that fixture.
 
 Validation runs on the assigned VPS only. TypeScript, unit tests and scoped
 format checks are recorded with the PR. Phone device/UI feel remains the owner's
-check. Review ledgers are retained alongside this file. No real request,
+check, including verifying that a banner never changes tabs by itself. Review ledgers are retained alongside this file. No real request,
 authentication probe, customer webhook or push was sent during implementation.

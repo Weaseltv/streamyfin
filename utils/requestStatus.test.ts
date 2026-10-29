@@ -120,8 +120,7 @@ for (const sequence of fixture.transitionCases)
         { request, stage: deriveRequestStage(request), fresh: true },
       ]);
     }
-    if ("expectedPending" in sequence)
-      expect(journal.pending).toEqual(sequence.expectedPending!);
+    expect(journal.pending).toEqual(sequence.expectedPending);
   });
 for (const scenario of fixture.presentationCases)
   test(`fixture presentation ${scenario.name}`, () => {
