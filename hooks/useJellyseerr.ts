@@ -265,7 +265,10 @@ export class JellyseerrApi {
    * stores the signed-in user the same way login() does. Request history and
    * quotas behave exactly as with a password login.
    */
-  async quickConnectAuthenticate(secret: string): Promise<JellyseerrUser> {
+  async quickConnectAuthenticate(
+    secret: string,
+    expectedMediaUserId?: string,
+  ): Promise<JellyseerrUser> {
     await this.axios.post(
       `${Endpoints.API_V1 + Endpoints.AUTH_JELLYFIN}/quickconnect/authenticate`,
       { secret },
@@ -274,6 +277,11 @@ export class JellyseerrApi {
       `${Endpoints.API_V1}/auth/me`,
     );
     if (!user?.id) throw new Error("Quick Connect sign-in was rejected.");
+    if (
+      expectedMediaUserId &&
+      !requestAccountMatches(user.jellyfinUserId, expectedMediaUserId)
+    )
+      throw new Error("Request account did not match the signed-in profile");
     if (!this.isCurrent()) throw new Error("Request account changed");
     storage.setAny(JELLYSEERR_USER, user);
     return user;

@@ -112,7 +112,7 @@ export const useWeaselSeerrAutoConnect = () => {
         const isCurrent = () =>
           store.get(apiAtom) === api && store.get(userAtom)?.Id === userId;
         if (!exchange || exchange.api !== api) {
-          const promise = provisionPinnedSeerr(api, isCurrent);
+          const promise = provisionPinnedSeerr(api, isCurrent, userId);
           exchange = { api, promise };
           void promise
             .finally(() => {

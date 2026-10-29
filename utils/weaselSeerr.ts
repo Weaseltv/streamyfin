@@ -34,6 +34,7 @@ const QUICK_CONNECT_TIMEOUT_MS = 20_000;
 export const provisionPinnedSeerr = async (
   api: Api,
   isCurrent: () => boolean = () => true,
+  expectedMediaUserId?: string,
 ): Promise<JellyseerrUser> => {
   const abort = new AbortController();
   const timeout = setTimeout(() => abort.abort(), QUICK_CONNECT_TIMEOUT_MS);
@@ -65,7 +66,7 @@ export const provisionPinnedSeerr = async (
       throw new Error("Could not approve the request service automatically.");
     }
 
-    return await seerr.quickConnectAuthenticate(secret);
+    return await seerr.quickConnectAuthenticate(secret, expectedMediaUserId);
   } finally {
     clearTimeout(timeout);
   }
