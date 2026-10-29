@@ -13,8 +13,10 @@ import { store } from "@/utils/store";
 import "@/augmentations";
 import { t } from "i18next";
 import { useCallback, useMemo } from "react";
+import { Platform } from "react-native";
 import { toast } from "sonner-native";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import {
   customHeadersVersionAtom,
@@ -58,6 +60,13 @@ import {
   type RequestSearchParams as SearchParams,
   type RequestSearchResults as SearchResults,
 } from "@/utils/requestSearch";
+import {
+  type OwnRequest,
+  requestAccountMatches,
+  requestScope,
+} from "@/utils/requestStatus";
+import { openMyRequests } from "@/utils/requestStatusNavigation";
+import { seedOwnRequest } from "@/utils/requestStatusStorage";
 import { isVersionBelow } from "@/utils/serverUrl/semver";
 
 const JELLYSEERR_USER = "JELLYSEERR_USER";
@@ -119,12 +128,17 @@ export class JellyseerrApi {
   /** Proxy auth headers for a Jellyseerr behind an access gateway. */
   private customHeaders: Record<string, string>;
 
-  constructor(baseUrl: string, customHeaders?: Record<string, string>) {
+  constructor(
+    baseUrl: string,
+    customHeaders?: Record<string, string>,
+    readonly isCurrent: () => boolean = () => true,
+  ) {
     this.axios = axios.create({
       baseURL: baseUrl,
       withCredentials: true,
       withXSRFToken: true,
       xsrfHeaderName: "XSRF-TOKEN",
+      timeout: 30_000,
     });
     this.customHeaders = customHeaders ?? {};
 
@@ -217,6 +231,7 @@ export class JellyseerrApi {
     if (!inRange(status, 200, 299)) {
       throw new Error(`Request server returned ${status}`);
     }
+    if (!this.isCurrent()) throw new Error("Request account changed");
     storage.setAny(
       JELLYSEERR_COOKIES,
       headers["set-cookie"]?.flatMap((c) => c.split("; ")) ?? [],
@@ -259,6 +274,7 @@ export class JellyseerrApi {
       `${Endpoints.API_V1}/auth/me`,
     );
     if (!user?.id) throw new Error("Quick Connect sign-in was rejected.");
+    if (!this.isCurrent()) throw new Error("Request account changed");
     storage.setAny(JELLYSEERR_USER, user);
     return user;
   }
@@ -331,7 +347,13 @@ export class JellyseerrApi {
   }
 
   async requests(
-    params = {
+    params: {
+      filter?: string;
+      take?: number;
+      sort?: string;
+      skip?: number;
+      requestedBy?: number;
+    } = {
       filter: "all",
       take: 10,
       sort: "modified",
@@ -469,7 +491,7 @@ export class JellyseerrApi {
     this.axios.interceptors.response.use(
       async (response) => {
         const cookies = response.headers["set-cookie"];
-        if (cookies) {
+        if (cookies && this.isCurrent()) {
           storage.setAny(
             JELLYSEERR_COOKIES,
             response.headers["set-cookie"]?.flatMap((c) => c.split("; ")),
@@ -489,6 +511,7 @@ export class JellyseerrApi {
         // session there logged the customer out of Seerr and hid the Requests
         // tab after a single forbidden call. See utils/jellyseerrSession.
         if (
+          this.isCurrent() &&
           error.response?.status === 403 &&
           seerr403ClearsSession(error?.config?.url)
         ) {
@@ -500,6 +523,8 @@ export class JellyseerrApi {
 
     this.axios.interceptors.request.use(
       async (config) => {
+        if (!this.isCurrent())
+          throw new axios.CanceledError("Request account changed");
         // set() rather than index assignment so axios normalizes the name and
         // a differently-cased duplicate cannot be emitted twice.
         for (const [key, value] of Object.entries(this.customHeaders)) {
@@ -535,6 +560,7 @@ export const useJellyseerr = () => {
   const { settings, updateSettings } = useSettings();
   const [jellyseerrUser, setJellyseerrUser] = useAtom(jellyseerrUserAtom);
   const customHeadersVersion = useAtomValue(customHeadersVersionAtom);
+  const mediaUser = useAtomValue(userAtom);
   const queryClient = useNetworkAwareQueryClient();
 
   const jellyseerrApi = useMemo(() => {
@@ -543,11 +569,20 @@ export const useJellyseerr = () => {
       return new JellyseerrApi(
         settings.jellyseerrServerUrl,
         getIntegrationHeaders("jellyseerr"),
+        () =>
+          store.get(jellyseerrUserAtom) === jellyseerrUser &&
+          store.get(userAtom)?.Id === mediaUser?.Id &&
+          requestAccountMatches(jellyseerrUser.jellyfinUserId, mediaUser?.Id),
       );
     }
     return undefined;
     // customHeadersVersion: rebuild the client when the headers change.
-  }, [settings?.jellyseerrServerUrl, jellyseerrUser, customHeadersVersion]);
+  }, [
+    settings?.jellyseerrServerUrl,
+    jellyseerrUser,
+    customHeadersVersion,
+    mediaUser?.Id,
+  ]);
 
   const clearAllJellyseerData = useCallback(async () => {
     clearJellyseerrStorageData();
@@ -557,33 +592,67 @@ export const useJellyseerr = () => {
 
   const requestMedia = useCallback(
     (title: string, request: MediaRequestBody, onSuccess?: () => void) => {
-      jellyseerrApi?.request?.(request)?.then(async (mediaRequest) => {
-        await queryClient.invalidateQueries({
-          queryKey: ["search", "jellyseerr"],
-        });
+      jellyseerrApi
+        ?.request?.(request)
+        ?.then(async (mediaRequest) => {
+          if (!jellyseerrApi.isCurrent()) return;
+          const ownsRequest =
+            mediaRequest.requestedBy?.id === jellyseerrUser?.id ||
+            (!mediaRequest.requestedBy &&
+              jellyseerrUser &&
+              (request.userId === undefined ||
+                request.userId === jellyseerrUser.id));
+          if (
+            !Platform.isTV &&
+            settings?.jellyseerrServerUrl &&
+            jellyseerrUser &&
+            ownsRequest &&
+            [1, 2, 5].includes(mediaRequest.status)
+          ) {
+            seedOwnRequest(
+              requestScope(settings.jellyseerrServerUrl, jellyseerrUser.id),
+              {
+                ...mediaRequest,
+                requestedBy: { id: jellyseerrUser.id },
+              } as unknown as OwnRequest,
+            );
+          }
+          await queryClient.invalidateQueries({
+            queryKey: ["search", "jellyseerr"],
+          });
+          if (!jellyseerrApi.isCurrent()) return;
 
-        switch (mediaRequest.status) {
-          case MediaRequestStatus.PENDING:
-          case MediaRequestStatus.APPROVED:
-            toast.success(
-              t("jellyseerr.toasts.requested_item", { item: title }),
-            );
-            onSuccess?.();
-            break;
-          case MediaRequestStatus.DECLINED:
-            toast.error(
-              t("jellyseerr.toasts.you_dont_have_permission_to_request"),
-            );
-            break;
-          case MediaRequestStatus.FAILED:
+          switch (mediaRequest.status) {
+            case MediaRequestStatus.PENDING:
+            case MediaRequestStatus.APPROVED:
+            case MediaRequestStatus.COMPLETED:
+              toast.success(
+                t("jellyseerr.toasts.requested_item", { item: title }),
+              );
+              onSuccess?.();
+              if (!Platform.isTV && ownsRequest)
+                openMyRequests(mediaRequest.id);
+              break;
+            case MediaRequestStatus.DECLINED:
+              toast.error(
+                t("jellyseerr.toasts.you_dont_have_permission_to_request"),
+              );
+              break;
+            case MediaRequestStatus.FAILED:
+              toast.error(
+                t("jellyseerr.toasts.something_went_wrong_requesting_media"),
+              );
+              break;
+          }
+        })
+        .catch(() => {
+          if (jellyseerrApi.isCurrent())
             toast.error(
               t("jellyseerr.toasts.something_went_wrong_requesting_media"),
             );
-            break;
-        }
-      });
+        });
     },
-    [jellyseerrApi],
+    [jellyseerrApi, jellyseerrUser, settings?.jellyseerrServerUrl, queryClient],
   );
 
   const isJellyseerrMovieOrTvResult = (

@@ -5,6 +5,7 @@ import { jellyseerrUserAtom } from "@/hooks/useJellyseerr";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
+import { store } from "@/utils/store";
 import { provisionPinnedSeerr, WEASEL_SEERR_URL } from "@/utils/weaselSeerr";
 import {
   canRetryManually,
@@ -38,6 +39,13 @@ export const weaselSeerrConnectStatusAtom =
 
 /** Bumped by the Requests screen's Retry; the hook re-runs the connect. */
 const retryRequestAtom = atom(0);
+// The list probe has its own persisted 15-minute clock. A genuinely refused
+// session can cost one probe plus one QC refusal per device in that window.
+export const requestWeaselSeerrReconnect = () =>
+  store.set(retryRequestAtom, (n) => n + 1);
+let exchange:
+  | { api: unknown; promise: ReturnType<typeof provisionPinnedSeerr> }
+  | undefined;
 
 /**
  * WeaselPlex: customers sign in to the media server once with Quick Connect
@@ -101,13 +109,27 @@ export const useWeaselSeerrAutoConnect = () => {
     setStatus("connecting");
     (async () => {
       try {
-        const seerrUser = await provisionPinnedSeerr(api);
+        const isCurrent = () =>
+          store.get(apiAtom) === api && store.get(userAtom)?.Id === userId;
+        if (!exchange || exchange.api !== api) {
+          const promise = provisionPinnedSeerr(api, isCurrent);
+          exchange = { api, promise };
+          void promise
+            .finally(() => {
+              if (exchange?.promise === promise) exchange = undefined;
+            })
+            .catch(() => undefined);
+        }
+        const seerrUser = await exchange.promise;
+        if (!isCurrent()) return;
         clearWeaselSeerrRefusal(userId);
         updateSettings({ jellyseerrServerUrl: WEASEL_SEERR_URL });
         setJellyseerrUser(seerrUser);
         setStatus("connected");
         writeInfoLog("Connected to the pinned Seerr server silently");
       } catch (e) {
+        if (store.get(apiAtom) !== api || store.get(userAtom)?.Id !== userId)
+          return;
         const status = isAxiosError(e) ? e.response?.status : undefined;
         if (status === 401 || status === 403) {
           markWeaselSeerrRefused(userId);
