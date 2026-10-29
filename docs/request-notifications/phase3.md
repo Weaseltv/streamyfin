@@ -62,3 +62,16 @@ Validation runs on the assigned VPS only. TypeScript, unit tests and scoped
 format checks are recorded with the PR. Phone device/UI feel remains the owner's
 check, including verifying that a banner never changes tabs by itself. Review ledgers are retained alongside this file. No real request,
 authentication probe, customer webhook or push was sent during implementation.
+
+Phase 5 must validate `kind: request`, the signed-in recipient UUID and a live,
+matching request session before showing a request push or opening either a cold
+or warm tap. It must use the same presentation claim and unregister the website
+device before discarding the media token on logout (with the documented offline
+expiry fallback). The current generic cold-start URL observer supplies neither
+recipient authorization nor deduplication and must be replaced for request pushes.
+
+Opus 5.5 high returned **AGREE** after three read-only rounds; no P1/P2 remained.
+The TV fixture was manually checked against Kotlin and is executed by the phone
+unit suite. A TV executable fixture test remains a follow-up under its owner
+fast-Alpha policy. Strict i18n has no missing keys; seven unrelated unused keys
+were reproduced on the unmodified origin/weaselfin source.
