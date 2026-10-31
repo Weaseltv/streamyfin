@@ -31,6 +31,7 @@ import {
   JellyseerrSearchSort,
   JellyserrIndexPage,
 } from "@/components/jellyseerr/JellyseerrIndexPage";
+import { MyRequestsPage } from "@/components/jellyseerr/MyRequestsPage";
 import MoviePoster from "@/components/posters/MoviePoster";
 import SeriesPoster from "@/components/posters/SeriesPoster";
 import {
@@ -91,7 +92,17 @@ export default function SearchPage() {
 
   const { q } = params as { q: string };
 
+  const [myRequestsSelected, setMyRequestsSelected] = useState(
+    params.requestTab === "my",
+  );
   const [searchType, setSearchType] = useState<SearchType>("Library");
+  useEffect(() => {
+    if (params.requestTab === "my") {
+      setSearchType("Discover");
+      setMyRequestsSelected(true);
+    }
+  }, [params.requestTab, params.requestId]);
+
   const [search, setSearch] = useState<string>("");
 
   const { query: debouncedSearch, submit: submitSearch } = useSearchQuery(
@@ -939,6 +950,22 @@ export default function SearchPage() {
       ? t("search.discover_eyebrow")
       : t("search.library_eyebrow");
 
+  if (!Platform.isTV && searchType === "Discover" && myRequestsSelected)
+    return (
+      <MyRequestsPage
+        requestId={Number(params.requestId) || undefined}
+        onDiscover={() => {
+          setMyRequestsSelected(false);
+          router.setParams({ requestTab: "", requestId: "" });
+        }}
+        onLibrary={() => {
+          setSearchType("Library");
+          setMyRequestsSelected(false);
+          router.setParams({ requestTab: "", requestId: "" });
+        }}
+      />
+    );
+
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
       <LoadingLine
@@ -992,6 +1019,23 @@ export default function SearchPage() {
               setSearchType={selectSearchType}
               t={t}
             />
+            {searchType === "Discover" && !Platform.isTV && (
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Chip
+                  style={{ minHeight: 44 }}
+                  label={t("request_status.discover")}
+                  selected
+                />
+                <Chip
+                  style={{ minHeight: 44 }}
+                  label={t("request_status.my_requests")}
+                  onPress={() => {
+                    searchFieldRef.current?.blur();
+                    setMyRequestsSelected(true);
+                  }}
+                />
+              </View>
+            )}
             {searchType === "Discover" && (
               <DiscoverFilters
                 mediaFilter={jellyseerrMediaFilter}

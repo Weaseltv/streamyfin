@@ -15,17 +15,6 @@ export const WEASEL_SEERR_URL = "https://requests.theweasel.tv";
  * never answers fails quietly instead of leaving a pending promise forever. */
 const QUICK_CONNECT_TIMEOUT_MS = 20_000;
 
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
-  Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("The request service did not respond.")),
-        ms,
-      ),
-    ),
-  ]);
-
 /**
  * WeaselPlex: connect this Jellyfin user to the pinned Seerr server with no
  * interaction at all, reusing the Jellyfin session they signed in with.
@@ -42,34 +31,43 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
  * function — so the app cannot be induced to approve an attacker's Quick
  * Connect request.
  */
-export const provisionPinnedSeerr = async (api: Api): Promise<JellyseerrUser> =>
-  withTimeout(
-    (async () => {
-      const seerr = new JellyseerrApi(
-        WEASEL_SEERR_URL,
-        getIntegrationHeaders("jellyseerr"),
-      );
+export const provisionPinnedSeerr = async (
+  api: Api,
+  isCurrent: () => boolean = () => true,
+  expectedMediaUserId?: string,
+): Promise<JellyseerrUser> => {
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), QUICK_CONNECT_TIMEOUT_MS);
+  try {
+    const seerr = new JellyseerrApi(
+      WEASEL_SEERR_URL,
+      getIntegrationHeaders("jellyseerr"),
+      isCurrent,
+    );
+    seerr.axios.defaults.signal = abort.signal;
 
-      // Captures the cookies the XSRF interceptor and the configured-gate
-      // need, exactly as the manual flow's test() does — minus its toasts.
-      await seerr.primeSession();
+    // Captures the cookies the XSRF interceptor and the configured-gate
+    // need, exactly as the manual flow's test() does — minus its toasts.
+    await seerr.primeSession();
 
-      const { code, secret } = await seerr.quickConnectInitiate();
+    const { code, secret } = await seerr.quickConnectInitiate();
 
-      const authorize = await api.axiosInstance.post(
-        `${api.basePath}/QuickConnect/Authorize?code=${encodeURIComponent(code)}`,
-        null,
-        {
-          headers: {
-            Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
-          },
+    const authorize = await api.axiosInstance.post(
+      `${api.basePath}/QuickConnect/Authorize?code=${encodeURIComponent(code)}`,
+      null,
+      {
+        signal: abort.signal,
+        headers: {
+          Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
         },
-      );
-      if (authorize.status !== 200 || authorize.data !== true) {
-        throw new Error("Could not approve the request service automatically.");
-      }
+      },
+    );
+    if (authorize.status !== 200 || authorize.data !== true) {
+      throw new Error("Could not approve the request service automatically.");
+    }
 
-      return await seerr.quickConnectAuthenticate(secret);
-    })(),
-    QUICK_CONNECT_TIMEOUT_MS,
-  );
+    return await seerr.quickConnectAuthenticate(secret, expectedMediaUserId);
+  } finally {
+    clearTimeout(timeout);
+  }
+};
