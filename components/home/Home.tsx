@@ -389,7 +389,11 @@ const HomeMobile = () => {
                   getItemsApi(api).getResumeItems({
                     userId: user.Id,
                     enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-                    includeItemTypes: ["Movie", "Series", "Episode"],
+                    // Videos only, as on the TV. Jellyfin also "resumes" a
+                    // series or season with some episodes watched, which put
+                    // the show next to its Next Up episode.
+                    mediaTypes: ["Video"],
+                    includeItemTypes: ["Movie", "Episode"],
                     startIndex: 0,
                     limit: 20,
                   }),
@@ -405,8 +409,18 @@ const HomeMobile = () => {
                 const resumeItems = resumeResponse.data.Items || [];
                 const nextUpItems = nextUpResponse.data.Items || [];
 
-                // Combine, sort by recent activity, deduplicate
-                const combined = [...resumeItems, ...nextUpItems];
+                // One card per show: an episode in progress stands in for
+                // its series' Next Up episode.
+                const resumingSeries = new Set(
+                  resumeItems.map((item) => item.SeriesId).filter(Boolean),
+                );
+                const combined = [
+                  ...resumeItems,
+                  ...nextUpItems.filter(
+                    (item) =>
+                      !item.SeriesId || !resumingSeries.has(item.SeriesId),
+                  ),
+                ];
                 mergedFeedRef.current = deduplicateById(
                   sortByRecentActivity(combined),
                 );
@@ -430,7 +444,9 @@ const HomeMobile = () => {
                 await getItemsApi(api).getResumeItems({
                   userId: user.Id,
                   enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-                  includeItemTypes: ["Movie", "Series", "Episode"],
+                  // Videos only: no series or season cards (see above)
+                  mediaTypes: ["Video"],
+                  includeItemTypes: ["Movie", "Episode"],
                   startIndex: pageParam,
                   limit: 10,
                 })
