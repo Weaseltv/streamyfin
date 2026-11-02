@@ -51,11 +51,10 @@ regression fixtures without changing account watched state to manufacture NextUp
 ## Validation and remaining device evidence
 
 - 372 unit tests pass, including 11 new range/count/adjacency regressions.
-- TypeScript and Biome checks pass.
+- TypeScript, Biome checks, and production Metro/Hermes exports for both iOS and
+  Android pass.
 - Live server response assertions pass for every item in the four datasets.
-- Device screenshots of Regular Show S4's list and Next Up remain pending:
-  T3's device tool reports Agent device access is off, and the current worker
-  (`srv1160496`) reports no KVM support for its Android emulator. No Android
-  build or test work was moved to another worker.
+- The owner will handle app screenshots and waived agent capture on 2026-11-02.
+  Agent screenshot capture is no longer an outstanding requirement.
 - A PR-branch Check TestFlight and owner iPhone verification are required before
   merge. This change contains no native Kotlin/JNI edits.
