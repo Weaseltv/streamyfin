@@ -31,6 +31,7 @@ import {
   isGlassEffectAvailable,
 } from "@/modules/glass-poster";
 import { apiAtom } from "@/providers/JellyfinProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getLogoImageUrlById } from "@/utils/jellyfin/image/getLogoImageUrlById";
 import { scaleSize } from "@/utils/scaleSize";
@@ -368,7 +369,7 @@ export const TVHeroCarousel: React.FC<TVHeroCarouselProps> = ({
   // Get subtitle for episodes
   const episodeSubtitle = useMemo(() => {
     if (activeItem?.Type !== "Episode") return null;
-    return `S${activeItem.ParentIndexNumber} E${activeItem.IndexNumber} · ${activeItem.Name}`;
+    return `${formatEpisodeNumber(activeItem, { includeSeason: true, seasonSeparator: " " })} · ${activeItem.Name}`;
   }, [activeItem]);
 
   // Memoize hero items to prevent re-renders

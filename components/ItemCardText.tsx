@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type React from "react";
 import { View } from "react-native";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { runtimeTicksToMinutes } from "@/utils/time";
 import { Text } from "./common/Text";
 
@@ -22,7 +23,7 @@ export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
             {item.SeriesName ?? item.Name}
           </Text>
           <Text variant='meta' muted numberOfLines={1}>
-            {`S${item.ParentIndexNumber?.toString()}:E${item.IndexNumber?.toString()} · ${item.Name}`}
+            {`${formatEpisodeNumber(item, { includeSeason: true })} · ${item.Name}`}
           </Text>
         </>
       ) : (

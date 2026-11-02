@@ -79,6 +79,7 @@ import {
   useSettings,
   VideoPlayer,
 } from "@/utils/atoms/settings";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import {
@@ -499,7 +500,10 @@ const NativePlayerProviderInner: React.FC<{
       const autoplayAllowed = autoplayWanted && !capReached;
       const epNumber =
         next.ParentIndexNumber !== undefined && next.IndexNumber !== undefined
-          ? `S${next.ParentIndexNumber}E${next.IndexNumber}`
+          ? formatEpisodeNumber(next, {
+              includeSeason: true,
+              seasonSeparator: "",
+            })
           : undefined;
       return {
         itemId: next.Id ?? "",
@@ -552,8 +556,11 @@ const NativePlayerProviderInner: React.FC<{
           .filter((ep) => ep.LocationType !== "Virtual")
           .map((ep) => ({
             itemId: ep.Id ?? "",
-            title: ep.Name ?? "",
-            indexNumber: ep.IndexNumber ?? undefined,
+            // Send the complete display title so native never drops the range.
+            title:
+              ep.IndexNumber != null
+                ? `${formatEpisodeNumber(ep)}. ${ep.Name ?? ""}`
+                : (ep.Name ?? ""),
             imageUrl:
               getPrimaryImageUrl({
                 api: apiRef.current,

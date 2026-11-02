@@ -8,6 +8,7 @@ import { ItemImage } from "@/components/common/ItemImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { imageWidthFor } from "@/utils/imageSizes";
 import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 
@@ -81,7 +82,7 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
   const eyebrow = useMemo(() => {
     const type =
       item.Type === "Episode"
-        ? `${typeLabel(item)} · S${item.ParentIndexNumber ?? "?"}:E${item.IndexNumber ?? "?"}`
+        ? `${typeLabel(item)} · ${formatEpisodeNumber(item, { includeSeason: true })}`
         : typeLabel(item);
     const genres = item.Genres?.slice(0, 2).join(", ");
     return [type, genres].filter(Boolean).join(" · ");

@@ -51,6 +51,7 @@ import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { rememberSeriesTrackFromRow } from "@/utils/seriesTrackMemory";
 import { SUBTITLES_OFF } from "@/utils/subtitles/subtitleIndex";
@@ -1413,7 +1414,7 @@ export const Controls: FC<Props> = ({
             {item?.Type === "Episode" && (
               <Text
                 style={[styles.subtitleText, { fontSize: typography.body }]}
-              >{`${item.SeriesName} - ${item.SeasonName} Episode ${item.IndexNumber}`}</Text>
+              >{`${item.SeriesName} - ${item.SeasonName} Episode ${formatEpisodeNumber(item)}`}</Text>
             )}
             <View style={styles.titleRow}>
               <Text

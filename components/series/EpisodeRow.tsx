@@ -14,6 +14,7 @@ import { useDownloadedItem } from "@/hooks/useDownloadedItem";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 
 interface Props {
@@ -39,6 +40,7 @@ export const EpisodeRow = memo(function EpisodeRow({
   const playMedia = usePlayMedia();
   const isOffline = useOfflineMode();
   const downloaded = useDownloadedItem(episode.Id);
+  const episodeNumber = formatEpisodeNumber(episode, { fallback: "–" });
   const played = episode.UserData?.Played === true;
   const pct = (episode.UserData?.PlayedPercentage ?? 0) / 100;
   const thumb = api
@@ -85,9 +87,12 @@ export const EpisodeRow = memo(function EpisodeRow({
       <Text
         variant='numeral'
         allowFontScaling={false}
-        style={{ width: 24, textAlign: "center" }}
+        style={{
+          width: Math.max(24, episodeNumber.length * 10),
+          textAlign: "center",
+        }}
       >
-        {episode.IndexNumber ?? "–"}
+        {episodeNumber}
       </Text>
       <View
         style={{

@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Text } from "@/components/common/Text";
 import { useScaledTVTypography } from "@/constants/TVTypography";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { scaleSize } from "@/utils/scaleSize";
 import { useTVFocusAnimation } from "./hooks/useTVFocusAnimation";
@@ -184,8 +185,11 @@ export const TVNextEpisodeCountdown: FC<TVNextEpisodeCountdownProps> = ({
                 </Text>
 
                 <Text style={styles.episodeInfo} numberOfLines={1}>
-                  S{nextItem.ParentIndexNumber}E{nextItem.IndexNumber} -{" "}
-                  {nextItem.Name}
+                  {formatEpisodeNumber(nextItem, {
+                    includeSeason: true,
+                    seasonSeparator: "",
+                  })}{" "}
+                  - {nextItem.Name}
                 </Text>
 
                 <View style={styles.progressContainer}>

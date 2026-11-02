@@ -18,6 +18,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom } from "@/providers/JellyfinProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { qualityLabel } from "@/utils/mediaQuality";
 import { runtimeTicksToMinutes } from "@/utils/time";
@@ -122,7 +123,7 @@ const HeroSlide: React.FC<{
     item.Type === "Episode" ? (item.SeriesName ?? item.Name) : item.Name;
   const subtitle =
     item.Type === "Episode"
-      ? `S${item.ParentIndexNumber}:E${item.IndexNumber} · ${item.Name}`
+      ? `${formatEpisodeNumber(item, { includeSeason: true })} · ${item.Name}`
       : null;
   const quality = qualityLabel(item);
 

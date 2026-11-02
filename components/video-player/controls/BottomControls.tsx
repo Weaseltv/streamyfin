@@ -19,6 +19,7 @@ import {
   chapterNameAt,
   hasChapterMarkers,
 } from "@/utils/chapters";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { GlassSquare } from "./GlassSquare";
 import { TimeDisplay } from "./TimeDisplay";
 import { TrickplayBubble } from "./TrickplayBubble";
@@ -164,7 +165,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
           >
             {[
               item?.Type === "Episode"
-                ? `${typeLabel(item)} · S${item.ParentIndexNumber}:E${item.IndexNumber}`
+                ? `${typeLabel(item)} · ${formatEpisodeNumber(item, { includeSeason: true })}`
                 : (typeLabel(item) ?? item?.Type?.toUpperCase()),
               item?.Type === "Movie" ? item?.ProductionYear : null,
               item?.Type === "Episode" ? item?.SeriesName : null,
