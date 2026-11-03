@@ -35,6 +35,25 @@ Regression checks cover the reported labels among mixed content and the bundled
 font's measured widths. On-device scrolling/season-switch verification is still
 required in the fresh Check TestFlight.
 
+### Clipped two-digit ranges in build 128
+
+The owner then found `EP 20–…`, `EP 22–…` … `EP 32–…` (Regular Show) cut off,
+while `EP 12–13` to `EP 18–19` fitted. The badge width was a character count,
+which assumed every digit is as narrow as a "1". In Exo 2 Medium a "1" is
+0.404 em and a "4" 0.619 em, so 957 of the possible labels overflowed from
+`EP 19–20` on. The earlier font checks only used 1-heavy labels (`EP 10–11`,
+`EP 172–173`).
+
+`utils/episodePill.ts` now measures each label with the font's own advance
+widths (plus 4 % headroom) and keeps the approved sizes: 12pt for one episode,
+11pt for a range, 9pt for a three-digit range. The pill column is one width
+per season: the approved 52 points, or the widest pill when the season has
+longer ranges (at most 60 for two-digit and 62 for three-digit ranges), so
+thumbnails still line up within the season. HarfBuzz shaping of
+`assets/fonts/Exo2-Medium.ttf`, kerning included, fits all 3,990 labels
+(`EP 1`–`EP 999` and every two-to-four-episode range up to 999) with at least
+1.3 points to spare. The unit tests check the same set.
+
 ## Screens and presentation
 
 - Season episode rows (number column expands for ranges), series Next Up, and

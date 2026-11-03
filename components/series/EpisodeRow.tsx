@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,7 +26,18 @@ interface Props {
   episode: BaseItemDto;
   /** The episode carries the yellow tally (the current or next-up one). */
   current?: boolean;
+  /** Shared by every row of the list (see getEpisodePillColumnWidth). */
+  pillColumnWidth?: number;
 }
+
+/** "EP 3" or "EP 20–21": the label the pill shows. */
+export const getEpisodePillLabel = (episode: BaseItemDto, t: TFunction) =>
+  t("item.episode_number_short", {
+    number: formatEpisodeNumber(episode, {
+      fallback: "–",
+      rangeSeparator: "–",
+    }),
+  });
 
 /**
  * A quiet episode pill in a fixed leading column keeps every thumbnail aligned.
@@ -34,19 +46,14 @@ interface Props {
 export const EpisodeRow = memo(function EpisodeRow({
   episode,
   current,
+  pillColumnWidth = EPISODE_PILL_COLUMN_WIDTH,
 }: Props) {
   const api = useAtomValue(apiAtom);
   const { t } = useTranslation();
   const playMedia = usePlayMedia();
   const isOffline = useOfflineMode();
   const downloaded = useDownloadedItem(episode.Id);
-  const episodeNumber = formatEpisodeNumber(episode, {
-    fallback: "–",
-    rangeSeparator: "–",
-  });
-  const episodeLabel = t("item.episode_number_short", {
-    number: episodeNumber,
-  });
+  const episodeLabel = getEpisodePillLabel(episode, t);
   const pill = getEpisodePillLayout(episodeLabel);
   const played = episode.UserData?.Played === true;
   const pct = (episode.UserData?.PlayedPercentage ?? 0) / 100;
@@ -93,7 +100,7 @@ export const EpisodeRow = memo(function EpisodeRow({
       ) : null}
       <View
         style={{
-          width: EPISODE_PILL_COLUMN_WIDTH,
+          width: pillColumnWidth,
           flexShrink: 0,
           alignItems: "center",
         }}
