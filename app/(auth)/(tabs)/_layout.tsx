@@ -1,4 +1,5 @@
-import { Stack, Tabs, useSegments } from "expo-router";
+import { Stack, Tabs, useFocusEffect, useSegments } from "expo-router";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
@@ -14,6 +15,7 @@ import {
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
 import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
+import { requestBrowsingAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 
@@ -129,6 +131,13 @@ export default function TabLayout() {
   // session, so requesting works after one Quick Connect sign-in. Here, above
   // the TV/phone split, so every form factor provisions the same way.
   useWeaselSeerrAutoConnect();
+  const setRequestBrowsing = useSetAtom(requestBrowsingAtom);
+  useFocusEffect(
+    useCallback(() => {
+      setRequestBrowsing(true);
+      return () => setRequestBrowsing(false);
+    }, [setRequestBrowsing]),
+  );
 
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;

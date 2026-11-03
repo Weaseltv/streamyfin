@@ -2,7 +2,15 @@ import { Feather } from "@expo/vector-icons";
 import { BottomSheetModal, useBottomSheet } from "@gorhom/bottom-sheet";
 import type { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useQuery } from "@tanstack/react-query";
-import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
+import { useSetAtom } from "jotai";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
@@ -11,6 +19,7 @@ import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useAccent } from "@/utils/atoms/pageAccent";
+import { requestSheetCountAtom } from "@/utils/atoms/requestStatus";
 import type {
   QualityProfile,
   RootFolder,
@@ -207,6 +216,25 @@ const RequestModal = forwardRef<
     ref,
   ) => {
     const { jellyseerrApi, jellyseerrUser, requestMedia } = useJellyseerr();
+    const setSheetCount = useSetAtom(requestSheetCountAtom);
+    const sheetOpen = useRef(false);
+    const sheetChanged = useCallback(
+      (index: number) => {
+        const open = index >= 0;
+        if (open !== sheetOpen.current) {
+          sheetOpen.current = open;
+          setSheetCount((n) => Math.max(0, n + (open ? 1 : -1)));
+        }
+      },
+      [setSheetCount],
+    );
+    useEffect(
+      () => () => {
+        if (sheetOpen.current) setSheetCount((n) => Math.max(0, n - 1));
+      },
+      [setSheetCount],
+    );
+
     const [requestOverrides, setRequestOverrides] = useState<MediaRequestBody>({
       mediaId: Number(id),
       mediaType: type,
@@ -518,6 +546,7 @@ const RequestModal = forwardRef<
 
     return (
       <BottomSheetModal
+        onChange={sheetChanged}
         ref={ref}
         enableDynamicSizing
         enableDismissOnClose

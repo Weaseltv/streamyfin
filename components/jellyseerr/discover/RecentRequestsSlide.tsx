@@ -16,12 +16,14 @@ type ExtendedMediaRequest = NonFunctionProperties<MediaRequest> & {
 const RequestCard: React.FC<{ request: ExtendedMediaRequest }> = ({
   request,
 }) => {
-  const { jellyseerrApi } = useJellyseerr();
+  const { jellyseerrApi, jellyseerrUser } = useJellyseerr();
 
   const { data: details } = useQuery({
     queryKey: [
       "jellyseerr",
       "detail",
+      jellyseerrApi?.axios.defaults.baseURL,
+      jellyseerrUser?.id,
       request.media.mediaType,
       request.media.tmdbId,
     ],
@@ -35,21 +37,12 @@ const RequestCard: React.FC<{ request: ExtendedMediaRequest }> = ({
     staleTime: 0,
   });
 
-  const { data: refreshedRequest } = useQuery({
-    queryKey: ["jellyseerr", "requests", request.media.mediaType, request.id],
-    queryFn: async () => jellyseerrApi?.getRequest(request.id),
-    enabled: !!jellyseerrApi,
-    refetchOnMount: true,
-    refetchInterval: 5000,
-    staleTime: 0,
-  });
-
   return (
     <JellyseerrPoster
       horizontal
       showDownloadInfo
       item={details}
-      mediaRequest={refreshedRequest}
+      mediaRequest={request as unknown as MediaRequest}
     />
   );
 };
@@ -58,10 +51,15 @@ const RecentRequestsSlide: React.FC<SlideProps & ViewProps> = ({
   slide,
   ...props
 }) => {
-  const { jellyseerrApi } = useJellyseerr();
+  const { jellyseerrApi, jellyseerrUser } = useJellyseerr();
 
   const { data: requests } = useQuery({
-    queryKey: ["jellyseerr", "recent_requests"],
+    queryKey: [
+      "jellyseerr",
+      "recent_requests",
+      jellyseerrApi?.axios.defaults.baseURL,
+      jellyseerrUser?.id,
+    ],
     queryFn: async () => jellyseerrApi?.requests(),
     enabled: !!jellyseerrApi,
     refetchOnMount: true,
