@@ -24,6 +24,7 @@ import {
   getDownloadedEpisodesForSeason,
   getDownloadedSeasonNumbers,
 } from "@/utils/downloads/offline-series";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { runtimeTicksToSeconds } from "@/utils/time";
 import { HEADER_LAYOUT, ICON_SIZES } from "./constants";
@@ -260,7 +261,7 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
                   {otherItem.Name}
                 </Text>
                 <Text numberOfLines={1} className='text-xs text-neutral-475'>
-                  {`S${otherItem.ParentIndexNumber?.toString()}:E${otherItem.IndexNumber?.toString()}`}
+                  {`${formatEpisodeNumber(otherItem, { includeSeason: true })}`}
                 </Text>
                 <Text className='text-xs text-neutral-500'>
                   {runtimeTicksToSeconds(otherItem.RunTimeTicks)}

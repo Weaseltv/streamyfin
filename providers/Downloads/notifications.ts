@@ -2,6 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type * as NotificationsType from "expo-notifications";
 import type { TFunction } from "i18next";
 import { Platform } from "react-native";
+import { formatEpisodeNumber } from "@/utils/episodes";
 
 // Conditionally import expo-notifications only on non-TV platforms
 const Notifications = Platform.isTV
@@ -20,9 +21,7 @@ export function getNotificationContent(
     const season = item.ParentIndexNumber
       ? String(item.ParentIndexNumber).padStart(2, "0")
       : "??";
-    const episode = item.IndexNumber
-      ? String(item.IndexNumber).padStart(2, "0")
-      : "??";
+    const episode = formatEpisodeNumber(item, { padLength: 2, fallback: "??" });
     const subtitle = `${item.Name} - [S${season}E${episode}] (${item.SeriesName})`;
 
     return {

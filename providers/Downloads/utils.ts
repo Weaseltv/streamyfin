@@ -1,4 +1,5 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { formatEpisodeNumber } from "@/utils/episodes";
 
 /**
  * Generate a safe filename from item metadata
@@ -6,7 +7,10 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 export function generateFilename(item: BaseItemDto): string {
   if (item.Type === "Episode") {
     const season = String(item.ParentIndexNumber || 0).padStart(2, "0");
-    const episode = String(item.IndexNumber || 0).padStart(2, "0");
+    const episode = formatEpisodeNumber(item, {
+      padLength: 2,
+      fallback: "0",
+    }).padStart(2, "0");
     const seriesName = (item.SeriesName || "Unknown")
       .replace(/[^a-z0-9]/gi, "_")
       .toLowerCase();

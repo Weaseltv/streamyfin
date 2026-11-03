@@ -39,6 +39,7 @@ import {
   buildOfflineSeasons,
   getDownloadedEpisodesForSeason,
 } from "@/utils/downloads/offline-series";
+import { countEpisodes, formatEpisodeNumber } from "@/utils/episodes";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -259,7 +260,7 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
       options.push({
         label: selectedSeasonName,
         sublabel: t("player.episode_count", {
-          count: episodesForSeason.length,
+          count: countEpisodes(episodesForSeason),
         }),
         value: "season",
         selected: false,
@@ -267,7 +268,9 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
     }
     options.push({
       label: t("player.entire_series"),
-      sublabel: t("player.episode_count", { count: allEpisodes.length }),
+      sublabel: t("player.episode_count", {
+        count: countEpisodes(allEpisodes),
+      }),
       value: "series",
       selected: false,
     });
@@ -339,15 +342,16 @@ export const TVSeriesPage: React.FC<TVSeriesPageProps> = ({
   const playButtonText = useMemo(() => {
     if (!nextUnwatchedEpisode) return t("common.play");
 
-    const season = nextUnwatchedEpisode.ParentIndexNumber;
-    const episode = nextUnwatchedEpisode.IndexNumber;
+    const episode = formatEpisodeNumber(nextUnwatchedEpisode, {
+      includeSeason: true,
+    });
     const hasProgress =
       (nextUnwatchedEpisode.UserData?.PlaybackPositionTicks ?? 0) > 0;
 
     if (hasProgress) {
-      return `${t("home.continue")} S${season}:E${episode}`;
+      return `${t("home.continue")} ${episode}`;
     }
-    return `${t("common.play")} S${season}:E${episode}`;
+    return `${t("common.play")} ${episode}`;
   }, [nextUnwatchedEpisode, t]);
 
   if (!item) return null;

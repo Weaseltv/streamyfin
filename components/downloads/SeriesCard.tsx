@@ -8,6 +8,7 @@ import { MovieCard } from "@/components/downloads/MovieCard";
 import { NeonBoard } from "@/constants/Colors";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
+import { countEpisodes } from "@/utils/episodes";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
 const _EPISODE_ROW = 44;
@@ -48,7 +49,7 @@ export const SeriesHeader: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
     () =>
       confirmDelete({
         title: items[0]?.SeriesName ?? undefined,
-        message: t("player.episode_count", { count: items.length }),
+        message: t("player.episode_count", { count: countEpisodes(items) }),
         onConfirm: deleteSeries,
       }),
     [confirmDelete, deleteSeries, items, t],
@@ -68,7 +69,7 @@ export const SeriesHeader: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
       <SectionHeader
         title={items[0]?.SeriesName ?? ""}
         accent={NeonBoard.show}
-        count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: items.length })}`}
+        count={`${t("home.downloads.series")} · ${t("player.episode_count", { count: countEpisodes(items) })}`}
         className='px-4'
         bleedRule
       />

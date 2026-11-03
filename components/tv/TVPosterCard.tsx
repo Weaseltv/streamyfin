@@ -24,6 +24,7 @@ import {
   isGlassEffectAvailable,
 } from "@/modules/glass-poster";
 import { apiAtom } from "@/providers/JellyfinProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { scaleSize } from "@/utils/scaleSize";
 import { runtimeTicksToMinutes } from "@/utils/time";
@@ -240,7 +241,9 @@ export const TVPosterCard: React.FC<TVPosterCardProps> = ({
       const season = item.ParentIndexNumber;
       const ep = item.IndexNumber;
       const episodeLabel =
-        season !== undefined && ep !== undefined ? `S${season}:E${ep}` : null;
+        season !== undefined && ep !== undefined
+          ? formatEpisodeNumber(item, { includeSeason: true })
+          : null;
       const duration = item.RunTimeTicks
         ? runtimeTicksToMinutes(item.RunTimeTicks)
         : null;

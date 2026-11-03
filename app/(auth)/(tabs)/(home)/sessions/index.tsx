@@ -25,6 +25,7 @@ import { useInterval } from "@/hooks/useInterval";
 import { useSessions, type useSessionsProps } from "@/hooks/useSessions";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { formatBitrate } from "@/utils/bitrate";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { formatTimeString } from "@/utils/time";
 
@@ -240,7 +241,7 @@ const SessionCard = ({ session }: SessionCardProps) => {
                 <>
                   <Text variant='rowTitle'>{session.NowPlayingItem?.Name}</Text>
                   <Text numberOfLines={1} variant='meta' muted>
-                    {`S${session.NowPlayingItem.ParentIndexNumber?.toString()}:E${session.NowPlayingItem.IndexNumber?.toString()}`}
+                    {`${formatEpisodeNumber(session.NowPlayingItem, { includeSeason: true })}`}
                     {" - "}
                     {session.NowPlayingItem.SeriesName}
                   </Text>

@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { BackgroundDownloader } from "@/modules";
 import type { DownloadActivityMetadata } from "@/modules/background-downloader";
 import { optionsWithOptionalHeaders } from "@/utils/customHeaders";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getItemImage } from "@/utils/getItemImage";
 import { downloadPreparationFile } from "./assetDownload";
 import type { PreparationStage } from "./preparation";
@@ -35,9 +36,7 @@ function getActivityText(item: BaseItemDto): {
     const season = item.ParentIndexNumber
       ? String(item.ParentIndexNumber).padStart(2, "0")
       : "??";
-    const episode = item.IndexNumber
-      ? String(item.IndexNumber).padStart(2, "0")
-      : "??";
+    const episode = formatEpisodeNumber(item, { padLength: 2, fallback: "??" });
 
     return {
       title: item.SeriesName || item.Name || "",

@@ -11,7 +11,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
@@ -26,7 +25,10 @@ import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
-import { EpisodeRow } from "@/components/series/EpisodeRow";
+import {
+  EpisodeRow,
+  getEpisodePillLabel,
+} from "@/components/series/EpisodeRow";
 import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
@@ -39,10 +41,10 @@ import {
   buildOfflineSeasons,
   getDownloadedEpisodesForSeason,
 } from "@/utils/downloads/offline-series";
+import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { Text } from "../common/Text";
-import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
+import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
-import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
 type Props = {
   item: BaseItemDto;
@@ -242,21 +244,23 @@ export const SeasonPicker: React.FC<Props> = ({
   useEffect(() => {
     scrollOffset.value = 0;
   }, [selectedSeasonId, selectedSeasonNumber, scrollOffset]);
-  const [downloadItem, setDownloadItem] = useState<BaseItemDto | null>(null);
-  const closeDownload = useCallback(() => setDownloadItem(null), []);
+  // One pill column for the season, wide enough for its longest range
+  const pillColumnWidth = useMemo(
+    () =>
+      getEpisodePillColumnWidth(
+        (episodes ?? []).map((episode) => getEpisodePillLabel(episode, t)),
+      ),
+    [episodes, t],
+  );
   const renderEpisode = useCallback<ListRenderItem<BaseItemDto>>(
     ({ item: episode }) => (
       <EpisodeRow
         episode={episode}
         current={!!currentEpisodeId && episode.Id === currentEpisodeId}
-        trailing={
-          !isOffline ? (
-            <EpisodeDownloadButton item={episode} onOpen={setDownloadItem} />
-          ) : undefined
-        }
+        pillColumnWidth={pillColumnWidth}
       />
     ),
-    [currentEpisodeId, isOffline],
+    [currentEpisodeId, pillColumnWidth],
   );
   const header = (
     <View>
@@ -404,6 +408,7 @@ export const SeasonPicker: React.FC<Props> = ({
         data={isPending ? [] : (episodes ?? [])}
         keyExtractor={(episode) => episode.Id!}
         renderItem={renderEpisode}
+        extraData={pillColumnWidth}
         ListHeaderComponent={header}
         ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
         ListEmptyComponent={
@@ -422,14 +427,6 @@ export const SeasonPicker: React.FC<Props> = ({
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       />
-      {downloadItem && (
-        <DownloadSingleItem
-          key={downloadItem.Id}
-          item={downloadItem}
-          openOnMount
-          onClose={closeDownload}
-        />
-      )}
     </View>
   );
 };

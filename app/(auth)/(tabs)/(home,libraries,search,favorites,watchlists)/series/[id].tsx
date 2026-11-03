@@ -26,6 +26,7 @@ import {
   buildOfflineSeriesFromEpisodes,
   getDownloadedEpisodesForSeries,
 } from "@/utils/downloads/offline-series";
+import { countEpisodes } from "@/utils/episodes";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
@@ -226,7 +227,7 @@ const page: React.FC = () => {
             <SeriesHeader
               item={item}
               seasons={seasonCount}
-              episodes={allEpisodes?.length}
+              episodes={countEpisodes(allEpisodes)}
             />
             {!isOffline && <SeriesButtons item={item} />}
             {!isOffline && <NextUp seriesId={seriesId} />}

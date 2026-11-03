@@ -11,6 +11,7 @@ import { useDownloadActions } from "@/providers/DownloadProvider";
 import { DownloadedItem } from "@/providers/Downloads/types";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { shuffleQueueAtom } from "@/utils/atoms/shuffleQueue";
+import { getAdjacentEpisode } from "@/utils/episodes";
 import { useNetworkStatus } from "./useNetworkStatus";
 
 interface PlaybackManagerProps {
@@ -125,18 +126,6 @@ export const usePlaybackManager = ({
     shuffleQueue.seriesId === item.SeriesId &&
     shuffleQueue.items.some((e) => e.Id === item.Id);
 
-  /**
-   * Derive prev/next from the current item's real position in the adjacent
-   * list rather than from the array length. `getEpisodes({ adjacentTo })` does
-   * not guarantee a fixed [prev, current, next] shape — at the first/last
-   * episode it can still return the current item as the first/last entry — so
-   * length-based indexing wrongly surfaces the current episode as "previous".
-   */
-  const currentIndex = useMemo(
-    () => adjacentItems?.findIndex((e) => e.Id === item?.Id) ?? -1,
-    [adjacentItems, item],
-  );
-
   /** Index of the current item within the shuffle queue (or -1). */
   const shuffleIndex = useMemo(
     () =>
@@ -157,17 +146,8 @@ export const usePlaybackManager = ({
       const candidate = shuffleQueue?.items[shuffleIndex - 1];
       return isNavigable(candidate) ? candidate : null;
     }
-    if (!adjacentItems || currentIndex <= 0) return null;
-    const candidate = adjacentItems[currentIndex - 1];
-    return isNavigable(candidate) ? candidate : null;
-  }, [
-    shuffleActive,
-    shuffleQueue,
-    shuffleIndex,
-    adjacentItems,
-    currentIndex,
-    item,
-  ]);
+    return getAdjacentEpisode(adjacentItems, item?.Id, "previous");
+  }, [shuffleActive, shuffleQueue, shuffleIndex, adjacentItems, item]);
 
   /** The next item in the series */
   const nextItem = useMemo(() => {
@@ -176,17 +156,8 @@ export const usePlaybackManager = ({
       const candidate = shuffleQueue?.items[shuffleIndex + 1];
       return isNavigable(candidate) ? candidate : null;
     }
-    if (!adjacentItems || currentIndex < 0) return null;
-    const candidate = adjacentItems[currentIndex + 1];
-    return isNavigable(candidate) ? candidate : null;
-  }, [
-    shuffleActive,
-    shuffleQueue,
-    shuffleIndex,
-    adjacentItems,
-    currentIndex,
-    item,
-  ]);
+    return getAdjacentEpisode(adjacentItems, item?.Id, "next");
+  }, [shuffleActive, shuffleQueue, shuffleIndex, adjacentItems, item]);
 
   /**
    * Reports playback progress.

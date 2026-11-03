@@ -19,6 +19,7 @@ import { useDownload } from "@/providers/DownloadProvider";
 import { calculateSmoothedETA } from "@/providers/Downloads/hooks/useDownloadSpeedCalculator";
 import { JobStatus } from "@/providers/Downloads/types";
 import { estimateDownloadSize } from "@/utils/download";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { storage } from "@/utils/mmkv";
 
 const POSTER = { w: 40, h: 58 };
@@ -46,7 +47,7 @@ const formatRemaining = (seconds: number): string => {
 
 const rowTitle = (process: JobStatus) =>
   process.item.Type === "Episode" && process.item.SeriesName
-    ? `${process.item.SeriesName} · S${process.item.ParentIndexNumber ?? 0}:E${process.item.IndexNumber ?? 0}`
+    ? `${process.item.SeriesName} · ${formatEpisodeNumber(process.item, { includeSeason: true, fallback: "0" })}`
     : (process.item.Name ?? "");
 
 interface DownloadCardProps extends TouchableOpacityProps {

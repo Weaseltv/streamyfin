@@ -1238,6 +1238,7 @@
     "download": "Download",
     "trailer": "Trailer",
     "downloaded": "Downloaded",
+    "episode_number_short": "EP {{number}}",
     "episodes_count": "{{count}} episodes",
     "seasons_count": "{{count}} seasons"
   },

@@ -11,6 +11,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
@@ -95,7 +96,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
             unconstrained button ate the row until only "S" and "2." showed. */}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text variant='rowTitle' numberOfLines={1} style={{ fontSize: 14 }}>
-            {`S${item.ParentIndexNumber}:E${item.IndexNumber} · ${item.Name}`}
+            {`${formatEpisodeNumber(item, { includeSeason: true })} · ${item.Name}`}
           </Text>
           <Text variant='meta' muted numberOfLines={1} style={{ marginTop: 2 }}>
             {meta}
