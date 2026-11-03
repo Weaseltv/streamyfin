@@ -2,8 +2,24 @@
 
 Jellyfin stores a combined episode as one item/file. Its inclusive range is
 `IndexNumber` through `IndexNumberEnd` when the latter is greater than the former.
-The app now renders that range using `utils/episodes.ts`, preserving each
-surface's existing separator and padding. A single episode keeps its old label.
+The app now renders that range using `utils/episodes.ts`. Other surfaces keep
+their existing separator and padding; the phone rows use the approved pills below.
+
+## Approved phone row design (2026-11-03)
+
+The owner approved the fourth mockup: compact, subdued `EP 1–2` / `EP 3` pills
+in a fixed 52-point column to the left of the episode thumbnails. The column and
+thumbnail cannot shrink, so both single episodes and long ranges keep the same
+thumbnail/title alignment. The pill is constrained to one line and fits long
+ranges by reducing its text size, including the app's inline typography scale.
+Titles allow two lines; air date/runtime can wrap to two lines on narrow phones.
+
+Per-row download buttons and their unused sheet state/component are removed.
+Season download and watched-status controls remain in the season header; an
+individual episode can still be downloaded from its detail screen. Both iOS and
+Android phone use this same component, including the offline series view.
+Other screens retain their existing number format; only the new pills use an
+en dash. The range/count/navigation and watched/resume behavior is unchanged.
 
 ## Screens and presentation
 
@@ -53,6 +69,8 @@ regression fixtures without changing account watched state to manufacture NextUp
 - 372 unit tests pass, including 11 new range/count/adjacency regressions.
 - TypeScript, Biome checks, and production Metro/Hermes exports for both iOS and
   Android pass.
+- The translation check reports no missing keys. Its seven unused-key findings
+  are identical on `origin/weaselfin`; the new episode-pill key is referenced.
 - Live server response assertions pass for every item in the four datasets.
 - The owner will handle app screenshots and waived agent capture on 2026-11-02.
   Agent screenshot capture is no longer an outstanding requirement.

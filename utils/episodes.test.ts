@@ -41,6 +41,10 @@ describe("episode range labels", () => {
         seasonSeparator: "",
       }),
     ).toBe("S4E1-2");
+    expect(formatEpisodeNumber(exit9B, { rangeSeparator: "–" })).toBe("1–2");
+    expect(
+      formatEpisodeNumber(episode(172, 173), { rangeSeparator: "–" }),
+    ).toBe("172–173");
   });
 
   test("Regular Show S3 pairs and padded download/notification labels", () => {

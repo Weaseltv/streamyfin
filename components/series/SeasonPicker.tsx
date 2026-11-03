@@ -11,7 +11,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
@@ -40,9 +39,8 @@ import {
   getDownloadedEpisodesForSeason,
 } from "@/utils/downloads/offline-series";
 import { Text } from "../common/Text";
-import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
+import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
-import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
 type Props = {
   item: BaseItemDto;
@@ -242,21 +240,14 @@ export const SeasonPicker: React.FC<Props> = ({
   useEffect(() => {
     scrollOffset.value = 0;
   }, [selectedSeasonId, selectedSeasonNumber, scrollOffset]);
-  const [downloadItem, setDownloadItem] = useState<BaseItemDto | null>(null);
-  const closeDownload = useCallback(() => setDownloadItem(null), []);
   const renderEpisode = useCallback<ListRenderItem<BaseItemDto>>(
     ({ item: episode }) => (
       <EpisodeRow
         episode={episode}
         current={!!currentEpisodeId && episode.Id === currentEpisodeId}
-        trailing={
-          !isOffline ? (
-            <EpisodeDownloadButton item={episode} onOpen={setDownloadItem} />
-          ) : undefined
-        }
       />
     ),
-    [currentEpisodeId, isOffline],
+    [currentEpisodeId],
   );
   const header = (
     <View>
@@ -422,14 +413,6 @@ export const SeasonPicker: React.FC<Props> = ({
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       />
-      {downloadItem && (
-        <DownloadSingleItem
-          key={downloadItem.Id}
-          item={downloadItem}
-          openOnMount
-          onClose={closeDownload}
-        />
-      )}
     </View>
   );
 };

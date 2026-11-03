@@ -24,18 +24,20 @@ export function formatEpisodeNumber(
     seasonSeparator = ":",
     padLength = 0,
     fallback = "?",
+    rangeSeparator = "-",
   }: {
     includeSeason?: boolean;
     seasonSeparator?: string;
     padLength?: number;
     fallback?: string;
+    rangeSeparator?: string;
   } = {},
 ): string {
   const number = (value: number | null | undefined) =>
     value == null ? fallback : String(value).padStart(padLength, "0");
   const range = getEpisodeNumberRange(item);
   const episode = range
-    ? `${number(range.start)}${range.end > range.start ? `-${number(range.end)}` : ""}`
+    ? `${number(range.start)}${range.end > range.start ? `${rangeSeparator}${number(range.end)}` : ""}`
     : fallback;
   return includeSeason
     ? `S${number(item.ParentIndexNumber)}${seasonSeparator}E${episode}`
