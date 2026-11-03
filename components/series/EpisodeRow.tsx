@@ -14,6 +14,10 @@ import { useDownloadedItem } from "@/hooks/useDownloadedItem";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import {
+  EPISODE_PILL_COLUMN_WIDTH,
+  getEpisodePillLayout,
+} from "@/utils/episodePill";
 import { formatEpisodeNumber } from "@/utils/episodes";
 import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 
@@ -22,8 +26,6 @@ interface Props {
   /** The episode carries the yellow tally (the current or next-up one). */
   current?: boolean;
 }
-
-const EPISODE_NUMBER_COLUMN_WIDTH = 52;
 
 /**
  * A quiet episode pill in a fixed leading column keeps every thumbnail aligned.
@@ -42,6 +44,10 @@ export const EpisodeRow = memo(function EpisodeRow({
     fallback: "–",
     rangeSeparator: "–",
   });
+  const episodeLabel = t("item.episode_number_short", {
+    number: episodeNumber,
+  });
+  const pill = getEpisodePillLayout(episodeLabel);
   const played = episode.UserData?.Played === true;
   const pct = (episode.UserData?.PlayedPercentage ?? 0) / 100;
   const thumb = api
@@ -87,21 +93,18 @@ export const EpisodeRow = memo(function EpisodeRow({
       ) : null}
       <View
         style={{
-          width: EPISODE_NUMBER_COLUMN_WIDTH,
+          width: EPISODE_PILL_COLUMN_WIDTH,
           flexShrink: 0,
           alignItems: "center",
         }}
       >
         <View
           style={{
-            minWidth: 34,
-            maxWidth: EPISODE_NUMBER_COLUMN_WIDTH,
-            minHeight: 20,
-            flexDirection: "row",
-            alignItems: "center",
+            width: pill.width,
+            height: pill.height,
+            flexShrink: 0,
             justifyContent: "center",
-            paddingHorizontal: 4,
-            paddingVertical: 2,
+            paddingHorizontal: 3,
             borderWidth: 1,
             borderColor: NeonBoard.line2,
             borderRadius: 4,
@@ -111,17 +114,15 @@ export const EpisodeRow = memo(function EpisodeRow({
           <Text
             allowFontScaling={false}
             numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.65}
+            adjustsFontSizeToFit={false}
             style={{
-              flexShrink: 1,
-              fontSize: 10,
-              lineHeight: 13,
+              fontSize: pill.fontSize,
+              lineHeight: pill.lineHeight,
               fontWeight: "500",
               textAlign: "center",
             }}
           >
-            {t("item.episode_number_short", { number: episodeNumber })}
+            {episodeLabel}
           </Text>
         </View>
       </View>

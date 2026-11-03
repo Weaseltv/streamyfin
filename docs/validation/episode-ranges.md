@@ -10,8 +10,9 @@ their existing separator and padding; the phone rows use the approved pills belo
 The owner approved the fourth mockup: compact, subdued `EP 1–2` / `EP 3` pills
 in a fixed 52-point column to the left of the episode thumbnails. The column and
 thumbnail cannot shrink, so both single episodes and long ranges keep the same
-thumbnail/title alignment. The pill is constrained to one line and fits long
-ranges by reducing its text size, including the app's inline typography scale.
+thumbnail/title alignment. The pill is constrained to one line, with explicit
+font sizes for normal labels and longer ranges, accounting for the app's inline
+typography scale.
 Titles allow two lines; air date/runtime can wrap to two lines on narrow phones.
 
 Per-row download buttons and their unused sheet state/component are removed.
@@ -20,6 +21,19 @@ individual episode can still be downloaded from its detail screen. Both iOS and
 Android phone use this same component, including the offline series view.
 Other screens retain their existing number format; only the new pills use an
 en dash. The range/count/navigation and watched/resume behavior is unchanged.
+
+### Tiny-label regression in build 127
+
+The owner found randomly tiny `EP 5`, `EP 18`, and `EP 45` labels among otherwise
+normal rows. The previous pills combined intrinsic width with native auto-fit.
+This React Native iOS renderer uses `minimumFontSize` (default 4pt) in that path,
+rather than the supplied `minimumFontScale` bound. Native fitting is now disabled.
+The badge width/height and rendered font size are explicit and depend only on the
+current label, with no measurement callbacks or recycled sizing state. Ordinary
+labels retain 12pt type, longer pairs use 11pt, and three-digit pairs use 9pt.
+Regression checks cover the reported labels among mixed content and the bundled
+font's measured widths. On-device scrolling/season-switch verification is still
+required in the fresh Check TestFlight.
 
 ## Screens and presentation
 
@@ -66,7 +80,7 @@ regression fixtures without changing account watched state to manufacture NextUp
 
 ## Validation and remaining device evidence
 
-- 372 unit tests pass, including 11 new range/count/adjacency regressions.
+- 375 unit tests pass, including range/count/adjacency and pill-sizing regressions.
 - TypeScript, Biome checks, and production Metro/Hermes exports for both iOS and
   Android pass.
 - The translation check reports no missing keys. Its seven unused-key findings
