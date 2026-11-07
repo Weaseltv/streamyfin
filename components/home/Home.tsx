@@ -91,6 +91,7 @@ type InfiniteScrollingCollectionListSection = {
   title?: string;
   /** Small line over the title, as on the TV. */
   kicker?: string;
+  accent?: string;
   queryKey: (string | undefined | null)[];
   queryFn: QueryFunction<BaseItemDto[], any, number>;
   orientation?: "horizontal" | "vertical";
@@ -111,7 +112,7 @@ type StreamingSection = {
   queryKey: string[];
 };
 
-/** One of the six JustWatch rows the media server works out (`justwatch-home`). */
+/** One of the four server-made discovery rows the media server works out (`justwatch-home`). */
 type JustWatchSection = {
   type: "JustWatch";
   row: (typeof JUSTWATCH_HOME_ROWS)[number];
@@ -318,51 +319,65 @@ const HomeMobile = () => {
   const defaultSections = useMemo(() => {
     if (!api || !user?.Id) return [];
 
-    // As on the TV: one "RECENTLY ADDED" / "MOVIES AND TV SHOWS" row. Each
-    // main library's latest items (grouped by the server, so a series with
-    // several new episodes is one card), merged newest first.
-    const recentlyAdded: InfiniteScrollingCollectionListSection = {
-      type: "InfiniteScrollingCollectionList",
-      title: t("home.movies_and_tv_shows"),
-      kicker: t("home.kicker_recently_added"),
-      queryKey: [
-        "home",
-        "recentlyAddedCombined",
-        user.Id,
-        ...collections.map((c) => c.Id),
-      ],
-      queryFn: async ({ pageParam = 0 }) => {
-        if (pageParam > 0) return [];
-        const latest = await Promise.all(
-          collections.map((c) =>
-            getUserLibraryApi(api)
-              .getLatestMedia({
-                userId: user.Id,
-                parentId: c.Id,
-                groupItems: true,
-                limit: 25,
-                fields: ["DateCreated", "PrimaryImageAspectRatio"],
-                imageTypeLimit: 1,
-                enableImageTypes: ["Primary", "Backdrop", "Thumb"],
-              })
-              .then((response) => response.data)
-              // A library that fails just adds nothing, as on the TV
-              .catch(() => [] as BaseItemDto[]),
+    // As on the TV (Nov 3): separate movie and show rows, each with up to
+    // 25 titles. Group episodes into series, then merge each kind's libraries
+    // newest first. Stand Up Comedy and Sports are excluded above.
+    const recentlyAdded: InfiniteScrollingCollectionListSection[] = [
+      "movies",
+      "tvshows",
+    ].flatMap((kind) => {
+      const libraries = collections.filter((c) => c.CollectionType === kind);
+      if (!libraries.length) return [];
+      return [
+        {
+          type: "InfiniteScrollingCollectionList",
+          title: t(
+            kind === "movies" ? "home.kicker_movies" : "home.kicker_tv_shows",
           ),
-        );
-        return latest
-          .flat()
-          .sort(
-            (a, b) =>
-              new Date(b.DateCreated ?? 0).getTime() -
-              new Date(a.DateCreated ?? 0).getTime(),
-          )
-          .slice(0, 25);
-      },
-      orientation: "vertical",
-      pageSize: 25,
-      priority: 2,
-    };
+          kicker: t("home.kicker_recently_added"),
+          accent: kind === "movies" ? NeonBoard.movie : NeonBoard.show,
+          queryKey: [
+            "home",
+            "recentlyAdded",
+            kind,
+            api.basePath,
+            user.Id,
+            ...libraries.map((c) => c.Id),
+          ],
+          queryFn: async ({ pageParam = 0 }) => {
+            if (pageParam > 0) return [];
+            const latest = await Promise.all(
+              libraries.map((c) =>
+                getUserLibraryApi(api)
+                  .getLatestMedia({
+                    userId: user.Id,
+                    parentId: c.Id,
+                    groupItems: true,
+                    limit: 25,
+                    fields: ["DateCreated", "PrimaryImageAspectRatio"],
+                    imageTypeLimit: 1,
+                    enableImageTypes: ["Primary", "Backdrop", "Thumb"],
+                  })
+                  .then((response) => response.data)
+                  // A library that fails just adds nothing, as on the TV.
+                  .catch(() => [] as BaseItemDto[]),
+              ),
+            );
+            return latest
+              .flat()
+              .sort(
+                (a, b) =>
+                  new Date(b.DateCreated ?? 0).getTime() -
+                  new Date(a.DateCreated ?? 0).getTime(),
+              )
+              .slice(0, 25);
+          },
+          orientation: "vertical",
+          pageSize: 25,
+          priority: 2,
+        },
+      ];
+    });
 
     // Helper to sort items by most recent activity
     const sortByRecentActivity = (items: BaseItemDto[]): BaseItemDto[] => {
@@ -496,11 +511,11 @@ const HomeMobile = () => {
     const justWatch: JustWatchSection[] = JUSTWATCH_HOME_ROWS.map((row) => ({
       type: "JustWatch",
       row,
-      queryKey: ["home", "justwatch", row.key, user.Id!],
+      queryKey: ["home", "justwatch", row.key, api.basePath, user.Id!],
     }));
 
     // The Streaming Services row goes in after the first rows (see `sections`)
-    return [...firstSections, recentlyAdded, ...justWatch];
+    return [...firstSections, ...recentlyAdded, ...justWatch];
   }, [api, user?.Id, collections, t, settings.mergeNextUpAndContinueWatching]);
 
   const customSections = useMemo(() => {
@@ -927,11 +942,7 @@ const HomeMobile = () => {
                   title={t(row.title)}
                   kicker={t(row.kicker)}
                   accent={
-                    row.accent === "movie"
-                      ? NeonBoard.movie
-                      : row.accent === "show"
-                        ? NeonBoard.show
-                        : undefined
+                    row.accent === "movie" ? NeonBoard.movie : NeonBoard.show
                   }
                   queryKey={section.queryKey}
                   queryFn={({ signal }) =>
@@ -978,6 +989,7 @@ const HomeMobile = () => {
                 <InfiniteScrollingCollectionList
                   title={section.title}
                   kicker={section.kicker}
+                  accent={section.accent}
                   queryKey={section.queryKey}
                   queryFn={section.queryFn}
                   orientation={section.orientation}

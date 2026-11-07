@@ -3,6 +3,7 @@ import { Jellyfin } from "@jellyfin/sdk";
 import axios, { type AxiosRequestConfig } from "axios";
 import {
   cachedServiceCodes,
+  JUSTWATCH_HOME_ROWS,
   loadJustWatchLists,
   loadRankedItems,
   parseServiceCodes,
@@ -55,6 +56,48 @@ describe("the server's JustWatch lists", () => {
     expect(url.pathname).toBe("/DisplayPreferences/justwatch-home");
     expect(url.searchParams.get("userId")).toBe("member");
     expect(url.searchParams.get("client")).toBe("WeaselPlex");
+  });
+
+  test("loads the Nov 3 TV collection feeds, retaining rank and 25 visible titles", async () => {
+    const keys = [
+      "trending_movies",
+      "trending_shows",
+      "recently_released",
+      "movie_roulette",
+    ];
+    const ids = Array.from({ length: 30 }, (_, i) => id(i + 1));
+    const { api, requests } = server((url) =>
+      url.pathname.startsWith("/DisplayPreferences/")
+        ? {
+            CustomPrefs: Object.fromEntries(
+              keys.map((key) => [key, ids.join(",")]),
+            ),
+          }
+        : {
+            Items: ids
+              .filter((value) => value !== id(2))
+              .reverse()
+              .map((Id) => ({ Id })),
+          },
+    );
+    const lists = await loadJustWatchLists(api, "member", "justwatch-home");
+    expect(JUSTWATCH_HOME_ROWS.map((row) => row.key)).toEqual(keys);
+    for (const row of JUSTWATCH_HOME_ROWS) {
+      const items = await loadRankedItems(
+        api,
+        "member",
+        lists[row.key],
+        row.size,
+      );
+      expect(items.map((item) => item.Id)).toEqual([
+        id(1),
+        ...ids.slice(2, 26),
+      ]);
+      expect(items).toHaveLength(25);
+    }
+    expect(
+      requests.every((url) => url.searchParams.get("userId") === "member"),
+    ).toBe(true);
   });
 
   test("fetches the items in chunks, as the member, and keeps the ranked order", async () => {
