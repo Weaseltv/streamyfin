@@ -13,6 +13,7 @@ import {
 } from "@jellyfin/sdk/lib/utils/api";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
+import { useIsFocused } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -43,7 +44,10 @@ import {
   cacheVersionAtom,
   userAtom,
 } from "@/providers/JellyfinProvider";
-import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
+import {
+  useDismissedNextUp,
+  useRefreshDismissedNextUp,
+} from "@/utils/atoms/dismissedNextUp";
 import { useSettings } from "@/utils/atoms/settings";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { scaleSize } from "@/utils/scaleSize";
@@ -77,6 +81,7 @@ export const Home = () => {
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
   const { excludeItem: excludeDismissedSeries } = useDismissedNextUp();
+  useRefreshDismissedNextUp(useIsFocused());
   const cacheVersion = useAtomValue(cacheVersionAtom);
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();

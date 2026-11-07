@@ -17,14 +17,6 @@ export const useMarkAsPlayed = (items: BaseItemDto[], throwOnError = false) => {
     async (played: boolean) => {
       lightHapticFeedback();
 
-      // Marking an episode played is the user re-engaging with the series, so
-      // a dismissal from the Continue & Next Up rail no longer applies.
-      if (played) {
-        for (const item of items) {
-          if (item.Type === "Episode") undismissSeriesFromNextUp(item.SeriesId);
-        }
-      }
-
       const itemIds = items.map((item) => item.Id).filter(Boolean) as string[];
 
       const previousQueriesByItemId = itemIds.map((itemId) => ({
@@ -62,6 +54,16 @@ export const useMarkAsPlayed = (items: BaseItemDto[], throwOnError = false) => {
             return played ? markItemPlayed(item.Id) : markItemUnplayed(item.Id);
           }),
         );
+        // Clear the shared dismissal only after the played operation succeeds.
+        if (played) {
+          await Promise.all(
+            items
+              .filter((item) => item.Type === "Episode")
+              .map((item) =>
+                undismissSeriesFromNextUp(item.SeriesId).catch(() => {}),
+              ),
+          );
+        }
       } catch (error) {
         for (const { queries } of previousQueriesByItemId) {
           for (const [queryKey, data] of queries) {

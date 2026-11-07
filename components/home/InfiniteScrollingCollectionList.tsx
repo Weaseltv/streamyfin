@@ -1,5 +1,5 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import {
   type QueryFunction,
   type QueryKey,
@@ -15,6 +15,10 @@ import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Loader } from "@/components/Loader";
 import { Sizes } from "@/constants/neon";
+import {
+  scrollListToStart,
+  useHomeRowPosition,
+} from "@/hooks/useHomeRowPosition";
 import { useSettings } from "@/utils/atoms/settings";
 import { rowBadges } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
@@ -135,6 +139,13 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return deduped;
   }, [data, excludeItem]);
 
+  const rowPosition = useHomeRowPosition<FlashListRef<BaseItemDto>>(
+    JSON.stringify(queryKey),
+    allItems.map((item) => item.Id ?? ""),
+    scrollListToStart,
+    data?.pages.length ?? 0,
+  );
+
   // Type badges only on rows that mix movies and shows, unless the caller decides
   const badgeFor = useMemo(
     () =>
@@ -233,6 +244,12 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
         // paged ten deep held ~100 live cards per rail across Home. FlashList
         // recycles cells and only mounts what is near the viewport.
         <FlashList
+          ref={rowPosition.ref}
+          onLoad={rowPosition.onReady}
+          onContentSizeChange={rowPosition.flush}
+          maintainVisibleContentPosition={
+            rowPosition.home ? { disabled: true } : undefined
+          }
           horizontal
           data={allItems}
           keyExtractor={railKeyExtractor}
