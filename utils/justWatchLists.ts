@@ -6,7 +6,7 @@ import {
 } from "@jellyfin/sdk/lib/utils/api";
 
 /**
- * The JustWatch lists the media server works out for every member
+ * The discovery lists the media server works out for every member
  * (`justwatch-home.sh` on Unraid, the same lists WeaselPlex TV reads): item
  * ids in ranked order, comma-separated, one display-preferences key per list.
  * Home's rows live in `justwatch-home`; the streaming service pages' POPULAR /
@@ -27,51 +27,37 @@ export const SERVICE_CODES_KEY = "service_codes";
 const IDS_PER_REQUEST = 50;
 
 /**
- * Home's six JustWatch rows, as on the TV (`JustWatchHomeList.kt`): the list
+ * Home's four server-made rows, as on the TV (`JustWatchHomeList.kt`, Nov 3): the list
  * key, how many cards, the kicker and title (i18n keys) and the rule colour.
  */
 export const JUSTWATCH_HOME_ROWS = [
   {
-    key: "movie_chart",
+    key: "trending_movies",
     size: 25,
-    kicker: "home.kicker_movies",
-    title: "home.top_of_the_charts",
-    accent: "movie",
-  },
-  {
-    key: "show_chart",
-    size: 25,
-    kicker: "home.kicker_tv_shows",
-    title: "home.top_of_the_charts",
-    accent: "show",
-  },
-  {
-    key: "popular",
-    size: 50,
-    kicker: "home.kicker_popular",
-    title: "home.movies_and_tv_shows_amp",
-    accent: "home",
-  },
-  {
-    key: "trending",
-    size: 50,
     kicker: "home.kicker_trending",
-    title: "home.movies_and_tv_shows_amp",
-    accent: "home",
-  },
-  {
-    key: "top_10_movies",
-    size: 10,
-    kicker: "home.kicker_top_10",
-    title: "home.movies_this_week",
+    title: "home.kicker_movies",
     accent: "movie",
   },
   {
-    key: "top_10_shows",
-    size: 10,
-    kicker: "home.kicker_top_10",
-    title: "home.tv_shows_this_week",
+    key: "trending_shows",
+    size: 25,
+    kicker: "home.kicker_trending",
+    title: "home.kicker_tv_shows",
     accent: "show",
+  },
+  {
+    key: "recently_released",
+    size: 25,
+    kicker: "home.kicker_90_days",
+    title: "home.recently_released",
+    accent: "movie",
+  },
+  {
+    key: "movie_roulette",
+    size: 25,
+    kicker: "home.kicker_movie",
+    title: "home.roulette",
+    accent: "movie",
   },
 ] as const;
 
