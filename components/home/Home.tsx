@@ -50,7 +50,10 @@ import {
   userAtom,
 } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
-import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
+import {
+  useDismissedNextUp,
+  useRefreshDismissedNextUp,
+} from "@/utils/atoms/dismissedNextUp";
 import { SortByOption, SortOrderOption } from "@/utils/atoms/filters";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
@@ -148,6 +151,7 @@ const HomeMobile = () => {
   // their queries refetch on reconnect as usual.
   const isFocused = useIsFocused();
   const reachable = isConnected && serverConnected === true;
+  useRefreshDismissedNextUp(isFocused && reachable);
   const [showSections, setShowSections] = useState(reachable);
   useEffect(() => {
     if (isFocused) setShowSections(reachable);

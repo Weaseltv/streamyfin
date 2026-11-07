@@ -55,7 +55,7 @@ export const usePlayMedia = () => {
       // Playing an episode is the user re-engaging with the series: lift any
       // "Remove from Continue & Next Up" dismissal so it can come back.
       if (options?.item?.Type === "Episode") {
-        undismissSeriesFromNextUp(options.item.SeriesId);
+        void undismissSeriesFromNextUp(options.item.SeriesId).catch(() => {});
       }
 
       const isLiveTv =
