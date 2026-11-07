@@ -5,10 +5,11 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, View, type ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
+import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Sizes } from "@/constants/neon";
@@ -140,8 +141,9 @@ export const ScrollingCollectionList: React.FC<Props> = ({
           imageOnly={placeholder.imageOnly}
         />
       ) : (
-        <ScrollView
-          horizontal
+        <HomeRowScrollView
+          rowKey={JSON.stringify(queryKey)}
+          itemKeys={data?.map((item) => item.Id ?? "") ?? []}
           showsHorizontalScrollIndicator={false}
           {...(hasArtworkCards ? { removeClippedSubviews: false } : {})}
         >
@@ -183,7 +185,7 @@ export const ScrollingCollectionList: React.FC<Props> = ({
               );
             })}
           </View>
-        </ScrollView>
+        </HomeRowScrollView>
       )}
     </View>
   );

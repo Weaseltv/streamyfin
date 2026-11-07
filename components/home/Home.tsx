@@ -23,6 +23,7 @@ import { OfflineNotice } from "@/components/common/OfflineNotice";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
+import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
@@ -43,6 +44,10 @@ import {
   useCompletedDownloads,
   useDownloadActions,
 } from "@/providers/DownloadProvider";
+import {
+  HomeRowResetProvider,
+  useResetHomeRows,
+} from "@/providers/HomeRowResetProvider";
 import { useIntroSheet } from "@/providers/IntroSheetProvider";
 import {
   apiAtom,
@@ -140,6 +145,7 @@ const HomeMobile = () => {
     retryCheck,
   } = useNetworkStatus();
   const invalidateCache = useInvalidatePlaybackProgressCache();
+  const resetHomeRows = useResetHomeRows();
 
   // Which of Home's two trees to show: the sections, or an offline notice.
   // Only switched while Home is on screen. Home stays mounted, frozen by
@@ -226,17 +232,19 @@ const HomeMobile = () => {
   const segments = useSegments();
   useEffect(() => {
     const unsubscribe = eventBus.on("scrollToTop", () => {
-      if ((segments as string[])[2] === "(home)")
+      if ((segments as string[])[2] === "(home)") {
+        resetHomeRows();
         scrollRef.current?.scrollToOffset({
           offset: Platform.isTV ? -152 : -100,
           animated: true,
         });
+      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [segments]);
+  }, [segments, resetHomeRows]);
 
   const {
     data,
@@ -285,6 +293,7 @@ const HomeMobile = () => {
 
   const { refreshing: loading, onRefresh: refetch } = useManualRefresh(
     async () => {
+      resetHomeRows();
       // Do NOT reset settledSections here. The priority gate only exists to
       // stagger the initial mount; every section is already on screen by the
       // time the user can pull. Clearing it flipped every priority-2 section
@@ -298,7 +307,11 @@ const HomeMobile = () => {
       // The gated path skips invalidation whenever onlineManager reports offline
       // and resolves silently, so the spinner completes and nothing refetches.
       // Automatic callers keep the gated path so offline sessions keep a cache.
-      await invalidateCache(true);
+      try {
+        await invalidateCache(true);
+      } finally {
+        resetHomeRows();
+      }
     },
   );
 
@@ -664,7 +677,11 @@ const HomeMobile = () => {
               title={t("states.downloads_title")}
               count={downloadedItems.length}
             />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <HomeRowScrollView
+              rowKey='downloads'
+              itemKeys={downloadedItems.map((d) => d.item.Id ?? "")}
+              showsHorizontalScrollIndicator={false}
+            >
               <View
                 style={{
                   paddingHorizontal: Sizes.gutter,
@@ -683,7 +700,7 @@ const HomeMobile = () => {
                   </TouchableItemRouter>
                 ))}
               </View>
-            </ScrollView>
+            </HomeRowScrollView>
           </OfflineModeProvider>
         </ScrollView>
       </View>
@@ -1013,5 +1030,9 @@ export const Home = () => {
   if (Platform.isTV && HomeTV) {
     return <HomeTV />;
   }
-  return <HomeMobile />;
+  return (
+    <HomeRowResetProvider>
+      <HomeMobile />
+    </HomeRowResetProvider>
+  );
 };

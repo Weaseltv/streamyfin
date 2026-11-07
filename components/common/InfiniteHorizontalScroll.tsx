@@ -2,7 +2,11 @@ import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
 } from "@jellyfin/sdk/lib/generated-client/models";
-import { FlashList, type FlashListProps } from "@shopify/flash-list";
+import {
+  FlashList,
+  type FlashListProps,
+  type FlashListRef,
+} from "@shopify/flash-list";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { t } from "i18next";
 import { useAtom } from "jotai";
@@ -13,6 +17,10 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import {
+  scrollListToStart,
+  useHomeRowPosition,
+} from "@/hooks/useHomeRowPosition";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { Button } from "../Button";
 import { Loader } from "../Loader";
@@ -93,6 +101,13 @@ export function InfiniteHorizontalScroll({
     );
   }, [data]);
 
+  const rowPosition = useHomeRowPosition<FlashListRef<BaseItemDto>>(
+    JSON.stringify(queryKey),
+    flatData.map((item) => item.Id ?? ""),
+    scrollListToStart,
+    data?.pages.length ?? 0,
+  );
+
   useEffect(() => {
     if (data) {
       animatedOpacity.value = 1;
@@ -136,6 +151,12 @@ export function InfiniteHorizontalScroll({
         </Button>
       )}
       <FlashList
+        ref={rowPosition.ref}
+        onLoad={rowPosition.onReady}
+        onContentSizeChange={rowPosition.flush}
+        maintainVisibleContentPosition={
+          rowPosition.home ? { disabled: true } : undefined
+        }
         data={flatData}
         renderItem={({ item, index }) => (
           <View style={{ marginRight: 10 }}>{renderItem(item, index)}</View>

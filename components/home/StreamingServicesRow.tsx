@@ -19,6 +19,7 @@ import { ItemImage } from "@/components/common/ItemImage";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
+import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
@@ -137,7 +138,11 @@ export const StreamingServicesRow: React.FC<Props> = ({
         title={t("home.streaming")}
         accent={NeonBoard.collections}
       />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <HomeRowScrollView
+        rowKey={JSON.stringify(queryKey)}
+        itemKeys={data?.map((item) => item.Id ?? "") ?? []}
+        showsHorizontalScrollIndicator={false}
+      >
         <View className='flex flex-row px-4' style={{ gap: RAIL_GAP }}>
           {data.map((item) => (
             <TouchableItemRouter
@@ -170,7 +175,7 @@ export const StreamingServicesRow: React.FC<Props> = ({
             </TouchableItemRouter>
           ))}
         </View>
-      </ScrollView>
+      </HomeRowScrollView>
       <Modal
         visible={reordering !== null}
         transparent
