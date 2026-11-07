@@ -16,6 +16,10 @@ import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
+import {
+  scrollListToStart,
+  useHomeRowPosition,
+} from "@/hooks/useHomeRowPosition";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { formatEpisodeNumber } from "@/utils/episodes";
@@ -40,10 +44,22 @@ interface Props {
 export const HeroBand: React.FC<Props> = ({ items, eyebrow }) => {
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
+  const resetPosition = useCallback((view: FlatList<BaseItemDto>) => {
+    scrollListToStart(view);
+    setIndex(0);
+  }, []);
+  const rowPosition = useHomeRowPosition(
+    "featured-hero",
+    items.map((item) => item.Id ?? ""),
+    resetPosition,
+  );
   if (items.length === 0) return null;
   return (
     <View style={{ height: HERO_HEIGHT }}>
       <FlatList
+        ref={rowPosition.ref}
+        onLayout={rowPosition.onReady}
+        onContentSizeChange={rowPosition.flush}
         data={items}
         horizontal
         pagingEnabled
