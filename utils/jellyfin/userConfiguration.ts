@@ -54,3 +54,17 @@ export function buildUserConfigurationPayload(
 
   return payload;
 }
+
+/**
+ * An untouched Jellyfin profile uses "Default". Phones adopt the app's None
+ * default even when an earlier app version cached its factory Smart value.
+ * Explicit account modes still win. TV keeps its existing seeding behavior;
+ * an absent server field leaves the local preference alone.
+ */
+export function subtitleModeFromProfile(
+  mode: UserConfiguration["SubtitleMode"],
+  isTV: boolean,
+): Settings["subtitleMode"] | undefined {
+  if (mode === "Default") return isTV ? undefined : "None";
+  return mode;
+}
