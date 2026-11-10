@@ -12,6 +12,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { type Settings, useSettings } from "@/utils/atoms/settings";
@@ -19,7 +20,10 @@ import {
   ORIGINAL_LANGUAGE,
   supportsOriginalAudioLanguage,
 } from "@/utils/jellyfin/serverVersion";
-import { buildUserConfigurationPayload } from "@/utils/jellyfin/userConfiguration";
+import {
+  buildUserConfigurationPayload,
+  subtitleModeFromProfile,
+} from "@/utils/jellyfin/userConfiguration";
 
 /**
  * The settings that are not really Streamyfin's own: they mirror fields of the
@@ -281,10 +285,10 @@ export function useMediaPreferences(): MediaPreferences {
       // whose value is `undefined` renders off and refuses to stay on.
       const seed: Partial<Settings> = {};
       // A fresh Jellyfin account carries factory values: no subtitle
-      // language ("") and mode "Default". Seeding those overwrote the app's
-      // own defaults (English, Smart; #20) on every launch for anyone who
-      // never touched their server preferences, which is every new account.
-      // Only values the user actually chose on the server are taken.
+      // language ("") and mode "Default". The empty language must not erase
+      // the app's English fallback for accounts without a chosen language.
+      // Only a chosen subtitle language is taken. Mode is resolved separately
+      // so phones with an untouched profile adopt the new None default.
       if (config?.SubtitleLanguagePreference) {
         seed.defaultSubtitleLanguage = findCulture(
           config.SubtitleLanguagePreference,
@@ -298,12 +302,11 @@ export function useMediaPreferences(): MediaPreferences {
             ? ({ ThreeLetterISOLanguageName: ORIGINAL_LANGUAGE } as CultureDto)
             : findCulture(userAudioPreference);
       }
-      if (
-        config?.SubtitleMode !== undefined &&
-        config.SubtitleMode !== "Default"
-      ) {
-        seed.subtitleMode = config.SubtitleMode;
-      }
+      const subtitleMode = subtitleModeFromProfile(
+        config?.SubtitleMode,
+        Platform.isTV,
+      );
+      if (subtitleMode !== undefined) seed.subtitleMode = subtitleMode;
       if (config?.PlayDefaultAudioTrack !== undefined) {
         // Seeded from the correction decision, not the raw server field: track
         // resolution reads this local copy and cannot wait for the round trip,

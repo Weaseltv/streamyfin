@@ -30,6 +30,7 @@ import { useSettingsActions } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
+import { subtitleModeFromProfile } from "@/utils/jellyfin/userConfiguration";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
 import {
@@ -182,10 +183,23 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useAtom(userAtom);
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [secret, setSecret] = useState<string | null>(null);
-  const { setPluginSettings, refreshStreamyfinPluginSettings } =
+  const { updateSettings, setPluginSettings, refreshStreamyfinPluginSettings } =
     useSettingsActions();
   const { clearAllJellyseerData, setJellyseerrUser } = useJellyseerr();
   const queryClient = useQueryClient();
+
+  // Apply the phone account's subtitle mode at login/session restoration, not
+  // only after visiting Audio & subtitles. This replaces an older cached Smart
+  // factory default for untouched profiles and restores explicit account modes
+  // on a fresh installation or account switch. Never write the profile here.
+  useEffect(() => {
+    if (Platform.isTV) return;
+    const subtitleMode = subtitleModeFromProfile(
+      user?.Configuration?.SubtitleMode,
+      false,
+    );
+    if (subtitleMode !== undefined) updateSettings({ subtitleMode });
+  }, [user, updateSettings]);
 
   // --- Session-expiry handling ----------------------------------------------
   // When the server revokes the token (e.g. the device/session is deleted), a

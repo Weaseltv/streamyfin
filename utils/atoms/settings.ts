@@ -465,10 +465,11 @@ export const defaultValues: Settings = {
   playDefaultAudioTrack: true,
   rememberAudioSelections: true,
   defaultSubtitleLanguage: ENGLISH_CULTURE,
-  // Smart: subtitles come on automatically for audio that is not in the
-  // preferred language and stay off when it is. With English as the
-  // language default this is what most viewers actually want.
-  subtitleMode: SubtitlePlaybackMode.Smart,
+  // Phone subtitles are opt-in. Account preferences can override this default;
+  // mute automation and remembered track selections remain independent.
+  subtitleMode: Platform.isTV
+    ? SubtitlePlaybackMode.Smart
+    : SubtitlePlaybackMode.None,
   rememberSubtitleSelections: true,
   subtitlesOnMute: true,
   showHomeTitles: true,
