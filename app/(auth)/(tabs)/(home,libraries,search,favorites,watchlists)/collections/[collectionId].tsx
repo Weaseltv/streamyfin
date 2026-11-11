@@ -10,7 +10,12 @@ import {
   getUserLibraryApi,
 } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  type Query,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   useFocusEffect,
   useIsFocused,
@@ -80,6 +85,7 @@ import {
   getNextLibraryPage,
   getPreviousLibraryPage,
 } from "@/utils/libraryAlphabet";
+import { holdsSinglePage, trimToFirstPage } from "@/utils/query/firstPageOnly";
 import { loadRandomItem } from "@/utils/randomItem";
 import {
   loadStreamingCollectionAlphabet,
@@ -108,6 +114,7 @@ const page: React.FC = () => {
   const posterSizes = useScaledTVPosterSizes();
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
+  const queryClient = useQueryClient();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const router = useRouter();
@@ -404,7 +411,13 @@ const page: React.FC = () => {
       nameSorted ? getPreviousLibraryPage(firstPageParam, pageSize) : undefined,
     initialPageParam: jumpStart,
     staleTime: 60_000,
-    refetchInterval: isStreaming && isFocused ? 60_000 : false,
+    // A streaming page left open at its top follows the server each minute.
+    // Refreshing replays every loaded page in turn and nothing more can load
+    // meanwhile, so a page scrolled past its first page is left alone.
+    refetchInterval: (query) =>
+      isStreaming && isFocused && holdsSinglePage(query.state.data)
+        ? 60_000
+        : false,
     enabled:
       !ranked &&
       !!api &&
@@ -489,7 +502,23 @@ const page: React.FC = () => {
     () => [["collection-items", api?.basePath, user?.Id, collectionId]],
     [api?.basePath, user?.Id, collectionId],
   );
-  useRefreshLibraryOnFocus(collectionKeys, 60_000);
+  const streamingRef = useRef(isStreaming);
+  streamingRef.current = isStreaming;
+  // Returning to a streaming page refreshes it on the same condition
+  const refreshOnReturn = useCallback(
+    (query: Query) =>
+      !streamingRef.current || holdsSinglePage(query.state.data),
+    [],
+  );
+  useRefreshLibraryOnFocus(collectionKeys, 60_000, refreshOnReturn);
+  // A closed streaming page keeps its first page only, so the next visit
+  // refreshes one page rather than everything that was scrolled through
+  useEffect(() => {
+    const [queryKey] = collectionKeys;
+    return () => {
+      if (streamingRef.current) trimToFirstPage(queryClient, queryKey);
+    };
+  }, [queryClient, collectionKeys]);
 
   const flatData = useMemo(() => {
     if (ranked) return rankedVisible;
@@ -521,12 +550,15 @@ const page: React.FC = () => {
     staleTime: 60_000,
     refetchInterval: nameSorted && isFocused ? 60_000 : false,
   });
-  const { refreshing, onRefresh } = useManualRefresh(() =>
-    Promise.all([
+  const { refreshing, onRefresh } = useManualRefresh(() => {
+    // Pulling down on a streaming page starts again from its first page
+    // rather than replaying every loaded page
+    if (isStreaming) trimToFirstPage(queryClient, collectionKeys[0]);
+    return Promise.all([
       refetch({ throwOnError: true }),
       nameSorted ? refetchAlphabet({ throwOnError: true }) : undefined,
-    ]),
-  );
+    ]);
+  });
   const showAlphabet =
     nameSorted &&
     (data?.pages[0]?.TotalRecordCount ?? alphabet?.totalCount ?? 0) > pageSize;

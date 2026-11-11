@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type Query, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef } from "react";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
@@ -17,15 +17,22 @@ export const HOME_LIBRARY_QUERY_KEYS = PROGRESSION_QUERY_KEYS;
  *
  * Skips the refresh on the very first focus (initial mount already fetches) and
  * throttles to avoid refetch storms when quickly switching tabs.
+ *
+ * `shouldRefresh` narrows a library's scoped keys to the lists worth
+ * refreshing (it is not used on the Home path).
  */
 export function useRefreshLibraryOnFocus(
   queryKeys: readonly (readonly unknown[])[] = HOME_LIBRARY_QUERY_KEYS,
   throttleMs = 30_000,
+  shouldRefresh?: (query: Query) => boolean,
 ) {
   const queryClient = useNetworkAwareQueryClient();
   const refreshQueue = playbackRefreshQueue(useQueryClient());
   const hasFocusedOnce = useRef(false);
   const lastRefreshRef = useRef(0);
+  // Read at focus time: a new function must not re-run the focus effect
+  const shouldRefreshRef = useRef(shouldRefresh);
+  shouldRefreshRef.current = shouldRefresh;
 
   useFocusEffect(
     useCallback(() => {
@@ -45,7 +52,10 @@ export function useRefreshLibraryOnFocus(
         return;
       }
       for (const queryKey of queryKeys) {
-        queryClient.invalidateQueries({ queryKey: [...queryKey] });
+        queryClient.invalidateQueries({
+          queryKey: [...queryKey],
+          predicate: shouldRefreshRef.current,
+        });
       }
     }, [queryClient, queryKeys, throttleMs, refreshQueue]),
   );
