@@ -11,6 +11,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
@@ -195,6 +196,23 @@ export const SeasonPicker: React.FC<Props> = ({
     selectSeason(byIndex ?? fallback);
   }, [sortedSeasons, seasonIndex, initialSeasonIndex]);
 
+  // The list (and the page head it carries) is rebuilt when the viewer moves
+  // from one season to another, which opens the new season at the top. It is
+  // not rebuilt when the first season becomes known: keying the list on the
+  // season id alone built the whole head twice on every visit, once while the
+  // season list was loading and again when it arrived.
+  const shownSeason = isOffline ? selectedSeasonNumber : selectedSeasonId;
+  const [listSeason, setListSeason] = useState({
+    season: shownSeason,
+    switches: 0,
+  });
+  if (shownSeason !== null && shownSeason !== listSeason.season) {
+    setListSeason({
+      season: shownSeason,
+      switches: listSeason.switches + (listSeason.season === null ? 0 : 1),
+    });
+  }
+
   const insets = useSafeAreaInsets();
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((event) => {
@@ -212,9 +230,10 @@ export const SeasonPicker: React.FC<Props> = ({
       { scale: interpolate(scrollOffset.value, [-210, 0, 210], [2, 1, 1]) },
     ],
   }));
+  // A rebuilt list starts at the top, so the backdrop's parallax does too
   useEffect(() => {
     scrollOffset.value = 0;
-  }, [selectedSeasonId, selectedSeasonNumber, scrollOffset]);
+  }, [listSeason.switches, scrollOffset]);
   // One pill column for the season, wide enough for its longest range
   const pillColumnWidth = useMemo(
     () =>
@@ -371,11 +390,7 @@ export const SeasonPicker: React.FC<Props> = ({
   return (
     <View style={{ flex: 1 }}>
       <AnimatedEpisodes
-        key={
-          isOffline
-            ? String(selectedSeasonNumber)
-            : (selectedSeasonId ?? "pending")
-        }
+        key={listSeason.switches}
         data={isPending ? [] : (episodes ?? [])}
         keyExtractor={(episode) => episode.Id!}
         renderItem={renderEpisode}
