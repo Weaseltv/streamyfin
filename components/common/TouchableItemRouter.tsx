@@ -1,4 +1,5 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { useStore } from "jotai";
 import { type PropsWithChildren, useCallback } from "react";
 import {
   Platform,
@@ -7,8 +8,11 @@ import {
 } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
 import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
+import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
 import { useRequestItemActions } from "./ItemActionSheetHost";
+import { prefetchServerImage } from "./ServerImage";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -166,6 +170,8 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const isOffline = useOfflineMode();
   const requestActions = useRequestItemActions();
   const from = useItemNavigationOrigin();
+  // Read when pressed: a card must not re-render for the session's sake
+  const store = useStore();
 
   const handlePress = useCallback(() => {
     // Force music libraries to navigate via the explicit string route.
@@ -177,7 +183,17 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
 
     const navigation = getItemNavigation(item, from);
     router.push(navigation as any);
-  }, [from, item, router]);
+
+    // Start the opened page's top artwork now instead of when the page has
+    // mounted and fetched its details. After the push and never awaited, so
+    // the page change does not wait for it.
+    if (isOffline || Platform.isTV) return;
+    const api = store.get(apiAtom);
+    if (!api) return;
+    for (const uri of titlePageArtworkUris(api, item)) {
+      void prefetchServerImage(uri, api.basePath).catch(() => undefined);
+    }
+  }, [from, item, router, isOffline, store]);
 
   const showActionSheet = useCallback(() => {
     if (["Movie", "Episode", "Series", "Season"].includes(item.Type ?? "")) {

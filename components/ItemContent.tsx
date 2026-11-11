@@ -42,6 +42,7 @@ import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
 import { reconcileItemPlayOptions } from "@/utils/itemPlayOptions";
+import { titleHeaderArt } from "@/utils/titlePageArtwork";
 import { AddToWatchlist } from "./AddToWatchlist";
 import { ItemHeader } from "./ItemHeader";
 import { PlayInRemoteSessionButton } from "./PlayInRemoteSession";
@@ -209,7 +210,10 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
         headerImage={
           <View style={[{ flex: 1 }]}>
             <ItemImage
-              variant={item.Type === "Movie" ? "Backdrop" : "Primary"}
+              // The address a card's tap has already started downloading;
+              // drawn as it arrives, without the 0.3 s fade
+              {...titleHeaderArt(item)}
+              transition={0}
               item={item}
               style={{
                 width: "100%",

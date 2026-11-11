@@ -2,15 +2,15 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { Image } from "expo-image";
 import type React from "react";
 import { useMemo } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Badge } from "@/components/Badge";
 import { ItemImage } from "@/components/common/ItemImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { formatEpisodeNumber } from "@/utils/episodes";
-import { imageWidthFor } from "@/utils/imageSizes";
 import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
+import { titlePosterArt } from "@/utils/titlePageArtwork";
 
 interface Props {
   item: BaseItemDto;
@@ -110,8 +110,9 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
         >
           <ItemImage
             item={item}
-            variant='Primary'
-            width={imageWidthFor(108)}
+            // Shared with the tap that opens the page; no fade on phones
+            {...titlePosterArt()}
+            transition={Platform.isTV ? 300 : 0}
             style={{ width: "100%", height: "100%" }}
           />
         </View>
