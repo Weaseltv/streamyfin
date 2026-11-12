@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type ListRenderItem } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -41,6 +40,10 @@ import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
 import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { useNavTimingStage } from "@/utils/navTiming";
+import {
+  fetchSeasonEpisodes,
+  seasonEpisodesQueryKey,
+} from "@/utils/query/seasonEpisodes";
 import { isSeasonSettled } from "@/utils/seasonSettled";
 import { Text } from "../common/Text";
 import { DownloadItems } from "../DownloadItem";
@@ -121,13 +124,10 @@ export const SeasonPicker: React.FC<Props> = ({
   }, [isOffline, seasons, seasonIndex]);
 
   const { data: episodes, isPending } = useQuery({
-    queryKey: [
-      "episodes",
-      item.Id,
-      isOffline ? selectedSeasonNumber : selectedSeasonId,
-      isOffline,
-      offlineRevision,
-    ],
+    // Online, the episode page's strip reads this same entry
+    queryKey: isOffline
+      ? ["episodes", item.Id, selectedSeasonNumber, isOffline, offlineRevision]
+      : seasonEpisodesQueryKey(item.Id, selectedSeasonId),
     queryFn: async () => {
       if (isOffline) {
         return getDownloadedEpisodesForSeason(
@@ -141,24 +141,12 @@ export const SeasonPicker: React.FC<Props> = ({
         return [];
       }
 
-      const res = await getTvShowsApi(api).getEpisodes({
-        seriesId: item.Id,
+      return fetchSeasonEpisodes({
+        api,
         userId: user.Id,
+        seriesId: item.Id,
         seasonId: selectedSeasonId,
-        enableUserData: true,
-        // Lightweight on purpose: rows show title, runtime and progress.
-        // The download sheet fetches the full episode when it is opened and
-        // playback resolves its own media source, so MediaSources,
-        // MediaStreams, Overview and Trickplay (3.6x the payload) stay out.
       });
-
-      if (res.data.TotalRecordCount === 0)
-        console.warn(
-          "No episodes found for season with ID ~",
-          selectedSeasonId,
-        );
-
-      return res.data.Items;
     },
     staleTime: isOffline ? Infinity : 0,
     enabled: isOffline
