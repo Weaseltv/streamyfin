@@ -30,7 +30,6 @@ import { loadStreamingOrder, saveStreamingOrder } from "@/utils/streamingOrder";
 
 interface Props {
   queryKey: (string | undefined)[];
-  refetchInterval?: number | false;
 }
 
 const WIDTH = railCardWidth("vertical");
@@ -43,10 +42,7 @@ const HEIGHT = Math.round(WIDTH * 1.5);
  * press a service to reorder the row or reset it; the order is saved on this
  * device for this member, as on the TV.
  */
-export const StreamingServicesRow: React.FC<Props> = ({
-  queryKey,
-  refetchInterval = false,
-}) => {
+export const StreamingServicesRow: React.FC<Props> = ({ queryKey }) => {
   const { t } = useTranslation();
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
@@ -67,7 +63,10 @@ export const StreamingServicesRow: React.FC<Props> = ({
           )
         : Promise.resolve([]),
     enabled: !!api && !!user?.Id,
-    refetchInterval,
+    // No timer: the services change when the owner changes them. The row is
+    // asked for again when its order is saved or reset (below), on Home's
+    // pull-to-refresh and when the server reports a library change (both
+    // mark every "home" query), and when the connection returns.
   });
 
   const saveOrder = useCallback(

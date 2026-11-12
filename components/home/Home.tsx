@@ -609,12 +609,6 @@ const HomeMobile = () => {
     defaultSections,
   ]);
 
-  const streamingKeys = useMemo(
-    () => [["home", "streaming", api?.basePath, user?.Id]],
-    [api?.basePath, user?.Id],
-  );
-  useRefreshLibraryOnFocus(streamingKeys, 60_000);
-
   // Get all high priority section keys and check if all have loaded
   const highPrioritySectionKeys = useMemo(() => {
     return sections
@@ -914,10 +908,7 @@ const HomeMobile = () => {
           if (section.type === "Streaming") {
             return (
               <View>
-                <StreamingServicesRow
-                  queryKey={section.queryKey}
-                  refetchInterval={isFocused && reachable ? 60_000 : false}
-                />
+                <StreamingServicesRow queryKey={section.queryKey} />
                 {streamystatsSections}
               </View>
             );
