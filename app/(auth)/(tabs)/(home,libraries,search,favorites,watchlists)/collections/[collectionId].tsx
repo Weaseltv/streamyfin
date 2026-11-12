@@ -61,6 +61,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { useAvailableItemFilters } from "@/hooks/useAvailableItemFilters";
 import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { useRefreshLibraryOnFocus } from "@/hooks/useRefreshLibraryOnFocus";
+import { useTappedCard } from "@/hooks/useTappedCard";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
@@ -149,8 +150,8 @@ const page: React.FC = () => {
   ]);
 
   const {
-    data: collection,
-    isLoading: isCollectionLoading,
+    data: fetchedCollection,
+    isLoading: collectionLoading,
     isError: collectionError,
     isFetching: fetchingCollection,
     refetch: refetchCollection,
@@ -171,6 +172,20 @@ const page: React.FC = () => {
     // curated-row reordering removed on 2026-10-18.)
     staleTime: 60_000,
   });
+  // Phones: a Streaming Services card on Home already holds everything this
+  // page reads from its collection (name, description and the tag that says
+  // it is a streaming service). Opened from that card, the page draws its
+  // head and asks for its titles at once instead of after the collection's
+  // own request, whose answer replaces the card when it arrives. No other
+  // card is used: a Collections grid card comes without tags, so it cannot
+  // say which kind of page this is.
+  const tappedService = useTappedCard(
+    "collection",
+    collectionId,
+    !Platform.isTV,
+  );
+  const collection = fetchedCollection ?? tappedService;
+  const isCollectionLoading = collectionLoading && !collection;
 
   // TV Filter queries
   const { data: tvGenreOptions } = useQuery({
