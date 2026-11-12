@@ -69,7 +69,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
     queryKey: isOffline
       ? ["episodes", seasonId, isOffline]
       : seasonEpisodesQueryKey(item?.SeriesId, seasonId),
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (isOffline) {
         return getDownloadedEpisodesBySeasonId(getDownloadedItems(), seasonId!);
       }
@@ -79,6 +79,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
         userId: user.Id,
         seriesId: item.SeriesId,
         seasonId,
+        signal: context.signal,
       });
     },
     enabled: !!seasonId && (isOffline || (!!api && !!user?.Id)),

@@ -29,18 +29,24 @@ export async function fetchSeasonEpisodes({
   userId,
   seriesId,
   seasonId,
+  signal,
 }: {
   api: Api;
   userId: string;
   seriesId: string;
   seasonId: string;
+  /** The query's own signal: cancels the request when nobody shows the list. */
+  signal?: AbortSignal;
 }): Promise<BaseItemDto[]> {
-  const res = await getTvShowsApi(api).getEpisodes({
-    seriesId,
-    userId,
-    seasonId,
-    enableUserData: true,
-  });
+  const res = await getTvShowsApi(api).getEpisodes(
+    {
+      seriesId,
+      userId,
+      seasonId,
+      enableUserData: true,
+    },
+    { signal },
+  );
 
   if (res.data.TotalRecordCount === 0)
     console.warn("No episodes found for season with ID ~", seasonId);

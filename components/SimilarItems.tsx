@@ -36,13 +36,17 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
 
   const { data: similarItems, isLoading } = useQuery<BaseItemDto[]>({
     queryKey: ["similarItems", itemId, 25],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!api || !user?.Id || !itemId) return [];
-      const response = await getLibraryApi(api).getSimilarItems({
-        itemId,
-        userId: user.Id,
-        limit: 25,
-      });
+      const response = await getLibraryApi(api).getSimilarItems(
+        {
+          itemId,
+          userId: user.Id,
+          limit: 25,
+        },
+        // Leaving the page before the row arrives cancels the request
+        { signal },
+      );
 
       return response.data.Items || [];
     },

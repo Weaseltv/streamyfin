@@ -128,7 +128,7 @@ export const SeasonPicker: React.FC<Props> = ({
     queryKey: isOffline
       ? ["episodes", item.Id, selectedSeasonNumber, isOffline, offlineRevision]
       : seasonEpisodesQueryKey(item.Id, selectedSeasonId),
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (isOffline) {
         return getDownloadedEpisodesForSeason(
           getDownloadedItems(),
@@ -146,6 +146,9 @@ export const SeasonPicker: React.FC<Props> = ({
         userId: user.Id,
         seriesId: item.Id,
         seasonId: selectedSeasonId,
+        // Switching season, or leaving the page, cancels a list still on
+        // its way
+        signal: context.signal,
       });
     },
     staleTime: isOffline ? Infinity : 0,

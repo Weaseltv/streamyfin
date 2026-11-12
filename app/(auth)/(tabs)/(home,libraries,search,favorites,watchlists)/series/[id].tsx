@@ -36,6 +36,7 @@ import { countEpisodes } from "@/utils/episodes";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
 import { useNavTimingStage } from "@/utils/navTiming";
+import { phoneSignal } from "@/utils/query/phoneSignal";
 import { titleDetailsState } from "@/utils/tappedCard";
 import { seriesBackdropUrl } from "@/utils/titlePageArtwork";
 
@@ -81,7 +82,7 @@ const page: React.FC = () => {
     refetch,
   } = useQuery({
     queryKey: ["series", seriesId, isOffline, offlineRevision],
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (isOffline) {
         return buildOfflineSeriesFromEpisodes(getDownloadedItems(), seriesId);
       }
@@ -89,6 +90,8 @@ const page: React.FC = () => {
         api,
         userId: user?.Id,
         itemId: seriesId,
+        // Leaving the page before the show arrives cancels the request
+        signal: phoneSignal(context, Platform.isTV),
       });
     },
     staleTime: isOffline ? Infinity : 60 * 1000,
@@ -163,13 +166,13 @@ const page: React.FC = () => {
 
   const { data: allEpisodes, isLoading } = useQuery({
     queryKey: ["AllEpisodes", seriesId, isOffline, offlineRevision],
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (isOffline) {
         return getDownloadedEpisodesForSeries(getDownloadedItems(), seriesId);
       }
       if (!api || !user?.Id) return [];
 
-      const res = await getTvShowsApi(api).getEpisodes({
+      const request = {
         seriesId: seriesId,
         userId: user.Id,
         enableUserData: true,
@@ -184,6 +187,9 @@ const page: React.FC = () => {
         // phone page draws no picture from this list. The TV page hands the
         // list to its shuffle queue, so it keeps them.
         enableImages: Platform.isTV ? undefined : false,
+      };
+      const res = await getTvShowsApi(api).getEpisodes(request, {
+        signal: phoneSignal(context, Platform.isTV),
       });
       return res?.data.Items || [];
     },

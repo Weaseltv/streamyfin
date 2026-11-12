@@ -5,6 +5,7 @@ import { useAtom } from "jotai";
 import { Platform } from "react-native";
 import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { phoneSignal } from "@/utils/query/phoneSignal";
 
 // Helper to exclude specific fields
 export const excludeFields = (fieldsToExclude: ItemFields[]) => {
@@ -38,7 +39,7 @@ export const useItemQuery = (
 
   return useQuery({
     queryKey: ["item", itemId, finalFields],
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (!itemId) throw new Error("Item ID is required");
 
       if (isOffline) {
@@ -47,11 +48,15 @@ export const useItemQuery = (
 
       if (!api || !user) return null;
 
-      const response = await getItemsApi(api).getItems({
-        ids: [itemId],
-        userId: user.Id,
-        ...(finalFields && { fields: finalFields }),
-      });
+      const response = await getItemsApi(api).getItems(
+        {
+          ids: [itemId],
+          userId: user.Id,
+          ...(finalFields && { fields: finalFields }),
+        },
+        // Leaving the page before the title arrives cancels the request
+        { signal: phoneSignal(context, Platform.isTV) },
+      );
 
       return response.data.Items?.[0];
     },
