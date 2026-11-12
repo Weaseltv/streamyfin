@@ -7,7 +7,6 @@ import {
   getItemsApi,
   getTvShowsApi,
   getUserLibraryApi,
-  getUserViewsApi,
 } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
@@ -74,6 +73,7 @@ import {
   loadRankedItems,
 } from "@/utils/justWatchLists";
 import { storage } from "@/utils/mmkv";
+import { userViewsQuery } from "@/utils/query/userViews";
 import { serverHost } from "@/utils/serverHost";
 
 // Conditionally load TV version
@@ -252,19 +252,7 @@ const HomeMobile = () => {
     isError: e1,
     isLoading: l1,
   } = useQuery({
-    queryKey: ["home", "userViews", user?.Id],
-    queryFn: async () => {
-      if (!api || !user?.Id) {
-        return null;
-      }
-
-      const response = await getUserViewsApi(api).getUserViews({
-        userId: user.Id,
-      });
-
-      return response.data.Items || null;
-    },
-    enabled: !!api && !!user?.Id,
+    ...userViewsQuery(api, user?.Id),
     staleTime: 60 * 1000,
   });
 
@@ -621,12 +609,6 @@ const HomeMobile = () => {
     defaultSections,
   ]);
 
-  const streamingKeys = useMemo(
-    () => [["home", "streaming", api?.basePath, user?.Id]],
-    [api?.basePath, user?.Id],
-  );
-  useRefreshLibraryOnFocus(streamingKeys, 60_000);
-
   // Get all high priority section keys and check if all have loaded
   const highPrioritySectionKeys = useMemo(() => {
     return sections
@@ -926,10 +908,7 @@ const HomeMobile = () => {
           if (section.type === "Streaming") {
             return (
               <View>
-                <StreamingServicesRow
-                  queryKey={section.queryKey}
-                  refetchInterval={isFocused && reachable ? 60_000 : false}
-                />
+                <StreamingServicesRow queryKey={section.queryKey} />
                 {streamystatsSections}
               </View>
             );

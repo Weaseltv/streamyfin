@@ -1,19 +1,23 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, type ViewStyle } from "react-native";
 import { RAIL_GAP } from "@/components/home/ItemCard";
 import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
+import { Freshness } from "@/constants/queryFreshness";
 import useRouter from "@/hooks/useAppRouter";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesBySeasonId } from "@/utils/downloads/offline-series";
 import { countEpisodes } from "@/utils/episodes";
+import {
+  fetchSeasonEpisodes,
+  seasonEpisodesQueryKey,
+} from "@/utils/query/seasonEpisodes";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import {
   HorizontalScroll,
@@ -55,41 +59,55 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
     return item?.SeasonId;
   }, [item]);
 
-  const { data: episodes, isPending } = useQuery({
-    queryKey: ["episodes", seasonId, isOffline],
-    queryFn: async () => {
+  // Online this is the show page's own list of the season, under the show
+  // page's name for it. An episode opened from its show draws the strip from
+  // what the show page already holds; opened from anywhere else, the request
+  // it makes is the one the show page will reuse. The strip used to ask under
+  // a name of its own, with five extra fields (descriptions among them) that
+  // no card here draws.
+  const { data: episodes, isPending } = useQuery<BaseItemDto[]>({
+    queryKey: isOffline
+      ? ["episodes", seasonId, isOffline]
+      : seasonEpisodesQueryKey(item?.SeriesId, seasonId),
+    queryFn: async (context) => {
       if (isOffline) {
         return getDownloadedEpisodesBySeasonId(getDownloadedItems(), seasonId!);
       }
-      if (!api || !user?.Id || !item?.SeriesId) return [];
-      const response = await getTvShowsApi(api).getEpisodes({
+      if (!api || !user?.Id || !item?.SeriesId || !seasonId) return [];
+      return fetchSeasonEpisodes({
+        api,
         userId: user.Id,
-        seasonId: seasonId || undefined,
         seriesId: item.SeriesId,
-        enableUserData: true,
-        fields: [
-          "ItemCounts",
-          "PrimaryImageAspectRatio",
-          "CanDelete",
-          "MediaSourceCount",
-          "Overview",
-        ],
+        seasonId,
+        signal: context.signal,
       });
-      return response.data.Items as BaseItemDto[];
     },
     enabled: !!seasonId && (isOffline || (!!api && !!user?.Id)),
+    // A list the show page fetched a moment ago is not asked for again.
+    // Progress changes do not wait for this: playback and mark-as-played
+    // invalidate the list, which refetches it whatever its age.
+    staleTime: isOffline ? undefined : Freshness.catalog,
   });
 
+  const currentIndex = useMemo(() => {
+    if (item?.Type !== "Episode" || !item.Id) return -1;
+    return episodes?.findIndex((ep) => ep.Id === item.Id) ?? -1;
+  }, [episodes, item?.Id, item?.Type]);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
+  // The strip moves to the current episode as soon as its cards are laid
+  // out: the list reports that once, after its first cards are on screen.
+  // It used to wait a fixed 400 ms after the episodes arrived.
+  const laidOut = useRef(false);
+  const onStripLaidOut = useCallback(() => {
+    laidOut.current = true;
+    if (currentIndexRef.current >= 0) scrollToIndex(currentIndexRef.current);
+  }, []);
+  // The current episode moved within a strip that is already laid out
   useEffect(() => {
-    if (item?.Type === "Episode" && item.Id) {
-      const index = episodes?.findIndex((ep) => ep.Id === item.Id);
-      if (index !== undefined && index !== -1) {
-        setTimeout(() => {
-          scrollToIndex(index);
-        }, 400);
-      }
-    }
-  }, [episodes, item]);
+    if (laidOut.current && currentIndex >= 0) scrollToIndex(currentIndex);
+  }, [currentIndex]);
 
   const snapOffsets = useMemo(() => {
     const itemWidth = Sizes.thumb.w + RAIL_GAP;
@@ -109,6 +127,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
         data={episodes}
         extraData={item}
         loading={loading || isPending}
+        onLoad={onStripLaidOut}
         style={style}
         containerStyle={containerStyle}
         renderItem={(_item, _idx) => (

@@ -24,7 +24,7 @@ export function useSeriesSeasons(
 
   return useQuery({
     queryKey: ["seasons", seriesId, isOffline, offlineRevision],
-    queryFn: async () => {
+    queryFn: async (context) => {
       if (isOffline) {
         return buildOfflineSeasons(getDownloadedItems(), seriesId!);
       }
@@ -42,6 +42,8 @@ export function useSeriesSeasons(
           headers: {
             Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
           },
+          // Leaving the show page before the list arrives cancels the request
+          signal: context.signal,
         },
       );
 

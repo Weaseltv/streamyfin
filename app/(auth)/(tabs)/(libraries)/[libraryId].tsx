@@ -3,7 +3,6 @@ import type { ItemsApiGetItemsRequest } from "@jellyfin/sdk/lib/generated-client
 import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
-  BaseItemKind,
   ItemFilter,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import {
@@ -115,7 +114,12 @@ import {
   getPreviousLibraryPage,
   loadLibraryAlphabet,
 } from "@/utils/libraryAlphabet";
+import {
+  findLibraryStandIn,
+  libraryGridItemType,
+} from "@/utils/libraryStandIn";
 import { useNavTimingStage } from "@/utils/navTiming";
+import { userViewsQuery } from "@/utils/query/userViews";
 import { loadRandomItem } from "@/utils/randomItem";
 
 const GRID_GAP = 10;
@@ -496,7 +500,7 @@ const Page = () => {
   // Whole rows keep prepended pages aligned, including tablets/landscape.
   const pageSize = Platform.isTV ? 36 : Math.ceil(36 / nrOfCols) * nrOfCols;
 
-  const { data: library, isLoading: isLibraryLoading } = useQuery({
+  const { data: fullLibrary, isLoading: isFullLibraryLoading } = useQuery({
     queryKey: ["library", libraryId],
     queryFn: async () => {
       if (!api) return null;
@@ -509,13 +513,31 @@ const Page = () => {
     enabled: !!api && !!user?.Id && !!libraryId,
     staleTime: 60 * 1000,
   });
+  // The page opens on the library's entry in the list Home and the Library
+  // tab already hold, and the grid starts from it, instead of waiting a
+  // round trip for the full item. The list is only read here, never fetched,
+  // and the entry is used on this page alone: nothing is written under
+  // ["library", libraryId] but the full item above.
+  const { data: listEntry } = useQuery({
+    ...userViewsQuery(api, user?.Id),
+    enabled: false,
+    select: (views) => findLibraryStandIn(views, libraryId),
+  });
+  const library = fullLibrary ?? (Platform.isTV ? undefined : listEntry);
+  const isLibraryLoading = isFullLibraryLoading && !library;
+  // Everything below takes the library's name and type, never the record:
+  // the list entry and the full item agree on both, so the swap from one to
+  // the other re-creates no request and resets nothing.
+  const libraryKnown = !!library;
+  const libraryName = library?.Name;
+  const collectionType = library?.CollectionType;
 
   const navigation = useNavigation();
   useEffect(() => {
     navigation.setOptions({
-      title: library?.Name || "",
+      title: libraryName || "",
     });
-  }, [library]);
+  }, [libraryName]);
 
   const accent = libraryAccent(library?.CollectionType, library?.Name);
   useSetPageAccent(library ? accent : undefined);
@@ -576,23 +598,9 @@ const Page = () => {
   }, [navigation, fromSeeAll]);
 
   const itemQuery = useMemo((): ItemsApiGetItemsRequest => {
-    let itemType: BaseItemKind | undefined;
-
     // This fix makes sure to only return 1 type of items, if defined.
     // This is because the underlying directory some times contains other types, and we don't want to show them.
-    if (library?.CollectionType === "movies") {
-      itemType = "Movie";
-    } else if (library?.CollectionType === "tvshows") {
-      itemType = "Series";
-    } else if (library?.CollectionType === "boxsets") {
-      itemType = "BoxSet";
-    } else if (library?.CollectionType === "homevideos") {
-      itemType = "Video";
-    } else if (library?.CollectionType === "musicvideos") {
-      itemType = "MusicVideo";
-    } else if (library?.CollectionType === "playlists") {
-      itemType = "Playlist";
-    }
+    const itemType = libraryGridItemType(collectionType);
 
     return {
       userId: user?.Id,
@@ -612,7 +620,7 @@ const Page = () => {
       years: selectedYears.map((year) => Number.parseInt(year, 10)),
       includeItemTypes: itemType ? [itemType] : undefined,
       searchTerm: searchTerm || undefined,
-      ...(Platform.isTV && library?.CollectionType === "playlists"
+      ...(Platform.isTV && collectionType === "playlists"
         ? { mediaTypes: ["Video"] }
         : {}),
     };
@@ -620,7 +628,7 @@ const Page = () => {
     api,
     user?.Id,
     libraryId,
-    library,
+    collectionType,
     selectedGenres,
     selectedYears,
     selectedTags,
@@ -639,14 +647,14 @@ const Page = () => {
       pageParam: number;
       signal?: AbortSignal;
     }): Promise<BaseItemDtoQueryResult | null> => {
-      if (!api || !library) return null;
+      if (!api || !libraryKnown) return null;
       const response = await getItemsApi(api).getItems(
         { ...itemQuery, limit: pageSize, startIndex: pageParam },
         { signal },
       );
       return response.data || null;
     },
-    [api, library, itemQuery, pageSize],
+    [api, libraryKnown, itemQuery, pageSize],
   );
 
   const { data: availableFilters } = useAvailableItemFilters(

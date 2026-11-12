@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { FlashList, type ListRenderItem } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +23,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { LoadingLine } from "@/components/common/LoadingLine";
+import {
+  NearScreenAnchor,
+  NearScreenProvider,
+  useNearScreenScroll,
+} from "@/components/common/NearScreen";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
 import {
@@ -41,6 +45,11 @@ import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
 import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { useNavTimingStage } from "@/utils/navTiming";
+import {
+  fetchSeasonEpisodes,
+  seasonEpisodesQueryKey,
+} from "@/utils/query/seasonEpisodes";
+import { isSeasonSettled } from "@/utils/seasonSettled";
 import { Text } from "../common/Text";
 import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
@@ -54,6 +63,16 @@ type Props = {
   pageHeader: ReactNode;
   /** Below the episodes (More Like This). */
   pageFooter?: ReactNode;
+  /**
+   * Called once the season on screen has been drawn, or when there is no
+   * season to draw. The show page holds its whole-show request until then.
+   */
+  onSeasonShown?: () => void;
+  /**
+   * False while `item` is a tapped card standing in for the show: the
+   * season's Download and Played buttons wait for the show's own details.
+   */
+  seasonActionsReady?: boolean;
 };
 
 const AnimatedEpisodes = Animated.createAnimatedComponent(
@@ -69,6 +88,8 @@ export const SeasonPicker: React.FC<Props> = ({
   headerImage,
   pageHeader,
   pageFooter,
+  onSeasonShown,
+  seasonActionsReady = true,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -87,7 +108,11 @@ export const SeasonPicker: React.FC<Props> = ({
   const offlineRevision = isOffline ? downloadedItems.length : 0;
 
   // The show page starts this same request alongside the show's own
-  const { data: seasons } = useSeriesSeasons(item.Id, isOffline);
+  const {
+    data: seasons,
+    isPending: seasonsPending,
+    isLoading: seasonsLoading,
+  } = useSeriesSeasons(item.Id, isOffline);
 
   const selectedSeasonId: string | null = useMemo(() => {
     const season: BaseItemDto = seasons?.find(
@@ -110,15 +135,16 @@ export const SeasonPicker: React.FC<Props> = ({
     return season?.IndexNumber ?? null;
   }, [isOffline, seasons, seasonIndex]);
 
-  const { data: episodes, isPending } = useQuery({
-    queryKey: [
-      "episodes",
-      item.Id,
-      isOffline ? selectedSeasonNumber : selectedSeasonId,
-      isOffline,
-      offlineRevision,
-    ],
-    queryFn: async () => {
+  const {
+    data: episodes,
+    isPending,
+    isLoading: episodesLoading,
+  } = useQuery({
+    // Online, the episode page's strip reads this same entry
+    queryKey: isOffline
+      ? ["episodes", item.Id, selectedSeasonNumber, isOffline, offlineRevision]
+      : seasonEpisodesQueryKey(item.Id, selectedSeasonId),
+    queryFn: async (context) => {
       if (isOffline) {
         return getDownloadedEpisodesForSeason(
           getDownloadedItems(),
@@ -131,24 +157,15 @@ export const SeasonPicker: React.FC<Props> = ({
         return [];
       }
 
-      const res = await getTvShowsApi(api).getEpisodes({
-        seriesId: item.Id,
+      return fetchSeasonEpisodes({
+        api,
         userId: user.Id,
+        seriesId: item.Id,
         seasonId: selectedSeasonId,
-        enableUserData: true,
-        // Lightweight on purpose: rows show title, runtime and progress.
-        // The download sheet fetches the full episode when it is opened and
-        // playback resolves its own media source, so MediaSources,
-        // MediaStreams, Overview and Trickplay (3.6x the payload) stay out.
+        // Switching season, or leaving the page, cancels a list still on
+        // its way
+        signal: context.signal,
       });
-
-      if (res.data.TotalRecordCount === 0)
-        console.warn(
-          "No episodes found for season with ID ~",
-          selectedSeasonId,
-        );
-
-      return res.data.Items;
     },
     staleTime: isOffline ? Infinity : 0,
     enabled: isOffline
@@ -217,11 +234,27 @@ export const SeasonPicker: React.FC<Props> = ({
     });
   }
 
+  const seasonSettled = isSeasonSettled({
+    seasonsPending,
+    seasonCount: sortedSeasons.length,
+    seasonChosen: seasonIndex !== undefined,
+    seasonFound: shownSeason !== null,
+    episodesPending: isPending,
+  });
+  // An effect runs after the commit that put the episode rows on screen
+  useEffect(() => {
+    if (seasonSettled) onSeasonShown?.();
+  }, [seasonSettled, onSeasonShown]);
+
   const insets = useSafeAreaInsets();
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((event) => {
     scrollOffset.value = event.contentOffset.y;
   });
+  // The footer (More Like This) holds its request until scrolled near. It
+  // waits for the season first: while the episodes are loading the footer
+  // sits right under the header and would look near on every show.
+  const nearScreen = useNearScreenScroll(scrollOffset, seasonSettled);
   const backdropStyle = useAnimatedStyle(() => ({
     transform: [
       {
@@ -258,6 +291,7 @@ export const SeasonPicker: React.FC<Props> = ({
   );
   const header = (
     <View>
+      <NearScreenAnchor anchor={nearScreen.anchor} />
       <Animated.View
         style={[
           { height: 210, backgroundColor: NeonBoard.stage },
@@ -361,7 +395,7 @@ export const SeasonPicker: React.FC<Props> = ({
               </View>
             </TouchableOpacity>
           </View>
-          {episodes?.length && !isOffline ? (
+          {episodes?.length && !isOffline && seasonActionsReady ? (
             <View className='flex flex-row items-center' style={{ gap: 4 }}>
               <DownloadItems
                 title={t("item_card.download.download_season")}
@@ -386,37 +420,46 @@ export const SeasonPicker: React.FC<Props> = ({
           ) : null}
         </View>
         <View style={{ marginTop: 10 }}>
-          <LoadingLine accent={NeonBoard.show} active={isPending} />
+          {/* Sweeps while a request is under way. A season list that failed
+              leaves the episodes un-asked-for ("pending" for good), which
+              must not read as loading. */}
+          <LoadingLine
+            accent={NeonBoard.show}
+            active={seasonsLoading || episodesLoading}
+          />
         </View>
       </View>
     </View>
   );
   return (
     <View style={{ flex: 1 }}>
-      <AnimatedEpisodes
-        key={listSeason.switches}
-        data={isPending ? [] : (episodes ?? [])}
-        keyExtractor={(episode) => episode.Id!}
-        renderItem={renderEpisode}
-        extraData={pillColumnWidth}
-        ListHeaderComponent={header}
-        ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
-        ListEmptyComponent={
-          !isPending ? (
-            <View
-              style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
-            >
-              <Text variant='meta' muted>
-                {t("item_card.no_episodes_for_this_season")}
-              </Text>
-            </View>
-          ) : null
-        }
-        drawDistance={128}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-      />
+      <NearScreenProvider value={nearScreen.value}>
+        <AnimatedEpisodes
+          key={listSeason.switches}
+          data={isPending ? [] : (episodes ?? [])}
+          keyExtractor={(episode) => episode.Id!}
+          renderItem={renderEpisode}
+          extraData={pillColumnWidth}
+          ListHeaderComponent={header}
+          ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
+          ListEmptyComponent={
+            !isPending ? (
+              <View
+                style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
+              >
+                <Text variant='meta' muted>
+                  {t("item_card.no_episodes_for_this_season")}
+                </Text>
+              </View>
+            ) : null
+          }
+          drawDistance={128}
+          onScroll={onScroll}
+          onContentSizeChange={nearScreen.onContentSizeChange}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        />
+      </NearScreenProvider>
     </View>
   );
 };

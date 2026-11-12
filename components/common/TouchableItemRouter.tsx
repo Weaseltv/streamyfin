@@ -11,6 +11,7 @@ import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { markNavTap } from "@/utils/navTiming";
+import { holdTappedCard } from "@/utils/tappedCard";
 import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
 import { useRequestItemActions } from "./ItemActionSheetHost";
 import { prefetchServerImage } from "./ServerImage";
@@ -132,7 +133,15 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const handlePress = useCallback(() => {
     const navigation = getItemNavigation(item, from);
     markNavTap(navigation);
-    router.push(navigation as any);
+    // Phones, online: the opened page may draw from this card until its own
+    // details arrive. The card is kept in memory beside the navigation, which
+    // only gains a `card` parameter naming the tapped item.
+    const card = isOffline || Platform.isTV ? undefined : holdTappedCard(item);
+    router.push(
+      (card && "params" in navigation
+        ? { ...navigation, params: { ...navigation.params, card } }
+        : navigation) as any,
+    );
 
     // Start the opened page's top artwork now instead of when the page has
     // mounted and fetched its details. After the push and never awaited, so

@@ -284,6 +284,8 @@ const mmkvPersister = createOfflinePersister(
   },
   {
     gate: playbackRefreshQueue(queryClient),
+    // Phones save Home's rows ahead of visited titles; TV keeps its order.
+    order: Platform.isTV ? "visitedFirst" : "homeFirst",
     scheduleIdle: (callback) => {
       const handle = requestIdleCallback(callback, { timeout: 5000 });
       return () => cancelIdleCallback(handle);

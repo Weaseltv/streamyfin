@@ -13,6 +13,7 @@ import { type TouchableOpacityProps, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { libraryAccent, NeonBoard } from "@/constants/Colors";
 import { glyphGlow, Sizes } from "@/constants/neon";
+import { Freshness } from "@/constants/queryFreshness";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
@@ -92,6 +93,8 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
     return nameStr;
   }, [library.CollectionType]);
 
+  const showStats = settings?.libraryOptions?.showStats !== false;
+
   const { data: itemsCount } = useQuery({
     queryKey: ["library-count", library.Id],
     queryFn: async () => {
@@ -104,9 +107,11 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
       });
       return response.data.TotalRecordCount;
     },
+    // Not asked for while the counts are switched off, and not again on every
+    // return to the tab: a library's size changes slowly.
+    enabled: showStats && !!api && !!user?.Id && !!library.Id,
+    staleTime: Freshness.libraryCount,
   });
-
-  const showStats = settings?.libraryOptions?.showStats !== false;
 
   return (
     <TouchableItemRouter
