@@ -69,6 +69,8 @@ function TabStack() {
         options={{
           title: t("watchlists.create_title"),
           presentation: "modal",
+          // Sheets keep the platform's own animation, not the pages' fade
+          animation: "default",
           headerShown: !Platform.isTV,
           headerStyle: { backgroundColor: NeonBoard.card },
           headerTintColor: NeonBoard.text,
@@ -80,6 +82,8 @@ function TabStack() {
         options={{
           title: t("watchlists.edit_title"),
           presentation: "modal",
+          // Sheets keep the platform's own animation, not the pages' fade
+          animation: "default",
           headerShown: !Platform.isTV,
           headerStyle: { backgroundColor: NeonBoard.card },
           headerTintColor: NeonBoard.text,
