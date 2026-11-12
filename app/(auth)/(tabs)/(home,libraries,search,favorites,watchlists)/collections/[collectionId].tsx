@@ -153,8 +153,10 @@ const page: React.FC = () => {
       return data;
     },
     enabled: !!api && !!user?.Id && !!collectionId,
-    staleTime: Platform.isTV ? 60_000 : 0,
-    ...(Platform.isTV ? {} : { gcTime: 0 }),
+    // Kept like any other item, so a return visit draws at once and is
+    // refreshed in the background. (Phones dropped it on close for the
+    // curated-row reordering removed on 2026-10-18.)
+    staleTime: 60_000,
   });
 
   // TV Filter queries
@@ -963,7 +965,16 @@ const page: React.FC = () => {
 
   const resetAllFilters = resetCollectionFilters;
 
-  if (collectionError || (itemsError && flatData.length === 0)) {
+  // Phones draw the page's head as soon as the collection is known and show
+  // loading, failure and retry for its titles in the list area below it.
+  const itemsFailed = !ranked && itemsError && flatData.length === 0;
+  const itemsPending = !ranked && !data && !itemsError;
+
+  if (
+    Platform.isTV
+      ? collectionError || itemsFailed
+      : collectionError && !collection
+  ) {
     return (
       <View
         style={{
@@ -988,7 +999,7 @@ const page: React.FC = () => {
     );
   }
 
-  if (isLoading || isCollectionLoading) {
+  if (isCollectionLoading || (Platform.isTV && isLoading)) {
     return (
       <View className='w-full h-full flex items-center justify-center'>
         <Loader />
@@ -1011,7 +1022,21 @@ const page: React.FC = () => {
           key={`${filterSignature}:${ranked ? quickList : "NEW"}`}
           ref={flashListRef}
           ListEmptyComponent={
-            ranked && rankedFetching ? (
+            itemsFailed ? (
+              <View style={{ paddingTop: 40, paddingHorizontal: 24, gap: 12 }}>
+                <Text>{t("home.section_failed")}</Text>
+                <Button
+                  variant='border'
+                  loading={fetchingCollection || isFetching}
+                  onPress={() => {
+                    if (collectionError) void refetchCollection();
+                    void refetch();
+                  }}
+                >
+                  {t("home.retry")}
+                </Button>
+              </View>
+            ) : itemsPending || (ranked && rankedFetching) ? (
               <View style={{ paddingTop: 40, alignItems: "center" }}>
                 <Loader />
               </View>
