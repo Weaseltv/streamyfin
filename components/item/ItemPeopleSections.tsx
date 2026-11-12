@@ -6,7 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
-import { View, type ViewProps } from "react-native";
+import type { ViewProps } from "react-native";
+import Animated from "react-native-reanimated";
+import { useNearScreen } from "@/components/common/NearScreen";
 import { MoreMoviesWithActor } from "@/components/MoreMoviesWithActor";
 import { CastAndCrew } from "@/components/series/CastAndCrew";
 import { useItemPeopleQuery } from "@/hooks/useItemPeopleQuery";
@@ -16,6 +18,32 @@ import { cancelItemPeopleWork } from "@/utils/query/cancelItemPeopleWork";
 interface Props extends ViewProps {
   item: BaseItemDto;
 }
+
+/**
+ * One "More with" row. Each row judges for itself whether it is near the
+ * screen, so the third actor's request is not made for a viewer who stops at
+ * the cast. Until then the row shows its title over the usual placeholder,
+ * which keeps the rows below it where they will be.
+ */
+const ActorSection: React.FC<{
+  item: BaseItemDto;
+  actorId: string;
+  actorName?: string | null;
+  className?: string;
+}> = ({ item, actorId, actorName, className }) => {
+  const { ref, onLayout, near } = useNearScreen();
+  return (
+    <Animated.View ref={ref} onLayout={onLayout} collapsable={false}>
+      <MoreMoviesWithActor
+        currentItem={item}
+        actorId={actorId}
+        actorName={actorName}
+        className={className}
+        enabled={near}
+      />
+    </Animated.View>
+  );
+};
 
 export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
   const isOffline = useOfflineMode();
@@ -38,9 +66,16 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
     }, [isOffline, item.Id, queryClient]),
   );
 
-  const { data, isLoading } = useItemPeopleQuery(
+  // Focus opens the gate above; being near the screen is the second
+  // condition. The cast is asked for when the viewer has scrolled near it,
+  // or at once on a page short enough that it already is. Only a focused
+  // page is measured, and a page that has started stays started.
+  const { ref, onLayout, near } = useNearScreen(enabled && !isOffline);
+
+  // Pending, not loading: a held request has nothing to show yet either
+  const { data, isPending } = useItemPeopleQuery(
     item.Id,
-    enabled && !isOffline,
+    enabled && near && !isOffline,
   );
 
   const people = useMemo(() => (Array.isArray(data) ? data : []), [data]);
@@ -71,9 +106,9 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
       const spacingClassName = idx === total - 1 ? undefined : "mb-2";
 
       return (
-        <MoreMoviesWithActor
+        <ActorSection
           key={person.Id}
-          currentItem={item}
+          item={item}
           actorId={person.Id}
           actorName={person.Name}
           className={spacingClassName}
@@ -88,15 +123,15 @@ export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
   const shouldSpaceCastAndCrew = topPeople.length > 0;
 
   return (
-    <View {...props}>
+    <Animated.View {...props} ref={ref} onLayout={onLayout} collapsable={false}>
       <CastAndCrew
         item={itemWithPeople}
-        loading={isLoading}
+        loading={isPending}
         className={shouldSpaceCastAndCrew ? "mb-2" : undefined}
       />
       {topPeople.map((person, idx) =>
         renderActorSection(person, idx, topPeople.length),
       )}
-    </View>
+    </Animated.View>
   );
 };

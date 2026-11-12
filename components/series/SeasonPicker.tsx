@@ -23,6 +23,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { LoadingLine } from "@/components/common/LoadingLine";
+import {
+  NearScreenAnchor,
+  NearScreenProvider,
+  useNearScreenScroll,
+} from "@/components/common/NearScreen";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
 import {
@@ -235,6 +240,10 @@ export const SeasonPicker: React.FC<Props> = ({
   const onScroll = useAnimatedScrollHandler((event) => {
     scrollOffset.value = event.contentOffset.y;
   });
+  // The footer (More Like This) holds its request until scrolled near. It
+  // waits for the season first: while the episodes are loading the footer
+  // sits right under the header and would look near on every show.
+  const nearScreen = useNearScreenScroll(scrollOffset, seasonSettled);
   const backdropStyle = useAnimatedStyle(() => ({
     transform: [
       {
@@ -271,6 +280,7 @@ export const SeasonPicker: React.FC<Props> = ({
   );
   const header = (
     <View>
+      <NearScreenAnchor anchor={nearScreen.anchor} />
       <Animated.View
         style={[
           { height: 210, backgroundColor: NeonBoard.stage },
@@ -406,30 +416,33 @@ export const SeasonPicker: React.FC<Props> = ({
   );
   return (
     <View style={{ flex: 1 }}>
-      <AnimatedEpisodes
-        key={listSeason.switches}
-        data={isPending ? [] : (episodes ?? [])}
-        keyExtractor={(episode) => episode.Id!}
-        renderItem={renderEpisode}
-        extraData={pillColumnWidth}
-        ListHeaderComponent={header}
-        ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
-        ListEmptyComponent={
-          !isPending ? (
-            <View
-              style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
-            >
-              <Text variant='meta' muted>
-                {t("item_card.no_episodes_for_this_season")}
-              </Text>
-            </View>
-          ) : null
-        }
-        drawDistance={128}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-      />
+      <NearScreenProvider value={nearScreen.value}>
+        <AnimatedEpisodes
+          key={listSeason.switches}
+          data={isPending ? [] : (episodes ?? [])}
+          keyExtractor={(episode) => episode.Id!}
+          renderItem={renderEpisode}
+          extraData={pillColumnWidth}
+          ListHeaderComponent={header}
+          ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
+          ListEmptyComponent={
+            !isPending ? (
+              <View
+                style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
+              >
+                <Text variant='meta' muted>
+                  {t("item_card.no_episodes_for_this_season")}
+                </Text>
+              </View>
+            ) : null
+          }
+          drawDistance={128}
+          onScroll={onScroll}
+          onContentSizeChange={nearScreen.onContentSizeChange}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        />
+      </NearScreenProvider>
     </View>
   );
 };

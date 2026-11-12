@@ -5,6 +5,8 @@ import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View, type ViewProps } from "react-native";
+import Animated from "react-native-reanimated";
+import { useNearScreen } from "@/components/common/NearScreen";
 import { ItemCard, railCardWidth } from "@/components/home/ItemCard";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
@@ -34,7 +36,14 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
   const [user] = useAtom(userAtom);
   const { t } = useTranslation();
 
-  const { data: similarItems, isLoading } = useQuery<BaseItemDto[]>({
+  // The row sits at the bottom of the page. Its request waits until the
+  // viewer has scrolled near it (or the page is short enough that it already
+  // is), instead of taking a connection as the page opens. A row already in
+  // the cache is drawn at once either way.
+  const { ref, onLayout, near } = useNearScreen();
+
+  // Pending, not loading: a held request has nothing to show yet either
+  const { data: similarItems, isPending } = useQuery<BaseItemDto[]>({
     queryKey: ["similarItems", itemId, 25],
     queryFn: async ({ signal }) => {
       if (!api || !user?.Id || !itemId) return [];
@@ -50,7 +59,7 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
 
       return response.data.Items || [];
     },
-    enabled: !!api && !!user?.Id,
+    enabled: !!api && !!user?.Id && near,
     staleTime: Number.POSITIVE_INFINITY,
   });
 
@@ -63,15 +72,15 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
   const badgeFor = useMemo(() => rowBadges(items), [items]);
 
   return (
-    <View {...props}>
+    <Animated.View {...props} ref={ref} onLayout={onLayout} collapsable={false}>
       <SectionHeader
         title={t("item_card.similar_items")}
         accent={accent}
-        count={isLoading ? undefined : items.length}
+        count={isPending ? undefined : items.length}
       />
       <HorizontalScroll
         data={items}
-        loading={isLoading}
+        loading={isPending}
         height={POSTER_CAROUSEL_HEIGHT}
         noItemsText={t("item_card.no_similar_items_found")}
         renderItem={(item: BaseItemDto, idx: number) => (
@@ -91,6 +100,6 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
           </TouchableItemRouter>
         )}
       />
-    </View>
+    </Animated.View>
   );
 };

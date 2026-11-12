@@ -20,19 +20,23 @@ interface Props extends ViewProps {
   actorId: string;
   actorName?: string | null;
   currentItem: BaseItemDto;
+  /** False holds the request; the row draws its placeholder meanwhile. */
+  enabled?: boolean;
 }
 
 export const MoreMoviesWithActor: React.FC<Props> = ({
   actorId,
   actorName,
   currentItem,
+  enabled = true,
   ...props
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const { t } = useTranslation();
 
-  const { data: items, isLoading } = useQuery({
+  // Pending, not loading: a held request has nothing to show yet either
+  const { data: items, isPending } = useQuery({
     queryKey: ["actor", "movies", actorId, currentItem.Id, user?.Id],
     queryFn: async ({ signal }) => {
       if (!api || !user?.Id) return [];
@@ -64,7 +68,7 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
 
       return uniqueItems;
     },
-    enabled: !!api && !!user?.Id && !!actorId,
+    enabled: !!api && !!user?.Id && !!actorId && enabled,
     staleTime: Freshness.catalog,
   });
 
@@ -91,11 +95,11 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
       <SectionHeader
         title={t("item_card.more_with", { name: actorName ?? "" })}
         accent={typeAccent(currentItem)}
-        count={isLoading ? undefined : items?.length}
+        count={isPending ? undefined : items?.length}
       />
       <HorizontalScroll
         data={items}
-        loading={isLoading}
+        loading={isPending}
         height={POSTER_CAROUSEL_HEIGHT}
         renderItem={renderItem}
       />

@@ -14,6 +14,11 @@ import Animated, {
   useScrollViewOffset,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  NearScreenAnchor,
+  NearScreenProvider,
+  useNearScreenScroll,
+} from "@/components/common/NearScreen";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims } from "@/constants/neon";
 
@@ -39,6 +44,9 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
 }: Props) => {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
+  // Sections low on a phone page hold their requests until scrolled near,
+  // judged on the UI thread from this same offset
+  const nearScreen = useNearScreenScroll(scrollOffset);
   const insets = useSafeAreaInsets();
   // Expo Router's native-stack measurement already includes the status inset.
   const navigationHeight = useHeaderHeight();
@@ -104,7 +112,11 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
               }
             : undefined
         }
+        onContentSizeChange={
+          Platform.isTV ? undefined : nearScreen.onContentSizeChange
+        }
       >
+        {!Platform.isTV && <NearScreenAnchor anchor={nearScreen.anchor} />}
         <Animated.View
           style={[
             {
@@ -159,7 +171,13 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
               backgroundColor: NeonBoard.stage,
             }}
           />
-          {children}
+          {Platform.isTV ? (
+            children
+          ) : (
+            <NearScreenProvider value={nearScreen.value}>
+              {children}
+            </NearScreenProvider>
+          )}
         </View>
       </Animated.ScrollView>
       {!Platform.isTV && (
