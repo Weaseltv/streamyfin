@@ -40,6 +40,7 @@ import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
 import { getEpisodePillColumnWidth } from "@/utils/episodePill";
+import { useNavTimingStage } from "@/utils/navTiming";
 import { Text } from "../common/Text";
 import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
@@ -154,6 +155,9 @@ export const SeasonPicker: React.FC<Props> = ({
       ? !!item.Id && selectedSeasonNumber !== null
       : !!api && !!user?.Id && !!item.Id && !!selectedSeasonId,
   });
+
+  // The show page is complete once the visible season's episodes are here
+  useNavTimingStage("series", item.Id, "full", !!episodes);
 
   const sortedSeasons: BaseItemDto[] = useMemo(
     () =>

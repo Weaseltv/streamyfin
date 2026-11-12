@@ -30,6 +30,7 @@ import {
 import { countEpisodes } from "@/utils/episodes";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
+import { useNavTimingStage } from "@/utils/navTiming";
 import { seriesBackdropUrl } from "@/utils/titlePageArtwork";
 
 const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
@@ -183,6 +184,13 @@ const page: React.FC = () => {
         ) : null,
     });
   }, [allEpisodes, isLoading, item, isOffline]);
+
+  useNavTimingStage(
+    "series",
+    seriesId,
+    "content",
+    !!item && (isOffline || !!backdropUrl),
+  );
 
   // For offline mode, we can show the page even without backdropUrl
   if (!item || (!isOffline && !backdropUrl)) return null;

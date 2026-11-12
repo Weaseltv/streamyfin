@@ -115,6 +115,7 @@ import {
   getPreviousLibraryPage,
   loadLibraryAlphabet,
 } from "@/utils/libraryAlphabet";
+import { useNavTimingStage } from "@/utils/navTiming";
 import { loadRandomItem } from "@/utils/randomItem";
 
 const GRID_GAP = 10;
@@ -770,6 +771,9 @@ const Page = () => {
       []
     );
   }, [data, groupedCollections, allCollections, group]);
+
+  useNavTimingStage("library", libraryId, "content", !!library);
+  useNavTimingStage("library", libraryId, "full", flatData.length > 0);
 
   // RANDOM: one random title from the server with this page's filters,
   // opened (never played), as on the TV

@@ -10,6 +10,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { markNavTap } from "@/utils/navTiming";
 import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
 import { useRequestItemActions } from "./ItemActionSheetHost";
 import { prefetchServerImage } from "./ServerImage";
@@ -130,6 +131,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
 
   const handlePress = useCallback(() => {
     const navigation = getItemNavigation(item, from);
+    markNavTap(navigation);
     router.push(navigation as any);
 
     // Start the opened page's top artwork now instead of when the page has
