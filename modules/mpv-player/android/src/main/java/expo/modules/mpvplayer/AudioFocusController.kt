@@ -28,7 +28,9 @@ import android.util.Log
  *   system's automatic ducking (setWillPauseWhenDucked(false)).
  * - Headphones or a Bluetooth route going away (ACTION_AUDIO_BECOMING_NOISY)
  *   pauses.
- * - [release] abandons focus; called when the player stops or is torn down.
+ * - [release] abandons focus when the player is torn down. [releaseSoon] does
+ *   so after a short delay when playback stops, so loading the next episode
+ *   on the same player keeps the focus it has.
  *
  * All methods run on the main thread; the focus listener is delivered there.
  */
@@ -45,16 +47,25 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
 
     companion object {
         private const val TAG = "AudioFocusController"
+        private const val RELEASE_DELAY_MS = 5000L
     }
 
     private val appContext = context.applicationContext
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** Focus is ours right now. */
     private var hasFocus = false
+    /**
+     * Our request is still with the system: granted and not lost for good.
+     * Stays true through a transient loss, when [hasFocus] is false, so that
+     * [release] still withdraws it.
+     */
+    private var requestActive = false
     /** Set when a transient loss paused a playing video. */
     private var resumeOnGain = false
     private var noisyRegistered = false
+    private val releaseRunnable = Runnable { release() }
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         mainHandler.post { onFocusChange(change) }
@@ -91,6 +102,7 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
      * refused; the caller should then stay paused.
      */
     fun onPlay(): Boolean {
+        mainHandler.removeCallbacks(releaseRunnable)
         resumeOnGain = false
         registerNoisy()
         if (hasFocus) return true
@@ -101,6 +113,7 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
             audioManager.requestAudioFocus(focusListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
         }
         hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        if (hasFocus) requestActive = true
         Log.i(TAG, "Audio focus request: ${if (hasFocus) "granted" else "refused ($result)"}")
         return hasFocus
     }
@@ -110,12 +123,24 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
         resumeOnGain = false
     }
 
+    /**
+     * Playback stopped, but the same player may load the next item straight
+     * away. Give focus back shortly unless [onPlay] is called first.
+     */
+    fun releaseSoon() {
+        resumeOnGain = false
+        mainHandler.removeCallbacks(releaseRunnable)
+        mainHandler.postDelayed(releaseRunnable, RELEASE_DELAY_MS)
+    }
+
     /** Playback is over for this player: give focus back, stop listening. */
     fun release() {
+        mainHandler.removeCallbacks(releaseRunnable)
         resumeOnGain = false
         unregisterNoisy()
-        if (!hasFocus) return
         hasFocus = false
+        if (!requestActive) return
+        requestActive = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioManager.abandonAudioFocusRequest(focusRequest!!)
         } else {
@@ -132,12 +157,16 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
                 // Another app took over for good (music, another video).
                 // Pause and let the user decide; do not resume on our own.
                 hasFocus = false
+                requestActive = false
                 resumeOnGain = false
                 unregisterNoisy()
                 delegate.onFocusPause()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                // A call, an alarm, a voice prompt.
+                // A call, an alarm, a voice prompt. Focus is not ours until
+                // it comes back, so a Play pressed meanwhile asks again
+                // instead of playing over the call.
+                hasFocus = false
                 resumeOnGain = delegate.isPlaying()
                 if (resumeOnGain) delegate.onFocusPause()
             }
@@ -145,6 +174,8 @@ class AudioFocusController(context: Context, private val delegate: Delegate) {
                 // The system ducks us (setWillPauseWhenDucked(false)).
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
+                // A change posted just before release() ran can still arrive.
+                if (!requestActive) return
                 hasFocus = true
                 if (resumeOnGain) {
                     resumeOnGain = false

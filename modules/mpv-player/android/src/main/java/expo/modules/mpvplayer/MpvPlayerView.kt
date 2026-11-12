@@ -327,9 +327,12 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
     fun play() {
         if (!audioFocus.onPlay()) {
             // Refused: another app holds focus, or Android will not grant it
-            // to an app in this state. Stay paused rather than play over it;
-            // the pause event tells JS.
+            // to an app in this state. Stay paused rather than play over it.
+            // mpv reports a pause only when its state changes, and it may
+            // already be paused, so tell JS here: its play button has already
+            // switched to "playing".
             pauseForSystem()
+            onPauseChanged(true)
             return
         }
         intendedPlayState = true
@@ -340,12 +343,14 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
 
     fun pause() {
         audioFocus.onUserPause()
-        intendedPlayState = false
-        renderer?.pause()
-        pipController?.setPlaybackRate(0.0)
+        pauseForSystem()
     }
 
-    /** A pause the system caused (focus loss, route change), not the user. */
+    /**
+     * Pause the engine on its command thread (R28). Called directly for a
+     * pause the system caused (focus loss, route change, leaving the screen);
+     * [pause] is the user's pause and also cancels any pending auto-resume.
+     */
     private fun pauseForSystem() {
         intendedPlayState = false
         val r = renderer
@@ -373,7 +378,11 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * instant OOM on a 2 GB device.
      */
     fun destroy() {
-        audioFocus.release()
+        // Deferred: JS calls destroy() and then loads the next episode on this
+        // same view. Giving focus back at once would mean asking for it again
+        // a moment later, which Android 15 can refuse when the app is not on
+        // top (picture-in-picture).
+        audioFocus.releaseSoon()
         renderer?.stop()
 
         // Reset view-level state so a subsequent loadVideo() on the SAME view
@@ -701,9 +710,9 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
      * Phones pause video when the app leaves the screen, unless it is in
      * picture-in-picture (owner decision, 2026-09-25). Before this, pressing
      * Home with PiP off, locking the phone or closing the PiP window left the
-     * video playing unseen with its audio still running. The pause is a
-     * system pause: playback stays paused when the user returns. Android TV
-     * keeps its behaviour.
+     * video playing unseen with its audio still running. Playback stays
+     * paused when the user returns, including after a call that covered the
+     * app. Android TV keeps its behaviour.
      */
     private var backgroundPauseCallbacks: Application.ActivityLifecycleCallbacks? = null
 
@@ -714,9 +723,12 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
             override fun onActivityStopped(activity: Activity) {
                 if (activity !== findActivity()) return
                 if (activity.isInPictureInPictureMode) return
+                // Also when already paused: a call that paused the video and
+                // then covered the app must not start it again unseen when
+                // the call ends.
+                audioFocus.onUserPause()
                 if (!intendedPlayState) return
                 Log.i(TAG, "Host left the screen outside PiP: pausing")
-                audioFocus.onUserPause()
                 pauseForSystem()
             }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
