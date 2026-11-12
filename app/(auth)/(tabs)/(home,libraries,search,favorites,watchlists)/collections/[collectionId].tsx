@@ -85,6 +85,11 @@ import {
   getNextLibraryPage,
   getPreviousLibraryPage,
 } from "@/utils/libraryAlphabet";
+import {
+  isPendingTile,
+  nearLoadedEnd,
+  pagedGridAhead,
+} from "@/utils/pagedGrid";
 import { holdsSinglePage, trimToFirstPage } from "@/utils/query/firstPageOnly";
 import { loadRandomItem } from "@/utils/randomItem";
 import {
@@ -276,7 +281,10 @@ const page: React.FC = () => {
     setSortOrder([defaultSortOrder]);
   }, [defaultSortBy, defaultSortOrder]);
 
-  const pageSize = Platform.isTV ? 36 : 18;
+  // A streaming service's page takes the server about two seconds whether it
+  // is asked for 18 titles or 60 (measured 2026-11-12), so phones ask for 60:
+  // over three times the titles for the same wait.
+  const pageSize = Platform.isTV ? 36 : isStreaming ? 60 : 18;
   const ranked = isStreaming && !!listCode && quickList !== "NEW";
   const nameSorted =
     isStreaming && !ranked && sortBy[0] === SortByOption.SortName;
@@ -528,6 +536,46 @@ const page: React.FC = () => {
     );
   }, [data, ranked, rankedVisible]);
 
+  // Phones: a tile for each title of the next page, so a fast scroll runs on
+  // over them instead of stopping at the last loaded title. Left out when the
+  // last request failed, so the list ends where the titles do.
+  const ahead = useMemo(
+    () =>
+      ranked || itemsError
+        ? { firstIndex: 0, pending: [] }
+        : pagedGridAhead(data, pageSize, !!hasNextPage),
+    [ranked, itemsError, data, pageSize, hasNextPage],
+  );
+  const listData = useMemo(
+    () => (ahead.pending.length ? [...flatData, ...ahead.pending] : flatData),
+    [flatData, ahead.pending],
+  );
+  // The next page is asked for while the viewer is still well short of the
+  // last loaded title, and again for as long as they stay that close. Read
+  // through a ref so scrolling does not re-render the page.
+  const lastVisibleRef = useRef(0);
+  const loadAhead = useRef({
+    canLoad: false,
+    loaded: 0,
+    pageSize,
+    fetchNextPage,
+  });
+  loadAhead.current = {
+    canLoad: !ranked && !!hasNextPage && !isFetching && !itemsError,
+    loaded: flatData.length,
+    pageSize,
+    fetchNextPage,
+  };
+  const loadMoreIfNear = useCallback(() => {
+    const state = loadAhead.current;
+    if (
+      state.canLoad &&
+      nearLoadedEnd(lastVisibleRef.current, state.loaded, state.pageSize)
+    ) {
+      void state.fetchNextPage({ cancelRefetch: false });
+    }
+  }, []);
+
   const {
     data: alphabet,
     isFetching: isAlphabetFetching,
@@ -561,7 +609,8 @@ const page: React.FC = () => {
   });
   const showAlphabet =
     nameSorted &&
-    (data?.pages[0]?.TotalRecordCount ?? alphabet?.totalCount ?? 0) > pageSize;
+    (data?.pages[0]?.TotalRecordCount ?? alphabet?.totalCount ?? 0) >
+      (Platform.isTV ? 36 : 18);
   const availableLetters = useMemo(
     () => alphabet?.entries.map((entry) => entry.letter) ?? [],
     [alphabet],
@@ -613,12 +662,34 @@ const page: React.FC = () => {
   useEffect(scrollToPendingLetter, [scrollToPendingLetter]);
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken<BaseItemDto>[] }) => {
+      let last = -1;
+      for (const entry of viewableItems) {
+        if (entry.isViewable && (entry.index ?? -1) > last) last = entry.index!;
+      }
+      if (last >= 0) {
+        lastVisibleRef.current = last;
+        loadMoreIfNear();
+      }
       if (pendingJumpRef.current) return;
-      const first = viewableItems.find((entry) => entry.isViewable);
+      // A tile for a title not loaded yet has no name to take a letter from
+      const first = viewableItems.find(
+        (entry) => entry.isViewable && !isPendingTile(entry.item),
+      );
       if (first) setActiveLetter(getLibraryLetter(first.item));
     },
-    [],
+    [loadMoreIfNear],
   );
+  // A new list starts from its top; a page that has just arrived may already
+  // be too few for where the viewer is.
+  useEffect(() => {
+    lastVisibleRef.current = 0;
+  }, [filterSignature, ranked]);
+  useEffect(loadMoreIfNear, [
+    loadMoreIfNear,
+    isFetching,
+    hasNextPage,
+    flatData.length,
+  ]);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
   const pendingScrollTopRef = useRef(false);
   useEffect(() => {
@@ -638,32 +709,52 @@ const page: React.FC = () => {
   }, [isFetching, flatData]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: BaseItemDto; index: number }) => (
-      <TouchableItemRouter
-        key={item.Id}
-        style={{
-          width: "100%",
-          marginBottom:
-            orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 4 : 16,
-        }}
-        item={item}
-      >
-        <View
-          style={{
-            alignSelf:
-              index % 3 === 0
-                ? "flex-end"
-                : (index + 1) % 3 === 0
-                  ? "flex-start"
-                  : "center",
-            width: "89%",
-          }}
-        >
-          <ItemPoster item={item} width={posterWidth} />
-          <ItemCardText item={item} />
-        </View>
-      </TouchableItemRouter>
-    ),
+    ({ item, index }: { item: BaseItemDto; index: number }) => {
+      const cell = {
+        width: "100%",
+        marginBottom:
+          orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 4 : 16,
+      } as const;
+      const column = {
+        alignSelf:
+          index % 3 === 0
+            ? "flex-end"
+            : (index + 1) % 3 === 0
+              ? "flex-start"
+              : "center",
+        width: "89%",
+      } as const;
+      // A title not loaded yet: an empty card of the same size, not tappable
+      if (isPendingTile(item)) {
+        return (
+          <View style={cell}>
+            <View style={column}>
+              <View
+                style={{
+                  width: posterWidth,
+                  height: Math.round((posterWidth * 15) / 10),
+                  borderWidth: 1,
+                  borderColor: NeonBoard.line,
+                  backgroundColor: NeonBoard.card2,
+                }}
+              />
+              <View className='mt-1.5 flex flex-col'>
+                <Text variant='cardTitle'> </Text>
+                <Text variant='meta'> </Text>
+              </View>
+            </View>
+          </View>
+        );
+      }
+      return (
+        <TouchableItemRouter key={item.Id} style={cell} item={item}>
+          <View style={column}>
+            <ItemPoster item={item} width={posterWidth} />
+            <ItemCardText item={item} />
+          </View>
+        </TouchableItemRouter>
+      );
+    },
     [orientation, posterWidth],
   );
 
@@ -695,6 +786,19 @@ const page: React.FC = () => {
   );
 
   const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
+  // Phone grid: a cell is keyed by its place in the whole list, so a tile and
+  // the title that replaces it are the same cell and the grid holds its place
+  // when a page arrives (as it already does when an earlier page loads). The
+  // ranked lists are not paged and keep their ids.
+  const gridKeyExtractor = useCallback(
+    (item: BaseItemDto, index: number) =>
+      ranked ? item.Id || String(index) : String(ahead.firstIndex + index),
+    [ranked, ahead.firstIndex],
+  );
+  const gridItemType = useCallback(
+    (item: BaseItemDto) => (isPendingTile(item) ? "pending" : "title"),
+    [],
+  );
 
   const listHeader = useMemo(
     () => (
@@ -1081,12 +1185,13 @@ const page: React.FC = () => {
             )
           }
           contentInsetAdjustmentBehavior='automatic'
-          data={flatData}
+          data={listData}
+          getItemType={gridItemType}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           renderItem={renderItem}
-          keyExtractor={keyExtractor}
+          keyExtractor={gridKeyExtractor}
           numColumns={nrOfCols}
           onLoad={scrollToPendingLetter}
           onViewableItemsChanged={onViewableItemsChanged}
