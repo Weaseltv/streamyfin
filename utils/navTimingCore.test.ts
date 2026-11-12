@@ -71,6 +71,16 @@ test("a page left early reports what it reached when the next tap comes", () => 
   expect(lines).toEqual(["nav-timing series content=90ms"]);
 });
 
+test("a double tap on one card is timed from the first tap", () => {
+  const { timing, lines, advance } = setup();
+  timing.tap("item", "a");
+  advance(150);
+  timing.tap("item", "a");
+  advance(100);
+  timing.stage("item", "a", "full");
+  expect(lines).toEqual(["nav-timing item content=250ms full=250ms"]);
+});
+
 test("a stage that arrives long after the tap is dropped", () => {
   const { timing, lines, advance } = setup();
   timing.tap("library", "a");

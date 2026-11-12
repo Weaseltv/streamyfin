@@ -145,8 +145,14 @@ export function titleDetailsState(query: {
   details: unknown;
   status: "pending" | "error" | "success";
   fetchStatus: "fetching" | "paused" | "idle";
+  /** How many times the request has ended in an error (React Query's count). */
+  errorUpdateCount?: number;
 }): TitleDetailsState {
   if (query.details) return "ready";
+  // Asking again after an error puts a request with no data back to
+  // "pending". It has still failed until details arrive: the page keeps its
+  // error and Retry (shown busy) instead of swapping back to placeholders.
+  if ((query.errorUpdateCount ?? 0) > 0) return "failed";
   if (query.status === "pending" && query.fetchStatus !== "paused")
     return "loading";
   return "failed";

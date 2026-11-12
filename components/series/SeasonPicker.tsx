@@ -68,6 +68,11 @@ type Props = {
    * season to draw. The show page holds its whole-show request until then.
    */
   onSeasonShown?: () => void;
+  /**
+   * False while `item` is a tapped card standing in for the show: the
+   * season's Download and Played buttons wait for the show's own details.
+   */
+  seasonActionsReady?: boolean;
 };
 
 const AnimatedEpisodes = Animated.createAnimatedComponent(
@@ -84,6 +89,7 @@ export const SeasonPicker: React.FC<Props> = ({
   pageHeader,
   pageFooter,
   onSeasonShown,
+  seasonActionsReady = true,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -102,10 +108,11 @@ export const SeasonPicker: React.FC<Props> = ({
   const offlineRevision = isOffline ? downloadedItems.length : 0;
 
   // The show page starts this same request alongside the show's own
-  const { data: seasons, isPending: seasonsPending } = useSeriesSeasons(
-    item.Id,
-    isOffline,
-  );
+  const {
+    data: seasons,
+    isPending: seasonsPending,
+    isLoading: seasonsLoading,
+  } = useSeriesSeasons(item.Id, isOffline);
 
   const selectedSeasonId: string | null = useMemo(() => {
     const season: BaseItemDto = seasons?.find(
@@ -128,7 +135,11 @@ export const SeasonPicker: React.FC<Props> = ({
     return season?.IndexNumber ?? null;
   }, [isOffline, seasons, seasonIndex]);
 
-  const { data: episodes, isPending } = useQuery({
+  const {
+    data: episodes,
+    isPending,
+    isLoading: episodesLoading,
+  } = useQuery({
     // Online, the episode page's strip reads this same entry
     queryKey: isOffline
       ? ["episodes", item.Id, selectedSeasonNumber, isOffline, offlineRevision]
@@ -384,7 +395,7 @@ export const SeasonPicker: React.FC<Props> = ({
               </View>
             </TouchableOpacity>
           </View>
-          {episodes?.length && !isOffline ? (
+          {episodes?.length && !isOffline && seasonActionsReady ? (
             <View className='flex flex-row items-center' style={{ gap: 4 }}>
               <DownloadItems
                 title={t("item_card.download.download_season")}
@@ -409,7 +420,13 @@ export const SeasonPicker: React.FC<Props> = ({
           ) : null}
         </View>
         <View style={{ marginTop: 10 }}>
-          <LoadingLine accent={NeonBoard.show} active={isPending} />
+          {/* Sweeps while a request is under way. A season list that failed
+              leaves the episodes un-asked-for ("pending" for good), which
+              must not read as loading. */}
+          <LoadingLine
+            accent={NeonBoard.show}
+            active={seasonsLoading || episodesLoading}
+          />
         </View>
       </View>
     </View>

@@ -176,6 +176,15 @@ test("a finished request without details has failed, it is not ready", () => {
       fetchStatus: "fetching",
     }),
   ).toBe("failed");
+  // Asked again after an error: React Query reports "pending" once more
+  expect(
+    titleDetailsState({
+      details: undefined,
+      status: "pending",
+      fetchStatus: "fetching",
+      errorUpdateCount: 1,
+    }),
+  ).toBe("failed");
   // No connection: the request is parked, not under way
   expect(
     titleDetailsState({

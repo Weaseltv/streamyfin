@@ -44,6 +44,16 @@ export function createNavTiming({
 
   return {
     tap(kind: NavTimingKind, id: string) {
+      // A repeated tap on the same card is dropped by navigation: the page
+      // being opened is still the first tap's
+      if (
+        pending &&
+        pending.kind === kind &&
+        pending.id === id &&
+        pending.content === undefined &&
+        now() - pending.at < 1000
+      )
+        return;
       // A page left before it finished still reports what it reached
       if (pending) report(pending);
       pending = { kind, id, at: now() };

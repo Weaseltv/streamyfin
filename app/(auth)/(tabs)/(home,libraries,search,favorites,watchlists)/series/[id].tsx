@@ -79,6 +79,7 @@ const page: React.FC = () => {
     data: item,
     status,
     fetchStatus,
+    errorUpdateCount,
     refetch,
   } = useQuery({
     queryKey: ["series", seriesId, isOffline, offlineRevision],
@@ -108,7 +109,12 @@ const page: React.FC = () => {
   const detailsFailed =
     !item &&
     !!card &&
-    titleDetailsState({ details: item, status, fetchStatus }) === "failed";
+    titleDetailsState({
+      details: item,
+      status,
+      fetchStatus,
+      errorUpdateCount,
+    }) === "failed";
   // Retry asks again for the show and for whichever of its other requests
   // (seasons, episodes) failed along with it
   const retryDetails = useCallback(() => {
@@ -279,6 +285,7 @@ const page: React.FC = () => {
     <OfflineModeProvider isOffline={isOffline}>
       <SeasonPicker
         item={shown}
+        seasonActionsReady={!!item}
         initialSeasonIndex={Number(seasonIndex)}
         currentEpisodeId={nextUpId}
         onSeasonShown={onSeasonShown}

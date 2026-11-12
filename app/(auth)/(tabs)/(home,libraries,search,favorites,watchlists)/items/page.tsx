@@ -39,6 +39,7 @@ const Page: React.FC = () => {
     isLoading,
     status,
     fetchStatus,
+    errorUpdateCount,
     refetch,
   } = useItemQuery(
     id,
@@ -53,7 +54,12 @@ const Page: React.FC = () => {
   const preview = item ? undefined : card;
   const detailsFailed =
     !!preview &&
-    titleDetailsState({ details: item, status, fetchStatus }) === "failed";
+    titleDetailsState({
+      details: item,
+      status,
+      fetchStatus,
+      errorUpdateCount,
+    }) === "failed";
   const retryDetails = useCallback(() => void refetch(), [refetch]);
 
   useNavTimingStage("item", id, "content", !!item || !!preview);
