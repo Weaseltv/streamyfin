@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import type {
   BaseItemDto,
   BaseItemKind,
@@ -20,7 +19,6 @@ import ContinueWatchingPoster from "@/components/ContinueWatchingPoster";
 import { Chip } from "@/components/common/Chip";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { PageHead } from "@/components/common/PageHead";
-import { Image } from "@/components/common/ServerImage";
 import { Text } from "@/components/common/Text";
 import {
   getItemNavigation,
@@ -56,7 +54,6 @@ import { useSettings } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { eventBus } from "@/utils/eventBus";
 import { isCancellation } from "@/utils/isCancellation";
-import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 import type {
   MovieResult,
@@ -184,7 +181,6 @@ export default function SearchPage() {
             Episode: "episodes",
             Person: "actors",
             BoxSet: "movies",
-            Audio: "audio",
           } as Record<BaseItemKind, string>;
 
           const searchType = types.length === 1 ? typeMap[types[0]] : "media";
@@ -200,7 +196,6 @@ export default function SearchPage() {
             ...(response.data.series || []),
             ...(response.data.episodes || []),
             ...(response.data.actors || []),
-            ...(response.data.audio || []),
           ];
 
           if (!allIds.length) {
@@ -258,47 +253,6 @@ export default function SearchPage() {
       }
     },
     [api, searchEngine, settings, user?.Id],
-  );
-
-  // Separate search function for music types - always uses Jellyfin since Streamystats doesn't support music
-  const jellyfinSearchFn = useCallback(
-    async ({
-      types,
-      query,
-      signal,
-    }: {
-      types: BaseItemKind[];
-      query: string;
-      signal?: AbortSignal;
-    }): Promise<BaseItemDto[]> => {
-      if (!api || !query) {
-        return [];
-      }
-
-      try {
-        const searchApi = await getItemsApi(api).getItems(
-          {
-            searchTerm: query,
-            limit: 10,
-            includeItemTypes: types,
-            recursive: true,
-            userId: user?.Id,
-          },
-          { signal },
-        );
-
-        return (searchApi.data.Items as BaseItemDto[]) || [];
-      } catch (error) {
-        // Cancellation is normal here (every keystroke supersedes the last) and
-        // must stay quiet. Everything else has to surface: swallowing it made a
-        // network failure indistinguishable from "no matches".
-        if (isCancellation(error)) {
-          return [];
-        }
-        throw error;
-      }
-    },
-    [api, user?.Id],
   );
 
   // The phone search strip (`SearchField`) under the page head. TV renders
@@ -475,94 +429,15 @@ export default function SearchPage() {
     enabled: secondaryEnabled,
   });
 
-  // Music search queries - always use Jellyfin since Streamystats doesn't support music
-  const {
-    data: artists,
-    isFetching: l9,
-    isError: e9,
-    refetch: r9,
-  } = useQuery({
-    queryKey: ["search", "artists", debouncedSearch],
-    queryFn: ({ signal }) =>
-      jellyfinSearchFn({
-        query: debouncedSearch,
-        types: ["MusicArtist"],
-        signal,
-      }),
-    enabled: secondaryEnabled,
-  });
-
-  const {
-    data: albums,
-    isFetching: l10,
-    isError: e10,
-    refetch: r10,
-  } = useQuery({
-    queryKey: ["search", "albums", debouncedSearch],
-    queryFn: ({ signal }) =>
-      jellyfinSearchFn({
-        query: debouncedSearch,
-        types: ["MusicAlbum"],
-        signal,
-      }),
-    enabled: secondaryEnabled,
-  });
-
-  const {
-    data: songs,
-    isFetching: l11,
-    isError: e11,
-    refetch: r11,
-  } = useQuery({
-    queryKey: ["search", "songs", debouncedSearch],
-    queryFn: ({ signal }) =>
-      jellyfinSearchFn({
-        query: debouncedSearch,
-        types: ["Audio"],
-        signal,
-      }),
-    enabled: secondaryEnabled,
-  });
-
-  const {
-    data: playlists,
-    isFetching: l12,
-    isError: e12,
-    refetch: r12,
-  } = useQuery({
-    queryKey: ["search", "playlists", debouncedSearch],
-    queryFn: ({ signal }) =>
-      jellyfinSearchFn({
-        query: debouncedSearch,
-        types: ["Playlist"],
-        signal,
-      }),
-    enabled: secondaryEnabled,
-  });
-
   const noResults = useMemo(() => {
     return !(
       movies?.length ||
       episodes?.length ||
       series?.length ||
       collections?.length ||
-      actors?.length ||
-      artists?.length ||
-      albums?.length ||
-      songs?.length ||
-      playlists?.length
+      actors?.length
     );
-  }, [
-    episodes,
-    movies,
-    series,
-    collections,
-    actors,
-    artists,
-    albums,
-    songs,
-    playlists,
-  ]);
+  }, [episodes, movies, series, collections, actors]);
 
   const loading = useMemo(() => {
     return (
@@ -572,30 +447,11 @@ export default function SearchPage() {
       l3 ||
       l7 ||
       l8 ||
-      l9 ||
-      l10 ||
-      l11 ||
-      l12 ||
       i1 ||
       i2 ||
       i7
     );
-  }, [
-    librarySearchEnabled,
-    secondaryEnabled,
-    l1,
-    l2,
-    l3,
-    l7,
-    l8,
-    l9,
-    l10,
-    l11,
-    l12,
-    i1,
-    i2,
-    i7,
-  ]);
+  }, [librarySearchEnabled, secondaryEnabled, l1, l2, l3, l7, l8, i1, i2, i7]);
 
   /**
    * Retry handlers for whichever categories failed. Categories resolve
@@ -610,34 +466,11 @@ export default function SearchPage() {
         [e3, r3],
         [e7, r7],
         [e8, r8],
-        [e9, r9],
-        [e10, r10],
-        [e11, r11],
-        [e12, r12],
       ] as const
     )
       .filter(([isError]) => isError)
       .map(([, retry]) => retry);
-  }, [
-    e1,
-    r1,
-    e2,
-    r2,
-    e3,
-    r3,
-    e7,
-    r7,
-    e8,
-    r8,
-    e9,
-    r9,
-    e10,
-    r10,
-    e11,
-    r11,
-    e12,
-    r12,
-  ]);
+  }, [e1, r1, e2, r2, e3, r3, e7, r7, e8, r8]);
 
   /**
    * The old skeleton hid the whole result area until the slowest of nine
@@ -703,56 +536,6 @@ export default function SearchPage() {
       />
     ),
     [handleItemPress],
-  );
-
-  const renderArtistResult = useCallback(
-    (item: BaseItemDto) => (
-      <PersonAvatar
-        person={item as BaseItemPerson}
-        onPress={() => handleItemPress(item)}
-      />
-    ),
-    [handleItemPress],
-  );
-
-  const renderAlbumResult = useCallback(
-    (item: BaseItemDto) => (
-      <MusicCard
-        item={item}
-        url={getPrimaryImageUrl({ api, item })}
-        glyph='disc'
-        meta={item.AlbumArtist || item.Artists?.join(", ")}
-      />
-    ),
-    [api],
-  );
-
-  const renderSongResult = useCallback(
-    (item: BaseItemDto) => (
-      <MusicCard
-        item={item}
-        url={getPrimaryImageUrl({ api, item })}
-        glyph='music'
-        meta={item.Artists?.join(", ") || item.AlbumArtist}
-      />
-    ),
-    [api],
-  );
-
-  const renderPlaylistResult = useCallback(
-    (item: BaseItemDto) => (
-      <MusicCard
-        item={item}
-        url={getPrimaryImageUrl({ api, item })}
-        glyph='list'
-        meta={
-          item.ChildCount !== undefined && item.ChildCount !== null
-            ? t("search.x_items", { count: item.ChildCount })
-            : undefined
-        }
-      />
-    ),
-    [api, t],
   );
 
   // Jellyseerr search for TV
@@ -896,10 +679,6 @@ export default function SearchPage() {
         episodes={episodes}
         collections={collections}
         actors={actors}
-        artists={artists}
-        albums={albums}
-        songs={songs}
-        playlists={playlists}
         loading={loading}
         noResults={noResults}
         onItemPress={handleItemPress}
@@ -925,11 +704,7 @@ export default function SearchPage() {
     (series?.length ?? 0) +
     (episodes?.length ?? 0) +
     (collections?.length ?? 0) +
-    (actors?.length ?? 0) +
-    (artists?.length ?? 0) +
-    (albums?.length ?? 0) +
-    (songs?.length ?? 0) +
-    (playlists?.length ?? 0);
+    (actors?.length ?? 0);
 
   const showCount =
     searchType === "Library" && debouncedSearch.length > 0 && !loading;
@@ -1045,31 +820,6 @@ export default function SearchPage() {
               accent={accent}
               renderItem={renderActorResult}
             />
-            {/* Music search results */}
-            <SearchItemWrapper
-              items={artists}
-              header={t("search.artists")}
-              accent={accent}
-              renderItem={renderArtistResult}
-            />
-            <SearchItemWrapper
-              items={albums}
-              header={t("search.albums")}
-              accent={accent}
-              renderItem={renderAlbumResult}
-            />
-            <SearchItemWrapper
-              items={songs}
-              header={t("search.songs")}
-              accent={accent}
-              renderItem={renderSongResult}
-            />
-            <SearchItemWrapper
-              items={playlists}
-              header={t("search.playlists")}
-              accent={accent}
-              renderItem={renderPlaylistResult}
-            />
           </View>
         ) : (
           <JellyserrIndexPage
@@ -1142,52 +892,5 @@ export const SearchEmpty: React.FC<{ query: string }> = ({ query }) => {
         "{query}"
       </Text>
     </View>
-  );
-};
-
-/** A 96 square art card for albums, songs and playlists (no board; tokens only). */
-const MusicCard: React.FC<{
-  item: BaseItemDto;
-  url?: string | null;
-  glyph: keyof typeof Feather.glyphMap;
-  meta?: string | null;
-}> = ({ item, url, glyph, meta }) => {
-  const size = Sizes.posterSmall.w;
-  return (
-    <TouchableItemRouter item={item} style={{ width: size }}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderWidth: 1,
-          borderColor: NeonBoard.line,
-          backgroundColor: NeonBoard.card2,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        {url ? (
-          <Image
-            recyclingKey={item.Id}
-            source={{ uri: url }}
-            style={{ width: "100%", height: "100%" }}
-            contentFit='cover'
-          />
-        ) : (
-          <Feather name={glyph} size={24} color={NeonBoard.low} />
-        )}
-      </View>
-      <View style={{ marginTop: 6 }}>
-        <Text variant='cardTitle' numberOfLines={1}>
-          {item.Name}
-        </Text>
-        {meta ? (
-          <Text variant='meta' muted numberOfLines={1}>
-            {meta}
-          </Text>
-        ) : null}
-      </View>
-    </TouchableItemRouter>
   );
 };

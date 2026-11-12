@@ -24,7 +24,7 @@ import { Text } from "./Text";
 
 export const NEON_TAB_BAR_HEIGHT = Sizes.tabBar;
 
-/** Keep the music mini-player aligned with the iOS regular-width dock. */
+/** The bar's size: the iOS regular-width dock is taller and inset. */
 export function useNeonTabBarLayout() {
   const { width } = useWindowDimensions();
   const regular = Platform.OS === "ios" && Platform.isPad && width >= 768;

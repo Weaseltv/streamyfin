@@ -34,9 +34,4 @@ describe("getSubtitleProfiles", () => {
     expect(profiles.every((p) => p.Method === "Encode")).toBe(true);
     expect(profiles[0]).toEqual({ Format: "vtt", Method: "Encode" });
   });
-
-  it("returns empty array for target music", () => {
-    const profiles = getSubtitleProfiles({ target: "music" });
-    expect(profiles).toEqual([]);
-  });
 });

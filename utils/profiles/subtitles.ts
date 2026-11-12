@@ -5,7 +5,7 @@
  */
 import type { SubtitleProfile } from "@jellyfin/sdk/lib/generated-client/models";
 
-export type SubtitleProfileTarget = "mpv" | "exoplayer" | "download" | "music";
+export type SubtitleProfileTarget = "mpv" | "exoplayer" | "download";
 
 // Image-based formats - these need to be burned in by Jellyfin (Encode method)
 // because MPV cannot load them externally over HTTP
@@ -110,8 +110,6 @@ export const getSubtitleProfiles = (options?: {
       return [...EXOPLAYER_SUBTITLE_PROFILES];
     case "download":
       return [...DOWNLOAD_SUBTITLE_PROFILES];
-    case "music":
-      return [];
     default:
       return buildMpvSubtitleProfiles();
   }

@@ -135,7 +135,6 @@ bun run ios:install-metal-toolchain  # Fix "missing Metal Toolchain" build error
 5. PlaySettingsProvider
 6. WebSocketProvider
 7. DownloadProvider
-8. MusicPlayerProvider
 
 ### Native Modules
 

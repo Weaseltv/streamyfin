@@ -43,7 +43,7 @@ const icons: Record<CollectionType, IconName> = {
  * A library row: 76 high on the stage with a 1pt `line` rule, a 56×40 `inset`
  * glyph box bordered in the library colour, name, count, coloured chevron.
  * Colours follow the Android TV rail: Movies orange, TV yellow, Stand Up
- * magenta, Boxing pink, UFC azure, Live TV green, Music volt; the 4K
+ * magenta, Boxing pink, UFC azure, Live TV green; the 4K
  * libraries match their regular counterparts.
  */
 export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
@@ -67,8 +67,6 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
       _itemType = "Video";
     } else if (library.CollectionType === "musicvideos") {
       _itemType = "MusicVideo";
-    } else if (library.CollectionType === "music") {
-      _itemType = "MusicAlbum";
     } else if (library.CollectionType === "livetv") {
       _itemType = "TvChannel";
     }
@@ -85,8 +83,6 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
       nameStr = t("library.item_types.series");
     } else if (library.CollectionType === "boxsets") {
       nameStr = t("library.item_types.boxsets");
-    } else if (library.CollectionType === "music") {
-      nameStr = t("library.item_types.albums");
     } else if (library.CollectionType === "livetv") {
       nameStr = t("library.item_types.channels");
     } else {

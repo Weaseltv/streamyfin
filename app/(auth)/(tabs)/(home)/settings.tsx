@@ -73,7 +73,7 @@ function SettingsMobile() {
             showArrow
             title={t("home.settings.appearance.title")}
           />
-          {/* Plugins, Intro, Music and Network are hidden from the hub on
+          {/* Plugins, Intro and Network are hidden from the hub on
               purpose. Their routes stay registered in _layout.tsx: Watchlists
               deep-links straight to the Streamystats plugin page, and the
               first-launch intro still shows itself via hasShownIntro. */}

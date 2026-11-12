@@ -4,10 +4,12 @@ const withExcludeMedia3Dash: ConfigPlugin = (config) => {
   return withAppBuildGradle(config, (config) => {
     const contents = config.modResults.contents;
 
-    // Add exclusion for duplicate media3 modules before dependencies block
+    // Keep the unused Media3 DASH / SmoothStreaming / RTSP modules out of the app.
+    // expo-audio asks for DASH and SmoothStreaming at an older Media3 release than
+    // the player's (modules/exoplayer-player); nothing in the app plays those formats.
     const exclusionBlock = `
 configurations.all {
-    // Exclude duplicate media3 modules to avoid conflict between react-native-video and react-native-track-player
+    // Media3 modules the app does not use (expo-audio would pull in an older release of them)
     exclude group: 'androidx.media3', module: 'media3-exoplayer-dash'
     exclude group: 'androidx.media3', module: 'media3-exoplayer-smoothstreaming'
     exclude group: 'androidx.media3', module: 'media3-exoplayer-rtsp'

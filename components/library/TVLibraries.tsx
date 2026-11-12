@@ -106,8 +106,6 @@ const TVLibraryRow: React.FC<{
       return t("library.item_types.boxsets");
     if (library.CollectionType === "playlists")
       return t("library.item_types.playlists");
-    if (library.CollectionType === "music")
-      return t("library.item_types.items");
     return t("library.item_types.items");
   }, [library.CollectionType, t]);
 
@@ -321,17 +319,10 @@ export const TVLibraries: React.FC = () => {
         router.push("/(auth)/(tabs)/(libraries)/livetv/programs");
         return;
       }
-      if (library.CollectionType === "music") {
-        router.push({
-          pathname: `/(auth)/(tabs)/(libraries)/music/[libraryId]/suggestions`,
-          params: { libraryId: library.Id! },
-        });
-      } else {
-        router.push({
-          pathname: "/(auth)/(tabs)/(libraries)/[libraryId]",
-          params: { libraryId: library.Id! },
-        });
-      }
+      router.push({
+        pathname: "/(auth)/(tabs)/(libraries)/[libraryId]",
+        params: { libraryId: library.Id! },
+      });
     },
     [router],
   );

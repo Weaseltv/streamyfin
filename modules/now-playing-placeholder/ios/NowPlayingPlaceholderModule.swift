@@ -7,7 +7,7 @@ import UIKit
  * artwork and title in its head. While nothing is playing the artwork slot is
  * an empty square, so the cast sheet asks for a placeholder — the app icon
  * and the app name — for as long as it is open, and removes it again on
- * close. Real playback (mpv, the music player) overwrites the whole
+ * close. Real playback (mpv) overwrites the whole
  * dictionary, so the placeholder never shadows live metadata; `hide` only
  * clears the center if the placeholder is still what is in it.
  */

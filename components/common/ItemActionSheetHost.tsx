@@ -112,8 +112,8 @@ function ItemActionSheet({
       },
       {
         label: isFavorite
-          ? t("music.track_options.remove_from_favorites")
-          : t("music.track_options.add_to_favorites"),
+          ? t("common.remove_from_favorites")
+          : t("common.add_to_favorites"),
         onPress: async () => {
           await favoriteMutation.mutateAsync(!isFavorite);
         },

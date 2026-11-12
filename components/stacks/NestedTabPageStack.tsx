@@ -53,14 +53,7 @@ export const commonScreenOptions: ICommonScreenOptions = {
   headerStyle: { backgroundColor: "transparent" },
 };
 
-const routes = [
-  "persons/[personId]",
-  "items/page",
-  "series/[id]",
-  "music/album/[albumId]",
-  "music/artist/[artistId]",
-  "music/playlist/[playlistId]",
-];
+const routes = ["persons/[personId]", "items/page", "series/[id]"];
 
 export const nestedTabPageScreenOptions: Record<string, ICommonScreenOptions> =
   Object.fromEntries(routes.map((route) => [route, commonScreenOptions]));
