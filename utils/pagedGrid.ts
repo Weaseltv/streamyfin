@@ -4,9 +4,9 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 
 /**
- * A paged grid shows a tile for each title it has not loaded yet, up to one
- * page ahead, so a fast scroll runs on over them instead of stopping at the
- * last loaded title. The tiles carry no title: nothing is known about a title
+ * A paged grid shows a tile for each title it has not loaded yet, up to
+ * `tiles` of them, so a fast scroll runs on over them instead of stopping at
+ * the last loaded title. The tiles carry no title: nothing is known about a title
  * until its page arrives.
  */
 const PENDING_ID_PREFIX = "pending:";
@@ -30,7 +30,7 @@ type Pages =
  */
 export function pagedGridAhead(
   data: Pages,
-  pageSize: number,
+  tiles: number,
   hasNextPage: boolean,
 ): { firstIndex: number; pending: BaseItemDto[] } {
   const pages = data?.pages ?? [];
@@ -44,8 +44,8 @@ export function pagedGridAhead(
   if (!hasNextPage) return { firstIndex, pending: [] };
   const total = pages.at(-1)?.TotalRecordCount;
   const ahead = Math.min(
-    pageSize,
-    total == null ? pageSize : Math.max(0, total - end),
+    tiles,
+    total == null ? tiles : Math.max(0, total - end),
   );
   return {
     firstIndex,
@@ -57,10 +57,15 @@ export function pagedGridAhead(
 
 /**
  * True when the last title on screen is close enough to the last loaded title
- * that the next page should be asked for now.
+ * that the next page should be asked for now: within 60 % of a page, but
+ * never before the viewer is halfway through what is loaded, so opening a
+ * list and not scrolling asks for nothing more.
  */
 export const nearLoadedEnd = (
   lastVisibleIndex: number,
   loadedCount: number,
   pageSize: number,
-) => lastVisibleIndex >= loadedCount - Math.floor(pageSize * 0.6);
+) =>
+  lastVisibleIndex >=
+  loadedCount -
+    Math.min(Math.floor(pageSize * 0.6), Math.floor(loadedCount / 2));

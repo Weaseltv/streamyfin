@@ -56,12 +56,23 @@ test("a page with no total still gets a page of tiles while more may follow", ()
 });
 
 test("the next page is asked for well before the last loaded title is reached", () => {
-  // 60 loaded: 20 rows of 3. Ask once row 8 or later is on screen.
-  expect(nearLoadedEnd(11, 60, 60)).toBe(false);
-  expect(nearLoadedEnd(24, 60, 60)).toBe(true);
+  // A streaming list as opened: 60 loaded, pages of 300 after that. Nothing
+  // more is asked for until the viewer is halfway through the 60.
+  expect(nearLoadedEnd(11, 60, 300)).toBe(false);
+  expect(nearLoadedEnd(29, 60, 300)).toBe(false);
+  expect(nearLoadedEnd(30, 60, 300)).toBe(true);
+  // 360 loaded: ask again with 180 titles (60 rows) still to go.
+  expect(nearLoadedEnd(150, 360, 300)).toBe(false);
+  expect(nearLoadedEnd(180, 360, 300)).toBe(true);
   // Standing on tiles past the loaded titles keeps asking.
-  expect(nearLoadedEnd(70, 60, 60)).toBe(true);
+  expect(nearLoadedEnd(400, 360, 300)).toBe(true);
   // A small-page collection asks a few rows from its end.
   expect(nearLoadedEnd(5, 18, 18)).toBe(false);
-  expect(nearLoadedEnd(8, 18, 18)).toBe(true);
+  expect(nearLoadedEnd(9, 18, 18)).toBe(true);
+});
+
+test("the tiles are capped separately from the page size", () => {
+  const data = { pages: [page(0, 60, 1890)], pageParams: [0] };
+  expect(pagedGridAhead(data, 60, true).pending).toHaveLength(60);
+  expect(pagedGridAhead(data, 18, true).pending).toHaveLength(18);
 });

@@ -61,9 +61,21 @@ export function isOfflineCatalogKey(key: QueryKey) {
 }
 
 type Query = PersistedClient["clientState"]["queries"][number];
+/**
+ * A collection grid opened at a letter (its key ends in a start position
+ * other than 0) is a place in a list, not something to restore, and its pages
+ * are large.
+ */
+function isCollectionJump(key: QueryKey) {
+  const start = key[key.length - 1];
+  return (
+    key[0] === "collection-items" && typeof start === "number" && start > 0
+  );
+}
 function eligible(query: Query, now: number) {
   return (
     isOfflineCatalogKey(query.queryKey) &&
+    !isCollectionJump(query.queryKey) &&
     query.state.status === "success" &&
     now - query.state.dataUpdatedAt <= OFFLINE_CACHE_LIMITS.ageMs
   );
@@ -97,14 +109,19 @@ function boundedQuery(query: Query): Query {
     return query;
   // A contiguous prefix preserves accumulated-item pagination and pageParams.
   // Never truncate an episode/season/album array used for counts or a queue.
+  // A collection grid keeps its first page only: a streaming service's later
+  // pages hold 300 titles each, and the page itself keeps only the first
+  // when it is closed.
+  const pages =
+    query.queryKey[0] === "collection-items" ? 1 : OFFLINE_CACHE_LIMITS.pages;
   return {
     ...query,
     state: {
       ...query.state,
       data: {
         ...data,
-        pages: data.pages.slice(0, OFFLINE_CACHE_LIMITS.pages),
-        pageParams: data.pageParams.slice(0, OFFLINE_CACHE_LIMITS.pages),
+        pages: data.pages.slice(0, pages),
+        pageParams: data.pageParams.slice(0, pages),
       },
     },
   };

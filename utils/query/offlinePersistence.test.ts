@@ -91,6 +91,38 @@ describe("bounded offline snapshot", () => {
     expect(data.pages).toHaveLength(3);
     expect(client.clientState.queries[0].state.data).toBe(data);
   });
+  test("a collection grid saves its first page only, and never one opened at a letter", () => {
+    const data = {
+      pages: [{ Items: [1, 2] }, { Items: [3, 4] }, { Items: [5, 6] }],
+      pageParams: [0, 2, 4],
+    };
+    const key = (start: number) => [
+      "collection-items",
+      "server",
+      "user",
+      "prime",
+      true,
+      "All",
+      [],
+      [],
+      [],
+      ["PremiereDate"],
+      ["Descending"],
+      start,
+    ];
+    const client = snapshot([
+      { key: key(0), data },
+      { key: key(300), data },
+    ]);
+    const saved = JSON.parse(serializeOfflineCache(client)!);
+    expect(saved.clientState.queries).toHaveLength(1);
+    expect(saved.clientState.queries[0].queryKey.at(-1)).toBe(0);
+    expect(saved.clientState.queries[0].state.data).toEqual({
+      pages: data.pages.slice(0, 1),
+      pageParams: [0],
+    });
+    expect(data.pages).toHaveLength(3);
+  });
   test("allowlist excludes live services, session polling and whole-series summaries", () => {
     const client = snapshot(
       [

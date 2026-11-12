@@ -281,10 +281,14 @@ const page: React.FC = () => {
     setSortOrder([defaultSortOrder]);
   }, [defaultSortBy, defaultSortOrder]);
 
-  // A streaming service's page takes the server about two seconds whether it
-  // is asked for 18 titles or 60 (measured 2026-11-12), so phones ask for 60:
-  // over three times the titles for the same wait.
-  const pageSize = Platform.isTV ? 36 : isStreaming ? 60 : 18;
+  // A streaming service's list costs the server about two seconds per request
+  // however many titles are asked for: 1.9 to 2.2 s for 18, 60, 300 and all
+  // 1,890 of one service (measured 2026-11-12), and several times that when
+  // other viewers are browsing. So phones make few, large requests: 300 titles
+  // at a time. The list as first opened starts with a small page of 60, which
+  // keeps its saved copy and its minute refresh light.
+  const pageSize = Platform.isTV ? 36 : isStreaming ? 300 : 18;
+  const firstPageSize = isStreaming ? 60 : pageSize;
   const ranked = isStreaming && !!listCode && quickList !== "NEW";
   const nameSorted =
     isStreaming && !ranked && sortBy[0] === SortByOption.SortName;
@@ -341,7 +345,13 @@ const page: React.FC = () => {
           sortBy: sortBy[0],
           sortOrder: sortOrder[0],
           startIndex: pageParam,
-          limit: pageSize,
+          // The list's first 60 titles are always their own page, unless a
+          // jump landed a full page or more down (see jumpToLetter), so the
+          // pages before and after a jump line up without overlapping.
+          limit:
+            pageParam === 0 && jumpStart <= firstPageSize
+              ? firstPageSize
+              : pageSize,
           signal,
         });
 
@@ -384,6 +394,8 @@ const page: React.FC = () => {
       isStreaming,
       mediaType,
       pageSize,
+      firstPageSize,
+      jumpStart,
     ],
   );
 
@@ -543,8 +555,8 @@ const page: React.FC = () => {
     () =>
       ranked || itemsError
         ? { firstIndex: 0, pending: [] }
-        : pagedGridAhead(data, pageSize, !!hasNextPage),
-    [ranked, itemsError, data, pageSize, hasNextPage],
+        : pagedGridAhead(data, firstPageSize, !!hasNextPage),
+    [ranked, itemsError, data, firstPageSize, hasNextPage],
   );
   const listData = useMemo(
     () => (ahead.pending.length ? [...flatData, ...ahead.pending] : flatData),
@@ -651,13 +663,20 @@ const page: React.FC = () => {
           viewPosition: 0,
         });
       } else {
+        // Open at the page holding the letter: the small first page, the
+        // page straight after it, or a full page further down.
         setJump({
           signature: filterSignature,
-          startIndex: Math.floor(entry.index / pageSize) * pageSize,
+          startIndex:
+            entry.index < firstPageSize
+              ? 0
+              : entry.index < pageSize
+                ? firstPageSize
+                : Math.floor(entry.index / pageSize) * pageSize,
         });
       }
     },
-    [alphabet, flatData, filterSignature, pageSize],
+    [alphabet, flatData, filterSignature, pageSize, firstPageSize],
   );
   useEffect(scrollToPendingLetter, [scrollToPendingLetter]);
   const onViewableItemsChanged = useCallback(
