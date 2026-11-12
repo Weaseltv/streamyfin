@@ -32,15 +32,12 @@ import {
 import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
 import { NeonBoard } from "@/constants/Colors";
 import { Scrims, Sizes } from "@/constants/neon";
-import { Freshness } from "@/constants/queryFreshness";
+import { useSeriesSeasons } from "@/hooks/useSeriesSeasons";
 import { useDownload } from "@/providers/DownloadProvider";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import {
-  buildOfflineSeasons,
-  getDownloadedEpisodesForSeason,
-} from "@/utils/downloads/offline-series";
+import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
 import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { Text } from "../common/Text";
 import { DownloadItems } from "../DownloadItem";
@@ -87,34 +84,8 @@ export const SeasonPicker: React.FC<Props> = ({
   // Online queries must not depend on the download count: see series/[id].
   const offlineRevision = isOffline ? downloadedItems.length : 0;
 
-  const { data: seasons } = useQuery({
-    queryKey: ["seasons", item.Id, isOffline, offlineRevision],
-    queryFn: async () => {
-      if (isOffline) {
-        return buildOfflineSeasons(getDownloadedItems(), item.Id!);
-      }
-
-      if (!api || !user?.Id || !item.Id) return [];
-      const response = await api.axiosInstance.get(
-        `${api.basePath}/Shows/${item.Id}/Seasons`,
-        {
-          params: {
-            userId: user?.Id,
-            itemId: item.Id,
-            Fields:
-              "ItemCounts,PrimaryImageAspectRatio,CanDelete,MediaSourceCount",
-          },
-          headers: {
-            Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
-          },
-        },
-      );
-
-      return response.data.Items;
-    },
-    staleTime: isOffline ? Infinity : Freshness.catalog,
-    enabled: isOffline || (!!api && !!user?.Id && !!item.Id),
-  });
+  // The show page starts this same request alongside the show's own
+  const { data: seasons } = useSeriesSeasons(item.Id, isOffline);
 
   const selectedSeasonId: string | null = useMemo(() => {
     const season: BaseItemDto = seasons?.find(

@@ -18,6 +18,7 @@ import { SeriesButtons } from "@/components/series/SeriesButtons";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
 import { TVSeriesPage } from "@/components/series/TVSeriesPage";
 import { NeonBoard } from "@/constants/Colors";
+import { useSeriesSeasons } from "@/hooks/useSeriesSeasons";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
@@ -80,6 +81,14 @@ const page: React.FC = () => {
     staleTime: isOffline ? Infinity : 60 * 1000,
     refetchInterval: !isOffline && Platform.isTV ? 60 * 1000 : undefined,
     enabled: isOffline || (!!api && !!user?.Id),
+  });
+
+  // The season list needs only the show's id. Asked for here, it travels
+  // with the show instead of starting once the show has arrived; the season
+  // picker reads this same request.
+  useSeriesSeasons(seriesId, isOffline, {
+    enabled: !Platform.isTV,
+    silent: true,
   });
 
   // For offline mode, use stored base64 image
