@@ -164,6 +164,12 @@ const page: React.FC = () => {
         // Overview and Trickplay made it 3.6x larger (4.65 MB vs 1.29 MB for
         // a 745-episode show) and nothing here read them. Playback and
         // downloads resolve the full item for the episode they act on.
+        //
+        // Phones also leave out the artwork tags and blur hashes, half of
+        // what is left (1,555 KB vs 756 KB for an 807-episode show): the
+        // phone page draws no picture from this list. The TV page hands the
+        // list to its shuffle queue, so it keeps them.
+        enableImages: Platform.isTV ? undefined : false,
       });
       return res?.data.Items || [];
     },
