@@ -15,10 +15,11 @@ import dev.jdtech.mpv.MPVLib as LibMPV
  * handle lives in process-global state until exit) is strictly safer than
  * crashing.
  *
- * Trade-off: mpv's native footprint (decoder + demuxer cache) for one player
- * stays allocated until the next player's allocation displaces it in scudo's
- * arena. On a TV app where the player is the dominant memory consumer and
- * only one player is alive at a time, this is acceptable.
+ * Retained handles are not reclaimed by dropping this wrapper. Twenty phone-
+ * emulator sessions showed increasing native allocation and threads; an arena
+ * allocation is not evidence that the preceding engine was released. Measure
+ * that separately; do not re-enable unsafe destroy or rewrite engine ownership
+ * as part of command scheduling.
  */
 class MPVLib private constructor(private val instance: LibMPV) {
 

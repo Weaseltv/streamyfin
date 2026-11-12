@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useLocalSearchParams, useSegments } from "expo-router";
 import { useAtom } from "jotai";
-import { orderBy, uniqBy } from "lodash";
+import orderBy from "lodash/orderBy";
+import uniqBy from "lodash/uniqBy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, type TextInput, View } from "react-native";
@@ -47,6 +48,7 @@ import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
+import { useIndexedTitles, useTitleIndex } from "@/hooks/useTitleSearch";
 import { useTVItemActionModal } from "@/hooks/useTVItemActionModal";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { usePageAccent, useSetPageAccent } from "@/utils/atoms/pageAccent";
@@ -62,6 +64,7 @@ import type {
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
 import { createStreamystatsApi } from "@/utils/streamystats";
+import { matchTitles, mergeSearchResults } from "@/utils/titleSearch";
 
 type SearchType = "Library" | "Discover";
 
@@ -93,9 +96,14 @@ export default function SearchPage() {
 
   const { query: debouncedSearch, submit: submitSearch } = useSearchQuery(
     search,
-    searchType === "Discover" && !Platform.isTV
-      ? { delay: 400, minimumLength: 2 }
-      : undefined,
+    Platform.isTV
+      ? undefined
+      : {
+          delay: searchType === "Discover" ? 400 : 350,
+          // A one-letter route search is an explicit request, like Search.
+          minimumLength:
+            q?.trim().length === 1 && search.trim() === q.trim() ? 1 : 2,
+        },
   );
 
   // Library search is cyan, the Requests side mint.
@@ -309,10 +317,10 @@ export default function SearchPage() {
 
   const onChangeSearch = useCallback(
     (text: string) => {
-      router.setParams({ q: "" });
+      if (q && text !== q) router.setParams({ q: "" });
       setSearch(text);
     },
-    [router],
+    [q, router],
   );
 
   useEffect(() => {
@@ -331,7 +339,7 @@ export default function SearchPage() {
   }, []);
 
   const {
-    data: movies,
+    data: serverMovies,
     isFetching: l1,
     isError: e1,
     refetch: r1,
@@ -347,7 +355,7 @@ export default function SearchPage() {
   });
 
   const {
-    data: series,
+    data: serverSeries,
     isFetching: l2,
     isError: e2,
     refetch: r2,
@@ -362,6 +370,21 @@ export default function SearchPage() {
     enabled: searchType === "Library" && debouncedSearch.length > 0,
   });
 
+  const [secondaryQuery, setSecondaryQuery] = useState("");
+  useEffect(() => {
+    if (searchType !== "Library" || !debouncedSearch) return;
+    // A slow or failed primary endpoint cannot starve the remaining categories.
+    const timeout = setTimeout(() => setSecondaryQuery(debouncedSearch), 650);
+    return () => clearTimeout(timeout);
+  }, [debouncedSearch, searchType]);
+  const librarySearchEnabled = searchType === "Library" && !!debouncedSearch;
+  const secondaryEnabled =
+    librarySearchEnabled &&
+    (Platform.isTV ||
+      ((serverMovies !== undefined || e1) &&
+        (serverSeries !== undefined || e2)) ||
+      secondaryQuery === debouncedSearch);
+
   const {
     data: episodes,
     isFetching: l3,
@@ -375,11 +398,11 @@ export default function SearchPage() {
         types: ["Episode"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
-    data: collections,
+    data: serverCollections,
     isFetching: l7,
     isError: e7,
     refetch: r7,
@@ -391,8 +414,50 @@ export default function SearchPage() {
         types: ["BoxSet"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
+
+  // Fuzzy title search, as on WeaselPlex TV (owner, 2026-10-16): the
+  // member's own index of titles finds M*A*S*H for "MASH" and MobLand for
+  // "mob land", which the server's search misses. In the movie, show and
+  // collection sections its matches come first, then the server's results,
+  // then its typo matches. Typed and dictated searches both arrive here as
+  // the debounced query.
+  const titleIndex = useTitleIndex(searchEngine === "Jellyfin");
+  const titleMatches = useMemo(
+    () =>
+      titleIndex && librarySearchEnabled && searchEngine === "Jellyfin"
+        ? matchTitles(titleIndex.titles, debouncedSearch)
+        : undefined,
+    [titleIndex, librarySearchEnabled, searchEngine, debouncedSearch],
+  );
+  const { data: indexedMovies, isFetching: i1 } = useIndexedTitles(
+    "movies",
+    titleMatches?.Movie,
+    librarySearchEnabled,
+  );
+  const { data: indexedSeries, isFetching: i2 } = useIndexedTitles(
+    "series",
+    titleMatches?.Series,
+    librarySearchEnabled,
+  );
+  const { data: indexedCollections, isFetching: i7 } = useIndexedTitles(
+    "collections",
+    titleMatches?.BoxSet,
+    secondaryEnabled,
+  );
+  const movies = useMemo(
+    () => mergeSearchResults(indexedMovies, serverMovies),
+    [indexedMovies, serverMovies],
+  );
+  const series = useMemo(
+    () => mergeSearchResults(indexedSeries, serverSeries),
+    [indexedSeries, serverSeries],
+  );
+  const collections = useMemo(
+    () => mergeSearchResults(indexedCollections, serverCollections),
+    [indexedCollections, serverCollections],
+  );
 
   const {
     data: actors,
@@ -407,7 +472,7 @@ export default function SearchPage() {
         types: ["Person"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   // Music search queries - always use Jellyfin since Streamystats doesn't support music
@@ -424,7 +489,7 @@ export default function SearchPage() {
         types: ["MusicArtist"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -440,7 +505,7 @@ export default function SearchPage() {
         types: ["MusicAlbum"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -456,7 +521,7 @@ export default function SearchPage() {
         types: ["Audio"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const {
@@ -472,7 +537,7 @@ export default function SearchPage() {
         types: ["Playlist"],
         signal,
       }),
-    enabled: searchType === "Library" && debouncedSearch.length > 0,
+    enabled: secondaryEnabled,
   });
 
   const noResults = useMemo(() => {
@@ -500,8 +565,37 @@ export default function SearchPage() {
   ]);
 
   const loading = useMemo(() => {
-    return l1 || l2 || l3 || l7 || l8 || l9 || l10 || l11 || l12;
-  }, [l1, l2, l3, l7, l8, l9, l10, l11, l12]);
+    return (
+      (librarySearchEnabled && !secondaryEnabled) ||
+      l1 ||
+      l2 ||
+      l3 ||
+      l7 ||
+      l8 ||
+      l9 ||
+      l10 ||
+      l11 ||
+      l12 ||
+      i1 ||
+      i2 ||
+      i7
+    );
+  }, [
+    librarySearchEnabled,
+    secondaryEnabled,
+    l1,
+    l2,
+    l3,
+    l7,
+    l8,
+    l9,
+    l10,
+    l11,
+    l12,
+    i1,
+    i2,
+    i7,
+  ]);
 
   /**
    * Retry handlers for whichever categories failed. Categories resolve
@@ -559,6 +653,106 @@ export default function SearchPage() {
       router.push(navigation as any);
     },
     [from, router],
+  );
+
+  const renderMovieResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
+        <MoviePoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderSeriesResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
+        <SeriesPoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderEpisodeResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter item={item} style={{ width: Sizes.thumbSmall.w }}>
+        <ContinueWatchingPoster item={item} size='small' />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderCollectionResult = useCallback(
+    (item: BaseItemDto) => (
+      <TouchableItemRouter item={item} style={{ width: Sizes.posterSmall.w }}>
+        <MoviePoster item={item} size='small' badge={null} />
+        <ItemCardText item={item} />
+      </TouchableItemRouter>
+    ),
+    [],
+  );
+
+  const renderActorResult = useCallback(
+    (item: BaseItemDto) => (
+      <PersonAvatar
+        person={item as BaseItemPerson}
+        onPress={() => handleItemPress(item)}
+      />
+    ),
+    [handleItemPress],
+  );
+
+  const renderArtistResult = useCallback(
+    (item: BaseItemDto) => (
+      <PersonAvatar
+        person={item as BaseItemPerson}
+        onPress={() => handleItemPress(item)}
+      />
+    ),
+    [handleItemPress],
+  );
+
+  const renderAlbumResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='disc'
+        meta={item.AlbumArtist || item.Artists?.join(", ")}
+      />
+    ),
+    [api],
+  );
+
+  const renderSongResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='music'
+        meta={item.Artists?.join(", ") || item.AlbumArtist}
+      />
+    ),
+    [api],
+  );
+
+  const renderPlaylistResult = useCallback(
+    (item: BaseItemDto) => (
+      <MusicCard
+        item={item}
+        url={getPrimaryImageUrl({ api, item })}
+        glyph='list'
+        meta={
+          item.ChildCount !== undefined && item.ChildCount !== null
+            ? t("search.x_items", { count: item.ChildCount })
+            : undefined
+        }
+      />
+    ),
+    [api, t],
   );
 
   // Jellyseerr search for TV
@@ -823,134 +1017,58 @@ export default function SearchPage() {
           <View>
             <SearchItemWrapper
               header={t("search.movies")}
-              accent={NeonBoard.orange}
+              accent={NeonBoard.movie}
               items={movies}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <MoviePoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderMovieResult}
             />
             <SearchItemWrapper
               items={series}
               header={t("search.series")}
-              accent={NeonBoard.yellow}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <SeriesPoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              accent={NeonBoard.show}
+              renderItem={renderSeriesResult}
             />
             <SearchItemWrapper
               items={episodes}
               header={t("search.episodes")}
-              accent={NeonBoard.yellow}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  item={item}
-                  key={item.Id}
-                  style={{ width: Sizes.thumbSmall.w }}
-                >
-                  <ContinueWatchingPoster item={item} size='small' />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              accent={NeonBoard.show}
+              renderItem={renderEpisodeResult}
             />
             <SearchItemWrapper
               items={collections}
               header={t("search.collections")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <TouchableItemRouter
-                  key={item.Id}
-                  item={item}
-                  style={{ width: Sizes.posterSmall.w }}
-                >
-                  <MoviePoster item={item} size='small' badge={null} />
-                  <ItemCardText item={item} />
-                </TouchableItemRouter>
-              )}
+              renderItem={renderCollectionResult}
             />
             <SearchItemWrapper
               items={actors}
               header={t("search.actors")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <PersonAvatar
-                  key={item.Id}
-                  person={item as BaseItemPerson}
-                  onPress={() => handleItemPress(item)}
-                />
-              )}
+              renderItem={renderActorResult}
             />
             {/* Music search results */}
             <SearchItemWrapper
               items={artists}
               header={t("search.artists")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <PersonAvatar
-                  key={item.Id}
-                  person={item as BaseItemPerson}
-                  onPress={() => handleItemPress(item)}
-                />
-              )}
+              renderItem={renderArtistResult}
             />
             <SearchItemWrapper
               items={albums}
               header={t("search.albums")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='disc'
-                  meta={item.AlbumArtist || item.Artists?.join(", ")}
-                />
-              )}
+              renderItem={renderAlbumResult}
             />
             <SearchItemWrapper
               items={songs}
               header={t("search.songs")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='music'
-                  meta={item.Artists?.join(", ") || item.AlbumArtist}
-                />
-              )}
+              renderItem={renderSongResult}
             />
             <SearchItemWrapper
               items={playlists}
               header={t("search.playlists")}
               accent={accent}
-              renderItem={(item: BaseItemDto) => (
-                <MusicCard
-                  key={item.Id}
-                  item={item}
-                  url={getPrimaryImageUrl({ api, item })}
-                  glyph='list'
-                  meta={
-                    item.ChildCount !== undefined && item.ChildCount !== null
-                      ? t("search.x_items", { count: item.ChildCount })
-                      : undefined
-                  }
-                />
-              )}
+              renderItem={renderPlaylistResult}
             />
           </View>
         ) : (
@@ -1051,6 +1169,7 @@ const MusicCard: React.FC<{
       >
         {url ? (
           <Image
+            recyclingKey={item.Id}
             source={{ uri: url }}
             style={{ width: "100%", height: "100%" }}
             contentFit='cover'

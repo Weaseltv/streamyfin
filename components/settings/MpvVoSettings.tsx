@@ -48,7 +48,10 @@ export const MpvVoSettings: React.FC = () => {
 
   return (
     <ListGroup title={t("home.settings.vo_driver.title")} className='mb-4'>
-      <ListItem title={t("home.settings.vo_driver.vo_mode")}>
+      <ListItem
+        stackControlOnCompact
+        title={t("home.settings.vo_driver.vo_mode")}
+      >
         <PlatformDropdown
           groups={voDriverOptions}
           trigger={<DropdownTrigger value={currentVoDriverLabel} />}

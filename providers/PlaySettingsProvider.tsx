@@ -2,9 +2,15 @@ import type {
   BaseItemDto,
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client";
-import { useAtomValue } from "jotai";
+import { useStore } from "jotai";
 import type React from "react";
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { Platform } from "react-native";
 import type { Bitrate } from "@/components/BitrateSelector";
 import { getActivePlayerType, settingsAtom } from "@/utils/atoms/settings";
@@ -47,9 +53,7 @@ export const PlaySettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [playSessionId, setPlaySessionId] = useState<string | null>(null);
 
-  const api = useAtomValue(apiAtom);
-  const settings = useAtomValue(settingsAtom);
-  const user = useAtomValue(userAtom);
+  const atomStore = useStore();
 
   const setOfflineSettings = useCallback((data: PlaybackType) => {
     _setPlaySettings(data);
@@ -62,6 +66,9 @@ export const PlaySettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         | null
         | ((prev: PlaybackType | null) => PlaybackType | null),
     ): Promise<{ url: string | null; sessionId: string | null } | null> => {
+      const api = atomStore.get(apiAtom);
+      const settings = atomStore.get(settingsAtom);
+      const user = atomStore.get(userAtom);
       if (!api || !user || !settings) {
         _setPlaySettings(null);
         return null;
@@ -111,7 +118,7 @@ export const PlaySettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [api, user, settings, playSettings],
+    [atomStore, playSettings],
   );
 
   // useEffect(() => {
@@ -134,18 +141,28 @@ export const PlaySettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   //   postCaps();
   // }, [settings, api]);
 
+  const value = useMemo(
+    () => ({
+      playSettings,
+      setPlaySettings,
+      playUrl,
+      setPlayUrl,
+      setOfflineSettings,
+      playSessionId,
+      mediaSource,
+    }),
+    [
+      playSettings,
+      setPlaySettings,
+      playUrl,
+      setOfflineSettings,
+      playSessionId,
+      mediaSource,
+    ],
+  );
+
   return (
-    <PlaySettingsContext.Provider
-      value={{
-        playSettings,
-        setPlaySettings,
-        playUrl,
-        setPlayUrl,
-        setOfflineSettings,
-        playSessionId,
-        mediaSource,
-      }}
-    >
+    <PlaySettingsContext.Provider value={value}>
       {children}
     </PlaySettingsContext.Provider>
   );

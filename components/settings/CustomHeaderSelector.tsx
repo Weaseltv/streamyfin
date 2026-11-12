@@ -94,9 +94,7 @@ export function CustomHeaderSelector({
               name='link'
               size={14}
               color={
-                config.source === "jellyfin"
-                  ? NeonBoard.onAccent
-                  : NeonBoard.mid
+                config.source === "jellyfin" ? NeonBoard.text : NeonBoard.mid
               }
             />
           }
@@ -111,7 +109,7 @@ export function CustomHeaderSelector({
               name='code'
               size={14}
               color={
-                config.source === "custom" ? NeonBoard.onAccent : NeonBoard.mid
+                config.source === "custom" ? NeonBoard.text : NeonBoard.mid
               }
             />
           }
@@ -124,9 +122,7 @@ export function CustomHeaderSelector({
             <Feather
               name='x-circle'
               size={14}
-              color={
-                config.source === "none" ? NeonBoard.onAccent : NeonBoard.mid
-              }
+              color={config.source === "none" ? NeonBoard.text : NeonBoard.mid}
             />
           }
           label={t("custom_headers.source_none")}

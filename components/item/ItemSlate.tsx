@@ -2,13 +2,15 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { Image } from "expo-image";
 import type React from "react";
 import { useMemo } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Badge } from "@/components/Badge";
 import { ItemImage } from "@/components/common/ItemImage";
 import { Text } from "@/components/common/Text";
 import { NeonBoard, typeAccent, typeLabel } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
-import { runtimeTicksToMinutes } from "@/utils/time";
+import { formatEpisodeNumber } from "@/utils/episodes";
+import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
+import { titlePosterArt } from "@/utils/titlePageArtwork";
 
 interface Props {
   item: BaseItemDto;
@@ -18,14 +20,19 @@ interface Props {
   extraMeta?: (string | null | undefined)[];
 }
 
-/** Year · runtime · rating · score in the type colour · RT badge. */
+/**
+ * Year (an episode's air date, as on the TV) · runtime · rating · score in
+ * the type colour · RT badge.
+ */
 export const ItemMetaLine: React.FC<{
   item: BaseItemDto;
   extra?: (string | null | undefined)[];
 }> = ({ item, extra = [] }) => {
   const accent = typeAccent(item);
+  const airDate =
+    item.Type === "Episode" ? formatAirDate(item.PremiereDate) : null;
   const parts = [
-    item.ProductionYear ? String(item.ProductionYear) : null,
+    airDate ?? (item.ProductionYear ? String(item.ProductionYear) : null),
     item.RunTimeTicks ? runtimeTicksToMinutes(item.RunTimeTicks) : null,
     ...extra,
     item.OfficialRating ?? null,
@@ -67,14 +74,15 @@ export const ItemMetaLine: React.FC<{
 
 /**
  * The item slate that overlaps the backdrop: optional 108×162 poster with a
- * 1pt `line2` border, eyebrow "MOVIE · GENRES", Condensed 30 title, meta line.
+ * 1pt `line2` border, eyebrow "MOVIE · GENRES", the title in Audiowide (large,
+ * shrinking to fit two lines, as the TV's hero title does), meta line.
  */
 export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
   const accent = typeAccent(item);
   const eyebrow = useMemo(() => {
     const type =
       item.Type === "Episode"
-        ? `${typeLabel(item)} · S${item.ParentIndexNumber ?? "?"}:E${item.IndexNumber ?? "?"}`
+        ? `${typeLabel(item)} · ${formatEpisodeNumber(item, { includeSeason: true })}`
         : typeLabel(item);
     const genres = item.Genres?.slice(0, 2).join(", ");
     return [type, genres].filter(Boolean).join(" · ");
@@ -102,7 +110,9 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
         >
           <ItemImage
             item={item}
-            variant='Primary'
+            // Shared with the tap that opens the page; no fade on phones
+            {...titlePosterArt()}
+            transition={Platform.isTV ? 300 : 0}
             style={{ width: "100%", height: "100%" }}
           />
         </View>
@@ -111,7 +121,14 @@ export const ItemSlate: React.FC<Props> = ({ item, poster, extraMeta }) => {
         <Text variant='eyebrow' accent={accent} numberOfLines={1}>
           {eyebrow}
         </Text>
-        <Text variant='display' numberOfLines={2} style={{ marginTop: 4 }}>
+        <Text
+          variant='heroTitle'
+          accent='#FFFFFF'
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.55}
+          style={{ marginTop: 4 }}
+        >
           {item.Type === "Episode" ? item.SeriesName : item.Name}
         </Text>
         {item.Type === "Episode" ? (

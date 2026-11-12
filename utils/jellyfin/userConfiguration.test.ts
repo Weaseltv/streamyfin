@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildUserConfigurationPayload } from "@/utils/jellyfin/userConfiguration";
+import {
+  buildUserConfigurationPayload,
+  subtitleModeFromProfile,
+} from "@/utils/jellyfin/userConfiguration";
 
 const culture = (code: string) =>
   ({ ThreeLetterISOLanguageName: code }) as never;
@@ -52,5 +55,44 @@ describe("buildUserConfigurationPayload", () => {
       preferedLanguage: "en",
     } as never);
     expect(unmirroredPayload).toEqual({});
+  });
+});
+
+describe("subtitleModeFromProfile", () => {
+  test("an untouched phone account replaces the previously cached Smart default", () => {
+    const cached = {
+      subtitleMode: "Smart",
+      subtitlesOnMute: true,
+      rememberSubtitleSelections: true,
+    };
+    const seeded = {
+      ...cached,
+      subtitleMode: subtitleModeFromProfile("Default", false),
+    };
+    expect(seeded).toEqual({
+      subtitleMode: "None",
+      subtitlesOnMute: true,
+      rememberSubtitleSelections: true,
+    });
+  });
+
+  test("explicit account choices survive seeding and can be saved again", () => {
+    for (const mode of ["None", "Smart", "Always", "OnlyForced"] as const) {
+      const seeded = subtitleModeFromProfile(mode, false);
+      expect(seeded).toBe(mode);
+      expect(buildUserConfigurationPayload({ subtitleMode: seeded })).toEqual({
+        SubtitleMode: mode,
+      });
+    }
+  });
+
+  test("an absent profile field leaves local settings alone", () => {
+    expect(subtitleModeFromProfile(undefined, false)).toBeUndefined();
+  });
+
+  test("TV keeps its existing defaults and account overrides", () => {
+    expect(subtitleModeFromProfile("Default", true)).toBeUndefined();
+    expect(subtitleModeFromProfile("Smart", true)).toBe("Smart");
+    expect(subtitleModeFromProfile("None", true)).toBe("None");
   });
 });

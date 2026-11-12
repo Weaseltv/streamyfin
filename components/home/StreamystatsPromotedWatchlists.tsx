@@ -7,8 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
+import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Sizes } from "@/constants/neon";
@@ -107,8 +108,9 @@ const WatchlistSection: React.FC<WatchlistSectionProps> = ({
       {isLoading ? (
         <RailSkeleton orientation='vertical' />
       ) : (
-        <ScrollView
-          horizontal
+        <HomeRowScrollView
+          rowKey={JSON.stringify(["promoted-watchlist", watchlist.id])}
+          itemKeys={items?.map((item) => item.Id ?? "") ?? []}
           showsHorizontalScrollIndicator={false}
           snapToOffsets={snapOffsets}
           decelerationRate='fast'
@@ -131,7 +133,7 @@ const WatchlistSection: React.FC<WatchlistSectionProps> = ({
               </TouchableItemRouter>
             ))}
           </View>
-        </ScrollView>
+        </HomeRowScrollView>
       )}
     </View>
   );

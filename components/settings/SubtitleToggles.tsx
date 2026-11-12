@@ -1,8 +1,7 @@
 import { SubtitlePlaybackMode } from "@jellyfin/sdk/lib/generated-client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View, type ViewProps } from "react-native";
-import { Input } from "@/components/common/Input";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { Stepper } from "@/components/inputs/Stepper";
 import { useSettings } from "@/utils/atoms/settings";
@@ -22,11 +21,6 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
   const { settings, updateSettings } = media;
   const cultures = media.cultures;
   const { t } = useTranslation();
-
-  // Local state for OpenSubtitles API key (only commit on blur)
-  const [openSubtitlesApiKey, setOpenSubtitlesApiKey] = useState(
-    settings?.openSubtitlesApiKey || "",
-  );
 
   const subtitleModes = [
     SubtitlePlaybackMode.Default,
@@ -105,7 +99,10 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           </Text>
         }
       >
-        <ListItem title={t("home.settings.subtitles.subtitle_language")}>
+        <ListItem
+          stackControlOnCompact
+          title={t("home.settings.subtitles.subtitle_language")}
+        >
           <PlatformDropdown
             groups={subtitleLanguageOptionGroups}
             trigger={
@@ -121,6 +118,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
         </ListItem>
 
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.subtitles.subtitle_mode")}
           disabled={pluginSettings?.subtitleMode?.locked}
         >
@@ -151,10 +149,14 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           />
         </ListItem>
 
-        {Platform.OS === "ios" && !Platform.isTV && (
-          <ListItem title={t("home.settings.subtitles.subtitles_on_mute")}>
+        {!Platform.isTV && (
+          <ListItem
+            title={t("home.settings.subtitles.subtitles_on_mute")}
+            disabled={pluginSettings?.subtitlesOnMute?.locked}
+          >
             <SettingSwitch
               value={settings.subtitlesOnMute}
+              disabled={pluginSettings?.subtitlesOnMute?.locked}
               onValueChange={(value) =>
                 updateSettings({ subtitlesOnMute: value })
               }
@@ -177,43 +179,6 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
             }
           />
         </ListItem>
-      </ListGroup>
-
-      {/* OpenSubtitles API Key for client-side subtitle fetching */}
-      <ListGroup
-        title={
-          t("home.settings.subtitles.opensubtitles_title") || "OpenSubtitles"
-        }
-        description={
-          <Text variant='meta' muted>
-            {t("home.settings.subtitles.opensubtitles_hint") ||
-              "Enter your OpenSubtitles API key to enable client-side subtitle search as a fallback when your Jellyfin server doesn't have a subtitle provider configured."}
-          </Text>
-        }
-      >
-        <View className='px-4 pt-1 pb-3'>
-          <Text variant='meta' muted className='mb-2'>
-            {t("home.settings.subtitles.opensubtitles_api_key") || "API Key"}
-          </Text>
-          <Input
-            placeholder={
-              t("home.settings.subtitles.opensubtitles_api_key_placeholder") ||
-              "Enter API key..."
-            }
-            value={openSubtitlesApiKey}
-            onChangeText={setOpenSubtitlesApiKey}
-            onBlur={() => {
-              updateSettings({ openSubtitlesApiKey });
-            }}
-            autoCapitalize='none'
-            autoCorrect={false}
-            secureTextEntry
-          />
-          <Text variant='caption' muted className='mt-2'>
-            {t("home.settings.subtitles.opensubtitles_get_key") ||
-              "Get your free API key at opensubtitles.com/en/consumers"}
-          </Text>
-        </View>
       </ListGroup>
     </View>
   );

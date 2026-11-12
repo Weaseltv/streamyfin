@@ -6,13 +6,7 @@ import type {
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { useAtom } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -27,7 +21,6 @@ import DraggableFlatList, {
   type RenderItemParams,
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
-import { CastButton, CastState } from "react-native-google-cast";
 import { useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TextTicker from "react-native-text-ticker";
@@ -41,8 +34,7 @@ import { TrackOptionsSheet } from "@/components/music/TrackOptionsSheet";
 import { Colors } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
-import { useMusicCast } from "@/hooks/useMusicCast";
-import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { apiAtom } from "@/providers/JellyfinProvider";
 import {
   type RepeatMode,
   useMusicPlayer,
@@ -76,22 +68,12 @@ type ViewMode = "player" | "queue";
 export default function NowPlayingScreen() {
   const { t } = useTranslation();
   const [api] = useAtom(apiAtom);
-  const [user] = useAtom(userAtom);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [viewMode, setViewMode] = useState<ViewMode>("player");
   const [trackOptionsOpen, setTrackOptionsOpen] = useState(false);
   const [playlistPickerOpen, setPlaylistPickerOpen] = useState(false);
   const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
-
-  const {
-    isConnected: isCastConnected,
-    castQueue,
-    castState,
-  } = useMusicCast({
-    api,
-    userId: user?.Id,
-  });
 
   const {
     currentTrack,
@@ -115,7 +97,6 @@ export default function NowPlayingScreen() {
     removeFromQueue,
     reorderQueue,
     stop,
-    pause,
   } = useMusicPlayer();
 
   const { isFavorite, toggleFavorite } = useFavorite(
@@ -133,21 +114,6 @@ export default function NowPlayingScreen() {
   useEffect(() => {
     sliderMax.value = duration > 0 ? duration : 1;
   }, [duration, sliderMax]);
-
-  // Auto-cast queue when Chromecast becomes connected and pause local playback
-  const prevCastState = useRef<CastState | null | undefined>(null);
-  useEffect(() => {
-    if (
-      castState === CastState.CONNECTED &&
-      prevCastState.current !== CastState.CONNECTED &&
-      queue.length > 0
-    ) {
-      // Just connected - pause local playback and cast the queue
-      pause();
-      castQueue({ queue, startIndex: queueIndex });
-    }
-    prevCastState.current = castState;
-  }, [castState, queue, queueIndex, castQueue, pause]);
 
   const imageUrl = useMemo(() => {
     if (!api || !currentTrack) return null;
@@ -322,7 +288,6 @@ export default function NowPlayingScreen() {
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
             onOptionsPress={handleOptionsPress}
-            isCastConnected={isCastConnected}
           />
         ) : (
           <QueueView
@@ -384,7 +349,6 @@ interface PlayerViewProps {
   isFavorite: boolean | undefined;
   onToggleFavorite: () => void;
   onOptionsPress: () => void;
-  isCastConnected: boolean;
 }
 
 const PlayerView: React.FC<PlayerViewProps> = ({
@@ -413,7 +377,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   isFavorite,
   onToggleFavorite,
   onOptionsPress,
-  isCastConnected,
 }) => {
   const audioStream = useMemo(() => {
     return mediaSource?.MediaStreams?.find((stream) => stream.Type === "Audio");
@@ -670,8 +633,8 @@ const PlayerView: React.FC<PlayerViewProps> = ({
         </View>
       )}
 
-      {/* AirPlay & Chromecast Buttons */}
-      {!isTv && (
+      {/* AirPlay (iOS only) */}
+      {!isTv && Platform.OS === "ios" && (
         <View
           style={{
             flexDirection: "row",
@@ -681,25 +644,13 @@ const PlayerView: React.FC<PlayerViewProps> = ({
             marginBottom: 16,
           }}
         >
-          {/* AirPlay (iOS only) */}
-          {Platform.OS === "ios" && (
-            <View style={{ transform: [{ scale: 2.8 }] }}>
-              <ExpoAvRoutePickerView
-                style={{ width: 24, height: 24 }}
-                tintColor='#666666'
-                activeTintColor={Colors.primary}
-              />
-            </View>
-          )}
-          {/* Chromecast */}
-          <CastButton
-            style={{
-              width: 24,
-              height: 24,
-              tintColor: isCastConnected ? Colors.primary : "#666",
-              transform: [{ translateY: 1 }],
-            }}
-          />
+          <View style={{ transform: [{ scale: 2.8 }] }}>
+            <ExpoAvRoutePickerView
+              style={{ width: 24, height: 24 }}
+              tintColor='#666666'
+              activeTintColor={Colors.primary}
+            />
+          </View>
         </View>
       )}
     </ScrollView>

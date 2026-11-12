@@ -1,6 +1,7 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import type React from "react";
 import { View } from "react-native";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { runtimeTicksToMinutes } from "@/utils/time";
 import { Text } from "./common/Text";
 
@@ -8,7 +9,7 @@ type ItemCardProps = {
   item: BaseItemDto;
 };
 
-/** Card caption: title 13/600 on one line, meta 12 in `mid`. */
+/** Card caption, as on the TV: title Exo 2 600 on up to two lines, meta in `mid` on one. */
 export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
   const left =
     item.RunTimeTicks && item.UserData?.PlaybackPositionTicks
@@ -18,16 +19,16 @@ export const ItemCardText: React.FC<ItemCardProps> = ({ item }) => {
     <View className='mt-1.5 flex flex-col'>
       {item.Type === "Episode" ? (
         <>
-          <Text variant='cardTitle' numberOfLines={1} ellipsizeMode='tail'>
+          <Text variant='cardTitle' numberOfLines={2} ellipsizeMode='tail'>
             {item.SeriesName ?? item.Name}
           </Text>
           <Text variant='meta' muted numberOfLines={1}>
-            {`S${item.ParentIndexNumber?.toString()}:E${item.IndexNumber?.toString()} · ${item.Name}`}
+            {`${formatEpisodeNumber(item, { includeSeason: true })} · ${item.Name}`}
           </Text>
         </>
       ) : (
         <>
-          <Text variant='cardTitle' numberOfLines={1} ellipsizeMode='tail'>
+          <Text variant='cardTitle' numberOfLines={2} ellipsizeMode='tail'>
             {item.Name}
           </Text>
           <Text variant='meta' muted numberOfLines={1}>

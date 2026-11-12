@@ -1,7 +1,5 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { type ComponentProps, useEffect, useState } from "react";
 import {
   AccessibilityInfo,
@@ -19,8 +17,9 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NeonBoard, sectionAccent } from "@/constants/Colors";
+import { glowOf, NeonBoard, sectionAccent } from "@/constants/Colors";
 import { rgba, Sizes, Type } from "@/constants/neon";
+import { NavIcon, type NavIconName } from "./NavIcon";
 import { Text } from "./Text";
 
 export const NEON_TAB_BAR_HEIGHT = Sizes.tabBar;
@@ -40,41 +39,23 @@ type BottomTabBarProps = Parameters<
 >[0];
 
 type TabDesign = {
-  glyph: keyof typeof MaterialCommunityIcons.glyphMap;
-  symbol: SymbolViewProps["name"];
-  selectedSymbol: SymbolViewProps["name"];
+  icon: NavIconName;
   accent: string;
 };
+
+/** The TV rail's label colour at rest (`NavDrawer.kt`). */
+const LABEL_REST = "#E1E4EC";
 
 /**
  * Preserve the phone's four destinations. Expo Router strips `href` before
  * passing options to a custom bar, so hidden routes need an explicit allowlist.
+ * Icons are the TV rail's; the Library hub (phone only) uses its folder.
  */
 const TABS: Record<string, TabDesign> = {
-  "(home)": {
-    glyph: "home-outline",
-    symbol: "house",
-    selectedSymbol: "house.fill",
-    accent: sectionAccent("home"),
-  },
-  "(search)": {
-    glyph: "magnify",
-    symbol: "magnifyingglass",
-    selectedSymbol: "magnifyingglass",
-    accent: sectionAccent("search"),
-  },
-  "(favorites)": {
-    glyph: "heart-outline",
-    symbol: "heart",
-    selectedSymbol: "heart.fill",
-    accent: sectionAccent("watchlist"),
-  },
-  "(libraries)": {
-    glyph: "layers-outline",
-    symbol: "rectangle.stack",
-    selectedSymbol: "rectangle.stack.fill",
-    accent: sectionAccent("library"),
-  },
+  "(home)": { icon: "home", accent: sectionAccent("home") },
+  "(search)": { icon: "search", accent: sectionAccent("search") },
+  "(favorites)": { icon: "favorites", accent: sectionAccent("watchlist") },
+  "(libraries)": { icon: "collections", accent: sectionAccent("library") },
 };
 
 const IS_IOS = Platform.OS === "ios";
@@ -105,29 +86,13 @@ function TabArtwork({
   const activeStyle = useAnimatedStyle(() => ({ opacity: selection.value }));
   const idleStyle = useAnimatedStyle(() => ({ opacity: 1 - selection.value }));
   const labelStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      selection.value,
-      [0, 1],
-      [NeonBoard.low, tab.accent],
-    ),
+    color: interpolateColor(selection.value, [0, 1], [LABEL_REST, tab.accent]),
   }));
 
-  const icon = (selected: boolean) =>
-    IS_IOS ? (
-      <SymbolView
-        name={selected ? tab.selectedSymbol : tab.symbol}
-        size={24}
-        weight='medium'
-        tintColor={selected ? tab.accent : NeonBoard.low}
-        style={styles.symbol}
-      />
-    ) : (
-      <MaterialCommunityIcons
-        name={tab.glyph}
-        size={24}
-        color={selected ? tab.accent : NeonBoard.low}
-      />
-    );
+  // As on the TV rail, the glyph is always in the section's glow colour;
+  // the selected tab adds a glow behind it.
+  const glow = glowOf(tab.accent);
+  const icon = () => <NavIcon name={tab.icon} color={glow} size={24} />;
 
   return (
     <>
@@ -137,7 +102,7 @@ function TabArtwork({
           styles.overline,
           {
             backgroundColor: tab.accent,
-            boxShadow: `0 0 10px ${rgba(tab.accent, IS_IOS ? 0.55 : 0.65)}`,
+            boxShadow: `0 0 10px ${rgba(glow, IS_IOS ? 0.55 : 0.65)}`,
           },
           activeStyle,
         ]}
@@ -146,23 +111,23 @@ function TabArtwork({
         <View style={styles.icon}>
           {/* Keep both iOS rasters resident to avoid a blank frame on selection. */}
           <Animated.View style={[styles.iconLayer, idleStyle]}>
-            {icon(false)}
+            {icon()}
           </Animated.View>
           <Animated.View
             style={[
               styles.iconLayer,
               IS_IOS
                 ? {
-                    shadowColor: tab.accent,
+                    shadowColor: glow,
                     shadowOpacity: 0.85,
                     shadowRadius: 3.5,
                     shadowOffset: { width: 0, height: 0 },
                   }
-                : { boxShadow: `0 0 8px ${rgba(tab.accent, 0.22)}` },
+                : { boxShadow: `0 0 8px ${rgba(glow, 0.22)}` },
               activeStyle,
             ]}
           >
-            {icon(true)}
+            {icon()}
           </Animated.View>
         </View>
         <Animated.Text
@@ -310,7 +275,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  symbol: { width: 28, height: 26 },
   tooltip: {
     position: "absolute",
     bottom: "100%",

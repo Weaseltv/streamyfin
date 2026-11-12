@@ -9,6 +9,7 @@ import {
 import { NeonBoard } from "@/constants/Colors";
 import useRouter from "@/hooks/useAppRouter";
 import { useStreamystatsEnabled } from "@/hooks/useWatchlists";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 
 // The promoted-watchlists "See all" on the home page pushes a fully qualified
 // `(watchlists)` path from the home tab, which would otherwise build this tab's
@@ -17,6 +18,14 @@ import { useStreamystatsEnabled } from "@/hooks/useWatchlists";
 export const unstable_settings = Platform.isTV ? {} : { anchor: "index" };
 
 export default function WatchlistsLayout() {
+  return (
+    <ItemNavigationProvider origin='(watchlists)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { t } = useTranslation();
   const router = useRouter();
   const streamystatsEnabled = useStreamystatsEnabled();
@@ -60,6 +69,8 @@ export default function WatchlistsLayout() {
         options={{
           title: t("watchlists.create_title"),
           presentation: "modal",
+          // Sheets keep the platform's own animation, not the pages' fade
+          animation: "default",
           headerShown: !Platform.isTV,
           headerStyle: { backgroundColor: NeonBoard.card },
           headerTintColor: NeonBoard.text,
@@ -71,6 +82,8 @@ export default function WatchlistsLayout() {
         options={{
           title: t("watchlists.edit_title"),
           presentation: "modal",
+          // Sheets keep the platform's own animation, not the pages' fade
+          animation: "default",
           headerShown: !Platform.isTV,
           headerStyle: { backgroundColor: NeonBoard.card },
           headerTintColor: NeonBoard.text,

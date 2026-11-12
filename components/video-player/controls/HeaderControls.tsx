@@ -24,7 +24,7 @@ interface HeaderControlsProps {
   showControls: boolean;
   offline: boolean;
   mediaSource?: MediaSourceInfo | null;
-  startPictureInPicture?: () => Promise<void>;
+  startPictureInPicture?: () => Promise<unknown>;
   switchOnEpisodeMode: () => void;
   goToPreviousItem: () => void;
   goToNextItem: (options: { isAutoPlay?: boolean }) => void;

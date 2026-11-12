@@ -9,6 +9,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { useDownload } from "@/providers/DownloadProvider";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { storage } from "@/utils/mmkv";
 import { runtimeTicksToMinutes } from "@/utils/time";
 import { Text } from "../common/Text";
@@ -105,7 +106,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
           <Text variant='meta' muted numberOfLines={1}>
             {[
               isEpisode
-                ? `S${item.ParentIndexNumber ?? 0}:E${item.IndexNumber ?? 0}`
+                ? `${formatEpisodeNumber(item, { includeSeason: true, fallback: "0" })}`
                 : item.ProductionYear,
               item.RunTimeTicks
                 ? runtimeTicksToMinutes(item.RunTimeTicks)

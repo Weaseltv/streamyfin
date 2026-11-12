@@ -1,30 +1,30 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useAtomValue } from "jotai";
 import type { ReactNode } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
-import { processesAtom } from "@/providers/DownloadProvider";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
 import { HeaderIcon, type HeaderIconName } from "./HeaderIcon";
 import { Text } from "./Text";
-
-const Chromecast = Platform.isTV ? null : require("@/components/Chromecast");
 
 interface Props {
   /** Show a back chevron before the brand (sub-pages that keep the brand row). */
   onBack?: () => void;
   /** Extra actions between the brand and the standard three. */
   right?: ReactNode;
-  /** Hide the standard Downloads / Cast / Settings actions. */
+  /** Hide the standard Downloads / Settings actions. */
   downloads?: boolean;
-  cast?: boolean;
   settings?: boolean;
+  /**
+   * Show the Sessions action (what your other devices are playing, with
+   * transport controls). Off by default; Home shows it.
+   */
+  sessions?: boolean;
   /** A 2pt accent loading line under the row (never a spinner over content). */
   loading?: boolean;
   /** Muted brand (used behind a sheet). */
@@ -48,9 +48,11 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
     <Text
       variant='section'
       allowFontScaling={false}
+      // Audiowide is wide: at this size the wordmark and three header icons
+      // fit a 360-wide phone.
       style={{
-        fontSize: size * 0.58,
-        lineHeight: size * 0.67,
+        fontSize: size * 0.4,
+        lineHeight: size * 0.5,
         letterSpacing: 0.5,
       }}
     >
@@ -60,8 +62,8 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
         allowFontScaling={false}
         accent={NeonBoard.volt}
         style={{
-          fontSize: size * 0.58,
-          lineHeight: size * 0.67,
+          fontSize: size * 0.4,
+          lineHeight: size * 0.5,
           letterSpacing: 0.5,
         }}
       >
@@ -71,13 +73,13 @@ export const BrandLockup: React.FC<{ size?: number; dim?: boolean }> = ({
   </View>
 );
 
-/** A 44 square icon button with a `mid` glyph, for the brand row. */
+/** A 44 square icon button with a white glyph, for the brand row. */
 export const HeaderIconButton: React.FC<{
   name: HeaderIconName;
   onPress: () => void;
   tintColor?: string;
   accessibilityLabel?: string;
-}> = ({ name, onPress, tintColor = NeonBoard.mid, accessibilityLabel }) => {
+}> = ({ name, onPress, tintColor = NeonBoard.text, accessibilityLabel }) => {
   const haptic = useHaptic("light");
   return (
     <Pressable
@@ -102,28 +104,36 @@ export const HeaderIconButton: React.FC<{
 
 /**
  * The brand row that heads every tab root: 56 high under the status inset,
- * 1pt `line` bottom rule, mascot + wordmark on the left, Downloads / Cast /
- * Settings as 44 square icon buttons on the right.
+ * 1pt `line` bottom rule, mascot + wordmark on the left, Sessions /
+ * Downloads / Settings as 44 square icon buttons on the right.
  */
+/**
+ * Sessions action: the remote control for your other devices, with the cast
+ * glyph. White like the other header icons (owner, 2026-10-16).
+ */
+const SessionsHeaderButton: React.FC = () => {
+  const router = useRouter();
+  return (
+    <HeaderIconButton
+      name='sessions'
+      accessibilityLabel='Sessions'
+      onPress={() => router.push("/(auth)/(tabs)/(home)/sessions")}
+    />
+  );
+};
+
 export const NeonHeader: React.FC<Props> = ({
   onBack,
   right,
   downloads = true,
-  cast = true,
   settings = true,
+  sessions = false,
   loading = false,
   dim = false,
 }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const accent = usePageAccent();
-  const processes = useAtomValue(processesAtom);
-  const downloading = processes.some(
-    (p) =>
-      p.status === "downloading" ||
-      p.status === "queued" ||
-      p.status === "pending",
-  );
 
   return (
     <View
@@ -160,27 +170,13 @@ export const NeonHeader: React.FC<Props> = ({
           style={{ opacity: dim ? 0.4 : 1 }}
         >
           {right}
+          {sessions ? <SessionsHeaderButton /> : null}
           {downloads ? (
             <HeaderIconButton
               name='downloads'
               accessibilityLabel='Downloads'
-              // Bright while something is downloading or waiting to, the
-              // same grey as Settings otherwise.
-              tintColor={downloading ? NeonBoard.text : NeonBoard.mid}
               onPress={() => router.push("/(auth)/(tabs)/(home)/downloads")}
             />
-          ) : null}
-          {cast && Chromecast ? (
-            <View
-              style={{
-                width: Sizes.iconButton,
-                height: Sizes.iconButton,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Chromecast.Chromecast />
-            </View>
           ) : null}
           {settings ? (
             <HeaderIconButton

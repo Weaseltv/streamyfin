@@ -7,6 +7,7 @@ import {
   nestedTabPageScreenOptions,
   stackScreenOptions,
 } from "@/components/stacks/NestedTabPageStack";
+import { ItemNavigationProvider } from "@/providers/ItemNavigationProvider";
 
 // Keeps cold boot on the Home tab.
 //
@@ -33,13 +34,27 @@ import {
 export const unstable_settings = { anchor: "index" };
 
 export default function IndexLayout() {
+  return (
+    <ItemNavigationProvider origin='(home)'>
+      <TabStack />
+    </ItemNavigationProvider>
+  );
+}
+
+function TabStack() {
   const { t } = useTranslation();
 
   return (
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen
         name='index'
-        options={{ ...neonRootScreenOptions, title: t("tabs.home") }}
+        options={{
+          ...neonRootScreenOptions,
+          title: t("tabs.home"),
+          // Home is the only tab with the Sessions action: the Sessions page
+          // lives in this stack, and one header polling is enough.
+          header: () => <NeonHeader sessions />,
+        }}
       />
       <Stack.Screen
         name='downloads/index'
@@ -84,6 +99,16 @@ export default function IndexLayout() {
         name='companion-login'
         options={{
           title: t("companion_login.title"),
+          headerShown: !Platform.isTV,
+          headerBlurEffect: "none",
+          headerTransparent: false,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name='quick-connect-scan'
+        options={{
+          title: t("home.settings.quick_connect.scan_qr"),
           headerShown: !Platform.isTV,
           headerBlurEffect: "none",
           headerTransparent: false,

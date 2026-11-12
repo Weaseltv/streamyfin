@@ -9,6 +9,7 @@ import React, {
   useContext,
   useMemo,
 } from "react";
+import { Platform } from "react-native";
 import type { MpvPlayerViewRef } from "@/modules";
 import type { DownloadedItem } from "@/providers/Downloads/types";
 
@@ -71,48 +72,60 @@ export const usePlayerContext = () => {
 export const usePlayerControls = () => {
   const { playerRef } = usePlayerContext();
 
-  return {
-    // Subtitle controls
-    getSubtitleTracks: async () => {
-      return playerRef.current?.getSubtitleTracks?.() ?? null;
-    },
-    setSubtitleTrack: (trackId: number) => {
-      playerRef.current?.setSubtitleTrack?.(trackId);
-    },
-    disableSubtitles: () => {
-      playerRef.current?.disableSubtitles?.();
-    },
-    addSubtitleFile: (url: string, select = true) => {
-      playerRef.current?.addSubtitleFile?.(url, select);
-    },
+  return useMemo(
+    () => ({
+      getSubtitleSelectionOwner: () =>
+        playerRef.current?.getSubtitleSelectionOwner?.() ?? playerRef.current,
+      ensureExternalSubtitle:
+        Platform.OS === "android"
+          ? async (url: string, ordinal: number) =>
+              Boolean(
+                await playerRef.current?.ensureExternalSubtitle?.(url, ordinal),
+              )
+          : undefined,
+      // Subtitle controls
+      getSubtitleTracks: async () => {
+        return playerRef.current?.getSubtitleTracks?.() ?? null;
+      },
+      setSubtitleTrack: (trackId: number) => {
+        playerRef.current?.setSubtitleTrack?.(trackId);
+      },
+      disableSubtitles: () => {
+        playerRef.current?.disableSubtitles?.();
+      },
+      addSubtitleFile: (url: string, select = true) => {
+        playerRef.current?.addSubtitleFile?.(url, select);
+      },
 
-    // Audio controls
-    getAudioTracks: async () => {
-      return playerRef.current?.getAudioTracks?.() ?? null;
-    },
-    setAudioTrack: (trackId: number) => {
-      playerRef.current?.setAudioTrack?.(trackId);
-    },
+      // Audio controls
+      getAudioTracks: async () => {
+        return playerRef.current?.getAudioTracks?.() ?? null;
+      },
+      setAudioTrack: (trackId: number) => {
+        playerRef.current?.setAudioTrack?.(trackId);
+      },
 
-    // Playback controls
-    play: () => playerRef.current?.play?.(),
-    pause: () => playerRef.current?.pause?.(),
-    seekTo: (position: number) => playerRef.current?.seekTo?.(position),
-    seekBy: (offset: number) => playerRef.current?.seekBy?.(offset),
-    setSpeed: (speed: number) => playerRef.current?.setSpeed?.(speed),
+      // Playback controls
+      play: () => playerRef.current?.play?.(),
+      pause: () => playerRef.current?.pause?.(),
+      seekTo: (position: number) => playerRef.current?.seekTo?.(position),
+      seekBy: (offset: number) => playerRef.current?.seekBy?.(offset),
+      setSpeed: (speed: number) => playerRef.current?.setSpeed?.(speed),
 
-    // Subtitle positioning
-    setSubtitleScale: (scale: number) =>
-      playerRef.current?.setSubtitleScale?.(scale),
-    setSubtitlePosition: (position: number) =>
-      playerRef.current?.setSubtitlePosition?.(position),
-    setSubtitleMarginY: (margin: number) =>
-      playerRef.current?.setSubtitleMarginY?.(margin),
-    setSubtitleFontSize: (size: number) =>
-      playerRef.current?.setSubtitleFontSize?.(size),
+      // Subtitle positioning
+      setSubtitleScale: (scale: number) =>
+        playerRef.current?.setSubtitleScale?.(scale),
+      setSubtitlePosition: (position: number) =>
+        playerRef.current?.setSubtitlePosition?.(position),
+      setSubtitleMarginY: (margin: number) =>
+        playerRef.current?.setSubtitleMarginY?.(margin),
+      setSubtitleFontSize: (size: number) =>
+        playerRef.current?.setSubtitleFontSize?.(size),
 
-    // PiP
-    startPictureInPicture: () => playerRef.current?.startPictureInPicture?.(),
-    stopPictureInPicture: () => playerRef.current?.stopPictureInPicture?.(),
-  };
+      // PiP
+      startPictureInPicture: () => playerRef.current?.startPictureInPicture?.(),
+      stopPictureInPicture: () => playerRef.current?.stopPictureInPicture?.(),
+    }),
+    [playerRef],
+  );
 };

@@ -24,7 +24,7 @@ export const CurrentSeries: React.FC<Props> = ({ item, ...props }) => {
 
   return (
     <View {...props}>
-      <SectionHeader title={t("item_card.series")} accent={NeonBoard.yellow} />
+      <SectionHeader title={t("item_card.series")} accent={NeonBoard.show} />
       <HorizontalScroll
         data={[item]}
         height={POSTER_CAROUSEL_HEIGHT}

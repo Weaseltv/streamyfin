@@ -7,7 +7,6 @@
     "invalid_url": "请输入有效的地址"
   },
   "login": {
-    "username_required": "需要用户名",
     "error_title": "错误",
     "login_title": "登录",
     "login_to_title": "登录至",
@@ -27,7 +26,6 @@
     "connection_failed": "连接失败",
     "could_not_connect_to_server": "无法连接到服务器。请检查 URL 和您的网络连接。",
     "an_unexpected_error_occurred": "发生了意外错误",
-    "change_server": "更改服务器",
     "invalid_username_or_password": "无效的用户名或密码",
     "user_does_not_have_permission_to_log_in": "该用户没有登录权限",
     "server_is_taking_too_long_to_respond_try_again_later": "服务器长时间未响应，请稍后再试",
@@ -43,7 +41,6 @@
     "connect_button": "连接",
     "previous_servers": "上一个服务器",
     "clear_button": "清除",
-    "server_url": "服务器地址",
     "swipe_to_remove": "滑动以移除",
     "search_for_local_servers": "搜索本地服务器",
     "searching": "搜索中...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "连接到您的 Jellyseerr 实例并直接在应用中请求电影。",
       "downloads_feature_title": "下载",
       "downloads_feature_description": "下载电影和节目以离线观看。使用默认方法或安装 Optimized Server 以在后台下载文件。",
-      "chromecast_feature_description": "将电影和节目投屏到您的 Chromecast 设备。",
       "centralised_settings_plugin_title": "统一设置插件",
       "centralised_settings_plugin_description": "从 Jellyfin 服务器上的统一位置改变设置。所有用户的所有客户端设置将会自动同步。",
       "done_button": "完成",
@@ -698,8 +694,6 @@
     "error": "错误",
     "failed_to_get_stream_url": "获取串流地址失败",
     "an_error_occurred_while_playing_the_video": "播放视频时发生错误。请在设置中查看日志。",
-    "client_error": "客户端错误",
-    "could_not_create_stream_for_chromecast": "无法为 Chromecast 建立串流",
     "message_from_server": "来自服务器的消息",
     "next_episode": "下一集",
     "continue_watching": "继续观看",
@@ -741,8 +735,7 @@
     "stopPlayback": "停止播放",
     "stopPlayingTitle": "停止播放“{{title}}”？",
     "stopPlayingConfirm": "确定要停止播放吗？",
-    "downloaded": "已下载",
-    "missing_parameters": "缺少播放参数"
+    "downloaded": "已下载"
   },
   "chapters": {
     "title": "章节",

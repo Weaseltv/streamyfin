@@ -51,11 +51,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     config.plugins?.push("expo-background-task");
 
     config.plugins?.push([
-      "react-native-google-cast",
-      { useDefaultExpandedMediaControls: true },
-    ]);
-
-    config.plugins?.push([
       "expo-camera",
       {
         cameraPermission:
@@ -73,7 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   config.extra = { ...config.extra, build: buildMeta };
 
   return {
-    ...(Object.keys(androidConfig).length > 0 && { android: androidConfig }),
     ...config,
+    android: { ...config.android, ...androidConfig },
   } as ExpoConfig;
 };

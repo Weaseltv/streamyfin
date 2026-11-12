@@ -9,13 +9,19 @@ interface UseVideoTimeProps {
   progress: SharedValue<number>;
   max: SharedValue<number>;
   isSeeking: SharedValue<boolean>;
+  active?: boolean;
 }
 
 /**
  * Hook to manage video time display.
  * MPV player uses milliseconds for time values.
  */
-export function useVideoTime({ progress, max, isSeeking }: UseVideoTimeProps) {
+export function useVideoTime({
+  progress,
+  max,
+  isSeeking,
+  active = true,
+}: UseVideoTimeProps) {
   const [currentTime, setCurrentTime] = useState(0);
   // Start at 0 (not Infinity) so the controls' first paint — before the first
   // progress/max update — shows "0:00" instead of formatting Infinity into
@@ -57,13 +63,23 @@ export function useVideoTime({ progress, max, isSeeking }: UseVideoTimeProps) {
       progress: progress.value,
       max: max.value,
       isSeeking: isSeeking.value,
+      active,
     }),
-    (result) => {
-      if (!result.isSeeking) {
+    (result, previous) => {
+      if (
+        result.active &&
+        !result.isSeeking &&
+        (!previous?.active ||
+          previous.isSeeking ||
+          Math.floor(result.progress / 1000) !==
+            Math.floor(previous.progress / 1000) ||
+          Math.floor((result.max - result.progress) / 1000) !==
+            Math.floor((previous.max - previous.progress) / 1000))
+      ) {
         runOnJS(updateTimes)(result.progress, result.max);
       }
     },
-    [updateTimes],
+    [active, updateTimes],
   );
 
   return {

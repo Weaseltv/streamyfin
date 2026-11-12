@@ -28,13 +28,7 @@ export const SearchTabButtons: React.FC<SearchTabButtonsProps> = ({
       <Chip
         label={t("search.discover")}
         selected={requestsSelected}
-        icon={
-          <Feather
-            name='inbox'
-            size={17}
-            color={requestsSelected ? NeonBoard.onAccent : NeonBoard.text}
-          />
-        }
+        icon={<Feather name='inbox' size={17} color={NeonBoard.text} />}
         onPress={() => setSearchType("Discover")}
       />
     </View>

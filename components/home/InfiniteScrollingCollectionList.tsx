@@ -1,5 +1,5 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import {
   type QueryFunction,
   type QueryKey,
@@ -15,12 +15,19 @@ import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Loader } from "@/components/Loader";
 import { Sizes } from "@/constants/neon";
+import {
+  scrollListToStart,
+  useHomeRowPosition,
+} from "@/hooks/useHomeRowPosition";
 import { useSettings } from "@/utils/atoms/settings";
+import { rowBadges } from "@/utils/streamingCollections";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { ItemCardText } from "../ItemCardText";
 
 interface Props extends ViewProps {
   title?: string | null;
+  /** Small line over the title, as on the TV ("NEXT UP &"). */
+  kicker?: string;
   orientation?: "horizontal" | "vertical";
   /** Rule colour: volt on Home; the type colour elsewhere. */
   accent?: string;
@@ -41,6 +48,7 @@ interface Props extends ViewProps {
   pageSize?: number;
   onPressSeeAll?: () => void;
   enabled?: boolean;
+  retry?: number;
   /**
    * Fires once per mount when the query *settles* — success or error. Home's
    * priority gate consumes this, so a failed rail must still report in;
@@ -52,6 +60,7 @@ interface Props extends ViewProps {
 
 export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   title,
+  kicker,
   orientation = "vertical",
   accent,
   badge,
@@ -64,6 +73,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
   pageSize = 10,
   onPressSeeAll,
   enabled = true,
+  retry,
   onSettled,
   ...props
 }) => {
@@ -97,6 +107,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     enabled,
+    retry,
   });
 
   // Notify the parent once this rail settles either way.
@@ -128,14 +139,27 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     return deduped;
   }, [data, excludeItem]);
 
+  const rowPosition = useHomeRowPosition<FlashListRef<BaseItemDto>>(
+    JSON.stringify(queryKey),
+    allItems.map((item) => item.Id ?? ""),
+    scrollListToStart,
+    data?.pages.length ?? 0,
+  );
+
+  // Type badges only on rows that mix movies and shows, unless the caller decides
+  const badgeFor = useMemo(
+    () =>
+      badge === undefined ? rowBadges(allItems) : (_item: BaseItemDto) => badge,
+    [badge, allItems],
+  );
   const cardExtras = useMemo(
     () => ({
       useEpisodePoster: settings?.useEpisodeImagesForNextUp,
-      badge,
+      badgeFor,
       badgeColor,
       orientation,
     }),
-    [settings?.useEpisodeImagesForNextUp, badge, badgeColor, orientation],
+    [settings?.useEpisodeImagesForNextUp, badgeFor, badgeColor, orientation],
   );
   const renderRailItem = useCallback(
     ({ item }: { item: BaseItemDto }) => (
@@ -147,7 +171,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
           item={item}
           orientation={cardExtras.orientation}
           useEpisodePoster={cardExtras.useEpisodePoster}
-          badge={cardExtras.badge}
+          badge={cardExtras.badgeFor(item)}
           badgeColor={cardExtras.badgeColor}
         />
         <ItemCardText item={item} />
@@ -175,6 +199,7 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
     <View {...props}>
       <SectionHeader
         title={title}
+        kicker={kicker}
         accent={accent}
         actionLabel={
           onPressSeeAll
@@ -183,7 +208,11 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
         }
         actionDisabled={isLoading}
         onPressAction={onPressSeeAll}
-        count={isLoading || onPressSeeAll ? undefined : allItems.length}
+        count={
+          isLoading || onPressSeeAll || allItems.length === 0
+            ? undefined
+            : allItems.length
+        }
       />
       {isError && allItems.length === 0 && (
         <View style={{ paddingHorizontal: Sizes.gutter, gap: 8 }}>
@@ -215,6 +244,12 @@ export const InfiniteScrollingCollectionList: React.FC<Props> = ({
         // paged ten deep held ~100 live cards per rail across Home. FlashList
         // recycles cells and only mounts what is near the viewport.
         <FlashList
+          ref={rowPosition.ref}
+          onLoad={rowPosition.onReady}
+          onContentSizeChange={rowPosition.flush}
+          maintainVisibleContentPosition={
+            rowPosition.home ? { disabled: true } : undefined
+          }
           horizontal
           data={allItems}
           keyExtractor={railKeyExtractor}

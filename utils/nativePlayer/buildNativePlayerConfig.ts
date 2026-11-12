@@ -27,6 +27,7 @@ import {
   getJellyfinHeadersForUrl,
   hasHeaders,
 } from "@/utils/customHeaders";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { getStreamUrl } from "@/utils/jellyfin/media/getStreamUrl";
 import {
@@ -334,7 +335,10 @@ const buildMetadata = (item: BaseItemDto, api: Api | null) => {
   if (isEpisode) {
     const epNumber =
       item.ParentIndexNumber !== undefined && item.IndexNumber !== undefined
-        ? `S${item.ParentIndexNumber}E${item.IndexNumber}`
+        ? formatEpisodeNumber(item, {
+            includeSeason: true,
+            seasonSeparator: "",
+          })
         : undefined;
     subtitle = [item.SeriesName, epNumber].filter(Boolean).join(" · ");
   } else if (item.ProductionYear) {

@@ -1,0 +1,8 @@
+# Opens a movie and resumes it from its saved position. Usage: -e MOVIE_TITLE=Unleashed
+appId: tv.theweasel.weaselplex.phone
+---
+- runFlow: open-movie.yaml
+- tapOn: ".*(RESUME|PLAY) ·.*"
+- tapOn:
+    text: "Continue from.*"
+    optional: true

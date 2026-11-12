@@ -64,6 +64,7 @@ export const PersonAvatar: React.FC<{
       >
         {url ? (
           <Image
+            recyclingKey={person.Id}
             id={person.Id ?? undefined}
             source={{ uri: url }}
             style={{ width: AVATAR, height: AVATAR }}
@@ -109,7 +110,7 @@ export const CastAndCrew: React.FC<Props> = ({ item, loading, ...props }) => {
       if (existingPerson) {
         existingPerson.Role = `${existingPerson.Role}, ${person.Role}`;
       } else {
-        people[person.Id] = person;
+        people[person.Id] = { ...person };
       }
     });
     return Object.values(people);

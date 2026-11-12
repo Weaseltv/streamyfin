@@ -7,7 +7,6 @@
     "invalid_url": "Anna kelvollinen osoite"
   },
   "login": {
-    "username_required": "Käyttäjätunnus on pakollinen",
     "error_title": "Virhe",
     "login_title": "Kirjaudu sisään",
     "login_to_title": "Kirjaudu sisään palveluun",
@@ -27,7 +26,6 @@
     "connection_failed": "Yhteys epäonnistui",
     "could_not_connect_to_server": "Yhteyttä palvelimeen ei voitu muodostaa. Tarkista URL-osoite ja verkkoyhteytesi.",
     "an_unexpected_error_occurred": "Odottamaton virhe tapahtui",
-    "change_server": "Vaihda palvelinta",
     "invalid_username_or_password": "Virheellinen käyttäjätunnus tai salasana",
     "user_does_not_have_permission_to_log_in": "Käyttäjällä ei ole oikeuksia kirjautua sisään",
     "server_is_taking_too_long_to_respond_try_again_later": "Palvelin reagoi liian hitaasti, yritä myöhemmin uudelleen",
@@ -43,7 +41,6 @@
     "connect_button": "Yhdistä",
     "previous_servers": "Edelliset palvelimet",
     "clear_button": "Tyhjennä",
-    "server_url": "Palvelimen URL",
     "swipe_to_remove": "Pyyhkäise poistaaksesi",
     "search_for_local_servers": "Etsi paikallisia palvelimia",
     "searching": "Etsitään...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Yhdistä Jellyseerr-instanssiisi ja pyydä elokuvia suoraan sovelluksessa.",
       "downloads_feature_title": "Lataukset",
       "downloads_feature_description": "Lataa elokuvia ja TV-sarjoja katsottavaksi offline-tilassa. Käytä joko oletusmenetelmää tai asenna optimoitu palvelin ladataksesi tiedostoja taustalla.",
-      "chromecast_feature_description": "Toista elokuvia ja TV-sarjoja Chromecast-laitteillesi.",
       "centralised_settings_plugin_title": "Keskitetty asetusten liitännäinen",
       "centralised_settings_plugin_description": "Määritä asetukset keskitetysti Jellyfin-palvelimellasi. Jokaisen käyttäjän asiakasasetukset synkronoidaan automaattisesti.",
       "done_button": "Valmis",
@@ -698,8 +694,6 @@
     "error": "Virhe",
     "failed_to_get_stream_url": "Lähetyksen URL-osoitteen haku epäonnistui",
     "an_error_occurred_while_playing_the_video": "Videon toiston yhteydessä tapahtui virhe. Tarkista lokit asetuksista.",
-    "client_error": "Asiakkaan Virhe",
-    "could_not_create_stream_for_chromecast": "Suoratoistoa ei voitu luoda Chromecastia varten",
     "message_from_server": "Viesti palvelimelta: {{message}}",
     "next_episode": "Seuraava Jakso",
     "continue_watching": "Jatka katsomista",
@@ -741,8 +735,7 @@
     "stopPlayback": "Lopeta toisto",
     "stopPlayingTitle": "Lopetetaanko kohteen ”{{title}}” toisto?",
     "stopPlayingConfirm": "Haluatko varmasti lopettaa toiston?",
-    "downloaded": "Ladattu",
-    "missing_parameters": "Toistoparametrit puuttuvat"
+    "downloaded": "Ladattu"
   },
   "chapters": {
     "title": "Luvut",

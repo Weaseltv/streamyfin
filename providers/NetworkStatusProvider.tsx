@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -101,10 +102,13 @@ export function NetworkStatusProvider({ children }: { children: ReactNode }) {
     wasServerConnected.current = serverConnected;
   }, [serverConnected, queryClient]);
 
+  const value = useMemo(
+    () => ({ isConnected, serverConnected, loading, retryCheck }),
+    [isConnected, serverConnected, loading, retryCheck],
+  );
+
   return (
-    <NetworkStatusContext.Provider
-      value={{ isConnected, serverConnected, loading, retryCheck }}
-    >
+    <NetworkStatusContext.Provider value={value}>
       {children}
     </NetworkStatusContext.Provider>
   );

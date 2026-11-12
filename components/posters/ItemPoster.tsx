@@ -8,13 +8,17 @@ import { ItemImage } from "../common/ItemImage";
 interface Props extends ViewProps {
   item: BaseItemDto;
   showProgress?: boolean;
-  /** Card width; the poster keeps 10:15 and other items stay square. */
+  /** Card width; posters keep 10:15 and other items stay square. */
   width?: number;
   /** Badge override; grids inside a typed library pass `null`. */
   badge?: string | null;
 }
 
-/** Grid card: a 10:15 poster (or a square tile) in the shared PosterFrame. */
+/**
+ * Grid card: a 10:15 poster (or a square tile) in the shared PosterFrame.
+ * Seasons use their own poster and episodes their series' poster, as on the
+ * TV, so they line up with the movies and shows around them.
+ */
 export const ItemPoster: React.FC<Props> = ({
   item,
   showProgress = true,
@@ -23,8 +27,20 @@ export const ItemPoster: React.FC<Props> = ({
   ...props
 }) => {
   const isPoster =
-    item.Type === "Movie" || item.Type === "Series" || item.Type === "BoxSet";
+    item.Type === "Movie" ||
+    item.Type === "Series" ||
+    item.Type === "BoxSet" ||
+    item.Type === "Season" ||
+    item.Type === "Episode";
   const height = isPoster ? Math.round((width * 15) / 10) : width;
+  const imageItem: BaseItemDto =
+    item.Type === "Episode" && item.SeriesId && item.SeriesPrimaryImageTag
+      ? {
+          Id: item.SeriesId,
+          Type: "Series",
+          ImageTags: { Primary: item.SeriesPrimaryImageTag },
+        }
+      : item;
 
   return (
     <View {...props}>
@@ -38,7 +54,7 @@ export const ItemPoster: React.FC<Props> = ({
       >
         <ItemImage
           style={{ width: "100%", height: "100%" }}
-          item={item}
+          item={imageItem}
           width={ImageWidths.poster}
         />
       </PosterFrame>

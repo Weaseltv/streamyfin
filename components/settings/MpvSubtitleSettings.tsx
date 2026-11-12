@@ -85,7 +85,10 @@ export const MpvSubtitleSettings: React.FC<Props> = ({ ...props }) => {
               />
             </ListItem>
 
-            <ListItem title={t("home.settings.subtitles.mpv_subtitle_align_x")}>
+            <ListItem
+              stackControlOnCompact
+              title={t("home.settings.subtitles.mpv_subtitle_align_x")}
+            >
               <PlatformDropdown
                 groups={alignXOptionGroups}
                 trigger={
@@ -99,7 +102,10 @@ export const MpvSubtitleSettings: React.FC<Props> = ({ ...props }) => {
               />
             </ListItem>
 
-            <ListItem title={t("home.settings.subtitles.mpv_subtitle_align_y")}>
+            <ListItem
+              stackControlOnCompact
+              title={t("home.settings.subtitles.mpv_subtitle_align_y")}
+            >
               <PlatformDropdown
                 groups={alignYOptionGroups}
                 trigger={

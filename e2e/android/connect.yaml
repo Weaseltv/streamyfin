@@ -1,0 +1,19 @@
+appId: tv.theweasel.weaselplex.phone
+---
+- launchApp
+- extendedWaitUntil:
+    visible: ".*CONNECT.*"
+    timeout: 30000
+# The app remembers the last server URL. Only edit the field when it holds
+# something else: a relative tap can leave the cursor mid-text, and eraseText
+# only deletes before the cursor. API 29 does not expose the field's label as
+# its text, so the field is found by its label.
+- runFlow:
+    when:
+      notVisible: ${MAESTRO_WEASELPLEX_SERVER_URL}
+    commands:
+      - tapOn:
+          rightOf: "Server URL"
+      - eraseText: 200
+      - inputText: ${MAESTRO_WEASELPLEX_SERVER_URL}
+- tapOn: ".*CONNECT.*"

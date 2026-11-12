@@ -1,13 +1,18 @@
 import { FlashList } from "@shopify/flash-list";
 import type React from "react";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useCallback } from "react";
 import { View } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { RAIL_GAP } from "@/components/home/ItemCard";
 import { Sizes } from "@/constants/neon";
 import { useAccent } from "@/utils/atoms/pageAccent";
 
-type SearchItemWrapperProps<T> = {
+type SearchItemIdentity = {
+  Id?: string | null;
+  id?: string | number;
+};
+
+type SearchItemWrapperProps<T extends SearchItemIdentity> = {
   items?: T[];
   renderItem: (item: any) => React.ReactElement | null;
   header?: string;
@@ -20,7 +25,7 @@ type SearchItemWrapperProps<T> = {
  * One search result section: a section head on a type-coloured rule with the
  * count, and a horizontal rail of cards on a 12 gutter with a 10 gap.
  */
-export const SearchItemWrapper = <T,>({
+export const SearchItemWrapper = <T extends SearchItemIdentity>({
   items,
   renderItem,
   header,
@@ -28,6 +33,13 @@ export const SearchItemWrapper = <T,>({
   onEndReached,
 }: PropsWithChildren<SearchItemWrapperProps<T>>) => {
   const accent = useAccent(accentProp);
+  const renderResult = useCallback(
+    ({ item }: { item: T }) =>
+      item ? (
+        <View style={{ marginRight: RAIL_GAP }}>{renderItem(item)}</View>
+      ) : null,
+    [renderItem],
+  );
   if (!items || items.length === 0) return null;
 
   return (
@@ -42,15 +54,11 @@ export const SearchItemWrapper = <T,>({
           paddingBottom: 8,
         }}
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, index) => index.toString()}
+        keyExtractor={(item, index) => String(item.Id ?? item.id ?? index)}
         data={items}
         onEndReachedThreshold={1}
         onEndReached={onEndReached}
-        renderItem={({ item }) =>
-          item ? (
-            <View style={{ marginRight: RAIL_GAP }}>{renderItem(item)}</View>
-          ) : null
-        }
+        renderItem={renderResult}
       />
     </View>
   );

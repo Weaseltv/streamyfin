@@ -1,6 +1,5 @@
 import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChromecastSettings } from "@/components/settings/ChromecastSettings";
 import { GestureControls } from "@/components/settings/GestureControls";
 import { MediaProvider } from "@/components/settings/MediaContext";
 import { MediaToggles } from "@/components/settings/MediaToggles";
@@ -39,7 +38,6 @@ export default function PlaybackControlsPage() {
             <MpvVoSettings />
           </MediaProvider>
         </View>
-        {!Platform.isTV && <ChromecastSettings />}
       </View>
     </ScrollView>
   );

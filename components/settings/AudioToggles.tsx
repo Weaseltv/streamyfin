@@ -197,6 +197,7 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
           />
         </ListItem>
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.audio.audio_language")}
           disabled={!canChangeAudioLanguage}
           disabledByAdmin={
@@ -217,6 +218,7 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
           )}
         </ListItem>
         <ListItem
+          stackControlOnCompact
           title={t("home.settings.audio.transcode_mode.title")}
           subtitle={t("home.settings.audio.transcode_mode.description")}
         >

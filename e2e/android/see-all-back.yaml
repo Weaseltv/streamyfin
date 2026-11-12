@@ -1,0 +1,26 @@
+# #47 regression: Home -> See all Movies -> Back -> See all TV Shows -> Back
+# must land on Home both times, with the Home tab still selected.
+appId: tv.theweasel.weaselplex.phone
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "RECENTLY ADDED IN MOVIES"
+    timeout: 30000
+- tapOn:
+    text: "SEE ALL"
+    index: 0
+- extendedWaitUntil:
+    visible: "LIBRARY · .* MOVIES"
+    timeout: 20000
+- back
+- assertVisible: "RECENTLY ADDED IN MOVIES"
+- tapOn:
+    text: "SEE ALL"
+    index: 1
+- extendedWaitUntil:
+    visible: "LIBRARY · .* SERIES"
+    timeout: 20000
+- back
+- assertVisible: "RECENTLY ADDED IN MOVIES"
+- assertVisible: "RECENTLY ADDED IN TV SHOWS"

@@ -1,6 +1,7 @@
 import { requireNativeView } from "expo";
 import * as React from "react";
 import { useImperativeHandle, useRef } from "react";
+import { Platform } from "react-native";
 
 import { MpvPlayerViewProps, MpvPlayerViewRef } from "./MpvPlayer.types";
 
@@ -46,8 +47,13 @@ export default React.forwardRef<MpvPlayerViewRef, MpvPlayerViewProps>(
       },
       startPictureInPicture: async () => {
         console.log(PIP_LOG, "startPictureInPicture → native");
-        await nativeRef.current?.startPictureInPicture();
-        console.log(PIP_LOG, "startPictureInPicture ← native returned");
+        const entered = await nativeRef.current?.startPictureInPicture();
+        console.log(
+          PIP_LOG,
+          "startPictureInPicture ← native returned",
+          entered,
+        );
+        return entered;
       },
       stopPictureInPicture: async () => {
         console.log(PIP_LOG, "stopPictureInPicture → native");
@@ -64,6 +70,15 @@ export default React.forwardRef<MpvPlayerViewRef, MpvPlayerViewProps>(
         console.log(PIP_LOG, "isPictureInPictureActive =", result);
         return result;
       },
+      ensureExternalSubtitle:
+        Platform.OS === "android"
+          ? async (url: string, ordinal: number) => {
+              return Boolean(
+                await nativeRef.current?.ensureExternalSubtitle(url, ordinal),
+              );
+            }
+          : undefined,
+      getSubtitleSelectionOwner: () => nativeRef.current,
       getSubtitleTracks: async () => {
         return await nativeRef.current?.getSubtitleTracks();
       },

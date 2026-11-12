@@ -24,7 +24,80 @@ Unless the owner explicitly asks for a **Release** build, use:
 - **Check TestFlight** from the PR branch is required before merge for iOS changes the owner will verify on iPhone.
 - Do not merge before owner OK unless they waive device check.
 - An official **Release** TestFlight comes from a tag after merge, and only when the owner asks for a Release or a tagged release is needed.
-- Android phone changes follow: merge -> tag -> build signed APK on T3 VPS or ThinkCentre (WeaselFin keystore) -> publish **weaselplex-phone / stable only** via weaseltv-platform direct-distribution (no Beta agent path; no pre-merge device gate). Source `~/android-agent-env.sh` for manifest signing (`WEASELTV_SIGNING_*`); see `~/agent-docs/android-phone-publish.md`. Forever command (owner-asked only): `source ~/android-agent-env.sh && CONFIRM=PUBLISH_ANDROID_PHONE_STABLE ~/agent-docs/bin/publish-android-phone-stable.sh weaselplex /path/to/signed.apk` (see `~/agent-docs/android-phone-publish.md`).
+- Android phone changes follow: merge -> tag -> build signed APK on T3 VPS or ThinkCentre (WeaselFin keystore) -> publish **weaselplex-phone / stable only** via weaseltv-platform direct-distribution (no Beta agent path; no pre-merge device gate). Source `~/android-agent-env.sh` for manifest signing (`WEASELTV_SIGNING_*`); see `~/agent-docs/android-phone-publish.md`. Forever command (owner-asked only): `source ~/android-agent-env.sh && CONFIRM=PUBLISH_ANDROID_PHONE_STABLE ANDROID_PHONE_RELEASE_NOTES_FILE=notes.txt ~/agent-docs/bin/publish-android-phone-stable.sh weaselplex /path/to/signed.apk` (see `~/agent-docs/android-phone-publish.md`). The notes are shown to users in the app's update popup: first line a one-sentence summary, then one line per change, written like the WeaselPlex TV release text. The script refuses placeholders.
+
+## Publishing to theweasel.tv: releases only, never the pages (added 2026-09-30)
+
+On 2026-09-26 and 2026-09-28 a phone publish deployed a stale copy of the download pages. That
+reverted the owner-approved `/apps`, `/tv`, `/phone`, `/signal-check` and `/weaselplex`
+redesign, put the retired rainbow logo back, and republished the retired Android phone Beta.
+The same publish path serves WeaselPlex, so these rules apply here too.
+
+- **A publish changes only the release:** the new APK, its signed channel pointer, the ledger
+  entry and the permanent alias (`weaselplex.apk` for WeaselPlex). Nothing else.
+- **The download pages belong to weaseltv-platform.** They live in
+  `ops/direct-distribution/public/` on its `main` branch. Never edit, copy or deploy the pages
+  from the operator archive, the other worker's archive (ThinkCentre or VPS) or an old checkout.
+  A page change is a weaseltv-platform pull request that the owner approves.
+- **Use the publish script as-is.** `~/agent-docs/bin/publish-android-phone-stable.sh` refuses
+  unless `~/work/weaseltv/weaseltv-platform` is a clean checkout of `origin/main`. It refreshes
+  the pages from that checkout before deploying, and it refuses if a phone Beta channel file
+  exists. Never bypass a refusal, hand-run `Deploy-Distribution.ps1` with your own page copy,
+  or deploy from another checkout. Fix the cause, or ask the owner.
+- **Never bring back retired channels.** The Android phone Beta was retired on 2026-09-26 and
+  must never be published. If a `sync-operator-archive.sh pull` restores
+  `releases/android-phone/channels/beta.json`, move it to
+  `private-evidence/retired-channels/` and tell the owner.
+- **Keep every current build published.** Before deploying, compare the staged
+  `releases/*/channels/*.json` with what's live (WeaselTV phone, WeaselPlex phone and
+  WeaselTV TV), so nothing current is dropped. After deploying, check that
+  `https://theweasel.tv/apps` still shows the current Neon Board pages (no rainbow logo),
+  with WeaselTV for TV and WeaselCheck marked "Coming soon" until the owner launches them.
+- **After a publish on one worker, run `sync-operator-archive.sh push`** so the other worker
+  doesn't keep a stale copy.
+- **Report what you published:** product, versionName, versionCode and the deployment id.
+
+## Machines: work on the machine the thread was opened on (owner, 2026-10-12)
+
+The owner works on the WeaselTV repos from three T3 machines and spreads threads
+between them to balance load: the T3 VPS (`srv1160496`, `100.72.23.45`), the ThinkCentre
+(`justin-ThinkCentre-M73`, SSH alias `thinkcentre`, `100.87.100.109`) and the
+OVH worker (`t3-ovh`, SSH alias `t3-ovh`, `100.115.38.48`; added 2026-10-31).
+None is the default. Follow these rules even when Notion is
+unavailable or has not been read.
+
+- Do all of a thread's work on the machine the owner opened it on: editing,
+  builds, tests and file transfers. Run `hostname` if unsure.
+- Identify a machine by hostname, never by matching an IP address to
+  documentation: addresses get reused. 135.148.43.25 was the old production
+  server until 2026-10-27 and is now t3-ovh.
+- Never move a thread's work to another machine. That includes falling back
+  when a build or connection fails, the machine is busy, or an old procedure or
+  Notion log names another machine. Stop and report instead. Move work only
+  when the owner says so for that task.
+- Rules that send a kind of job to a specific machine still apply (iOS on the
+  M4, never Android there). Within those rules, use the thread's machine.
+- The one routine cross-machine action is the git refresh below. It only
+  fetches and fast-forwards; it never builds, edits or transfers files.
+
+### Keep all three machines' code current
+
+All three machines keep a main checkout of this repo at `~/work/weaselfin/streamyfin`, and
+T3 worktrees branch from it. That copy must never be more than a day behind
+GitHub. On 2026-10-12 some of these checkouts were four weeks old.
+
+- Start every task from fresh code: `git fetch --all --prune`, then branch from
+  `origin/weaselfin`, not a local `weaselfin` that may be stale. If the main
+  checkout is more than a day behind, run `./scripts/sync-machines.sh` first.
+- Finishing a task that pushed or merged code includes refreshing all three
+  machines: push your branch first (GitHub is the only transfer; never copy code
+  between machines), then run `./scripts/sync-machines.sh`. It updates this
+  machine and the other two (VPS, ThinkCentre and t3-ovh). If one can't be
+  reached, it says so and still updates the other.
+- The script never discards changes or touches other threads' worktrees. Report
+  anything it couldn't update, and say in your report if a machine
+  could not be reached. The same script is in every WeaselTV repo; keep the
+  copies identical.
 
 ## Machine roles (hard rule)
 
@@ -47,3 +120,12 @@ Unless the owner explicitly asks for a **Release** build, use:
 
 WeaselPlex iOS TestFlight/validation on HostMyApple must keep >= 20 GB free. Before and after M4 work, run the weaseltv-apps pruners against `~/CodexRuns/weaselplex-ios` (see weaseltv-apps `AGENTS.md` "M4 disk hygiene"). Do not leave multi-GB `derived-data-release` roots behind.
 
+
+## VPS and ThinkCentre disk hygiene (added 2026-10-03)
+
+Every Android build leaves gigabytes behind (`android/`, `node_modules`, Gradle outputs: about 6 GB per phone release worktree). On 2026-10-03 the T3 VPS was down to 40 GB free from old release folders. Before you finish any task that built Android on either host, delete what you built:
+
+- **Release worktrees, once the release is published and verified:** `git -C ~/work/weaselfin/streamyfin worktree remove --force ~/work/weaselfin/releases/weaselplex-phone-X.Y`. The tag keeps the source, the operator archive keeps the published APK, and the signed APK and notes stay in `~/work/weaselfin/releases/out/`.
+- **Everything else you built:** `android/` in your task worktree (it's gitignored and `expo prebuild` regenerates it), throwaway clones in `/tmp`, emulator test APKs.
+- **`~/work/weaselfin/releases/out/`:** keep only the last two releases of each app.
+- Then run `df -h ~`, and say in your report if less than 30 GB is free.

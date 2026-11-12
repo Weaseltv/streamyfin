@@ -57,6 +57,7 @@ import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getSubtitlesForItem } from "@/utils/atoms/downloadedSubtitles";
 import { useSettings } from "@/utils/atoms/settings";
 import type { TVOptionItem } from "@/utils/atoms/tvOptionModal";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { getLogoImageUrlById } from "@/utils/jellyfin/image/getLogoImageUrlById";
 import { getPrimaryImageUrlById } from "@/utils/jellyfin/image/getPrimaryImageUrlById";
 import { rememberSeriesTrackFromRow } from "@/utils/seriesTrackMemory";
@@ -691,7 +692,11 @@ export const ItemContentTV: React.FC<ItemContentTVProps> = React.memo(
                       marginTop: 6,
                     }}
                   >
-                    S{item.ParentIndexNumber} E{item.IndexNumber} · {item.Name}
+                    {formatEpisodeNumber(item, {
+                      includeSeason: true,
+                      seasonSeparator: " ",
+                    })}{" "}
+                    · {item.Name}
                   </Text>
                 </View>
               )}

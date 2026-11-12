@@ -85,7 +85,7 @@ const ContinueWatchingPoster: React.FC<ContinueWatchingPosterProps> = ({
     >
       {url ? (
         <Image
-          key={item.Id}
+          recyclingKey={item.Id}
           id={item.Id}
           source={{ uri: url }}
           cachePolicy={"memory-disk"}

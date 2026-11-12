@@ -7,7 +7,6 @@
     "invalid_url": "有効なアドレスを入力してください"
   },
   "login": {
-    "username_required": "ユーザー名は必須です",
     "error_title": "エラー",
     "login_title": "ログイン",
     "login_to_title": "ログイン先",
@@ -27,7 +26,6 @@
     "connection_failed": "接続に失敗しました",
     "could_not_connect_to_server": "サーバーに接続できませんでした。URLとネットワーク接続を確認してください。",
     "an_unexpected_error_occurred": "予期しないエラーが発生しました",
-    "change_server": "サーバーの変更",
     "invalid_username_or_password": "ユーザー名またはパスワードが無効です",
     "user_does_not_have_permission_to_log_in": "ユーザーにログイン権限がありません",
     "server_is_taking_too_long_to_respond_try_again_later": "サーバーの応答に時間がかかりすぎています。しばらくしてからもう一度お試しください。",
@@ -43,7 +41,6 @@
     "connect_button": "接続",
     "previous_servers": "前のサーバー",
     "clear_button": "クリア",
-    "server_url": "サーバーURL",
     "swipe_to_remove": "スワイプして削除",
     "search_for_local_servers": "ローカルサーバーを検索",
     "searching": "検索中...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Jellyseerrインスタンスに接続し、アプリ内で直接映画をリクエストします。",
       "downloads_feature_title": "ダウンロード",
       "downloads_feature_description": "映画やテレビ番組をダウンロードしてオフラインで視聴します。デフォルトの方法を使用するか、バックグラウンドでファイルをダウンロードするために最適化されたサーバーをインストールしてください。",
-      "chromecast_feature_description": "映画とテレビ番組をChromecastデバイスにキャストします。",
       "centralised_settings_plugin_title": "集中設定プラグイン",
       "centralised_settings_plugin_description": "Jellyfinサーバーで設定を一元管理できます。すべてのユーザーのクライアント設定が自動的に同期されます。",
       "done_button": "完了",
@@ -698,8 +694,6 @@
     "error": "エラー",
     "failed_to_get_stream_url": "ストリームURLを取得できませんでした",
     "an_error_occurred_while_playing_the_video": "動画の再生中にエラーが発生しました。設定でログを確認してください。",
-    "client_error": "クライアントエラー",
-    "could_not_create_stream_for_chromecast": "Chromecastのストリームを作成できませんでした",
     "message_from_server": "サーバーからのメッセージ",
     "next_episode": "次のエピソード",
     "continue_watching": "視聴を続ける",
@@ -741,8 +735,7 @@
     "stopPlayback": "再生を停止",
     "stopPlayingTitle": "「{{title}}」の再生を停止しますか？",
     "stopPlayingConfirm": "再生を停止してもよろしいですか？",
-    "downloaded": "ダウンロード済み",
-    "missing_parameters": "再生パラメーターがありません"
+    "downloaded": "ダウンロード済み"
   },
   "chapters": {
     "title": "チャプター",

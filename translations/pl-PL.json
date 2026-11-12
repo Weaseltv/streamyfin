@@ -7,7 +7,6 @@
     "invalid_url": "Podaj prawidłowy adres"
   },
   "login": {
-    "username_required": "Nazwa użytkownika jest wymagana",
     "error_title": "Błąd",
     "login_title": "Zaloguj się",
     "login_to_title": "Zaloguj się do",
@@ -27,7 +26,6 @@
     "connection_failed": "Połączenie nieudane",
     "could_not_connect_to_server": "Nie można połączyć się z serwerem. Sprawdź adres URL oraz połączenie sieciowe.",
     "an_unexpected_error_occurred": "Wystąpił nieoczekiwany błąd",
-    "change_server": "Zmień serwer",
     "invalid_username_or_password": "Nieprawidłowa nazwa użytkownika lub hasło",
     "user_does_not_have_permission_to_log_in": "Użytkownik nie ma uprawnień do logowania",
     "server_is_taking_too_long_to_respond_try_again_later": "Serwer zbyt długo nie odpowiada – spróbuj ponownie później",
@@ -43,7 +41,6 @@
     "connect_button": "Połącz",
     "previous_servers": "Poprzednie serwery",
     "clear_button": "Wyczyść",
-    "server_url": "URL serwera",
     "swipe_to_remove": "Przesuń, by usunąć",
     "search_for_local_servers": "Wyszukaj lokalne serwery",
     "searching": "Wyszukiwanie...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Połącz się ze swoim serwerem Jellyseerr i zamawiaj filmy bezpośrednio w aplikacji.",
       "downloads_feature_title": "Pobieranie",
       "downloads_feature_description": "Pobieraj filmy oraz seriale do oglądania offline. Użyj domyślnej metody lub zainstaluj serwer do optymalizacji, aby pobierać pliki w tle.",
-      "chromecast_feature_description": "Przesyłaj filmy i seriale na urządzenia Chromecast.",
       "centralised_settings_plugin_title": "Scentralizowana wtyczka ustawień",
       "centralised_settings_plugin_description": "Konfiguruj ustawienia centralnie na serwerze Jellyfin. Ustawienia klienta każdego użytkownika synchronizują się automatycznie.",
       "done_button": "Gotowe",
@@ -698,8 +694,6 @@
     "error": "Błąd",
     "failed_to_get_stream_url": "Nie udało się pobrać adresu strumienia",
     "an_error_occurred_while_playing_the_video": "Wystąpił błąd podczas odtwarzania wideo. Sprawdź logi w ustawieniach.",
-    "client_error": "Błąd klienta",
-    "could_not_create_stream_for_chromecast": "Nie udało się utworzyć strumienia dla Chromecasta",
     "message_from_server": "Wiadomość z serwera: {{message}}",
     "next_episode": "Następny odcinek",
     "continue_watching": "Kontynuuj oglądanie",
@@ -741,8 +735,7 @@
     "stopPlayback": "Zatrzymaj odtwarzanie",
     "stopPlayingTitle": "Zatrzymać odtwarzanie „{{title}}”?",
     "stopPlayingConfirm": "Czy na pewno chcesz zatrzymać odtwarzanie?",
-    "downloaded": "Pobrano",
-    "missing_parameters": "Brak parametrów odtwarzania"
+    "downloaded": "Pobrano"
   },
   "chapters": {
     "title": "Rozdziały",

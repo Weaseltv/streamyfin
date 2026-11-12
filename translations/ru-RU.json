@@ -7,7 +7,6 @@
     "invalid_url": "Введите корректный адрес"
   },
   "login": {
-    "username_required": "Имя пользователя обязательно",
     "error_title": "Ошибка",
     "login_title": "Вход",
     "login_to_title": "Вход в",
@@ -27,7 +26,6 @@
     "connection_failed": "Соединение не удалось",
     "could_not_connect_to_server": "Не удалось подключиться к серверу. Пожалуйста, проверьте URL и ваше интернет-соединение.",
     "an_unexpected_error_occurred": "Возникла непредвиденная ошибка",
-    "change_server": "Поменять сервер",
     "invalid_username_or_password": "Неправильное имя пользователя или пароль",
     "user_does_not_have_permission_to_log_in": "Пользователь не имеет прав на вход",
     "server_is_taking_too_long_to_respond_try_again_later": "Сервер долго не отвечает, попробуйте позже",
@@ -43,7 +41,6 @@
     "connect_button": "Подключиться",
     "previous_servers": "Предыдущие серверы",
     "clear_button": "Очистить",
-    "server_url": "URL-адрес сервера",
     "swipe_to_remove": "Смахните для удаления",
     "search_for_local_servers": "Поиск локальных серверов",
     "searching": "Поиск...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Подключитесь к Jellyseerr и запрашивайте фильмы прямо в приложении.",
       "downloads_feature_title": "Загрузки",
       "downloads_feature_description": "Скачивайте фильмы и сериалы для просмотра без интернета. Используйте стандартный способ или установите сервер оптимизации для загрузки файлов в фоновом режиме.",
-      "chromecast_feature_description": "Транслируйте фильмы и сериалы на ваши устройства с поддержкой Chromecast.",
       "centralised_settings_plugin_title": "Плагин для централизованной настройки",
       "centralised_settings_plugin_description": "Настраивайте параметры централизованно на сервере Jellyfin. Клиентские настройки каждого пользователя синхронизируются автоматически.",
       "done_button": "Готово",
@@ -698,8 +694,6 @@
     "error": "Ошибка",
     "failed_to_get_stream_url": "Не удалось получить URL потока",
     "an_error_occurred_while_playing_the_video": "Возникла Неожиданная ошибка во время воспроизведения. Проверьте логи в настройках.",
-    "client_error": "Ошибка клиента",
-    "could_not_create_stream_for_chromecast": "Не удалось создать поток для Chromecast",
     "message_from_server": "Сообщение от сервера: {{message}}",
     "next_episode": "Следующая серия",
     "continue_watching": "Продолжить просмотр",
@@ -741,8 +735,7 @@
     "stopPlayback": "Остановить воспроизведение",
     "stopPlayingTitle": "Прекратить воспроизведение \"{{title}}\"?",
     "stopPlayingConfirm": "Вы уверены, что хотите прекратить воспроизведение?",
-    "downloaded": "Загружено",
-    "missing_parameters": "Отсутствуют параметры воспроизведения"
+    "downloaded": "Загружено"
   },
   "chapters": {
     "title": "Главы",

@@ -7,12 +7,9 @@
     "invalid_url": "Enter a valid address"
   },
   "login": {
-    "username_required": "Username is required",
     "error_title": "Error",
     "login_title": "Log in",
     "login_to_title": "Log in to",
-    "log_in_to_weaselplex": "Log in to WeaselPlex",
-    "account_note": "Use your WeaselPlex account. Your password never leaves this device.",
     "select_user": "Select a user to log in",
     "add_user_to_login": "Add a user to log in",
     "add_user": "Add user",
@@ -30,7 +27,6 @@
     "connection_failed": "Connection failed",
     "could_not_connect_to_server": "Could not connect to the server. Please check the URL and your network connection.",
     "an_unexpected_error_occurred": "An unexpected error occurred",
-    "change_server": "Change server",
     "invalid_username_or_password": "Invalid username or password",
     "user_does_not_have_permission_to_log_in": "User does not have permission to log in",
     "server_is_taking_too_long_to_respond_try_again_later": "Server is taking too long to respond, try again later",
@@ -38,7 +34,9 @@
     "there_is_a_server_error": "There is a server error",
     "an_unexpected_error_occurred_did_you_enter_the_correct_url": "An unexpected error occurred. Did you enter the server URL correctly?",
     "too_old_server_text": "Unsupported Jellyfin server discovered",
-    "too_old_server_description": "Please update Jellyfin to the latest version"
+    "too_old_server_description": "Please update Jellyfin to the latest version",
+    "connect_denied": "Not signed in. Tap Connect to your account to try again.",
+    "could_not_reach_weaselplex": "WeaselPlex couldn't be reached. Check your internet connection and try again."
   },
   "server": {
     "enter_url_to_jellyfin_server": "Enter the URL to your WeaselPlex server",
@@ -48,7 +46,6 @@
     "clear_button": "Clear all",
     "clear_all_confirm_title": "Clear previous servers?",
     "clear_all_confirm_desc": "This removes every saved server and account from this device.",
-    "server_url": "Server URL",
     "swipe_to_remove": "Swipe to remove",
     "search_for_local_servers": "Search for local servers",
     "searching": "Searching...",
@@ -68,7 +65,9 @@
     "add_server_to_get_started": "Add a server to get started",
     "add_server": "Add server",
     "change_server": "Change server",
-    "swipe_for_options": "Swipe a server for options"
+    "swipe_for_options": "Swipe a server for options",
+    "connect_account_intro": "To start watching connect your WeaselPlex account to the app.",
+    "connect_to_your_account": "Connect to your account"
   },
   "save_account": {
     "title": "Save account",
@@ -117,17 +116,39 @@
     "continue": "Continue",
     "next_up": "Next up",
     "continue_and_next_up": "Continue & Next up",
+    "streaming": "Streaming Services",
     "recently_added_in": "Recently added in {{libraryName}}",
+    "kicker_next_up": "Next Up &",
+    "kicker_collections": "Collections",
+    "kicker_recently_added": "Recently Added",
+    "movies_and_tv_shows": "Movies and TV Shows",
+    "kicker_movies": "Movies",
+    "kicker_tv_shows": "TV Shows",
+    "kicker_popular": "Popular",
+    "kicker_trending": "Trending",
+    "kicker_90_days": "90 Days",
+    "recently_released": "Recently Released",
+    "kicker_movie": "Movie",
+    "roulette": "Roulette",
+    "kicker_top_10": "Top 10",
+    "top_of_the_charts": "Top of the Charts",
+    "movies_and_tv_shows_amp": "Movies & TV Shows",
+    "movies_this_week": "Movies This Week",
+    "tv_shows_this_week": "TV Shows This Week",
+    "streaming_reorder": "Reorder",
+    "streaming_reset_order": "Reset to default order",
+    "streaming_move_up": "Move {{name}} up",
+    "streaming_move_down": "Move {{name}} down",
+    "streaming_save_order": "Save order",
     "suggested_movies": "Suggested movies",
     "suggested_episodes": "Suggested episodes",
     "intro": {
       "welcome_to_streamyfin": "Welcome to WeaselPlex",
       "a_free_and_open_source_client_for_jellyfin": "Your WeaselPlex library, on your phone.",
       "features_title": "Features",
-      "jellyseerr_feature_description": "Connect to your Seerr instance and request movies directly in the app.",
+      "jellyseerr_feature_description": "Request movies, shows & episodes directly in the app.",
       "downloads_feature_title": "Offline viewing",
-      "downloads_feature_description": "Save your own media to this device to watch offline.",
-      "chromecast_feature_description": "Cast movies and series to your Chromecast devices.",
+      "downloads_feature_description": "Download your own media to this device to watch offline.",
       "done_button": "Done",
       "go_to_settings_button": "Go to Settings"
     },
@@ -207,7 +228,13 @@
         "user_info_title": "User info",
         "user": "User",
         "server": "Server",
-        "app_version": "App version"
+        "app_version": "App version",
+        "check_for_updates": "Check for updates",
+        "checking_for_updates": "Checking…",
+        "update_to_version": "Update to {{version}}",
+        "up_to_date": "Up to date",
+        "updates_unavailable": "Not available in this build",
+        "update_check_failed": "Couldn't check"
       },
       "quick_connect": {
         "quick_connect_title": "Quick Connect",
@@ -219,7 +246,17 @@
         "error": "Error",
         "invalid_code": "Invalid code",
         "authorize": "Authorize",
-        "paste_code": "Paste from clipboard"
+        "paste_code": "Paste from clipboard",
+        "scan_the_qr_code": "Scan the QR code",
+        "scan_qr": "Scan QR",
+        "scan_hint": "Point the camera at the QR code on the TV's sign-in screen. It signs the TV in with this account.",
+        "type_code_instead": "Type the 6-digit code instead",
+        "scan_instead": "Scan the QR code instead",
+        "invalid_qr": "That isn't a WeaselPlex sign-in code. Scan the QR code shown on the TV.",
+        "code_rejected": "The TV didn't accept this code. Check that it's still on the TV's sign-in screen and try again.",
+        "authorizing": "Signing the TV in…",
+        "tv_signed_in": "The TV is now signed in as this account.",
+        "camera_unavailable": "The camera isn't available in this build. Type the code from the TV instead."
       },
       "media_controls": {
         "media_controls_title": "Media controls",
@@ -474,10 +511,6 @@
         "copy": "Copy",
         "copied": "Copied to clipboard"
       },
-      "chromecast": {
-        "title": "Chromecast",
-        "enable_h265": "Enable H265 for Chromecast"
-      },
       "languages": {
         "title": "Languages",
         "app_language": "App language",
@@ -505,7 +538,10 @@
       "title": "Sessions",
       "no_active_sessions": "No active sessions",
       "select_session": "Select session",
-      "now_playing": "Now playing:"
+      "now_playing": "Now playing:",
+      "no_remote_targets": "No devices available. Open WeaselPlex on the device you want to play on, signed in with your account, then try again.",
+      "playing_on": "Playing on {{device}}",
+      "play_failed": "Could not play on {{device}}"
     },
     "downloads": {
       "downloads_title": "Downloads",
@@ -530,7 +566,8 @@
         "downloading": "Downloading",
         "completed": "Downloaded",
         "failed": "Download failed",
-        "queued": "Queued"
+        "queued": "Queued",
+        "preparing": "Preparing…"
       },
       "toasts": {
         "you_are_not_allowed_to_download_files": "You are not allowed to download files.",
@@ -554,6 +591,7 @@
         "could_not_get_download_url_for_item": "Could not get download URL for {{itemName}}",
         "file_deleted": "{{item}} deleted"
       },
+      "selected_subtitle_unavailable": "The selected subtitle could not be saved. Choose another track or retry.",
       "offline_library": "Offline library",
       "queue": "Queue",
       "of_total": "{{downloaded}} of {{total}}",
@@ -603,6 +641,13 @@
     "discover": "Requests",
     "requests_hint": "Type at least 2 characters of a movie or show title, or press Search.",
     "request_search_failed": "Couldn't load results from the request server. Please try again.",
+    "requests_connecting_title": "Connecting to requests",
+    "requests_connecting_detail": "Setting up requests for your WeaselPlex account.",
+    "requests_not_enabled_title": "Requests aren't enabled yet",
+    "requests_not_enabled_detail": "Your WeaselPlex account can't make requests yet. If this was just fixed, tap Retry.",
+    "requests_retry_wait": "Still not enabled. Wait a few minutes before trying again.",
+    "requests_unavailable_title": "Request service unavailable",
+    "requests_unavailable_detail": "Couldn't reach the request server. Tap Retry to try again.",
     "some_categories_failed": "Some result types couldn't be loaded.",
     "load_more": "Load more results",
     "no_results": "No results",
@@ -643,6 +688,15 @@
   "library": {
     "no_results": "No results",
     "no_libraries_found": "No libraries found",
+    "search_placeholder": "Search {{name}}",
+    "alphabet": {
+      "title": "Jump to letter",
+      "hint": "Swipe up or down to choose a letter, or activate to open the letter picker.",
+      "jump": "Jump to {{letter}}",
+      "symbols": "Jump to numbers, symbols and other titles",
+      "retry": "Retry alphabet navigation",
+      "load_error": "Could not load this part of the library"
+    },
     "item_types": {
       "movies": "Movies",
       "series": "Series",
@@ -667,6 +721,9 @@
       "genres": "Genres",
       "years": "Years",
       "sort_by": "Sort by",
+      "release_date": "Release date",
+      "newest_first": "Newest first",
+      "oldest_first": "Oldest first",
       "filter_by": "Filter by",
       "sort_order": "Sort order",
       "tags": "Tags",
@@ -677,7 +734,23 @@
     },
     "libraries_count": "{{count}} libraries",
     "title": "Libraries",
-    "eyebrow": "WeaselPlex · {{count}} libraries"
+    "eyebrow": "WeaselPlex · {{count}} libraries",
+    "random": "Random",
+    "quick_list_popular": "Popular",
+    "quick_list_trending": "Trending",
+    "quick_list_top_10": "Top 10",
+    "quick_list_new": "New",
+    "all_groups": "All",
+    "tab_recommended": "Recommended",
+    "tab_library": "Library",
+    "kicker_just": "Just",
+    "released": "Released",
+    "added": "Added",
+    "kicker_your": "Your",
+    "suggestions": "Suggestions",
+    "kicker_top_10": "Top 10",
+    "on_service": "On {{service}}",
+    "groups": "Groups"
   },
   "favorites": {
     "series": "Series",
@@ -689,8 +762,7 @@
     "noDataTitle": "Nothing on your watchlist yet",
     "noData": "Items you add to your watchlist show up here.",
     "eyebrow": "WeaselPlex · Your favorites, saved",
-    "saved_count": "{{count}} saved",
-    "people": "People"
+    "saved_count": "{{count}} saved"
   },
   "custom_links": {
     "no_links": "No links"
@@ -729,8 +801,6 @@
     "error": "Error",
     "failed_to_get_stream_url": "Failed to get the stream URL",
     "an_error_occurred_while_playing_the_video": "An error occurred while playing the video. Check logs in settings.",
-    "client_error": "Client error",
-    "could_not_create_stream_for_chromecast": "Could not create a stream for Chromecast",
     "message_from_server": "Message from server: {{message}}",
     "next_episode": "Next episode",
     "continue_watching": "Continue watching",
@@ -773,8 +843,7 @@
     "stopPlayback": "Stop playback",
     "stopPlayingTitle": "Stop playing \"{{title}}\"?",
     "stopPlayingConfirm": "Are you sure you want to stop playback?",
-    "downloaded": "Downloaded",
-    "missing_parameters": "Missing playback parameters"
+    "downloaded": "Downloaded"
   },
   "chapters": {
     "title": "Chapters",
@@ -795,7 +864,7 @@
     "select_season": "Select season",
     "no_episodes_for_this_season": "No episodes for this season",
     "more_with": "More with {{name}}",
-    "similar_items": "Similar items",
+    "similar_items": "More Like This",
     "no_similar_items_found": "No similar items found",
     "video": "Video",
     "media_options": "Media options",
@@ -832,7 +901,20 @@
     "resume_playback_description": "Do you want to continue where you left off or start from the beginning?",
     "play_from_start": "Play from start",
     "continue_from": "Continue from {{time}}",
-    "no_data_available": "No data available"
+    "no_data_available": "No data available",
+    "add_to_watchlist": "Add to Watchlist",
+    "remove_from_watchlist": "Remove from Watchlist",
+    "play_trailer": "Play trailer",
+    "trailers": "Trailers",
+    "no_trailers": "No trailers",
+    "random": "Random",
+    "shuffle": "Shuffle",
+    "mark_series_played": "Mark entire series as played?",
+    "mark_series_unplayed": "Mark entire series as unplayed?",
+    "local_trailer": "Local",
+    "external_trailer": "External",
+    "youtube": "YouTube",
+    "go_to_series": "Go to series"
   },
   "live_tv": {
     "title": "Live TV",
@@ -1148,8 +1230,7 @@
     "hide_value": "Hide value",
     "enabled": "Enabled",
     "header_count_one": "{{count}} header",
-    "header_count_other": "{{count}} headers",
-    "header_count": "{{count}} headers"
+    "header_count_other": "{{count}} headers"
   },
   "item": {
     "play_runtime": "Play · {{time}}",
@@ -1161,6 +1242,7 @@
     "download": "Download",
     "trailer": "Trailer",
     "downloaded": "Downloaded",
+    "episode_number_short": "EP {{number}}",
     "episodes_count": "{{count}} episodes",
     "seasons_count": "{{count}} seasons"
   },
@@ -1169,5 +1251,14 @@
     "offline_title": "Offline mode",
     "offline_detail": "{{host}} is unreachable. Showing your downloads.",
     "downloads_title": "Your downloads"
+  },
+  "app_update": {
+    "title": "{{app}} {{version}} is available.",
+    "update": "Update",
+    "not_now": "Not now",
+    "downloading": "Downloading… {{percent}}%",
+    "failed": "The update couldn't be installed. Try again from Settings.",
+    "unverified": "The update couldn't be verified, so it wasn't installed.",
+    "allow_installs": "To update, allow WeaselPlex to install unknown apps in your phone's Settings."
   }
 }

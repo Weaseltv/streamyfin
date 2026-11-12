@@ -7,7 +7,6 @@
     "invalid_url": "Digite um endereço válido"
   },
   "login": {
-    "username_required": "Usuário obrigatório",
     "error_title": "Erro",
     "login_title": "Entrar",
     "login_to_title": "Entrar em",
@@ -27,7 +26,6 @@
     "connection_failed": "Conexão falhou",
     "could_not_connect_to_server": "Não foi possível conectar com o servidor. Verifique a URL e sua conexão de internet.",
     "an_unexpected_error_occurred": "Ocorreu um erro inesperado",
-    "change_server": "Alterar servidor",
     "invalid_username_or_password": "Usuário ou senha inválido",
     "user_does_not_have_permission_to_log_in": "Usuário não possui permissão para entrar",
     "server_is_taking_too_long_to_respond_try_again_later": "O servidor está demorando para responder, tente novamente mais tarde",
@@ -43,7 +41,6 @@
     "connect_button": "Conectar",
     "previous_servers": "Servidores anteriores",
     "clear_button": "Limpar",
-    "server_url": "URL do servidor",
     "swipe_to_remove": "Deslize para remover",
     "search_for_local_servers": "Buscar por servidores locais",
     "searching": "Buscando...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Conecte sua instância de Jellyfin e solicite filmes diretamente pelo app.",
       "downloads_feature_title": "Downloads",
       "downloads_feature_description": "Baixe filmes e séries para assistir sem internet. Use o método padrão ou instale o servidor de otimização para fazer o download de arquivos em segundo plano.",
-      "chromecast_feature_description": "Transmita filmes e séries para seu dispositivo Chromecast.",
       "centralised_settings_plugin_title": "Plugin de configurações centralizado",
       "centralised_settings_plugin_description": "Configure configurações através de um local centralizado no seu servidor Jellyfin. Todos as configurações de cliente serão sincronizadas para todos os usuários.",
       "done_button": "Ok",
@@ -698,8 +694,6 @@
     "error": "Erro",
     "failed_to_get_stream_url": "Falha ao obter a URL de stream",
     "an_error_occurred_while_playing_the_video": "Ocorreu um erro ao reproduzir o vídeo. Verifique os logs nas configurações.",
-    "client_error": "Erro no cliente",
-    "could_not_create_stream_for_chromecast": "Não foi possível criar um stream para o Chromecast",
     "message_from_server": "Mensagem do servidor: {{message}}",
     "next_episode": "Próximo episódio",
     "continue_watching": "Continuar assistindo",
@@ -741,8 +735,7 @@
     "stopPlayback": "Stop Playback",
     "stopPlayingTitle": "Parar a reprodução de \"{{title}}\"?",
     "stopPlayingConfirm": "Tem certeza que deseja parar a reprodução?",
-    "downloaded": "Baixado",
-    "missing_parameters": "Faltam parâmetros de reprodução"
+    "downloaded": "Baixado"
   },
   "chapters": {
     "title": "Capítulos",

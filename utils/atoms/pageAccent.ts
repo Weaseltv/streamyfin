@@ -1,6 +1,6 @@
-import { useIsFocused } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { NeonBoard } from "@/constants/Colors";
 
 /**
@@ -15,8 +15,11 @@ export const usePageAccent = () => useAtomValue(pageAccentAtom);
 
 /** An explicit accent, or the accent of the page on screen. */
 export const useAccent = (accent?: string | null) => {
-  const pageAccent = usePageAccent();
-  return accent ?? pageAccent;
+  const source = useMemo(
+    () => (accent == null ? pageAccentAtom : atom(accent)),
+    [accent],
+  );
+  return useAtomValue(source);
 };
 
 /**
@@ -25,11 +28,11 @@ export const useAccent = (accent?: string | null) => {
  */
 export const useSetPageAccent = (accent: string | undefined, active = true) => {
   const set = useSetAtom(pageAccentAtom);
-  const focused = useIsFocused();
-  useEffect(() => {
-    if (!active || !accent || !focused) return;
-    set(accent);
-  }, [accent, active, focused, set]);
+  useFocusEffect(
+    useCallback(() => {
+      if (active && accent) set(accent);
+    }, [accent, active, set]),
+  );
 };
 
 /** The accent of the item playing in the OSD (the item's type colour). */

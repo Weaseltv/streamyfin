@@ -26,10 +26,11 @@ import { JELLYFIN_CLIENT_NAME } from "@/constants/Client";
 import useRouter from "@/hooks/useAppRouter";
 import { useInterval } from "@/hooks/useInterval";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
-import { useSettings } from "@/utils/atoms/settings";
+import { useSettingsActions } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
+import { subtitleModeFromProfile } from "@/utils/jellyfin/userConfiguration";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
 import {
@@ -46,10 +47,15 @@ import {
 import { store } from "@/utils/store";
 import { clearTVDiscoverySafely } from "@/utils/tvDiscovery/sync";
 import { APP_VERSION } from "@/utils/version";
+import { clearWeaselSeerrRefusal } from "@/utils/weaselSeerrRefusal";
 
 interface Server {
   address: string;
 }
+
+/** Server URLs compare equal regardless of trailing slashes. */
+const sameServerUrl = (a: string | null | undefined, b: string) =>
+  (a ?? "").replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 const initialApi = (() => {
   try {
@@ -177,9 +183,23 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useAtom(userAtom);
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [secret, setSecret] = useState<string | null>(null);
-  const { setPluginSettings, refreshStreamyfinPluginSettings } = useSettings();
+  const { updateSettings, setPluginSettings, refreshStreamyfinPluginSettings } =
+    useSettingsActions();
   const { clearAllJellyseerData, setJellyseerrUser } = useJellyseerr();
   const queryClient = useQueryClient();
+
+  // Apply the phone account's subtitle mode at login/session restoration, not
+  // only after visiting Audio & subtitles. This replaces an older cached Smart
+  // factory default for untouched profiles and restores explicit account modes
+  // on a fresh installation or account switch. Never write the profile here.
+  useEffect(() => {
+    if (Platform.isTV) return;
+    const subtitleMode = subtitleModeFromProfile(
+      user?.Configuration?.SubtitleMode,
+      false,
+    );
+    if (subtitleMode !== undefined) updateSettings({ subtitleMode });
+  }, [user, updateSettings]);
 
   // --- Session-expiry handling ----------------------------------------------
   // When the server revokes the token (e.g. the device/session is deleted), a
@@ -539,6 +559,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           writeErrorLog("Failed to delete expo push token for device"),
         );
 
+      // WeaselPlex: a refused Seerr connect is forgotten on sign-out, so the
+      // next sign-in tries straight away.
+      if (user?.Id) clearWeaselSeerrRefusal(user.Id);
       await clearSessionState();
     },
     onError: (error) => {
@@ -711,6 +734,13 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   const switchServerUrl = useCallback(
     (newUrl: string) => {
       if (!jellyfin || !api?.accessToken) return;
+      // Every Wi-Fi change re-evaluates the URL, and most evaluations land on
+      // the URL already in use (leaving home Wi-Fi keeps the remote URL,
+      // losing the network entirely does too). A new api object for the same
+      // URL is not free: everything keyed on `api` refetches, and the player
+      // refetched its item mid-playback, failed while offline and replaced the
+      // video with its error screen.
+      if (sameServerUrl(api.basePath, newUrl)) return;
 
       clearTVDiscoverySafely();
       const newApi = createApiWithCustomHeaders(
@@ -751,8 +781,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
             jellyfin,
             serverUrl,
             token,
+            store.get(apiAtom),
           );
-          setApi(apiInstance);
+          if (store.get(apiAtom) !== apiInstance) setApi(apiInstance);
 
           if (storedUser?.Id) {
             setUser(storedUser);
@@ -769,7 +800,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
               // The response can resolve long after startup (no axios timeout).
               // If the session changed meanwhile (logout, account switch), drop
               // it instead of repopulating a stale user / re-saving credentials.
-              if (getTokenFromStorage() !== token) return;
+              if (
+                getTokenFromStorage() !== token ||
+                !sameServerUrl(getServerUrlFromStorage(), serverUrl)
+              )
+                return;
               setUser(response.data);
 
               // Migrate current session to secure storage if not already saved

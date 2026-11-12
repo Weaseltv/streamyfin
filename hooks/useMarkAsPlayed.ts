@@ -6,7 +6,7 @@ import { useHaptic } from "./useHaptic";
 import { usePlaybackManager } from "./usePlaybackManager";
 import { useInvalidatePlaybackProgressCache } from "./useRevalidatePlaybackProgressCache";
 
-export const useMarkAsPlayed = (items: BaseItemDto[]) => {
+export const useMarkAsPlayed = (items: BaseItemDto[], throwOnError = false) => {
   const queryClient = useQueryClient();
   const lightHapticFeedback = useHaptic("light");
   const { markItemPlayed, markItemUnplayed } = usePlaybackManager();
@@ -16,14 +16,6 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
   const toggle = useCallback(
     async (played: boolean) => {
       lightHapticFeedback();
-
-      // Marking an episode played is the user re-engaging with the series, so
-      // a dismissal from the Continue & Next Up rail no longer applies.
-      if (played) {
-        for (const item of items) {
-          if (item.Type === "Episode") undismissSeriesFromNextUp(item.SeriesId);
-        }
-      }
 
       const itemIds = items.map((item) => item.Id).filter(Boolean) as string[];
 
@@ -62,14 +54,27 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
             return played ? markItemPlayed(item.Id) : markItemUnplayed(item.Id);
           }),
         );
-      } catch (_error) {
+        // Clear the shared dismissal only after the played operation succeeds.
+        if (played) {
+          await Promise.all(
+            items
+              .filter((item) => item.Type === "Episode")
+              .map((item) =>
+                undismissSeriesFromNextUp(item.SeriesId).catch(() => {}),
+              ),
+          );
+        }
+      } catch (error) {
         for (const { queries } of previousQueriesByItemId) {
           for (const [queryKey, data] of queries) {
             queryClient.setQueryData(queryKey, data);
           }
         }
+        if (throwOnError) throw error;
       } finally {
-        await invalidatePlaybackProgressCache();
+        const revalidation = invalidatePlaybackProgressCache();
+        if (throwOnError) void revalidation.catch(() => {});
+        else await revalidation;
         for (const itemId of itemIds) {
           queryClient.invalidateQueries({ queryKey: ["item", itemId] });
         }
@@ -83,6 +88,7 @@ export const useMarkAsPlayed = (items: BaseItemDto[]) => {
       markItemUnplayed,
       queryClient,
       undismissSeriesFromNextUp,
+      throwOnError,
     ],
   );
 

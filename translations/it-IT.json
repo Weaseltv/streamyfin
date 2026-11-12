@@ -7,7 +7,6 @@
     "invalid_url": "Inserisci un indirizzo valido"
   },
   "login": {
-    "username_required": "Nome utente è obbligatorio",
     "error_title": "Errore",
     "login_title": "Accesso",
     "login_to_title": "Accedi a",
@@ -27,7 +26,6 @@
     "connection_failed": "Connessione fallita",
     "could_not_connect_to_server": "Impossibile connettersi al server. Controllare l'URL e la connessione di rete.",
     "an_unexpected_error_occurred": "Si è verificato un errore inaspettato",
-    "change_server": "Cambiare il server",
     "invalid_username_or_password": "Nome utente o password non validi",
     "user_does_not_have_permission_to_log_in": "L'utente non ha il permesso di accedere",
     "server_is_taking_too_long_to_respond_try_again_later": "Il server sta impiegando troppo tempo per rispondere, riprovare più tardi",
@@ -43,7 +41,6 @@
     "connect_button": "Connetti",
     "previous_servers": "Server precedenti",
     "clear_button": "Cancella",
-    "server_url": "URL del Server",
     "swipe_to_remove": "Scorri per rimuovere",
     "search_for_local_servers": "Ricerca dei server locali",
     "searching": "Ricerca in corso...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Connettetevi alla vostra istanza Jellyseerr e richiedete i film direttamente nell'app.",
       "downloads_feature_title": "Scaricamento",
       "downloads_feature_description": "Scaricate film e serie tv da vedere offline. Utilizzate il metodo predefinito o installate il server di ottimizzazione per scaricare i file in background.",
-      "chromecast_feature_description": "Trasmettete film e serie tv ai vostri dispositivi Chromecast.",
       "centralised_settings_plugin_title": "Impostazioni dei Plugin Centralizzate",
       "centralised_settings_plugin_description": "Configura le impostazioni in modo centralizzato sul server Jellyfin. Le impostazioni client di ogni utente si sincronizzano automaticamente.",
       "done_button": "Fatto",
@@ -698,8 +694,6 @@
     "error": "Errore",
     "failed_to_get_stream_url": "Impossibile ottenere l'URL dello stream",
     "an_error_occurred_while_playing_the_video": "Si è verificato un errore durante la riproduzione del video. Controllare i log nelle impostazioni.",
-    "client_error": "Errore del client",
-    "could_not_create_stream_for_chromecast": "Impossibile creare uno stream per Chromecast",
     "message_from_server": "Messaggio dal server",
     "next_episode": "Prossimo Episodio",
     "continue_watching": "Continua a guardare",
@@ -741,8 +735,7 @@
     "stopPlayback": "Interrompi la riproduzione",
     "stopPlayingTitle": "Interrompere la riproduzione \"{{title}}\"?",
     "stopPlayingConfirm": "Sei sicuro di voler interrompere la riproduzione?",
-    "downloaded": "Scaricato",
-    "missing_parameters": "Parametri di riproduzione mancanti"
+    "downloaded": "Scaricato"
   },
   "chapters": {
     "title": "Capitoli",

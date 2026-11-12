@@ -18,6 +18,7 @@ import { MusicTrackItem } from "@/components/music/MusicTrackItem";
 import { PlaylistPickerSheet } from "@/components/music/PlaylistPickerSheet";
 import { TrackOptionsSheet } from "@/components/music/TrackOptionsSheet";
 import { Colors } from "@/constants/Colors";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { writeDebugLog } from "@/utils/log";
 
@@ -172,11 +173,15 @@ export default function SuggestionsScreen() {
 
   const isLoading = loadingLatest || loadingRecentlyPlayed || loadingFrequent;
 
-  const handleRefresh = useCallback(() => {
-    refetchLatest();
-    refetchRecentlyPlayed();
-    refetchFrequent();
-  }, [refetchLatest, refetchRecentlyPlayed, refetchFrequent]);
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(
+    async () => {
+      await Promise.all([
+        refetchLatest({ throwOnError: true }),
+        refetchRecentlyPlayed({ throwOnError: true }),
+        refetchFrequent({ throwOnError: true }),
+      ]);
+    },
+  );
 
   const sections = useMemo(() => {
     const result: {
@@ -280,7 +285,7 @@ export default function SuggestionsScreen() {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
+            refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={Colors.primary}
           />

@@ -1,3 +1,4 @@
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
@@ -6,17 +7,18 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
-import { AddToFavorites } from "@/components/AddToFavorites";
 import { HeaderButtonGroup } from "@/components/common/HeaderButton";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { Image } from "@/components/common/ServerImage";
 import { DownloadItems } from "@/components/DownloadItem";
-import { ParallaxScrollView } from "@/components/ParallaxPage";
+import { SimilarItems } from "@/components/SimilarItems";
 import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
+import { SeriesButtons } from "@/components/series/SeriesButtons";
 import { SeriesHeader } from "@/components/series/SeriesHeader";
 import { TVSeriesPage } from "@/components/series/TVSeriesPage";
 import { NeonBoard } from "@/constants/Colors";
+import { useSeriesSeasons } from "@/hooks/useSeriesSeasons";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
@@ -25,9 +27,17 @@ import {
   buildOfflineSeriesFromEpisodes,
   getDownloadedEpisodesForSeries,
 } from "@/utils/downloads/offline-series";
-import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
+import { countEpisodes } from "@/utils/episodes";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
+import { seriesBackdropUrl } from "@/utils/titlePageArtwork";
+
+const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
+  [...(data ?? [])].sort(
+    (a, b) =>
+      (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
+      (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
+  );
 
 const page: React.FC = () => {
   const navigation = useNavigation();
@@ -73,6 +83,14 @@ const page: React.FC = () => {
     enabled: isOffline || (!!api && !!user?.Id),
   });
 
+  // The season list needs only the show's id. Asked for here, it travels
+  // with the show instead of starting once the show has arrived; the season
+  // picker reads this same request.
+  useSeriesSeasons(seriesId, isOffline, {
+    enabled: !Platform.isTV,
+    silent: true,
+  });
+
   // For offline mode, use stored base64 image
   const base64Image = useMemo(() => {
     if (isOffline) {
@@ -85,15 +103,11 @@ const page: React.FC = () => {
     if (isOffline && base64Image) {
       return `data:image/jpeg;base64,${base64Image}`;
     }
-    return getBackdropUrl({
-      api,
-      item,
-      quality: 90,
-      width: 1000,
-    });
+    // The address a card's tap has already started downloading
+    return seriesBackdropUrl(api, item);
   }, [isOffline, base64Image, api, item]);
 
-  useSetPageAccent(NeonBoard.yellow);
+  useSetPageAccent(NeonBoard.show);
 
   const { data: allEpisodes, isLoading } = useQuery({
     queryKey: ["AllEpisodes", seriesId, isOffline, offlineRevision],
@@ -115,12 +129,7 @@ const page: React.FC = () => {
       });
       return res?.data.Items || [];
     },
-    select: (data) =>
-      [...(data || [])].sort(
-        (a, b) =>
-          (a.ParentIndexNumber ?? 0) - (b.ParentIndexNumber ?? 0) ||
-          (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
-      ),
+    select: sortEpisodeSummary,
     staleTime: isOffline ? Infinity : 60 * 1000,
     refetchInterval: !isOffline && Platform.isTV ? 60 * 1000 : undefined,
     enabled: isOffline || (!!api && !!user?.Id),
@@ -152,15 +161,18 @@ const page: React.FC = () => {
     navigation.setOptions({
       headerRight: () =>
         !isLoading && item && allEpisodes && allEpisodes.length > 0 ? (
+          // ADD TO WATCHLIST is one of the page's buttons now, as on the TV
           <HeaderButtonGroup>
-            <AddToFavorites item={item} />
             {!Platform.isTV && (
               <DownloadItems
                 size='large'
                 title={t("item_card.download.download_series")}
                 items={allEpisodes}
-                MissingDownloadIconComponent={() => (
-                  <HeaderIcon name='downloads' />
+                MissingDownloadIconComponent={({ active }) => (
+                  <HeaderIcon
+                    name='downloads'
+                    tintColor={active ? NeonBoard.text : NeonBoard.mid}
+                  />
                 )}
                 DownloadedIconComponent={() => (
                   <HeaderIcon name='downloaded' tintColor={NeonBoard.green} />
@@ -190,9 +202,10 @@ const page: React.FC = () => {
 
   return (
     <OfflineModeProvider isOffline={isOffline}>
-      <ParallaxScrollView
-        headerHeight={210}
-        overlap={40}
+      <SeasonPicker
+        item={item}
+        initialSeasonIndex={Number(seasonIndex)}
+        currentEpisodeId={nextUpId}
         headerImage={
           backdropUrl ? (
             <Image
@@ -214,21 +227,27 @@ const page: React.FC = () => {
             />
           )
         }
-      >
-        <View className='flex flex-col'>
-          <SeriesHeader
-            item={item}
-            seasons={seasonCount}
-            episodes={allEpisodes?.length}
-          />
-          {!isOffline && <NextUp seriesId={seriesId} />}
-          <SeasonPicker
-            item={item}
-            initialSeasonIndex={Number(seasonIndex)}
-            currentEpisodeId={nextUpId}
-          />
-        </View>
-      </ParallaxScrollView>
+        pageHeader={
+          <View className='flex flex-col'>
+            <SeriesHeader
+              item={item}
+              seasons={seasonCount}
+              episodes={countEpisodes(allEpisodes)}
+            />
+            {!isOffline && <SeriesButtons item={item} />}
+            {!isOffline && <NextUp seriesId={seriesId} />}
+          </View>
+        }
+        pageFooter={
+          isOffline ? null : (
+            <SimilarItems
+              itemId={seriesId}
+              accent={NeonBoard.show}
+              style={{ marginTop: 16 }}
+            />
+          )
+        }
+      />
     </OfflineModeProvider>
   );
 };

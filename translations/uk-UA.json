@@ -7,7 +7,6 @@
     "invalid_url": "Введіть коректну адресу"
   },
   "login": {
-    "username_required": "Імʼя користувача необхідне",
     "error_title": "Помилка",
     "login_title": "Вхід",
     "login_to_title": "Увійти в",
@@ -27,7 +26,6 @@
     "connection_failed": "Помилка зʼєднання",
     "could_not_connect_to_server": "Неможливо підʼєднатися до серверу. Будь ласка перевірте URL і ваше зʼєднання з мережею",
     "an_unexpected_error_occurred": "Сталася несподівана помилка",
-    "change_server": "Змінити сервер",
     "invalid_username_or_password": "Неправильні імʼя користувача або пароль",
     "user_does_not_have_permission_to_log_in": "Користувач не маю дозволу на вхід",
     "server_is_taking_too_long_to_respond_try_again_later": "Сервер відповідає занадто довго, будь-ласка спробуйте пізніше",
@@ -43,7 +41,6 @@
     "connect_button": "Підʼєднатися",
     "previous_servers": "попередні сервери",
     "clear_button": "Очистити",
-    "server_url": "URL сервера",
     "swipe_to_remove": "Проведіть, щоб видалити",
     "search_for_local_servers": "Пошук локальних серверів",
     "searching": "Пошук...",
@@ -121,7 +118,6 @@
       "jellyseerr_feature_description": "Підключіться до вашого екземпляру Jellyseerr і запитуватуйте фільми безпосередньо в застосунку.",
       "downloads_feature_title": "Завантаження",
       "downloads_feature_description": "Завантажуйте фільми і серіали для перегляду офлайн. Використовуйте або метод за замовчуванням або встановіть оптимізований сервер для завантаження файлів у фоні.",
-      "chromecast_feature_description": "Транслюйте фільми і серіали на ваші Chromecast прилади.",
       "centralised_settings_plugin_title": "Плагін централізованих налаштувань",
       "centralised_settings_plugin_description": "Налаштуйте параметри централізовано на вашому сервері Jellyfin. Клієнтські налаштування кожного користувача синхронізуються автоматично.",
       "done_button": "Готово",
@@ -698,8 +694,6 @@
     "error": "Помилка",
     "failed_to_get_stream_url": "Не вдалося отримати URL-адресу потоку",
     "an_error_occurred_while_playing_the_video": "Під час відтворення відео сталася помилка. Перевірте журнал в налаштуваннях.",
-    "client_error": "Помилка клієнту",
-    "could_not_create_stream_for_chromecast": "Не вдалося створити потік для Chromecast",
     "message_from_server": "Повідомлення від серверу: {{message}}",
     "next_episode": "Наступний Епізод",
     "continue_watching": "Продовжити перегляд",
@@ -741,8 +735,7 @@
     "stopPlayback": "Зупинити відтворення",
     "stopPlayingTitle": "Зупинити відтворення «{{title}}»?",
     "stopPlayingConfirm": "Ви впевнені, що хочете зупинити відтворення?",
-    "downloaded": "Завантажено",
-    "missing_parameters": "Відсутні параметри відтворення"
+    "downloaded": "Завантажено"
   },
   "chapters": {
     "title": "Розділи",

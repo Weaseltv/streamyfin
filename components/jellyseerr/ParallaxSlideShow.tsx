@@ -1,21 +1,14 @@
 import { FlashList } from "@shopify/flash-list";
 import type React from "react";
-import {
-  type PropsWithChildren,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { Animated, View, type ViewProps } from "react-native";
+import { type PropsWithChildren, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
 import { GridSkeleton } from "./GridSkeleton";
-
-const ANIMATION_ENTER = 250;
-const ANIMATION_EXIT = 250;
-const BACKDROP_DURATION = 5000;
+import { ReadyBackdrop } from "./ReadyBackdrop";
 
 type Render = React.ComponentType<any> | React.ReactElement | null | undefined;
 
@@ -30,6 +23,10 @@ interface Props<T> {
   keyExtractor: (item: T) => string;
   onEndReached?: (() => void) | null | undefined;
   isLoading?: boolean;
+  isFetching?: boolean;
+  backdropIdentity: string;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
 const ParallaxSlideShow = <T,>({
@@ -43,55 +40,18 @@ const ParallaxSlideShow = <T,>({
   keyExtractor,
   onEndReached,
   isLoading = false,
+  isFetching = false,
+  backdropIdentity,
+  isError = false,
+  onRetry,
 }: PropsWithChildren<Props<T> & ViewProps>) => {
   const insets = useSafeAreaInsets();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const enterAnimation = useCallback(
-    () =>
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: ANIMATION_ENTER,
-        useNativeDriver: true,
-      }),
-    [fadeAnim],
+  const { t } = useTranslation();
+  const usableImages = useMemo(
+    () => [...new Set(images.filter(Boolean))],
+    [images],
   );
-
-  const exitAnimation = useCallback(
-    () =>
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: ANIMATION_EXIT,
-        useNativeDriver: true,
-      }),
-    [fadeAnim],
-  );
-
-  useEffect(() => {
-    if (images?.length) {
-      enterAnimation().start();
-
-      const intervalId = setInterval(() => {
-        Animated.sequence([enterAnimation(), exitAnimation()]).start(() => {
-          fadeAnim.setValue(0);
-          setCurrentIndex((prevIndex) => (prevIndex + 1) % images?.length);
-        });
-      }, BACKDROP_DURATION);
-
-      return () => {
-        clearInterval(intervalId);
-      };
-    }
-  }, [
-    fadeAnim,
-    images,
-    enterAnimation,
-    exitAnimation,
-    setCurrentIndex,
-    currentIndex,
-  ]);
 
   return (
     <View
@@ -106,18 +66,7 @@ const ParallaxSlideShow = <T,>({
         headerHeight={300}
         onEndReached={onEndReached}
         headerImage={
-          <Animated.Image
-            key={images?.[currentIndex]}
-            id={images?.[currentIndex]}
-            source={{
-              uri: images?.[currentIndex],
-            }}
-            style={{
-              width: "100%",
-              height: "100%",
-              opacity: fadeAnim,
-            }}
-          />
+          <ReadyBackdrop key={backdropIdentity} images={usableImages} />
         }
         logo={logo}
       >
@@ -127,6 +76,16 @@ const ParallaxSlideShow = <T,>({
           </View>
           {MainContent?.()}
           <View>
+            {isError && (
+              <View style={{ gap: 8, paddingVertical: 16 }}>
+                <Text variant='meta' muted>
+                  {t("home.section_failed")}
+                </Text>
+                <Button variant='border' loading={isFetching} onPress={onRetry}>
+                  {t("home.retry")}
+                </Button>
+              </View>
+            )}
             {isLoading ? (
               <View>
                 <Text className='text-lg font-bold my-2'>{listHeader}</Text>
@@ -143,9 +102,11 @@ const ParallaxSlideShow = <T,>({
                 data={data}
                 ListEmptyComponent={
                   <View className='flex flex-col items-center justify-center h-full'>
-                    <Text className='font-bold text-xl text-neutral-500'>
-                      No results
-                    </Text>
+                    {!isError && (
+                      <Text className='font-bold text-xl text-neutral-500'>
+                        {t("home.no_items")}
+                      </Text>
+                    )}
                   </View>
                 }
                 contentInsetAdjustmentBehavior='automatic'

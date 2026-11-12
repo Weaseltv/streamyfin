@@ -1,30 +1,47 @@
+import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
+import { FlashList, type ListRenderItem } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import { atom, useAtom } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
+import Animated, {
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderIcon } from "@/components/common/HeaderIcon";
 import { LoadingLine } from "@/components/common/LoadingLine";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { WheelPickerSheet } from "@/components/common/WheelPickerSheet";
-import { EpisodeRow } from "@/components/series/EpisodeRow";
+import {
+  EpisodeRow,
+  getEpisodePillLabel,
+} from "@/components/series/EpisodeRow";
 import type { SeasonIndexState } from "@/components/series/SeasonDropdown";
 import { NeonBoard } from "@/constants/Colors";
-import { Sizes } from "@/constants/neon";
-import { Freshness } from "@/constants/queryFreshness";
+import { Scrims, Sizes } from "@/constants/neon";
+import { useSeriesSeasons } from "@/hooks/useSeriesSeasons";
 import { useDownload } from "@/providers/DownloadProvider";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import {
-  buildOfflineSeasons,
-  getDownloadedEpisodesForSeason,
-} from "@/utils/downloads/offline-series";
+import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
+import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { Text } from "../common/Text";
-import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
-import { DropdownTrigger } from "../PlatformDropdown";
+import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
 
 type Props = {
@@ -32,7 +49,15 @@ type Props = {
   initialSeasonIndex?: number;
   /** The episode that carries the tally (next up). */
   currentEpisodeId?: string | null;
+  headerImage: ReactElement;
+  pageHeader: ReactNode;
+  /** Below the episodes (More Like This). */
+  pageFooter?: ReactNode;
 };
+
+const AnimatedEpisodes = Animated.createAnimatedComponent(
+  FlashList<BaseItemDto>,
+);
 
 export const seasonIndexAtom = atom<SeasonIndexState>({});
 
@@ -40,6 +65,9 @@ export const SeasonPicker: React.FC<Props> = ({
   item,
   initialSeasonIndex,
   currentEpisodeId,
+  headerImage,
+  pageHeader,
+  pageFooter,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -51,40 +79,14 @@ export const SeasonPicker: React.FC<Props> = ({
 
   const seasonIndex = useMemo(
     () => seasonIndexState[item.Id ?? ""],
-    [item, seasonIndexState],
+    [item.Id, seasonIndexState],
   );
 
   // Online queries must not depend on the download count: see series/[id].
   const offlineRevision = isOffline ? downloadedItems.length : 0;
 
-  const { data: seasons } = useQuery({
-    queryKey: ["seasons", item.Id, isOffline, offlineRevision],
-    queryFn: async () => {
-      if (isOffline) {
-        return buildOfflineSeasons(getDownloadedItems(), item.Id!);
-      }
-
-      if (!api || !user?.Id || !item.Id) return [];
-      const response = await api.axiosInstance.get(
-        `${api.basePath}/Shows/${item.Id}/Seasons`,
-        {
-          params: {
-            userId: user?.Id,
-            itemId: item.Id,
-            Fields:
-              "ItemCounts,PrimaryImageAspectRatio,CanDelete,MediaSourceCount",
-          },
-          headers: {
-            Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
-          },
-        },
-      );
-
-      return response.data.Items;
-    },
-    staleTime: isOffline ? Infinity : Freshness.catalog,
-    enabled: isOffline || (!!api && !!user?.Id && !!item.Id),
-  });
+  // The show page starts this same request alongside the show's own
+  const { data: seasons } = useSeriesSeasons(item.Id, isOffline);
 
   const selectedSeasonId: string | null = useMemo(() => {
     const season: BaseItemDto = seasons?.find(
@@ -153,14 +155,6 @@ export const SeasonPicker: React.FC<Props> = ({
       : !!api && !!user?.Id && !!item.Id && !!selectedSeasonId,
   });
 
-  // Used for height calculation
-  const [nrOfEpisodes, setNrOfEpisodes] = useState(0);
-  useEffect(() => {
-    if (episodes && episodes.length > 0) {
-      setNrOfEpisodes(episodes.length);
-    }
-  }, [episodes]);
-
   const sortedSeasons: BaseItemDto[] = useMemo(
     () =>
       [...(seasons ?? [])].sort(
@@ -202,112 +196,223 @@ export const SeasonPicker: React.FC<Props> = ({
     selectSeason(byIndex ?? fallback);
   }, [sortedSeasons, seasonIndex, initialSeasonIndex]);
 
-  return (
-    <View
-      style={{
-        minHeight: 64 * nrOfEpisodes,
-      }}
-    >
-      <SectionHeader title={t("item_card.seasons")} accent={NeonBoard.yellow} />
-      <View
-        className='flex flex-row items-center'
-        style={{ paddingLeft: Sizes.gutter, paddingRight: 4, gap: 8 }}
+  // The list (and the page head it carries) is rebuilt when the viewer moves
+  // from one season to another, which opens the new season at the top. It is
+  // not rebuilt when the first season becomes known: keying the list on the
+  // season id alone built the whole head twice on every visit, once while the
+  // season list was loading and again when it arrived.
+  const shownSeason = isOffline ? selectedSeasonNumber : selectedSeasonId;
+  const [listSeason, setListSeason] = useState({
+    season: shownSeason,
+    switches: 0,
+  });
+  if (shownSeason !== null && shownSeason !== listSeason.season) {
+    setListSeason({
+      season: shownSeason,
+      switches: listSeason.switches + (listSeason.season === null ? 0 : 1),
+    });
+  }
+
+  const insets = useSafeAreaInsets();
+  const scrollOffset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollOffset.value = event.contentOffset.y;
+  });
+  const backdropStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          scrollOffset.value,
+          [-210, 0, 210],
+          [-105, 0, 157.5],
+        ),
+      },
+      { scale: interpolate(scrollOffset.value, [-210, 0, 210], [2, 1, 1]) },
+    ],
+  }));
+  // A rebuilt list starts at the top, so the backdrop's parallax does too
+  useEffect(() => {
+    scrollOffset.value = 0;
+  }, [listSeason.switches, scrollOffset]);
+  // One pill column for the season, wide enough for its longest range
+  const pillColumnWidth = useMemo(
+    () =>
+      getEpisodePillColumnWidth(
+        (episodes ?? []).map((episode) => getEpisodePillLabel(episode, t)),
+      ),
+    [episodes, t],
+  );
+  const renderEpisode = useCallback<ListRenderItem<BaseItemDto>>(
+    ({ item: episode }) => (
+      <EpisodeRow
+        episode={episode}
+        current={!!currentEpisodeId && episode.Id === currentEpisodeId}
+        pillColumnWidth={pillColumnWidth}
+      />
+    ),
+    [currentEpisodeId, pillColumnWidth],
+  );
+  const header = (
+    <View>
+      <Animated.View
+        style={[
+          { height: 210, backgroundColor: NeonBoard.stage },
+          backdropStyle,
+        ]}
       >
-        {/* One trigger in place of the horizontal chip strip. With 18
+        {headerImage}
+      </Animated.View>
+      <View style={{ marginTop: -40 }}>
+        <LinearGradient
+          colors={Scrims.backdrop}
+          locations={Scrims.backdropLocations}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: -170,
+            height: 210,
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 40,
+            bottom: 0,
+            backgroundColor: NeonBoard.stage,
+          }}
+        />
+        {pageHeader}
+        <SectionHeader title={t("item_card.seasons")} accent={NeonBoard.show} />
+        <View
+          className='flex flex-row items-center'
+          style={{ paddingLeft: Sizes.gutter, paddingRight: 4, gap: 8 }}
+        >
+          {/* One trigger in place of the horizontal chip strip. With 18
             seasons the strip scrolled under the download and played icons
             and clipped whichever chips sat beneath them; a single trigger
             has a fixed width and never reaches them. It opens the same
             wheel WeaselTV iOS uses for playlists and categories. */}
-        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
-          <TouchableOpacity
-            accessibilityRole='button'
-            accessibilityLabel={t("item_card.seasons")}
-            disabled={sortedSeasons.length === 0}
-            onPress={() =>
-              showModal(
-                <WheelPickerSheet
-                  title={t("item_card.seasons")}
-                  accent={NeonBoard.yellow}
-                  options={sortedSeasons.map((season) => ({
-                    value: season.Id ?? String(season.IndexNumber),
-                    title:
-                      season.Name ||
-                      `${t("item_card.season")} ${season.IndexNumber}`,
-                  }))}
-                  selection={
-                    selectedSeason?.Id ?? String(selectedSeason?.IndexNumber)
-                  }
-                  onCommit={(value) => {
-                    const season = sortedSeasons.find(
-                      (s) => (s.Id ?? String(s.IndexNumber)) === value,
-                    );
-                    if (season) selectSeason(season);
-                  }}
-                  onClose={hideModal}
-                />,
-                { enablePanDownToClose: true },
-              )
-            }
-          >
-            <DropdownTrigger
-              accent={NeonBoard.yellow}
+          <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
+            <TouchableOpacity
+              accessibilityRole='button'
+              accessibilityLabel={t("item_card.seasons")}
               disabled={sortedSeasons.length === 0}
-              value={
-                selectedSeason
-                  ? selectedSeason.Name ||
-                    `${t("item_card.season")} ${selectedSeason.IndexNumber}`
-                  : t("item_card.seasons")
+              onPress={() =>
+                showModal(
+                  <WheelPickerSheet
+                    title={t("item_card.seasons")}
+                    accent={NeonBoard.show}
+                    options={sortedSeasons.map((season) => ({
+                      value: season.Id ?? String(season.IndexNumber),
+                      title:
+                        season.Name ||
+                        `${t("item_card.season")} ${season.IndexNumber}`,
+                    }))}
+                    selection={
+                      selectedSeason?.Id ?? String(selectedSeason?.IndexNumber)
+                    }
+                    onCommit={(value) => {
+                      const season = sortedSeasons.find(
+                        (s) => (s.Id ?? String(s.IndexNumber)) === value,
+                      );
+                      if (season) selectSeason(season);
+                    }}
+                    onClose={hideModal}
+                  />,
+                  { enablePanDownToClose: true },
+                )
               }
-            />
-          </TouchableOpacity>
+            >
+              {/* Styled like the TV's season tabs: the chosen season in
+                  red on the dark backing the TV puts behind buttons */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  height: Sizes.chip,
+                  paddingLeft: 11,
+                  paddingRight: 8,
+                  borderWidth: 1,
+                  borderColor: NeonBoard.show,
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  opacity: sortedSeasons.length === 0 ? 0.5 : 1,
+                }}
+              >
+                <Text
+                  variant='chip'
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                  style={{ color: NeonBoard.show, maxWidth: 200 }}
+                >
+                  {selectedSeason
+                    ? selectedSeason.Name ||
+                      `${t("item_card.season")} ${selectedSeason.IndexNumber}`
+                    : t("item_card.seasons")}
+                </Text>
+                <Feather name='chevron-down' size={16} color={NeonBoard.show} />
+              </View>
+            </TouchableOpacity>
+          </View>
+          {episodes?.length && !isOffline ? (
+            <View className='flex flex-row items-center' style={{ gap: 4 }}>
+              <DownloadItems
+                title={t("item_card.download.download_season")}
+                items={episodes || []}
+                MissingDownloadIconComponent={() => (
+                  <HeaderIcon
+                    name='downloads'
+                    size={20}
+                    tintColor={NeonBoard.mid}
+                  />
+                )}
+                DownloadedIconComponent={() => (
+                  <HeaderIcon
+                    name='downloaded'
+                    tintColor={NeonBoard.green}
+                    size={20}
+                  />
+                )}
+              />
+              <PlayedStatus items={episodes || []} />
+            </View>
+          ) : null}
         </View>
-        {episodes?.length && !isOffline ? (
-          <View className='flex flex-row items-center' style={{ gap: 4 }}>
-            <DownloadItems
-              title={t("item_card.download.download_season")}
-              items={episodes || []}
-              MissingDownloadIconComponent={() => (
-                <HeaderIcon
-                  name='downloads'
-                  size={20}
-                  tintColor={NeonBoard.mid}
-                />
-              )}
-              DownloadedIconComponent={() => (
-                <HeaderIcon
-                  name='downloaded'
-                  tintColor={NeonBoard.green}
-                  size={20}
-                />
-              )}
-            />
-            <PlayedStatus items={episodes || []} />
-          </View>
-        ) : null}
+        <View style={{ marginTop: 10 }}>
+          <LoadingLine accent={NeonBoard.show} active={isPending} />
+        </View>
       </View>
-      <View className='flex flex-col' style={{ marginTop: 10 }}>
-        <LoadingLine accent={NeonBoard.yellow} active={isPending} />
-        {!isPending &&
-          episodes?.map((e: BaseItemDto) => (
-            <EpisodeRow
-              key={e.Id}
-              episode={e}
-              current={!!currentEpisodeId && e.Id === currentEpisodeId}
-              trailing={
-                !isOffline ? <DownloadSingleItem item={e} /> : undefined
-              }
-            />
-          ))}
-        {!isPending && (episodes?.length || 0) === 0 ? (
-          <View
-            style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
-          >
-            <Text variant='meta' muted>
-              {t("item_card.no_episodes_for_this_season")}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+    </View>
+  );
+  return (
+    <View style={{ flex: 1 }}>
+      <AnimatedEpisodes
+        key={listSeason.switches}
+        data={isPending ? [] : (episodes ?? [])}
+        keyExtractor={(episode) => episode.Id!}
+        renderItem={renderEpisode}
+        extraData={pillColumnWidth}
+        ListHeaderComponent={header}
+        ListFooterComponent={pageFooter ? <View>{pageFooter}</View> : null}
+        ListEmptyComponent={
+          !isPending ? (
+            <View
+              style={{ paddingHorizontal: Sizes.gutter, paddingVertical: 16 }}
+            >
+              <Text variant='meta' muted>
+                {t("item_card.no_episodes_for_this_season")}
+              </Text>
+            </View>
+          ) : null
+        }
+        drawDistance={128}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+      />
     </View>
   );
 };

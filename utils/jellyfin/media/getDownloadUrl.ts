@@ -20,6 +20,7 @@ export const getDownloadUrl = async ({
   subtitleStreamIndex,
   deviceId,
   audioMode = "auto",
+  signal,
 }: {
   api: Api;
   item: BaseItemDto;
@@ -30,6 +31,7 @@ export const getDownloadUrl = async ({
   subtitleStreamIndex: number;
   deviceId: string;
   audioMode?: AudioTranscodeModeType;
+  signal?: AbortSignal;
 }): Promise<{
   url: string | null;
   mediaSource: MediaSourceInfo | null;
@@ -37,6 +39,7 @@ export const getDownloadUrl = async ({
   const streamDetails = await getStreamUrl({
     api,
     item,
+    signal,
     userId,
     startTimeTicks: 0,
     mediaSourceId: mediaSource.Id,
@@ -58,6 +61,7 @@ export const getDownloadUrl = async ({
   const downloadStreamDetails = await getDownloadStreamUrl({
     api,
     item,
+    signal,
     userId,
     mediaSourceId: mediaSource.Id,
     deviceId,

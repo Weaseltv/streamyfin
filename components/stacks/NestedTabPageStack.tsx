@@ -16,6 +16,15 @@ type ICommonScreenOptions = ComponentProps<typeof Stack.Screen>["options"];
  * stage with a Condensed title; nothing is translucent or blurred.
  */
 export const stackScreenOptions: ICommonScreenOptions = {
+  freezeOnBlur: !Platform.isTV,
+  // Android phones: a 0.15 s fade between pages (and on Back). The stock
+  // Android change shows the new page after about 0.13 s and then keeps it
+  // drifting sideways for another 0.45 s, which reads as a slow page. iPhone
+  // keeps its native slide. Screens that set their own animation, the player
+  // and the modals are unaffected.
+  ...(Platform.OS === "android" && !Platform.isTV
+    ? { animation: "fade" as const }
+    : {}),
   headerTintColor: NeonBoard.text,
   headerBackButtonDisplayMode: "minimal",
   headerStyle: { backgroundColor: NeonBoard.stage },

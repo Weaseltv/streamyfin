@@ -5,7 +5,13 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { useNavigation } from "expo-router";
 import { useAtom } from "jotai";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,16 +36,17 @@ import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useOrientation } from "@/hooks/useOrientation";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
+import { reconcileItemPlayOptions } from "@/utils/itemPlayOptions";
+import { titleHeaderArt } from "@/utils/titlePageArtwork";
 import { AddToWatchlist } from "./AddToWatchlist";
 import { ItemHeader } from "./ItemHeader";
 import { PlayInRemoteSessionButton } from "./PlayInRemoteSession";
 
-const Chromecast = !Platform.isTV ? require("./Chromecast") : null;
 const ItemContentTV = Platform.isTV
   ? require("./ItemContent.tv").ItemContentTV
   : null;
@@ -63,7 +70,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   itemWithSources,
 }) => {
   const isOffline = useOfflineMode();
-  const { getDownloadedItemById } = useDownload();
+  const { getDownloadedItemById } = useDownloadActions();
   // A download pins the tracks it was pulled with, and only the record knows
   // them: resolving against the server media source hands back an index for a
   // stream the local file may not contain.
@@ -75,14 +82,11 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   const { orientation } = useOrientation();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [user] = useAtom(userAtom);
+  const [_user] = useAtom(userAtom);
   const { t } = useTranslation();
 
-  const [headerHeight, setHeaderHeight] = useState(230);
-
-  const [selectedOptions, setSelectedOptions] = useState<
-    SelectedOptions | undefined
-  >(undefined);
+  const headerHeight =
+    orientation === ScreenOrientation.OrientationLock.PORTRAIT_UP ? 230 : 200;
 
   // Use itemWithSources for play settings since it has MediaSources data
   const {
@@ -95,61 +99,83 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   const accent = typeAccent(item);
   useSetPageAccent(item ? accent : undefined);
 
-  // Needs to automatically change the selected to the default values for default indexes.
-  useEffect(() => {
-    setSelectedOptions(() => ({
+  const defaults = useMemo<SelectedOptions>(
+    () => ({
       bitrate: defaultBitrate,
       mediaSource: defaultMediaSource ?? undefined,
       subtitleIndex:
         downloadedTracks?.subtitleStreamIndex ?? defaultSubtitleIndex ?? -1,
       audioIndex: downloadedTracks?.audioStreamIndex ?? defaultAudioIndex,
-    }));
-  }, [
-    defaultAudioIndex,
-    defaultBitrate,
-    defaultSubtitleIndex,
-    defaultMediaSource,
-    downloadedTracks,
-  ]);
-
-  // Glass squares over the backdrop: cast, remote session, watchlists.
+    }),
+    [
+      defaultBitrate,
+      defaultMediaSource,
+      defaultSubtitleIndex,
+      defaultAudioIndex,
+      downloadedTracks?.subtitleStreamIndex,
+      downloadedTracks?.audioStreamIndex,
+    ],
+  );
+  const [selectedOptions, setOptions] = useState<SelectedOptions | undefined>(
+    defaults,
+  );
+  const selectionEdited = useRef(false);
+  const setSelectedOptions = useCallback<
+    React.Dispatch<React.SetStateAction<SelectedOptions | undefined>>
+  >((next) => {
+    selectionEdited.current = true;
+    setOptions(next);
+  }, []);
+  const mediaSources = (itemWithSources ?? item)?.MediaSources;
   useEffect(() => {
-    if (!Platform.isTV && itemWithSources) {
-      navigation.setOptions({
-        headerRight: () =>
-          item && (
-            <HeaderButtonGroup>
-              <Chromecast.Chromecast variant='glass' />
-              {item.Type !== "Program" &&
-                user?.Policy?.IsAdministrator &&
-                !settings.hideRemoteSessionButton && (
-                  <PlayInRemoteSessionButton item={item} size='large' />
-                )}
-              {item.Type !== "Program" &&
-                settings.streamyStatsServerUrl &&
-                !settings.hideWatchlistsTab && <AddToWatchlist item={item} />}
-            </HeaderButtonGroup>
-          ),
-      });
-    }
-  }, [
-    item,
-    navigation,
-    user,
-    itemWithSources,
-    settings.hideRemoteSessionButton,
-    settings.streamyStatsServerUrl,
-    settings.hideWatchlistsTab,
-  ]);
+    setOptions((current) =>
+      reconcileItemPlayOptions(
+        current,
+        defaults,
+        mediaSources,
+        selectionEdited.current,
+      ),
+    );
+  }, [defaults, mediaSources]);
 
+  // Header actions need identity and title, not playback-source DTO changes.
+  const headerItem = useMemo<BaseItemDto | undefined>(
+    () =>
+      item?.Id ? { Id: item.Id, Type: item.Type, Name: item.Name } : undefined,
+    [item?.Id, item?.Type, item?.Name],
+  );
+  const headerReady = !!itemWithSources;
+  const headerActions = useMemo(
+    () =>
+      headerItem && (
+        <HeaderButtonGroup>
+          {headerItem.Type !== "Program" &&
+            !settings.hideRemoteSessionButton && (
+              <PlayInRemoteSessionButton
+                item={headerItem}
+                selectedOptions={selectedOptions}
+                size='large'
+              />
+            )}
+          {headerItem.Type !== "Program" &&
+            settings.streamyStatsServerUrl &&
+            !settings.hideWatchlistsTab && <AddToWatchlist item={headerItem} />}
+        </HeaderButtonGroup>
+      ),
+    [
+      headerItem,
+      selectedOptions,
+      settings.hideRemoteSessionButton,
+      settings.streamyStatsServerUrl,
+      settings.hideWatchlistsTab,
+    ],
+  );
+  // Bare glyphs over the backdrop — iOS 26 wraps the group in its glass pill.
   useEffect(() => {
-    if (item) {
-      if (orientation !== ScreenOrientation.OrientationLock.PORTRAIT_UP)
-        setHeaderHeight(200);
-      else if (item.Type === "Movie") setHeaderHeight(230);
-      else setHeaderHeight(230);
+    if (!Platform.isTV && headerReady) {
+      navigation.setOptions({ headerRight: () => headerActions });
     }
-  }, [item, orientation]);
+  }, [navigation, headerReady, headerActions]);
 
   const { isFavorite, toggleFavorite } = useFavorite(item ?? {});
   const allPlayed = !!item?.UserData?.Played;
@@ -184,7 +210,10 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
         headerImage={
           <View style={[{ flex: 1 }]}>
             <ItemImage
-              variant={item.Type === "Movie" ? "Backdrop" : "Primary"}
+              // The address a card's tap has already started downloading;
+              // drawn as it arrives, without the 0.3 s fade
+              {...titleHeaderArt(item)}
+              transition={0}
               item={item}
               style={{
                 width: "100%",
@@ -320,5 +349,6 @@ export const ItemContent: React.FC<ItemContentProps> = (props) => {
   if (Platform.isTV && ItemContentTV) {
     return <ItemContentTV {...props} />;
   }
-  return <MemoizedItemContentMobile {...props} />;
+  if (!props.item) return null;
+  return <MemoizedItemContentMobile key={props.item.Id} {...props} />;
 };

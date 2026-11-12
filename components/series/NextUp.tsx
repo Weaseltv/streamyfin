@@ -11,14 +11,16 @@ import { NeonBoard } from "@/constants/Colors";
 import { glowRule, Sizes } from "@/constants/neon";
 import { usePlayMedia } from "@/hooks/usePlayMedia";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
-import { runtimeTicksToMinutes } from "@/utils/time";
+import { formatEpisodeNumber } from "@/utils/episodes";
+import { formatAirDate, runtimeTicksToMinutes } from "@/utils/time";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
 import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
 /**
  * The series page's next-up row: a 70 row with a yellow tally, 96×54 thumb
- * with progress, "S2:E4 · The Desk", runtime · time left, compact RESUME.
+ * with progress, "S2:E4 · The Desk", air date · runtime · time left,
+ * compact RESUME.
  */
 export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const [user] = useAtom(userAtom);
@@ -49,6 +51,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const position = item.UserData?.PlaybackPositionTicks ?? 0;
   const runtime = item.RunTimeTicks ?? 0;
   const meta = [
+    formatAirDate(item.PremiereDate),
     runtime ? runtimeTicksToMinutes(runtime) : null,
     position > 0 && runtime
       ? `${runtimeTicksToMinutes(runtime - position)} left`
@@ -59,7 +62,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
 
   return (
     <View>
-      <SectionHeader title={t("item_card.next_up")} accent={NeonBoard.yellow} />
+      <SectionHeader title={t("item_card.next_up")} accent={NeonBoard.show} />
       <TouchableItemRouter
         item={item}
         style={{
@@ -82,9 +85,9 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
               top: 0,
               bottom: 0,
               width: Sizes.tally,
-              backgroundColor: NeonBoard.yellow,
+              backgroundColor: NeonBoard.show,
             },
-            glowRule(NeonBoard.yellow),
+            glowRule(NeonBoard.show),
           ]}
         />
         <ContinueWatchingPoster item={item} useEpisodePoster size='tiny' />
@@ -93,7 +96,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
             unconstrained button ate the row until only "S" and "2." showed. */}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text variant='rowTitle' numberOfLines={1} style={{ fontSize: 14 }}>
-            {`S${item.ParentIndexNumber}:E${item.IndexNumber} · ${item.Name}`}
+            {`${formatEpisodeNumber(item, { includeSeason: true })} · ${item.Name}`}
           </Text>
           <Text variant='meta' muted numberOfLines={1} style={{ marginTop: 2 }}>
             {meta}
@@ -101,7 +104,7 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
         </View>
         <Button
           compact
-          accent={NeonBoard.yellow}
+          accent={NeonBoard.show}
           // Size to its label, never to the row: the shared Button lays its
           // content out at w-full, so without these it grows to fill whatever
           // the row will give it and pushes the title out of existence.

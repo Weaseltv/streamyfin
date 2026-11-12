@@ -21,6 +21,7 @@ import {
   PlaylistSortSheet,
 } from "@/components/music/PlaylistSortSheet";
 import { Colors } from "@/constants/Colors";
+import { useManualRefresh } from "@/hooks/useManualRefresh";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 const ITEMS_PER_PAGE = 40;
@@ -109,6 +110,10 @@ export default function PlaylistsScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  const { refreshing, onRefresh: handleRefresh } = useManualRefresh(() =>
+    refetch({ throwOnError: true }),
+  );
+
   if (!api || !user?.Id) {
     return (
       <View className='flex-1 justify-center items-center bg-black'>
@@ -181,8 +186,8 @@ export default function PlaylistsScreen() {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refetch}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={Colors.primary}
           />
         }

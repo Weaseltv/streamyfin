@@ -1,5 +1,5 @@
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { useTwoWaySync } from "./useTwoWaySync";
 
 /**
@@ -7,7 +7,7 @@ import { useTwoWaySync } from "./useTwoWaySync";
  */
 export function useInvalidatePlaybackProgressCache() {
   const queryClient = useNetworkAwareQueryClient();
-  const { getDownloadedItems } = useDownload();
+  const { getDownloadedItems } = useDownloadActions();
   const { syncPlaybackState } = useTwoWaySync();
 
   /**

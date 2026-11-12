@@ -46,7 +46,10 @@ export const MpvBufferSettings: React.FC = () => {
 
   return (
     <ListGroup title={t("home.settings.buffer.title")} className='mb-4'>
-      <ListItem title={t("home.settings.buffer.cache_mode")}>
+      <ListItem
+        stackControlOnCompact
+        title={t("home.settings.buffer.cache_mode")}
+      >
         <PlatformDropdown
           groups={cacheModeOptions}
           trigger={<DropdownTrigger value={currentCacheModeLabel} />}

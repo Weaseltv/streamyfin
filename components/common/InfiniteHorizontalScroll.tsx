@@ -2,7 +2,11 @@ import type {
   BaseItemDto,
   BaseItemDtoQueryResult,
 } from "@jellyfin/sdk/lib/generated-client/models";
-import { FlashList, type FlashListProps } from "@shopify/flash-list";
+import {
+  FlashList,
+  type FlashListProps,
+  type FlashListRef,
+} from "@shopify/flash-list";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { t } from "i18next";
 import { useAtom } from "jotai";
@@ -13,7 +17,12 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import {
+  scrollListToStart,
+  useHomeRowPosition,
+} from "@/hooks/useHomeRowPosition";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { Button } from "../Button";
 import { Loader } from "../Loader";
 import { Text } from "./Text";
 
@@ -23,6 +32,7 @@ interface HorizontalScrollProps
     pageParam,
   }: {
     pageParam: number;
+    signal?: AbortSignal;
   }) => Promise<BaseItemDtoQueryResult | null>;
   queryKey: string[];
   initialData?: BaseItemDto[];
@@ -56,32 +66,33 @@ export function InfiniteHorizontalScroll({
     };
   });
 
-  const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
-    queryKey,
-    queryFn,
-    staleTime: 60 * 1000, // 1 minute
-    getNextPageParam: (lastPage, pages) => {
-      if (
-        !lastPage?.Items ||
-        !lastPage?.TotalRecordCount ||
-        lastPage?.TotalRecordCount === 0
-      )
+  const { data, fetchNextPage, hasNextPage, isError, isFetching, refetch } =
+    useInfiniteQuery({
+      queryKey,
+      queryFn,
+      staleTime: 60 * 1000, // 1 minute
+      getNextPageParam: (lastPage, pages) => {
+        if (
+          !lastPage?.Items ||
+          !lastPage?.TotalRecordCount ||
+          lastPage?.TotalRecordCount === 0
+        )
+          return undefined;
+
+        const totalItems = lastPage.TotalRecordCount;
+        const accumulatedItems = pages.reduce(
+          (acc, curr) => acc + (curr?.Items?.length || 0),
+          0,
+        );
+
+        if (accumulatedItems < totalItems) {
+          return lastPage?.Items?.length * pages.length;
+        }
         return undefined;
-
-      const totalItems = lastPage.TotalRecordCount;
-      const accumulatedItems = pages.reduce(
-        (acc, curr) => acc + (curr?.Items?.length || 0),
-        0,
-      );
-
-      if (accumulatedItems < totalItems) {
-        return lastPage?.Items?.length * pages.length;
-      }
-      return undefined;
-    },
-    initialPageParam: 0,
-    enabled: !!api && !!user?.Id,
-  });
+      },
+      initialPageParam: 0,
+      enabled: !!api && !!user?.Id,
+    });
 
   const flatData = useMemo(() => {
     return (
@@ -90,12 +101,31 @@ export function InfiniteHorizontalScroll({
     );
   }, [data]);
 
+  const rowPosition = useHomeRowPosition<FlashListRef<BaseItemDto>>(
+    JSON.stringify(queryKey),
+    flatData.map((item) => item.Id ?? ""),
+    scrollListToStart,
+    data?.pages.length ?? 0,
+  );
+
   useEffect(() => {
     if (data) {
       animatedOpacity.value = 1;
     }
   }, [data]);
 
+  if ((data === undefined || data === null) && isError) {
+    return (
+      <View style={[{ padding: 16, gap: 8 }, loadingContainerStyle]}>
+        <Text variant='meta' muted>
+          {t("home.section_failed")}
+        </Text>
+        <Button variant='border' loading={isFetching} onPress={() => refetch()}>
+          {t("home.retry")}
+        </Button>
+      </View>
+    );
+  }
   if (data === undefined || data === null || loading) {
     return (
       <View
@@ -115,7 +145,18 @@ export function InfiniteHorizontalScroll({
 
   return (
     <Animated.View style={[containerStyle, animatedStyle1]}>
+      {isError && (
+        <Button variant='border' loading={isFetching} onPress={() => refetch()}>
+          {t("home.retry")}
+        </Button>
+      )}
       <FlashList
+        ref={rowPosition.ref}
+        onLoad={rowPosition.onReady}
+        onContentSizeChange={rowPosition.flush}
+        maintainVisibleContentPosition={
+          rowPosition.home ? { disabled: true } : undefined
+        }
         data={flatData}
         renderItem={({ item, index }) => (
           <View style={{ marginRight: 10 }}>{renderItem(item, index)}</View>

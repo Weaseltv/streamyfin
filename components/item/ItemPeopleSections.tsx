@@ -2,13 +2,16 @@ import type {
   BaseItemDto,
   BaseItemPerson,
 } from "@jellyfin/sdk/lib/generated-client/models";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { InteractionManager, View, type ViewProps } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { View, type ViewProps } from "react-native";
 import { MoreMoviesWithActor } from "@/components/MoreMoviesWithActor";
 import { CastAndCrew } from "@/components/series/CastAndCrew";
 import { useItemPeopleQuery } from "@/hooks/useItemPeopleQuery";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
+import { cancelItemPeopleWork } from "@/utils/query/cancelItemPeopleWork";
 
 interface Props extends ViewProps {
   item: BaseItemDto;
@@ -16,15 +19,24 @@ interface Props extends ViewProps {
 
 export const ItemPeopleSections: React.FC<Props> = ({ item, ...props }) => {
   const isOffline = useOfflineMode();
+  const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(false);
 
-  useEffect(() => {
-    if (isOffline) return;
-    const task = InteractionManager.runAfterInteractions(() =>
-      setEnabled(true),
-    );
-    return () => task.cancel();
-  }, [isOffline]);
+  // In this RN version InteractionManager is a setImmediate stub. Use
+  // actual screen focus, and stop lower-section work when the screen blurs.
+  // This is a focus gate, not a guarantee that the native animation has ended.
+  useFocusEffect(
+    useCallback(() => {
+      if (isOffline) return;
+      setEnabled(true);
+      return () => {
+        setEnabled(false);
+        // A frozen React tree may not commit that state update yet. Cancel
+        // in the focus callback itself so network work stops independently.
+        void cancelItemPeopleWork(queryClient, item.Id);
+      };
+    }, [isOffline, item.Id, queryClient]),
+  );
 
   const { data, isLoading } = useItemPeopleQuery(
     item.Id,

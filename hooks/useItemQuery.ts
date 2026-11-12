@@ -3,7 +3,7 @@ import { getItemsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { Platform } from "react-native";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useDownloadActions } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 
 // Helper to exclude specific fields
@@ -27,7 +27,7 @@ export const useItemQuery = (
 ) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
-  const { getDownloadedItemById } = useDownload();
+  const { getDownloadedItemById } = useDownloadActions();
 
   // Calculate final fields: use excludeFields if provided, otherwise use fields
   const finalFields = excludeFields

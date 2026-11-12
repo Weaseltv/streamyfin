@@ -1,0 +1,16 @@
+# Opens a movie's page from Home by title. Usage: -e MOVIE_TITLE=Unleashed
+appId: tv.theweasel.weaselplex.phone
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "HOME"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "${MOVIE_TITLE}"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "${MOVIE_TITLE}"
+- extendedWaitUntil:
+    visible: ".*CAST & CREW.*"
+    timeout: 20000

@@ -16,14 +16,17 @@ export const useItemPeopleQuery = (
 
   return useQuery<BaseItemPerson[]>({
     queryKey: ["item", itemId, "people"],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!api || !user?.Id || !itemId) return [];
 
-      const response = await getItemsApi(api).getItems({
-        ids: [itemId],
-        userId: user.Id,
-        fields: ["People" satisfies ItemFields],
-      });
+      const response = await getItemsApi(api).getItems(
+        {
+          ids: [itemId],
+          userId: user.Id,
+          fields: ["People" satisfies ItemFields],
+        },
+        { signal },
+      );
 
       const people = response.data.Items?.[0]?.People;
       return Array.isArray(people) ? people : [];

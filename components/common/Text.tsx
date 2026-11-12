@@ -16,7 +16,7 @@ import {
 } from "@/constants/neon";
 
 export interface TextProps extends RNTextProps {
-  /** Neon Board type role. Defaults to Barlow body in `text`. */
+  /** Neon Board type role. Defaults to Exo 2 body in `text`. */
   variant?: TypeVariant;
   /** Hex colour for the text; eyebrows and tallies take the page accent. */
   accent?: string;
@@ -43,8 +43,8 @@ const scaleInline = (style: StyleProp<TextStyle>): StyleProp<TextStyle> => {
 };
 
 /**
- * The app's text primitive: Barlow for copy, Barlow Condensed ExtraBold
- * uppercase for titles, section heads, numerals and timecodes. Font scaling
+ * The app's text primitive: Exo 2 for copy, buttons, counts and numerals,
+ * Audiowide uppercase for titles and section heads, as on WeaselPlex TV. Font scaling
  * is on, capped at 1.3x; fixed frames (tab bar, guide, timecodes) opt out
  * with `allowFontScaling={false}` at the call site.
  */

@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Slider } from "react-native-awesome-slider";
 import { useSharedValue } from "react-native-reanimated";
-import type { VolumeResult } from "react-native-volume-manager";
 import { NeonBoard } from "@/constants/Colors";
+import { useVideoContext } from "./contexts/VideoContext";
 
 const VolumeManager = Platform.isTV
   ? null
@@ -17,30 +17,29 @@ interface AudioSliderProps {
 
 const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
   const isTv = Platform.isTV;
+  const { volumeSession } = useVideoContext();
 
   const volume = useSharedValue<number>(50); // Explicitly type as number
   const min = useSharedValue<number>(0); // Explicitly type as number
   const max = useSharedValue<number>(100); // Explicitly type as number
   const isUserInteracting = useRef(false);
+  const mounted = useRef(false);
+  const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Use a ref to store the timeout ID
 
   useEffect(() => {
     if (isTv) return;
-    const fetchInitialVolume = async () => {
-      try {
-        const { volume: initialVolume } = await VolumeManager.getVolume();
-        volume.value = initialVolume * 100;
-      } catch (error) {
-        console.error("Error fetching initial volume:", error);
-      }
-    };
-    fetchInitialVolume();
-
+    mounted.current = true;
     // Disable the native volume UI when the component mounts
     VolumeManager.showNativeVolumeUI({ enabled: false });
 
     return () => {
+      mounted.current = false;
+      if (interactionTimeoutRef.current)
+        clearTimeout(interactionTimeoutRef.current);
       // Re-enable the native volume UI when the component unmounts
       VolumeManager.showNativeVolumeUI({ enabled: true });
     };
@@ -56,45 +55,35 @@ const AudioSlider: React.FC<AudioSliderProps> = ({ setVisibility }) => {
       console.error("Error setting volume:", error);
     }
 
+    if (!mounted.current) return;
     // Re-call showNativeVolumeUI to ensure the setting is applied on iOS
     VolumeManager.showNativeVolumeUI({ enabled: false });
 
     // Reset interaction flag after a delay
-    setTimeout(() => {
+    if (interactionTimeoutRef.current)
+      clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
       isUserInteracting.current = false;
     }, 100);
   };
 
   useEffect(() => {
     if (isTv) return;
-    const _volumeListener = VolumeManager.addVolumeListener(
-      (result: VolumeResult) => {
-        // Only update if user is not currently interacting with the slider
-        if (!isUserInteracting.current) {
-          volume.value = result.volume * 100;
-        }
-
-        setVisibility(true);
-
-        // Clear any existing timeout
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-
-        // Set a new timeout to hide the visibility after 2 seconds
-        timeoutRef.current = setTimeout(() => {
-          setVisibility(false);
-        }, 1000);
-      },
-    );
+    const unsubscribe = volumeSession.subscribe((value, initial) => {
+      if (!isUserInteracting.current) volume.value = value * 100;
+      if (initial) return;
+      setVisibility(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setVisibility(false), 1000);
+    });
 
     return () => {
-      // volumeListener.remove();
+      unsubscribe();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isTv, volume, setVisibility]);
+  }, [isTv, volume, setVisibility, volumeSession]);
 
   if (isTv) return null;
 

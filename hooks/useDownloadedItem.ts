@@ -1,11 +1,18 @@
+import { atom, useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useDownload } from "@/providers/DownloadProvider";
+import { Platform } from "react-native";
+import { downloadsRefreshAtom } from "@/providers/DownloadProvider";
+import { getDownloadedItemById } from "@/providers/Downloads/database";
 
-/** True when the item is fully downloaded (reactive to the downloads list). */
+/** Progress events do not change completed-download status. */
 export const useDownloadedItem = (id?: string | null): boolean => {
-  const { downloadedItems } = useDownload();
-  return useMemo(
-    () => !!id && downloadedItems.some((d) => d.item.Id === id),
-    [downloadedItems, id],
+  const selected = useMemo(
+    () =>
+      atom((get) => {
+        get(downloadsRefreshAtom);
+        return !Platform.isTV && !!id && !!getDownloadedItemById(id);
+      }),
+    [id],
   );
+  return useAtomValue(selected);
 };

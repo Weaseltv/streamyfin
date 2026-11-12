@@ -1,4 +1,4 @@
-import { TVTypographyScale, useSettings } from "@/utils/atoms/settings";
+import { TVTypographyScale, useSetting } from "@/utils/atoms/settings";
 import { scaleSize } from "@/utils/scaleSize";
 
 /**
@@ -60,9 +60,9 @@ export type ScaledTVTypography = {
  * Use this instead of the static TVTypography constant for dynamic scaling.
  */
 export const useScaledTVTypography = (): ScaledTVTypography => {
-  const { settings } = useSettings();
+  const tvTypographyScale = useSetting("tvTypographyScale");
   const scale =
-    scaleMultipliers[settings.tvTypographyScale] ??
+    scaleMultipliers[tvTypographyScale] ??
     scaleMultipliers[TVTypographyScale.Default];
 
   return {

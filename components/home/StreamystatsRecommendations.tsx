@@ -6,9 +6,9 @@ import { getItemsApi, getSystemApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { ScrollView, View, type ViewProps } from "react-native";
-
+import { View, type ViewProps } from "react-native";
 import { SectionHeader } from "@/components/common/SectionHeader";
+import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
 import { RailSkeleton } from "@/components/home/RailSkeleton";
 import { Sizes } from "@/constants/neon";
@@ -155,8 +155,9 @@ export const StreamystatsRecommendations: React.FC<Props> = ({
       {isLoading ? (
         <RailSkeleton orientation='vertical' />
       ) : (
-        <ScrollView
-          horizontal
+        <HomeRowScrollView
+          rowKey={JSON.stringify(["recommendations", type])}
+          itemKeys={items?.map((item) => item.Id ?? "") ?? []}
           showsHorizontalScrollIndicator={false}
           snapToOffsets={snapOffsets}
           decelerationRate='fast'
@@ -179,7 +180,7 @@ export const StreamystatsRecommendations: React.FC<Props> = ({
               </TouchableItemRouter>
             ))}
           </View>
-        </ScrollView>
+        </HomeRowScrollView>
       )}
     </View>
   );

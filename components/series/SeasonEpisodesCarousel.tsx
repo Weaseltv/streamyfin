@@ -13,6 +13,7 @@ import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesBySeasonId } from "@/utils/downloads/offline-series";
+import { countEpisodes } from "@/utils/episodes";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import {
   HorizontalScroll,
@@ -100,8 +101,8 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
     <View>
       <SectionHeader
         title={item?.SeasonName ?? t("item_card.season")}
-        accent={NeonBoard.yellow}
-        count={episodes?.length}
+        accent={NeonBoard.show}
+        count={episodes ? countEpisodes(episodes) : undefined}
       />
       <HorizontalScroll
         ref={scrollRef}

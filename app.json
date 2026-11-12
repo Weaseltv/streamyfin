@@ -2,7 +2,7 @@
   "expo": {
     "name": "WeaselPlex",
     "slug": "weaselfin",
-    "version": "1.3",
+    "version": "1.38",
     "orientation": "default",
     "icon": "./assets/images/weaselplex-icon-1024.png",
     "scheme": "weaselfin",
@@ -50,7 +50,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"],
-      "versionCode": 4
+      "versionCode": 39
     },
     "plugins": [
       [
@@ -75,46 +75,41 @@
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/Barlow-Regular.ttf",
-            "./assets/fonts/Barlow-Medium.ttf",
-            "./assets/fonts/Barlow-SemiBold.ttf",
-            "./assets/fonts/Barlow-Bold.ttf",
-            "./assets/fonts/BarlowCondensed-Bold.ttf",
-            "./assets/fonts/BarlowCondensed-ExtraBold.ttf"
+            "./assets/fonts/Exo2-Regular.ttf",
+            "./assets/fonts/Exo2-Medium.ttf",
+            "./assets/fonts/Exo2-SemiBold.ttf",
+            "./assets/fonts/Exo2-Bold.ttf",
+            "./assets/fonts/Audiowide-Regular.ttf"
           ],
           "android": {
             "fonts": [
               {
-                "fontFamily": "Barlow",
+                "fontFamily": "Exo 2",
                 "fontDefinitions": [
                   {
-                    "path": "./assets/fonts/Barlow-Regular.ttf",
+                    "path": "./assets/fonts/Exo2-Regular.ttf",
                     "weight": 400
                   },
                   {
-                    "path": "./assets/fonts/Barlow-Medium.ttf",
+                    "path": "./assets/fonts/Exo2-Medium.ttf",
                     "weight": 500
                   },
                   {
-                    "path": "./assets/fonts/Barlow-SemiBold.ttf",
+                    "path": "./assets/fonts/Exo2-SemiBold.ttf",
                     "weight": 600
                   },
                   {
-                    "path": "./assets/fonts/Barlow-Bold.ttf",
+                    "path": "./assets/fonts/Exo2-Bold.ttf",
                     "weight": 700
                   }
                 ]
               },
               {
-                "fontFamily": "Barlow Condensed",
+                "fontFamily": "Audiowide",
                 "fontDefinitions": [
                   {
-                    "path": "./assets/fonts/BarlowCondensed-Bold.ttf",
-                    "weight": 700
-                  },
-                  {
-                    "path": "./assets/fonts/BarlowCondensed-ExtraBold.ttf",
-                    "weight": 800
+                    "path": "./assets/fonts/Audiowide-Regular.ttf",
+                    "weight": 400
                   }
                 ]
               }
@@ -133,7 +128,7 @@
             "forceStaticLinking": ["ExpoUI", "GlassEffectView", "GlassPoster"]
           },
           "android": {
-            "buildArchs": ["arm64-v8a", "x86_64", "armeabi-v7a"],
+            "buildArchs": ["arm64-v8a", "armeabi-v7a"],
             "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
@@ -146,7 +141,10 @@
               }
             },
             "useAndroidX": true,
-            "enableJetifier": true
+            "enableJetifier": true,
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# Playback services must survive release shrinking.\n-keep class com.doublesymmetry.trackplayer.** { *; }\n# RNDeviceInfo calls the install-referrer API through Class.forName/getMethod.\n-keep class com.android.installreferrer.api.** { *; }\n"
           }
         }
       ],

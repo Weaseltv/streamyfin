@@ -14,6 +14,8 @@ interface Props {
   badge?: string | null;
   badgeColor?: string;
   size?: "normal" | "small";
+  /** Custom collection posters retain their artwork's 2:3 ratio. */
+  posterDimensions?: { w: number; h: number };
 }
 
 /** Picks the poster or thumb for an item by type and rail orientation. */
@@ -24,6 +26,7 @@ export const ItemCard: React.FC<Props> = ({
   badge,
   badgeColor,
   size = "normal",
+  posterDimensions,
 }) => {
   if (orientation === "horizontal") {
     return (
@@ -43,7 +46,14 @@ export const ItemCard: React.FC<Props> = ({
   ) {
     return <SeriesPoster item={item} size={size} badge={badge} />;
   }
-  return <MoviePoster item={item} size={size} badge={badge} />;
+  return (
+    <MoviePoster
+      item={item}
+      size={size}
+      badge={badge}
+      dimensions={posterDimensions}
+    />
+  );
 };
 
 /** Card width for a rail, so snap offsets and skeletons agree with the cards. */

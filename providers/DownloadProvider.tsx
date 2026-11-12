@@ -6,7 +6,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
 } from "react";
 import { Platform } from "react-native";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -26,6 +28,16 @@ import type { JobStatus } from "./Downloads/types";
 import { apiAtom } from "./JellyfinProvider";
 
 export const processesAtom = atom<JobStatus[]>([]);
+export const downloadingAtom = atom((get) =>
+  get(processesAtom).some((process) =>
+    ["downloading", "queued", "pending"].includes(process.status),
+  ),
+);
+const APP_CACHE_DOWNLOAD_DIRECTORY = new Directory(
+  Paths.cache,
+  `${Application.applicationId}/Downloads/`,
+);
+
 export const downloadsRefreshAtom = atom<number>(0);
 
 const DownloadContext = createContext<ReturnType<
@@ -60,20 +72,22 @@ function useDownloadProvider() {
     return api?.accessToken;
   }, [api]);
 
-  const APP_CACHE_DOWNLOAD_DIRECTORY = new Directory(
-    Paths.cache,
-    `${Application.applicationId}/Downloads/`,
-  );
-
   const updateProcess = useCallback(
     (
       processId: string,
       updater:
         | Partial<JobStatus>
         | ((current: JobStatus) => Partial<JobStatus>),
+      nativeItemId?: string,
     ) => {
       setProcesses((prev) => {
-        const processIndex = prev.findIndex((p) => p.id === processId);
+        const processIndex = prev.findIndex(
+          (p) =>
+            p.id === processId &&
+            (!nativeItemId ||
+              !p.nativeItemId ||
+              p.nativeItemId === nativeItemId),
+        );
         if (processIndex === -1) return prev;
 
         const currentProcess = prev[processIndex];
@@ -96,10 +110,18 @@ function useDownloadProvider() {
   );
 
   const removeProcess = useCallback(
-    (id: string) => {
+    (id: string, nativeItemId?: string) => {
       // Use setTimeout to defer removal and avoid race conditions during rendering
       setTimeout(() => {
-        setProcesses((prev) => prev.filter((process) => process.id !== id));
+        setProcesses((prev) =>
+          prev.filter(
+            (process) =>
+              process.id !== id ||
+              (nativeItemId !== undefined &&
+                process.nativeItemId !== undefined &&
+                process.nativeItemId !== nativeItemId),
+          ),
+        );
       }, 0);
     },
     [setProcesses],
@@ -164,34 +186,60 @@ function useDownloadProvider() {
   };
 }
 
+const TV_DOWNLOADS = {
+  processes: [],
+  startBackgroundDownload: async () => {},
+  downloadedItems: [],
+  getDownloadedItems: () => [],
+  getDownloadsDatabase: () => ({ movies: {}, series: {}, other: {} }),
+  deleteAllFiles: async () => {},
+  deleteFile: async () => {},
+  deleteItems: async () => {},
+  deleteFileByType: async () => {},
+  removeProcess: () => {},
+  cancelDownload: async () => {},
+  triggerRefresh: () => {},
+  startDownload: async () => {},
+  getDownloadedItemSize: () => 0,
+  getDownloadedItemById: () => undefined,
+  updateDownloadedItem: () => {},
+  APP_CACHE_DOWNLOAD_DIRECTORY: "",
+  cleanCacheDirectory: async () => {},
+  appSizeUsage: async () => ({ total: 0, remaining: 0, appSize: 0 }),
+  dumpDownloadDiagnostics: async () => "",
+};
+
+type DownloadActions = Omit<
+  ReturnType<typeof useDownloadProvider>,
+  "processes" | "downloadedItems"
+>;
+const DownloadActionsContext = createContext<DownloadActions | null>(null);
+export function useDownloadActions() {
+  const context = useContext(DownloadActionsContext);
+  if (Platform.isTV) return TV_DOWNLOADS;
+  if (!context)
+    throw new Error(
+      "useDownloadActions must be used within a DownloadProvider",
+    );
+  return context;
+}
+
+const CompletedDownloadsContext = createContext<ReturnType<
+  typeof getAllDownloadedItems
+> | null>(null);
+export function useCompletedDownloads() {
+  const items = useContext(CompletedDownloadsContext);
+  if (Platform.isTV) return TV_DOWNLOADS.downloadedItems;
+  if (!items)
+    throw new Error(
+      "useCompletedDownloads must be used within a DownloadProvider",
+    );
+  return items;
+}
+
 export function useDownload() {
   const context = useContext(DownloadContext);
-
-  if (Platform.isTV) {
-    return {
-      processes: [],
-      startBackgroundDownload: async () => {},
-      downloadedItems: [],
-      getDownloadedItems: () => [],
-      getDownloadsDatabase: () => ({ movies: {}, series: {}, other: {} }),
-      deleteAllFiles: async () => {},
-      deleteFile: async () => {},
-      deleteItems: async () => {},
-      deleteFileByType: async () => {},
-      removeProcess: () => {},
-      cancelDownload: async () => {},
-      triggerRefresh: () => {},
-      startDownload: async () => {},
-      getDownloadedItemSize: () => 0,
-      getDownloadedItemById: () => undefined,
-      updateDownloadedItem: () => {},
-      APP_CACHE_DOWNLOAD_DIRECTORY: "",
-      cleanCacheDirectory: async () => {},
-      appSizeUsage: async () => ({ total: 0, remaining: 0, appSize: 0 }),
-      dumpDownloadDiagnostics: async () => "",
-    };
-  }
-
+  if (Platform.isTV) return TV_DOWNLOADS;
   if (context === null) {
     throw new Error("useDownload must be used within a DownloadProvider");
   }
@@ -201,10 +249,40 @@ export function useDownload() {
 
 export function DownloadProvider({ children }: { children: React.ReactNode }) {
   const downloadUtils = useDownloadProvider();
+  const latest = useRef(downloadUtils);
+  useLayoutEffect(() => {
+    latest.current = downloadUtils;
+  }, [downloadUtils]);
+  // Stable callable wrappers read the latest committed closures (including auth
+  // and process state). Changing progress never changes this context value.
+  const actions = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(downloadUtils)
+          .filter(([key]) => key !== "processes" && key !== "downloadedItems")
+          .map(([key, value]) => [
+            key,
+            typeof value === "function"
+              ? (...args: unknown[]) => {
+                  const current =
+                    latest.current[key as keyof typeof downloadUtils];
+                  return (current as (...values: unknown[]) => unknown)(
+                    ...args,
+                  );
+                }
+              : value,
+          ]),
+      ) as DownloadActions,
+    [downloadUtils.APP_CACHE_DOWNLOAD_DIRECTORY],
+  );
 
   return (
-    <DownloadContext.Provider value={downloadUtils}>
-      {children}
-    </DownloadContext.Provider>
+    <DownloadActionsContext.Provider value={actions}>
+      <CompletedDownloadsContext.Provider value={downloadUtils.downloadedItems}>
+        <DownloadContext.Provider value={downloadUtils}>
+          {children}
+        </DownloadContext.Provider>
+      </CompletedDownloadsContext.Provider>
+    </DownloadActionsContext.Provider>
   );
 }

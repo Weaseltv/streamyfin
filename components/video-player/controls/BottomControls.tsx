@@ -5,7 +5,7 @@ import type {
 } from "@jellyfin/sdk/lib/generated-client";
 import { type FC, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Slider } from "react-native-awesome-slider";
 import { type SharedValue } from "react-native-reanimated";
 import { ChapterList } from "@/components/chapters/ChapterList";
@@ -19,6 +19,7 @@ import {
   chapterNameAt,
   hasChapterMarkers,
 } from "@/utils/chapters";
+import { formatEpisodeNumber } from "@/utils/episodes";
 import { GlassSquare } from "./GlassSquare";
 import { TimeDisplay } from "./TimeDisplay";
 import { TrickplayBubble } from "./TrickplayBubble";
@@ -134,7 +135,12 @@ export const BottomControls: FC<BottomControlsProps> = ({
           position: "absolute",
           right: insets.right,
           left: insets.left,
-          bottom: Math.max(insets.bottom - 17, 0),
+          // Keep Android phone controls above the navigation-bar inset.
+          // The time row already has its own 8 dp bottom margin.
+          bottom:
+            Platform.OS === "android" && !Platform.isTV
+              ? insets.bottom
+              : Math.max(insets.bottom - 17, 0),
         },
       ]}
       className={"flex flex-col px-2"}
@@ -159,7 +165,7 @@ export const BottomControls: FC<BottomControlsProps> = ({
           >
             {[
               item?.Type === "Episode"
-                ? `${typeLabel(item)} · S${item.ParentIndexNumber}:E${item.IndexNumber}`
+                ? `${typeLabel(item)} · ${formatEpisodeNumber(item, { includeSeason: true })}`
                 : (typeLabel(item) ?? item?.Type?.toUpperCase()),
               item?.Type === "Movie" ? item?.ProductionYear : null,
               item?.Type === "Episode" ? item?.SeriesName : null,

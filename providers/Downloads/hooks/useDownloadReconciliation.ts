@@ -5,11 +5,11 @@ import type { ActiveDownload } from "@/modules";
 import { BackgroundDownloader } from "@/modules";
 import { getHeadersForUrl } from "@/utils/customHeaders";
 import {
+  cleanupPendingRecordFiles,
   finalizePendingDownload,
   getPendingDownload,
   getPendingDownloads,
   type PendingDownload,
-  removePendingDownload,
   updatePendingDownload,
 } from "../pendingDownloads";
 import type { JobStatus } from "../types";
@@ -25,10 +25,11 @@ let hasReconciled = false;
 
 function jobFromRecord(
   record: PendingDownload,
-  status: "queued" | "downloading",
+  status: "queued" | "downloading" | "error",
 ): JobStatus {
   return {
     id: record.itemId,
+    nativeItemId: record.activityMetadata?.itemId,
     inputUrl: record.inputUrl,
     item: record.item,
     itemId: record.itemId,
@@ -74,7 +75,8 @@ async function reEnqueue(
       `[RECONCILE] Re-enqueue failed for ${record.item.Name}:`,
       error,
     );
-    removePendingDownload(record.itemId);
+    cleanupPendingRecordFiles(record, true);
+    updatePendingDownload(record.itemId, { status: "failed" });
     return false;
   }
 }
@@ -122,7 +124,13 @@ export function useDownloadReconciliation({
       const restored: JobStatus[] = [];
 
       for (const record of pending) {
-        const nativeTask = nativeByItemId.get(record.itemId);
+        if (record.status === "failed") {
+          restored.push(jobFromRecord(record, "error"));
+          continue;
+        }
+        const nativeTask = nativeByItemId.get(
+          record.activityMetadata?.itemId ?? record.itemId,
+        );
 
         if (nativeTask?.state === "queued") {
           // A queued task hasn't sent its request yet, and the headers it was
@@ -144,7 +152,7 @@ export function useDownloadReconciliation({
           BackgroundDownloader.cancelQueuedDownload(record.inputUrl);
           if (await reEnqueue(record, headers)) {
             restored.push(jobFromRecord(record, "queued"));
-          }
+          } else restored.push(jobFromRecord(record, "error"));
           continue;
         }
 
@@ -174,12 +182,14 @@ export function useDownloadReconciliation({
           console.log(`[RECONCILE] Re-enqueueing: ${record.item.Name}`);
           if (await reEnqueue(record, getHeadersForUrl(record.inputUrl, {}))) {
             restored.push(jobFromRecord(record, "queued"));
-          }
+          } else restored.push(jobFromRecord(record, "error"));
           continue;
         }
 
         console.log(`[RECONCILE] Lost download dropped: ${record.item.Name}`);
-        removePendingDownload(record.itemId);
+        cleanupPendingRecordFiles(record, true);
+        updatePendingDownload(record.itemId, { status: "failed" });
+        restored.push(jobFromRecord(record, "error"));
       }
 
       if (restored.length > 0) {

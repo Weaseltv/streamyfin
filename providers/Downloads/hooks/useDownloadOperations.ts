@@ -2,18 +2,22 @@ import type {
   BaseItemDto,
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client/models";
-import { File, Paths } from "expo-file-system";
-import { useCallback } from "react";
+import { Directory, File, Paths } from "expo-file-system";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import DeviceInfo from "react-native-device-info";
 import { toast } from "sonner-native";
 import type { Bitrate } from "@/components/BitrateSelector";
-import useImageStorage from "@/hooks/useImageStorage";
 import { BackgroundDownloader } from "@/modules";
 import { getJellyfinHeadersForUrl } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
-import useDownloadHelper, { estimateDownloadSize } from "@/utils/download";
-import { downloadAdditionalAssets } from "../additionalDownloads";
+import { estimateDownloadSize } from "@/utils/download";
+import { writeInfoLog } from "@/utils/log";
+import { storage } from "@/utils/mmkv";
+import {
+  cleanupPreparedFiles,
+  downloadAdditionalAssets,
+} from "../additionalDownloads";
 import {
   clearAllDownloadedItems,
   getAllDownloadedItems,
@@ -25,11 +29,18 @@ import {
 } from "../fileOperations";
 import { buildDownloadActivityMetadata } from "../liveActivity";
 import {
+  cleanupPendingRecordFiles,
   getPendingDownload,
   removePendingDownload,
   savePendingDownload,
   updatePendingDownload,
 } from "../pendingDownloads";
+import {
+  downloadPreparationQueue,
+  downloadPreparations,
+  type PreparationStage,
+  preparationStage,
+} from "../preparation";
 import type { JobStatus } from "../types";
 import { generateFilename, uriToFilePath } from "../utils";
 
@@ -54,172 +65,350 @@ export function useDownloadOperations({
   onDataChange,
 }: UseDownloadOperationsProps) {
   const { t } = useTranslation();
-  const { saveSeriesPrimaryImage } = useDownloadHelper();
-  const { saveImage } = useImageStorage();
+  const sessionOwner = `${api?.basePath ?? ""}:${authHeader ?? ""}`;
+  const currentOwner = useRef(sessionOwner);
+  currentOwner.current = sessionOwner;
+  const currentProcesses = useRef(processes);
+  currentProcesses.current = processes;
+  useLayoutEffect(
+    () => () => downloadPreparations.cancelOwner(sessionOwner),
+    [sessionOwner],
+  );
 
   const startBackgroundDownload = useCallback(
     async (
-      url: string,
-      item: BaseItemDto,
-      mediaSource: MediaSourceInfo,
+      input:
+        | string
+        | ((stage: PreparationStage) => Promise<{
+            url: string;
+            item: BaseItemDto;
+            mediaSource: MediaSourceInfo;
+            audioStreamIndex?: number;
+            subtitleStreamIndex?: number;
+          }>),
+      originalItem: BaseItemDto,
+      originalMediaSource: MediaSourceInfo | undefined,
       maxBitrate: Bitrate,
-      audioStreamIndex?: number,
-      subtitleStreamIndex?: number,
+      initialAudioIndex?: number,
+      initialSubtitleIndex?: number,
     ) => {
-      if (!api || !item.Id || !authHeader) {
-        console.warn("startBackgroundDownload ~ Missing required params");
-        throw new Error("startBackgroundDownload ~ Missing required params");
+      if (!api || !originalItem.Id || !authHeader)
+        throw new Error("download_parameters_missing");
+      if (currentOwner.current !== sessionOwner) return;
+      const itemId = originalItem.Id;
+      const previousAttempt = getPendingDownload(itemId);
+      if (
+        (previousAttempt && previousAttempt.status !== "failed") ||
+        currentProcesses.current.some(
+          (p) =>
+            p.id === itemId &&
+            ["pending", "queued", "downloading"].includes(p.status),
+        )
+      ) {
+        toast.info(
+          t("home.downloads.toasts.item_already_downloading", {
+            item: originalItem.Name,
+          }),
+        );
+        return;
       }
-
-      try {
-        const deviceId = getOrSetDeviceId();
-        const processId = item.Id;
-
-        // Check if already downloading — in-memory process or persisted pending record
-        const existingProcess = processes.find((p) => p.id === processId);
-        if (existingProcess || getPendingDownload(processId)) {
-          toast.info(
-            t("home.downloads.toasts.item_already_downloading", {
-              item: item.Name,
-            }),
-          );
-          return;
+      const operation = downloadPreparations.reserve(itemId, sessionOwner);
+      if (!operation) {
+        toast.info(
+          t("home.downloads.toasts.item_already_downloading", {
+            item: originalItem.Name,
+          }),
+        );
+        return;
+      }
+      const nativeItemId = `${itemId}:${operation.generation}`;
+      const assertCurrent = () => {
+        operation.assertActive();
+        if (currentOwner.current !== sessionOwner) {
+          operation.cancel();
+          operation.assertActive();
         }
-
-        // Download all additional assets BEFORE starting native video download
-        const additionalAssets = await downloadAdditionalAssets({
+      };
+      const updateOwn = (patch: Partial<JobStatus>) =>
+        setProcesses((previous) =>
+          previous.map((p) =>
+            p.nativeItemId === nativeItemId ? { ...p, ...patch } : p,
+          ),
+        );
+      const removeOwn = () =>
+        setProcesses((previous) =>
+          previous.filter((p) => p.nativeItemId !== nativeItemId),
+        );
+      const clearOwnRecord = () => {
+        if (
+          getPendingDownload(itemId)?.activityMetadata?.itemId === nativeItemId
+        )
+          removePendingDownload(itemId);
+      };
+      let assets:
+        | Awaited<ReturnType<typeof downloadAdditionalAssets>>
+        | undefined;
+      let videoFile: File | undefined;
+      let activityMetadata: Awaited<
+        ReturnType<typeof buildDownloadActivityMetadata>
+      >;
+      let downloadUrl: string | undefined;
+      let taskId: number | undefined;
+      let accepted = false;
+      let retainedFailure = false;
+      let releasePreparation: (() => void) | undefined;
+      const deviceId = getOrSetDeviceId();
+      setProcesses((previous) => [
+        ...previous.filter((p) => p.id !== itemId),
+        {
+          id: itemId,
+          itemId,
+          nativeItemId,
+          inputUrl: "",
+          item: originalItem,
+          deviceId,
+          progress: 0,
+          status: "pending",
+          timestamp: new Date(),
+          mediaSource: originalMediaSource ?? {},
+          maxBitrate,
+          bytesDownloaded: 0,
+        },
+      ]);
+      writeInfoLog("Download preparation", {
+        stage: "accepted",
+        generation: operation.generation,
+      });
+      try {
+        releasePreparation = await downloadPreparationQueue.acquire(
+          operation.signal,
+        );
+        assertCurrent();
+        // Check document write permission independently from optional network assets.
+        const probe = new File(
+          Paths.document,
+          `download-${operation.generation}.probe`,
+        );
+        try {
+          probe.write("ready");
+        } finally {
+          if (probe.exists) probe.delete();
+        }
+        const resolved =
+          typeof input === "function"
+            ? await preparationStage(operation, input, 65_000)
+            : {
+                url: input,
+                item: originalItem,
+                mediaSource: originalMediaSource,
+                audioStreamIndex: initialAudioIndex,
+                subtitleStreamIndex: initialSubtitleIndex,
+              };
+        assertCurrent();
+        if (!resolved.url || !resolved.mediaSource)
+          throw new Error("download_stream_unavailable");
+        const { item, mediaSource } = resolved;
+        const audioStreamIndex = resolved.audioStreamIndex;
+        const subtitleStreamIndex = resolved.subtitleStreamIndex;
+        downloadUrl = resolved.url.startsWith("/")
+          ? `${api.basePath}${resolved.url}`
+          : resolved.url;
+        writeInfoLog("Download preparation", {
+          stage: "stream_ready",
+          generation: operation.generation,
+          result: mediaSource.TranscodingUrl ? "transcode" : "direct",
+        });
+        assets = await downloadAdditionalAssets({
           item,
           mediaSource,
           api,
-          saveImageFn: saveImage,
-          saveSeriesImageFn: saveSeriesPrimaryImage,
+          operation,
+          selectedSubtitleIndex: subtitleStreamIndex,
         });
-
-        // Ensure URL is absolute (not relative) before storing
-        let downloadUrl = url;
-        if (url.startsWith("/")) {
-          const basePath = api.basePath || "";
-          downloadUrl = `${basePath}${url}`;
-          console.log(
-            `[DOWNLOAD] Converted relative URL to absolute: ${downloadUrl}`,
+        assertCurrent();
+        const resumeKey = JSON.stringify([
+          api.basePath,
+          itemId,
+          mediaSource.Id,
+          maxBitrate.value,
+          audioStreamIndex ?? -1,
+          subtitleStreamIndex ?? -1,
+          !!mediaSource.TranscodingUrl,
+        ]);
+        const resume =
+          previousAttempt?.resumeKey === resumeKey &&
+          !mediaSource.TranscodingUrl;
+        const videoFileName = resume
+          ? previousAttempt.videoFileName
+          : `${generateFilename(item)}_${operation.generation}.mp4`;
+        if (previousAttempt) cleanupPendingRecordFiles(previousAttempt, resume);
+        videoFile = new File(Paths.document, videoFileName);
+        try {
+          activityMetadata = await preparationStage(
+            operation,
+            (stage) =>
+              buildDownloadActivityMetadata({
+                item,
+                api,
+                t,
+                stage,
+                generation: operation.generation,
+                estimatedTotalBytes: maxBitrate.value
+                  ? estimateDownloadSize(maxBitrate.value, item.RunTimeTicks)
+                  : undefined,
+              }),
+            15_000,
+            60_000,
           );
+        } catch {
+          assertCurrent();
         }
-
-        // Create job status with pre-downloaded assets
-        const jobStatus: JobStatus = {
-          id: processId,
-          inputUrl: downloadUrl,
+        activityMetadata = {
+          ...(activityMetadata ?? {
+            title: item.Name ?? "",
+            subtitle: "",
+            labels: {},
+          }),
+          itemId: nativeItemId,
+        };
+        assertCurrent();
+        updateOwn({
           item,
-          itemId: item.Id,
-          deviceId,
-          progress: 0,
-          status: "downloading",
-          timestamp: new Date(),
-          mediaSource: additionalAssets.updatedMediaSource,
-          maxBitrate,
-          bytesDownloaded: 0,
-          trickPlayData: additionalAssets.trickPlayData,
-          introSegments: additionalAssets.introSegments,
-          creditSegments: additionalAssets.creditSegments,
+          inputUrl: downloadUrl,
+          status: "queued",
+          mediaSource: assets.updatedMediaSource,
+          trickPlayData: assets.trickPlayData,
+          introSegments: assets.introSegments,
+          creditSegments: assets.creditSegments,
           audioStreamIndex,
           subtitleStreamIndex,
-        };
-
-        // Add to processes
-        setProcesses((prev) => [...prev, jobStatus]);
-
-        // Generate destination path
-        const filename = generateFilename(item);
-        const videoFileName = `${filename}.mp4`;
-        const videoFile = new File(Paths.document, videoFileName);
-        const destinationPath = uriToFilePath(videoFile.uri);
-
-        console.log(`[DOWNLOAD] Starting video: ${item.Name}`);
-        console.log(`[DOWNLOAD] Download URL: ${downloadUrl}`);
-
-        // Download metadata for native: drives the iOS Live Activity, and its itemId is echoed
-        // back in every download event on both platforms — it is how events find their way back
-        // here without any taskId bookkeeping. Poster staging can fail; itemId must not, so a
-        // minimal payload is always produced.
-        let activityMetadata: Awaited<
-          ReturnType<typeof buildDownloadActivityMetadata>
-        >;
-        try {
-          activityMetadata = await buildDownloadActivityMetadata({
-            item,
-            api,
-            t,
-            estimatedTotalBytes: maxBitrate.value
-              ? estimateDownloadSize(maxBitrate.value, item.RunTimeTicks)
-              : undefined,
-          });
-        } catch (error) {
-          console.warn("[DOWNLOAD] Live Activity metadata failed:", error);
-        }
-        activityMetadata ??= {
-          itemId: item.Id,
-          title: item.Name ?? "",
-          subtitle: "",
-          labels: {},
-        };
-
-        // Persist the pending record BEFORE handing the download to native, so there is no window
-        // where a transfer exists that a later app session cannot account for.
+        });
         savePendingDownload({
-          itemId: processId,
+          itemId,
           status: "queued",
           enqueuedAt: new Date().toISOString(),
           inputUrl: downloadUrl,
           videoFileName,
+          resumeKey,
           item,
-          mediaSource: additionalAssets.updatedMediaSource,
+          mediaSource: assets.updatedMediaSource,
           maxBitrate,
           deviceId,
-          trickPlayData: additionalAssets.trickPlayData,
-          introSegments: additionalAssets.introSegments,
-          creditSegments: additionalAssets.creditSegments,
+          trickPlayData: assets.trickPlayData,
+          introSegments: assets.introSegments,
+          creditSegments: assets.creditSegments,
           audioStreamIndex,
           subtitleStreamIndex,
           activityMetadata,
         });
-
-        // Start the download using enqueueDownload for sequential processing
-        const taskId = await BackgroundDownloader.enqueueDownload(
-          downloadUrl,
-          destinationPath,
-          activityMetadata,
-          getJellyfinHeadersForUrl(downloadUrl, api?.basePath),
-        );
-
-        if (taskId !== -1) {
-          updatePendingDownload(processId, {
-            status: "downloading",
-            taskId,
-          });
-        }
-
-        toast.success(
-          t("home.downloads.toasts.download_started_for_item", {
-            item: item.Name,
-          }),
-        );
-      } catch (error) {
-        console.error("Failed to start download:", error);
-        if (item.Id) {
-          removePendingDownload(item.Id);
-          removeProcess(item.Id);
-        }
-        toast.error(t("home.downloads.toasts.failed_to_start_download"), {
-          description: error instanceof Error ? error.message : "Unknown error",
+        writeInfoLog("Download preparation", {
+          stage: "native_enqueue",
+          generation: operation.generation,
         });
-        throw error;
+        taskId = await BackgroundDownloader.enqueueDownload(
+          downloadUrl,
+          uriToFilePath(videoFile.uri),
+          activityMetadata,
+          getJellyfinHeadersForUrl(downloadUrl, api.basePath),
+        );
+        assertCurrent();
+        if (taskId < -1) throw new Error("download_native_handoff_failed");
+        accepted = true;
+        if (taskId !== -1) updatePendingDownload(itemId, { taskId });
+        // Native's started event alone owns the transition to actively downloading.
+        for (const image of assets.images) storage.set(image.key, image.base64);
+        writeInfoLog("Download preparation", {
+          stage: "native_accepted",
+          generation: operation.generation,
+          result: taskId === -1 ? "queued" : "enqueued",
+        });
+        if (
+          getPendingDownload(itemId)?.activityMetadata?.itemId ===
+            nativeItemId &&
+          getPendingDownload(itemId)?.status === "queued"
+        )
+          toast.info(t("home.downloads.live_activity.queued"));
+      } catch (error) {
+        const cancelled =
+          (operation.signal.aborted &&
+            operation.reason instanceof Error &&
+            operation.reason.message === "download_preparation_cancelled") ||
+          currentOwner.current !== sessionOwner;
+        operation.cancel();
+        if (taskId !== undefined && taskId >= 0)
+          BackgroundDownloader.cancelDownload(taskId);
+        if (downloadUrl) BackgroundDownloader.cancelQueuedDownload(downloadUrl);
+        const ownRecord = getPendingDownload(itemId);
+        if (
+          ownRecord?.activityMetadata?.itemId === nativeItemId &&
+          !cancelled
+        ) {
+          cleanupPendingRecordFiles(ownRecord, true);
+          updatePendingDownload(itemId, { status: "failed" });
+          retainedFailure = true;
+        } else {
+          if (ownRecord?.activityMetadata?.itemId === nativeItemId)
+            cleanupPendingRecordFiles(ownRecord);
+          clearOwnRecord();
+        }
+        cleanupPreparedFiles([
+          ...(assets?.ownedFiles ?? []),
+          ...(videoFile && !retainedFailure ? [videoFile] : []),
+        ]);
+        if (activityMetadata?.posterFileName) {
+          const directory = BackgroundDownloader.getLiveActivityDirectory();
+          if (directory)
+            cleanupPreparedFiles([
+              new File(
+                new Directory(`file://${directory}`),
+                activityMetadata.posterFileName,
+              ),
+            ]);
+        }
+        if (cancelled) {
+          const prior = getPendingDownload(itemId);
+          if (
+            prior?.status === "failed" &&
+            prior.activityMetadata?.itemId !== nativeItemId
+          ) {
+            updateOwn({
+              nativeItemId: prior.activityMetadata?.itemId,
+              status: "error",
+              inputUrl: prior.inputUrl,
+              item: prior.item,
+              mediaSource: prior.mediaSource,
+              maxBitrate: prior.maxBitrate,
+              trickPlayData: prior.trickPlayData,
+              audioStreamIndex: prior.audioStreamIndex,
+              subtitleStreamIndex: prior.subtitleStreamIndex,
+            });
+          } else removeOwn();
+        } else {
+          const message =
+            error instanceof Error &&
+            error.message === "download_selected_subtitle_unavailable"
+              ? t("home.downloads.selected_subtitle_unavailable")
+              : t("home.downloads.toasts.failed_to_start_download");
+          updateOwn({ status: "error", errorMessage: message });
+          toast.error(message);
+        }
+        writeInfoLog("Download preparation", {
+          stage: "finished",
+          generation: operation.generation,
+          result: cancelled ? "cancelled" : "failed",
+        });
+      } finally {
+        releasePreparation?.();
+        downloadPreparations.release(operation);
+        if (!accepted && !retainedFailure) clearOwnRecord();
       }
     },
-    [api, authHeader, processes, setProcesses, removeProcess, t],
+    [api, authHeader, sessionOwner, setProcesses, t],
   );
 
   const cancelDownload = useCallback(
     async (id: string) => {
+      downloadPreparations.cancel(id);
       const record = getPendingDownload(id);
 
       if (record?.status === "downloading" && record.taskId !== undefined) {
@@ -230,9 +419,14 @@ export function useDownloadOperations({
         BackgroundDownloader.cancelQueuedDownload(record.inputUrl);
       }
 
+      if (record) cleanupPendingRecordFiles(record);
+      const process = currentProcesses.current.find((p) => p.id === id);
+      const failed = process
+        ? process.status === "error"
+        : record?.status === "failed";
       removePendingDownload(id);
       removeProcess(id);
-      toast.info(t("home.downloads.toasts.download_cancelled"));
+      if (!failed) toast.info(t("home.downloads.toasts.download_cancelled"));
     },
     [removeProcess, t],
   );
@@ -341,7 +535,8 @@ export function useDownloadOperations({
       try {
         const file = new File(
           Paths.document,
-          `${generateFilename(process.item)}.mp4`,
+          getPendingDownload(process.id)?.videoFileName ??
+            `${generateFilename(process.item)}.mp4`,
         );
         if (file.exists) {
           totalSize += file.size ?? 0;

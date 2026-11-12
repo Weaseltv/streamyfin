@@ -1,5 +1,6 @@
 import type { Api } from "@jellyfin/sdk";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { formatEpisodeNumber } from "@/utils/episodes";
 
 const TV_DISCOVERY_ITEM_LIMIT = 12;
 const TV_DISCOVERY_SECTION_LIMIT = 3;
@@ -68,23 +69,26 @@ function getTVDiscoveryImage(
   return undefined;
 }
 
-function formatEpisodeNumber(item: BaseItemDto): string | undefined {
+function getEpisodeLabel(item: BaseItemDto): string | undefined {
   const season = item.ParentIndexNumber;
   const episode = item.IndexNumber;
 
   if (season != null && episode != null) {
-    return `S${season} • E${episode}`;
+    return formatEpisodeNumber(item, {
+      includeSeason: true,
+      seasonSeparator: " • ",
+    });
   }
 
   if (season != null) return `Season ${season}`;
-  if (episode != null) return `Episode ${episode}`;
+  if (episode != null) return `Episode ${formatEpisodeNumber(item)}`;
 
   return undefined;
 }
 
 function getTVDiscoveryTitle(item: BaseItemDto): string {
   if (item.Type === "Episode") {
-    const episodeNumber = formatEpisodeNumber(item);
+    const episodeNumber = getEpisodeLabel(item);
 
     if (item.SeriesName && episodeNumber) {
       return `${item.SeriesName} - ${episodeNumber}`;

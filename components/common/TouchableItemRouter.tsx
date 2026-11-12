@@ -1,19 +1,18 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { useSegments } from "expo-router";
+import { useStore } from "jotai";
 import { type PropsWithChildren, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Platform,
   TouchableOpacity,
   type TouchableOpacityProps,
 } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
-import { useFavorite } from "@/hooks/useFavorite";
-import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
-import { useDownload } from "@/providers/DownloadProvider";
+import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
+import { apiAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
-import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
+import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
+import { useRequestItemActions } from "./ItemActionSheetHost";
+import { prefetchServerImage } from "./ServerImage";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -30,6 +29,11 @@ export const itemRouter = (item: BaseItemDto, from: string) => {
 
   if (item.Type === "Series") {
     return `/(auth)/(tabs)/${from}/series/${item.Id}`;
+  }
+
+  // A season opens its series at that season
+  if (item.Type === "Season" && item.SeriesId) {
+    return `/(auth)/(tabs)/${from}/series/${item.SeriesId}?seasonIndex=${item.IndexNumber ?? ""}`;
   }
 
   if (item.Type === "Person") {
@@ -73,6 +77,17 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
     return {
       pathname: "/series/[id]" as const,
       params: { id: item.Id! },
+    };
+  }
+
+  // A season opens its series at that season
+  if (item.Type === "Season" && item.SeriesId) {
+    return {
+      pathname: "/series/[id]" as const,
+      params: {
+        id: item.SeriesId,
+        seasonIndex: String(item.IndexNumber ?? ""),
+      },
     };
   }
 
@@ -151,17 +166,12 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   children,
   ...props
 }) => {
-  const { t } = useTranslation();
-  const segments = useSegments();
-  const { showActionSheetWithOptions } = useActionSheet();
-  const markAsPlayedStatus = useMarkAsPlayed([item]);
-  const { isFavorite, toggleFavorite } = useFavorite(item);
   const router = useRouter();
   const isOffline = useOfflineMode();
-  const { deleteFile } = useDownload();
-  const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
-
-  const from = (segments as string[])[2] || "(home)";
+  const requestActions = useRequestItemActions();
+  const from = useItemNavigationOrigin();
+  // Read when pressed: a card must not re-render for the session's sake
+  const store = useStore();
 
   const handlePress = useCallback(() => {
     // Force music libraries to navigate via the explicit string route.
@@ -173,78 +183,23 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
 
     const navigation = getItemNavigation(item, from);
     router.push(navigation as any);
-  }, [from, item, router]);
+
+    // Start the opened page's top artwork now instead of when the page has
+    // mounted and fetched its details. After the push and never awaited, so
+    // the page change does not wait for it.
+    if (isOffline || Platform.isTV) return;
+    const api = store.get(apiAtom);
+    if (!api) return;
+    for (const uri of titlePageArtworkUris(api, item)) {
+      void prefetchServerImage(uri, api.basePath).catch(() => undefined);
+    }
+  }, [from, item, router, isOffline, store]);
 
   const showActionSheet = useCallback(() => {
-    if (
-      !(
-        item.Type === "Movie" ||
-        item.Type === "Episode" ||
-        item.Type === "Series"
-      )
-    )
-      return;
-
-    const actions: { label: string; onPress: () => void | Promise<void> }[] = [
-      {
-        label: t("common.mark_as_played"),
-        onPress: () => markAsPlayedStatus(true),
-      },
-      {
-        label: t("common.mark_as_not_played"),
-        onPress: () => markAsPlayedStatus(false),
-      },
-      {
-        label: isFavorite
-          ? t("music.track_options.remove_from_favorites")
-          : t("music.track_options.add_to_favorites"),
-        onPress: toggleFavorite,
-      },
-    ];
-    // Jellyfin's Next Up keeps offering a series' next unwatched episode for
-    // as long as an earlier one is marked watched, and has no way to exclude
-    // a series. "Mark as not played" on that episode cannot remove it — this
-    // can. Lifted automatically when the user plays the series again.
-    if (item.Type === "Episode" && item.SeriesId) {
-      const seriesId = item.SeriesId;
-      actions.push({
-        label: t("common.remove_from_continue_and_next_up"),
-        onPress: () => dismissSeriesFromNextUp(seriesId),
-      });
+    if (["Movie", "Episode", "Series", "Season"].includes(item.Type ?? "")) {
+      requestActions({ item, isOffline });
     }
-    let destructiveButtonIndex: number | undefined;
-    if (isOffline && item.Id) {
-      const itemId = item.Id;
-      destructiveButtonIndex = actions.length;
-      actions.push({
-        label: t("home.downloads.delete_download"),
-        onPress: () => deleteFile(itemId),
-      });
-    }
-    const options = [...actions.map((a) => a.label), t("common.cancel")];
-    const cancelButtonIndex = options.length - 1;
-
-    showActionSheetWithOptions(
-      { options, cancelButtonIndex, destructiveButtonIndex },
-      async (selectedIndex) => {
-        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex)
-          return;
-        await actions[selectedIndex]?.onPress();
-      },
-    );
-  }, [
-    showActionSheetWithOptions,
-    isFavorite,
-    markAsPlayedStatus,
-    toggleFavorite,
-    isOffline,
-    deleteFile,
-    dismissSeriesFromNextUp,
-    item.Id,
-    item.Type,
-    item.SeriesId,
-    t,
-  ]);
+  }, [item, isOffline, requestActions]);
 
   if (
     from === "(home)" ||
@@ -255,6 +210,12 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   )
     return (
       <TouchableOpacity
+        // A card dims only once a finger has rested on it for 150 ms, the
+        // wait iOS itself uses inside scrolling lists. A swipe that starts on
+        // a card moves sooner than that, so scrolling no longer flashes the
+        // card under the finger. A tap still dims it and opens at once, and
+        // the long-press menu still appears after the usual half second.
+        delayPressIn={150}
         onLongPress={showActionSheet}
         onPress={handlePress}
         {...props}

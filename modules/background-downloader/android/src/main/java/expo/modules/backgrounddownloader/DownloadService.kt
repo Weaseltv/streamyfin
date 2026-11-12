@@ -10,7 +10,6 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -19,9 +18,6 @@ class DownloadService : Service() {
   private val TAG = "DownloadService"
   private val NOTIFICATION_ID = 1001
   private val CHANNEL_ID = "download_channel"
-
-  // Time threshold to detect if we're in boot context (10 minutes after boot)
-  private val BOOT_THRESHOLD_MS = 10 * 60 * 1000L
 
   private val binder = DownloadServiceBinder()
   private var activeDownloadCount = 0
@@ -54,25 +50,22 @@ class DownloadService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     Log.d(TAG, "DownloadService started")
 
-    // On Android 15+, dataSync foreground services cannot be started from BOOT_COMPLETED context
-    // Check if we're likely in a boot context and skip foreground start if so
-    if (Build.VERSION.SDK_INT >= 35 && isLikelyBootContext()) {
-      Log.w(TAG, "Skipping foreground start - likely boot context on Android 15+")
-      stopSelf()
-      return START_NOT_STICKY
-    }
-
+    // Always promote to foreground: the module starts this service with
+    // startForegroundService(), and a service started that way that never
+    // calls startForeground() is an ANR ("did not then call
+    // Service.startForeground()"). The previous "boot context" guard skipped
+    // it whenever the device had been up for less than ten minutes, so every
+    // download started soon after a reboot on Android 15+ froze the app
+    // (reproduced on the API 36 emulator). Where the system does refuse a
+    // dataSync foreground service, startForegroundSafely() catches it and
+    // stops the service.
     startForegroundSafely()
-    return START_STICKY
-  }
 
-  /**
-   * Check if we're likely in a boot context by checking system uptime.
-   * If the system has been up for less than the threshold, we might be in boot context.
-   */
-  private fun isLikelyBootContext(): Boolean {
-    val uptimeMs = SystemClock.elapsedRealtime()
-    return uptimeMs < BOOT_THRESHOLD_MS
+    // Not sticky: a system restart of this service carries no downloads
+    // (they live in the module and JS re-enqueues pending ones on launch),
+    // and being restarted after boot is the context Android 15 forbids for
+    // dataSync services.
+    return START_NOT_STICKY
   }
 
   /**
