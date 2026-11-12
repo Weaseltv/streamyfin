@@ -85,6 +85,7 @@ import {
   getNextLibraryPage,
   getPreviousLibraryPage,
 } from "@/utils/libraryAlphabet";
+import { useNavTimingStage } from "@/utils/navTiming";
 import {
   isPendingTile,
   nearLoadedEnd,
@@ -547,6 +548,9 @@ const page: React.FC = () => {
       []
     );
   }, [data, ranked, rankedVisible]);
+
+  useNavTimingStage("collection", collectionId, "content", !!collection);
+  useNavTimingStage("collection", collectionId, "full", flatData.length > 0);
 
   // Phones: a tile for each title of the next page, so a fast scroll runs on
   // over them instead of stopping at the last loaded title. Left out when the

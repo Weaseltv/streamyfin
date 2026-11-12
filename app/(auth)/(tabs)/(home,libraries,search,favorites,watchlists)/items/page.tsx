@@ -12,6 +12,7 @@ import { Text } from "@/components/common/Text";
 import { ItemContent } from "@/components/ItemContent";
 import { useItemQuery } from "@/hooks/useItemQuery";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
+import { useNavTimingStage } from "@/utils/navTiming";
 import {
   ALL_DETAIL_ITEM_FIELDS,
   DETAIL_ITEM_FIELDS,
@@ -39,6 +40,8 @@ const Page: React.FC = () => {
     isOffline,
     Platform.isTV ? ALL_DETAIL_ITEM_FIELDS : DETAIL_ITEM_FIELDS,
   );
+
+  useNavTimingStage("item", id, "full", !!item);
 
   const opacity = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => {
