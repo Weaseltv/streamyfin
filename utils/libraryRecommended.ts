@@ -13,6 +13,20 @@ const FIELDS = ["PrimaryImageAspectRatio"] as const;
 
 type Library = { id: string; movies: boolean };
 
+/**
+ * A list identity for each row, in order. A recycled list needs every row to
+ * have its own; two streaming collections that share a service code share a
+ * list name, so the later one gets its position added.
+ */
+export function uniqueRowIds(keys: readonly string[]): string[] {
+  const used = new Set<string>();
+  return keys.map((key, index) => {
+    const id = used.has(key) ? `${key}#${index}` : key;
+    used.add(id);
+    return id;
+  });
+}
+
 /** Newest releases up to today. */
 export async function loadJustReleased(
   api: Api,
