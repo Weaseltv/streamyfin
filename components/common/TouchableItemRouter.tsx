@@ -210,6 +210,12 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   )
     return (
       <TouchableOpacity
+        // A card dims only once a finger has rested on it for 150 ms, the
+        // wait iOS itself uses inside scrolling lists. A swipe that starts on
+        // a card moves sooner than that, so scrolling no longer flashes the
+        // card under the finger. A tap still dims it and opens at once, and
+        // the long-press menu still appears after the usual half second.
+        delayPressIn={150}
         onLongPress={showActionSheet}
         onPress={handlePress}
         {...props}
