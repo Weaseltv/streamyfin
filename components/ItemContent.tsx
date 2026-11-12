@@ -22,6 +22,10 @@ import { DownloadSingleItem } from "@/components/DownloadItem";
 import { ActionCell, ActionStrip } from "@/components/item/ActionCell";
 import { ItemPeopleSections } from "@/components/item/ItemPeopleSections";
 import { OptionRows } from "@/components/item/OptionRows";
+import {
+  ItemControlsPending,
+  TitleDetailsFailed,
+} from "@/components/item/TitleDetailsPending";
 import { MediaSourceButton } from "@/components/MediaSourceButton";
 import { OverviewText } from "@/components/OverviewText";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
@@ -37,10 +41,11 @@ import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
 import { useOrientation } from "@/hooks/useOrientation";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import { useDownloadActions } from "@/providers/DownloadProvider";
-import { userAtom } from "@/providers/JellyfinProvider";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
+import { getItemImage } from "@/utils/getItemImage";
 import { reconcileItemPlayOptions } from "@/utils/itemPlayOptions";
 import { titleHeaderArt } from "@/utils/titlePageArtwork";
 import { AddToWatchlist } from "./AddToWatchlist";
@@ -62,21 +67,41 @@ interface ItemContentProps {
   item?: BaseItemDto | null;
   itemWithSources?: BaseItemDto | null;
   isLoading?: boolean;
+  /**
+   * Phones: the card whose tap opened the page, drawn until `item` arrives.
+   * For display only. `item` and `itemWithSources` are always what the
+   * server sent for this title, never a card.
+   */
+  preview?: BaseItemDto;
+  /** Phones: the details did not load while the preview is showing. */
+  detailsFailed?: boolean;
+  onRetryDetails?: () => void;
+  retryingDetails?: boolean;
 }
 
 // Mobile-specific implementation
 const ItemContentMobile: React.FC<ItemContentProps> = ({
-  item,
+  item: details,
   itemWithSources,
+  preview,
+  detailsFailed,
+  onRetryDetails,
+  retryingDetails,
 }) => {
+  // What is drawn: the title's details, or until they arrive the tapped
+  // card's title, artwork and year. Everything that acts on the title (Play,
+  // sources and tracks, download, Played, Watchlist, the header buttons)
+  // reads `details` and so waits for them.
+  const item = details ?? preview;
+  const [api] = useAtom(apiAtom);
   const isOffline = useOfflineMode();
   const { getDownloadedItemById } = useDownloadActions();
   // A download pins the tracks it was pulled with, and only the record knows
   // them: resolving against the server media source hands back an index for a
   // stream the local file may not contain.
   const downloadedTracks =
-    isOffline && item?.Id
-      ? getDownloadedItemById(item.Id)?.userData
+    isOffline && details?.Id
+      ? getDownloadedItemById(details.Id)?.userData
       : undefined;
   const { settings } = useSettings();
   const { orientation } = useOrientation();
@@ -94,7 +119,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     defaultBitrate,
     defaultMediaSource,
     defaultSubtitleIndex,
-  } = useDefaultPlaySettings(itemWithSources ?? item, settings);
+  } = useDefaultPlaySettings(itemWithSources ?? details, settings);
 
   const accent = typeAccent(item);
   useSetPageAccent(item ? accent : undefined);
@@ -119,6 +144,15 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   const [selectedOptions, setOptions] = useState<SelectedOptions | undefined>(
     defaults,
   );
+  // A card has no sources or tracks to choose from. When the details arrive
+  // on a page that opened on a card, the choices start from the details'
+  // defaults within that same render, so Play is never drawn holding choices
+  // made before there was anything to choose.
+  const [optionsFromDetails, setOptionsFromDetails] = useState(!!details);
+  if (details && !optionsFromDetails) {
+    setOptionsFromDetails(true);
+    setOptions(defaults);
+  }
   const selectionEdited = useRef(false);
   const setSelectedOptions = useCallback<
     React.Dispatch<React.SetStateAction<SelectedOptions | undefined>>
@@ -126,7 +160,7 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     selectionEdited.current = true;
     setOptions(next);
   }, []);
-  const mediaSources = (itemWithSources ?? item)?.MediaSources;
+  const mediaSources = (itemWithSources ?? details)?.MediaSources;
   useEffect(() => {
     setOptions((current) =>
       reconcileItemPlayOptions(
@@ -141,8 +175,10 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   // Header actions need identity and title, not playback-source DTO changes.
   const headerItem = useMemo<BaseItemDto | undefined>(
     () =>
-      item?.Id ? { Id: item.Id, Type: item.Type, Name: item.Name } : undefined,
-    [item?.Id, item?.Type, item?.Name],
+      details?.Id
+        ? { Id: details.Id, Type: details.Type, Name: details.Name }
+        : undefined,
+    [details?.Id, details?.Type, details?.Name],
   );
   const headerReady = !!itemWithSources;
   const headerActions = useMemo(
@@ -177,10 +213,10 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
     }
   }, [navigation, headerReady, headerActions]);
 
-  const { isFavorite, toggleFavorite } = useFavorite(item ?? {});
-  const allPlayed = !!item?.UserData?.Played;
-  const togglePlayed = useMarkAsPlayed(item ? [item] : []);
-  const trailerLink = item?.RemoteTrailers?.[0]?.Url;
+  const { isFavorite, toggleFavorite } = useFavorite(details ?? {});
+  const allPlayed = !!details?.UserData?.Played;
+  const togglePlayed = useMarkAsPlayed(details ? [details] : []);
+  const trailerLink = details?.RemoteTrailers?.[0]?.Url;
   const openTrailer = useCallback(async () => {
     if (!trailerLink) return;
     try {
@@ -193,6 +229,9 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
   if (!item || !selectedOptions) return null;
 
   const showStrip = item.Type !== "Program";
+  // Whether the card can name the picture behind the title
+  const headerArtOnCard =
+    !details && !!api && !!getItemImage({ item, api, ...titleHeaderArt(item) });
 
   return (
     <View
@@ -209,44 +248,62 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
         overlap={item.Type === "Movie" ? 64 : 40}
         headerImage={
           <View style={[{ flex: 1 }]}>
-            <ItemImage
-              // The address a card's tap has already started downloading;
-              // drawn as it arrives, without the 0.3 s fade
-              {...titleHeaderArt(item)}
-              transition={0}
-              item={item}
-              style={{
-                width: "100%",
-                height: "100%",
-              }}
-            />
+            {details || headerArtOnCard ? (
+              <ItemImage
+                // The address a card's tap has already started downloading;
+                // drawn as it arrives, without the 0.3 s fade
+                {...titleHeaderArt(item)}
+                transition={0}
+                item={item}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+              />
+            ) : (
+              // The card names no picture for here: left empty until the
+              // details say which one, rather than marked as missing
+              <View style={{ flex: 1, backgroundColor: NeonBoard.card }} />
+            )}
           </View>
         }
       >
         <View className='flex flex-col bg-transparent shrink'>
           <ItemHeader item={item} />
 
-          <View
-            className='flex flex-row items-stretch'
-            style={{
-              paddingHorizontal: Sizes.gutter,
-              gap: 10,
-              marginTop: 14,
-              marginBottom: 12,
-            }}
-          >
-            <PlayButton selectedOptions={selectedOptions} item={item} />
-            {!isOffline && (
-              <MediaSourceButton
-                selectedOptions={selectedOptions}
-                setSelectedOptions={setSelectedOptions}
-                item={itemWithSources}
-                accent={accent}
+          {!details &&
+            (detailsFailed && onRetryDetails ? (
+              <TitleDetailsFailed
+                onRetry={onRetryDetails}
+                retrying={retryingDetails}
               />
-            )}
-          </View>
+            ) : (
+              <ItemControlsPending strip={showStrip} />
+            ))}
 
-          {showStrip && (
+          {details && (
+            <View
+              className='flex flex-row items-stretch'
+              style={{
+                paddingHorizontal: Sizes.gutter,
+                gap: 10,
+                marginTop: 14,
+                marginBottom: 12,
+              }}
+            >
+              <PlayButton selectedOptions={selectedOptions} item={details} />
+              {!isOffline && (
+                <MediaSourceButton
+                  selectedOptions={selectedOptions}
+                  setSelectedOptions={setSelectedOptions}
+                  item={itemWithSources}
+                  accent={accent}
+                />
+              )}
+            </View>
+          )}
+
+          {details && showStrip && (
             <ActionStrip>
               <ActionCell
                 icon={
@@ -294,9 +351,12 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
             </ActionStrip>
           )}
 
-          {item.Type === "Episode" && <SeasonEpisodesCarousel item={item} />}
+          {details && item.Type === "Episode" && (
+            <SeasonEpisodesCarousel item={item} />
+          )}
 
-          {!isOffline &&
+          {details &&
+            !isOffline &&
             selectedOptions.mediaSource?.MediaStreams &&
             selectedOptions.mediaSource.MediaStreams.length > 0 && (
               <MediaSourceButton
@@ -324,7 +384,9 @@ const ItemContentMobile: React.FC<ItemContentProps> = ({
             }}
           />
 
-          {item.Type !== "Program" && (
+          {/* These wait for the details, as they always have; with the
+              details here, `item` is the details */}
+          {details && item.Type !== "Program" && (
             <>
               {item.Type === "Episode" && !isOffline && (
                 <CurrentSeries item={item} className='mb-2' />
@@ -347,8 +409,19 @@ const MemoizedItemContentMobile = React.memo(ItemContentMobile);
 // Exported component that renders TV or mobile version based on platform
 export const ItemContent: React.FC<ItemContentProps> = (props) => {
   if (Platform.isTV && ItemContentTV) {
-    return <ItemContentTV {...props} />;
+    // The TV page takes what it always took; the rest is for phones
+    const { item, itemWithSources, isLoading } = props;
+    return (
+      <ItemContentTV
+        item={item}
+        itemWithSources={itemWithSources}
+        isLoading={isLoading}
+      />
+    );
   }
-  if (!props.item) return null;
-  return <MemoizedItemContentMobile key={props.item.Id} {...props} />;
+  // The card and the details it stands in for share an id, so the page is
+  // one and the same when the details arrive
+  const shown = props.item ?? props.preview;
+  if (!shown) return null;
+  return <MemoizedItemContentMobile key={shown.Id} {...props} />;
 };

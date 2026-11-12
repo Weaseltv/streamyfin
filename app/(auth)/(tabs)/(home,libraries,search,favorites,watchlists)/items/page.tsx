@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import type React from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import Animated, {
@@ -11,12 +11,14 @@ import Animated, {
 import { Text } from "@/components/common/Text";
 import { ItemContent } from "@/components/ItemContent";
 import { useItemQuery } from "@/hooks/useItemQuery";
+import { useTappedCard } from "@/hooks/useTappedCard";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
 import { useNavTimingStage } from "@/utils/navTiming";
 import {
   ALL_DETAIL_ITEM_FIELDS,
   DETAIL_ITEM_FIELDS,
 } from "@/utils/query/reusableItemMetadata";
+import { titleDetailsState } from "@/utils/tappedCard";
 
 const ItemContentSkeletonTV = Platform.isTV
   ? require("@/components/ItemContentSkeleton.tv").ItemContentSkeletonTV
@@ -35,12 +37,26 @@ const Page: React.FC = () => {
     data: item,
     isError,
     isLoading,
+    status,
+    fetchStatus,
+    refetch,
   } = useItemQuery(
     id,
     isOffline,
     Platform.isTV ? ALL_DETAIL_ITEM_FIELDS : DETAIL_ITEM_FIELDS,
   );
 
+  // Phones, online: opened by a tap on a card, the page draws that card's
+  // title, artwork and year until `item` arrives. `item` is only ever what
+  // the server sent; the card goes to ItemContent beside it, never as it.
+  const card = useTappedCard("item", id, !Platform.isTV && !isOffline);
+  const preview = item ? undefined : card;
+  const detailsFailed =
+    !!preview &&
+    titleDetailsState({ details: item, status, fetchStatus }) === "failed";
+  const retryDetails = useCallback(() => void refetch(), [refetch]);
+
+  useNavTimingStage("item", id, "content", !!item || !!preview);
   useNavTimingStage("item", id, "full", !!item);
 
   const opacity = useSharedValue(1);
@@ -59,7 +75,9 @@ const Page: React.FC = () => {
     }
   }, [item, opacity]);
 
-  if (isError)
+  // With a card showing, a failure is reported on the page, under the card's
+  // title, with a way to try again (ItemContent). Without one, as before.
+  if (isError && !preview)
     return (
       <View className='flex flex-col items-center justify-center h-screen w-screen bg-stage'>
         <Text variant='body' muted>
@@ -72,10 +90,18 @@ const Page: React.FC = () => {
     <OfflineModeProvider isOffline={isOffline}>
       <View className='flex flex-1 relative'>
         {/* Always render ItemContent - it handles loading state internally on TV */}
-        <ItemContent item={item} itemWithSources={item} isLoading={isLoading} />
+        <ItemContent
+          item={item}
+          itemWithSources={item}
+          isLoading={isLoading}
+          preview={preview}
+          detailsFailed={detailsFailed}
+          onRetryDetails={retryDetails}
+          retryingDetails={detailsFailed && fetchStatus === "fetching"}
+        />
 
         {/* Skeleton overlay - fades out when content loads */}
-        {!item && (
+        {!item && !preview && (
           <Animated.View
             pointerEvents={"none"}
             style={[animatedStyle]}
