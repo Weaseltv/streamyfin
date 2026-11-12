@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useAtom } from "jotai";
 import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { HeaderButtonGroup } from "@/components/common/HeaderButton";
@@ -147,6 +147,20 @@ const page: React.FC = () => {
 
   useSetPageAccent(NeonBoard.show);
 
+  // On phones the whole-show list waits for the season on screen. It is the
+  // largest request on the page and only feeds the counts, the next-up marker
+  // and the series download button, so it should not take a connection, or
+  // the time to read it, from the episodes the viewer is waiting to see. The
+  // season picker reports when its season is drawn (or cannot be). A list
+  // already in the cache is shown at once either way. Offline it is read
+  // from the downloads, and the TV page draws its seasons from it.
+  const [seasonShownFor, setSeasonShownFor] = useState<string | null>(null);
+  const onSeasonShown = useCallback(
+    () => setSeasonShownFor(seriesId),
+    [seriesId],
+  );
+  const waitsForSeason = !isOffline && !Platform.isTV;
+
   const { data: allEpisodes, isLoading } = useQuery({
     queryKey: ["AllEpisodes", seriesId, isOffline, offlineRevision],
     queryFn: async () => {
@@ -176,7 +190,9 @@ const page: React.FC = () => {
     select: sortEpisodeSummary,
     staleTime: isOffline ? Infinity : 60 * 1000,
     refetchInterval: !isOffline && Platform.isTV ? 60 * 1000 : undefined,
-    enabled: isOffline || (!!api && !!user?.Id),
+    enabled:
+      (isOffline || (!!api && !!user?.Id)) &&
+      (!waitsForSeason || seasonShownFor === seriesId),
   });
 
   const seasonCount = useMemo(
@@ -259,6 +275,7 @@ const page: React.FC = () => {
         item={shown}
         initialSeasonIndex={Number(seasonIndex)}
         currentEpisodeId={nextUpId}
+        onSeasonShown={onSeasonShown}
         headerImage={
           backdropUrl ? (
             <Image

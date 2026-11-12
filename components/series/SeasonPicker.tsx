@@ -41,6 +41,7 @@ import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { getDownloadedEpisodesForSeason } from "@/utils/downloads/offline-series";
 import { getEpisodePillColumnWidth } from "@/utils/episodePill";
 import { useNavTimingStage } from "@/utils/navTiming";
+import { isSeasonSettled } from "@/utils/seasonSettled";
 import { Text } from "../common/Text";
 import { DownloadItems } from "../DownloadItem";
 import { PlayedStatus } from "../PlayedStatus";
@@ -54,6 +55,11 @@ type Props = {
   pageHeader: ReactNode;
   /** Below the episodes (More Like This). */
   pageFooter?: ReactNode;
+  /**
+   * Called once the season on screen has been drawn, or when there is no
+   * season to draw. The show page holds its whole-show request until then.
+   */
+  onSeasonShown?: () => void;
 };
 
 const AnimatedEpisodes = Animated.createAnimatedComponent(
@@ -69,6 +75,7 @@ export const SeasonPicker: React.FC<Props> = ({
   headerImage,
   pageHeader,
   pageFooter,
+  onSeasonShown,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -87,7 +94,10 @@ export const SeasonPicker: React.FC<Props> = ({
   const offlineRevision = isOffline ? downloadedItems.length : 0;
 
   // The show page starts this same request alongside the show's own
-  const { data: seasons } = useSeriesSeasons(item.Id, isOffline);
+  const { data: seasons, isPending: seasonsPending } = useSeriesSeasons(
+    item.Id,
+    isOffline,
+  );
 
   const selectedSeasonId: string | null = useMemo(() => {
     const season: BaseItemDto = seasons?.find(
@@ -216,6 +226,18 @@ export const SeasonPicker: React.FC<Props> = ({
       switches: listSeason.switches + (listSeason.season === null ? 0 : 1),
     });
   }
+
+  const seasonSettled = isSeasonSettled({
+    seasonsPending,
+    seasonCount: sortedSeasons.length,
+    seasonChosen: seasonIndex !== undefined,
+    seasonFound: shownSeason !== null,
+    episodesPending: isPending,
+  });
+  // An effect runs after the commit that put the episode rows on screen
+  useEffect(() => {
+    if (seasonSettled) onSeasonShown?.();
+  }, [seasonSettled, onSeasonShown]);
 
   const insets = useSafeAreaInsets();
   const scrollOffset = useSharedValue(0);
