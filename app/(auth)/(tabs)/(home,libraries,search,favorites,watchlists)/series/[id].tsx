@@ -28,9 +28,9 @@ import {
   getDownloadedEpisodesForSeries,
 } from "@/utils/downloads/offline-series";
 import { countEpisodes } from "@/utils/episodes";
-import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { storage } from "@/utils/mmkv";
+import { seriesBackdropUrl } from "@/utils/titlePageArtwork";
 
 const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
   [...(data ?? [])].sort(
@@ -103,12 +103,8 @@ const page: React.FC = () => {
     if (isOffline && base64Image) {
       return `data:image/jpeg;base64,${base64Image}`;
     }
-    return getBackdropUrl({
-      api,
-      item,
-      quality: 90,
-      width: 1000,
-    });
+    // The address a card's tap has already started downloading
+    return seriesBackdropUrl(api, item);
   }, [isOffline, base64Image, api, item]);
 
   useSetPageAccent(NeonBoard.show);
