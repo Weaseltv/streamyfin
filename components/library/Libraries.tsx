@@ -1,11 +1,7 @@
-import {
-  getUserLibraryApi,
-  getUserViewsApi,
-} from "@jellyfin/sdk/lib/utils/api";
 import { FlashList } from "@shopify/flash-list";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +14,7 @@ import { Freshness } from "@/constants/queryFreshness";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import { useSettings } from "@/utils/atoms/settings";
+import { userViewsQuery } from "@/utils/query/userViews";
 
 const ACCENT = sectionAccent("library");
 
@@ -26,20 +23,15 @@ export const Libraries: React.FC = () => {
   useSetPageAccent(ACCENT);
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
-  const queryClient = useQueryClient();
   const { settings } = useSettings();
 
   const { t } = useTranslation();
 
+  // Home's list of libraries, not a second copy under another name: it is
+  // already loaded by the time this tab opens. The libraries themselves are
+  // not fetched here; a library's page opens on its entry in this list.
   const { data, isLoading } = useQuery({
-    queryKey: ["user-views", user?.Id],
-    queryFn: async () => {
-      const response = await getUserViewsApi(api!).getUserViews({
-        userId: user?.Id,
-      });
-
-      return response.data.Items || null;
-    },
+    ...userViewsQuery(api, user?.Id),
     staleTime: Freshness.catalog,
   });
 
@@ -51,23 +43,6 @@ export const Libraries: React.FC = () => {
         .filter((l) => l.CollectionType !== "music") || [],
     [data, settings?.hiddenLibraries],
   );
-
-  useEffect(() => {
-    for (const item of data || []) {
-      queryClient.prefetchQuery({
-        queryKey: ["library", item.Id],
-        queryFn: async () => {
-          if (!item.Id || !user?.Id || !api) return null;
-          const response = await getUserLibraryApi(api).getItem({
-            itemId: item.Id,
-            userId: user?.Id,
-          });
-          return response.data;
-        },
-        staleTime: 60 * 1000,
-      });
-    }
-  }, [data, api, queryClient, user?.Id]);
 
   const insets = useSafeAreaInsets();
 

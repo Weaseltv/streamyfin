@@ -9,6 +9,8 @@
 export const Freshness = {
   /** Library list and season lists: cheap to refetch, but not every mount. */
   catalog: 60 * 1000,
+  /** How many titles a library holds, under its name on the Library tab. */
+  libraryCount: 5 * 60 * 1000,
   /** People/cast metadata: effectively static for the length of a session. */
   person: 5 * 60 * 1000,
 } as const;
