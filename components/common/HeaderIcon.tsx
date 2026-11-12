@@ -28,8 +28,8 @@ import { HEADER_ICON_SIZE } from "./HeaderButton";
 const HEADER_ICONS = {
   // No `ios` entry on purpose: the cast mark is Google's, so SF Symbols has no
   // equivalent, and every near-miss reads as something else — `airplayvideo` is
-  // AirPlay, which the app offers separately in now-playing. iOS falls back to
-  // the Feather glyph below; Android has the real mark in Material Symbols.
+  // AirPlay, a different thing. iOS falls back to the Feather glyph below;
+  // Android has the real mark in Material Symbols.
   // Sessions and Play on device use it (owner, 2026-10-16): both send to
   // another screen through Sessions.
   sessions: { android: "cast" },

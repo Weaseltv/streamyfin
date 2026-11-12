@@ -146,16 +146,6 @@ function TabStack() {
         }}
       />
       <Stack.Screen
-        name='settings/music/page'
-        options={{
-          title: t("home.settings.music.title"),
-          headerShown: !Platform.isTV,
-          headerBlurEffect: "none",
-          headerTransparent: false,
-          headerShadowVisible: false,
-        }}
-      />
-      <Stack.Screen
         name='settings/appearance/hide-libraries/page'
         options={{
           title: t("home.settings.other.hide_libraries"),

@@ -17,11 +17,6 @@ import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 
-// Music components are not available on tvOS (TrackPlayer not supported)
-const MiniPlayerBar = Platform.isTV
-  ? () => null
-  : require("@/components/music/MiniPlayerBar").MiniPlayerBar;
-
 const IS_ANDROID_TV = Platform.isTV && Platform.OS === "android";
 
 function TVTabLayout() {
@@ -186,7 +181,6 @@ export default function TabLayout() {
           options={{ title: t("tabs.settings"), href: null }}
         />
       </Tabs>
-      <MiniPlayerBar />
     </View>
   );
 }

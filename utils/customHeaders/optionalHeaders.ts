@@ -1,8 +1,8 @@
 /**
  * Helpers for call sites that must not grow a `headers` property when no custom
- * headers are configured — several native APIs (expo-image, expo-file-system,
- * react-native-track-player) behave differently once the key exists, so the
- * unconfigured path has to stay byte-for-byte what it was before this feature.
+ * headers are configured — several native APIs (expo-image, expo-file-system)
+ * behave differently once the key exists, so the unconfigured path has to stay
+ * byte-for-byte what it was before this feature.
  */
 
 export function hasHeaders(

@@ -1,5 +1,4 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, TextInput, View } from "react-native";
@@ -9,8 +8,6 @@ import { TVDiscover } from "@/components/jellyseerr/discover/TVDiscover";
 import { useScaledTVSizes } from "@/constants/TVSizes";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import { TvSearchView } from "@/modules/tv-search";
-import { apiAtom } from "@/providers/JellyfinProvider";
-import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import type DiscoverSlider from "@/utils/jellyseerr/server/entity/DiscoverSlider";
 import type {
   MovieResult,
@@ -108,10 +105,6 @@ interface TVSearchPageProps {
   episodes?: BaseItemDto[];
   collections?: BaseItemDto[];
   actors?: BaseItemDto[];
-  artists?: BaseItemDto[];
-  albums?: BaseItemDto[];
-  songs?: BaseItemDto[];
-  playlists?: BaseItemDto[];
   loading: boolean;
   noResults: boolean;
   onItemPress: (item: BaseItemDto) => void;
@@ -140,10 +133,6 @@ export const TVSearchPage: React.FC<TVSearchPageProps> = ({
   episodes,
   collections,
   actors,
-  artists,
-  albums,
-  songs,
-  playlists,
   loading,
   noResults,
   onItemPress,
@@ -165,16 +154,6 @@ export const TVSearchPage: React.FC<TVSearchPageProps> = ({
   const sizes = useScaledTVSizes();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [api] = useAtom(apiAtom);
-
-  // Image URL getter for music items
-  const getImageUrl = useMemo(() => {
-    return (item: BaseItemDto): string | undefined => {
-      if (!api) return undefined;
-      const url = getPrimaryImageUrl({ api, item });
-      return url ?? undefined;
-    };
-  }, [api]);
 
   // Determine which section should have initial focus
   const sections = useMemo(() => {
@@ -198,25 +177,10 @@ export const TVSearchPage: React.FC<TVSearchPageProps> = ({
         items: collections,
       },
       { key: "actors", title: t("search.actors"), items: actors },
-      { key: "artists", title: t("search.artists"), items: artists },
-      { key: "albums", title: t("search.albums"), items: albums },
-      { key: "songs", title: t("search.songs"), items: songs },
-      { key: "playlists", title: t("search.playlists"), items: playlists },
     ];
 
     return allSections.filter((s) => s.items && s.items.length > 0);
-  }, [
-    movies,
-    series,
-    episodes,
-    collections,
-    actors,
-    artists,
-    albums,
-    songs,
-    playlists,
-    t,
-  ]);
+  }, [movies, series, episodes, collections, actors, t]);
 
   const isLibraryMode = searchType === "Library";
   const isDiscoverMode = searchType === "Discover";
@@ -318,13 +282,6 @@ export const TVSearchPage: React.FC<TVSearchPageProps> = ({
                 isFirstSection={false}
                 onItemPress={onItemPress}
                 onItemLongPress={onItemLongPress}
-                imageUrlGetter={
-                  ["artists", "albums", "songs", "playlists"].includes(
-                    section.key,
-                  )
-                    ? getImageUrl
-                    : undefined
-                }
               />
             ))}
           </View>

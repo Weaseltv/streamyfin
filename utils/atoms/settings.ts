@@ -390,12 +390,6 @@ export type Settings = {
   // Appearance
   hideRemoteSessionButton: boolean;
   hideWatchlistsTab: boolean;
-  // Audio look-ahead caching
-  audioLookaheadEnabled: boolean;
-  audioLookaheadCount: number;
-  audioMaxCacheSizeMB: number;
-  // Music playback
-  preferLocalAudio: boolean;
   // Audio transcoding mode
   audioTranscodeMode: AudioTranscodeMode;
   // Optional third-party lookups. Both call a service directly from the client
@@ -533,12 +527,6 @@ export const defaultValues: Settings = {
   // Appearance
   hideRemoteSessionButton: false,
   hideWatchlistsTab: false,
-  // Audio look-ahead caching defaults
-  audioLookaheadEnabled: true,
-  audioLookaheadCount: 1,
-  audioMaxCacheSizeMB: 500,
-  // Music playback
-  preferLocalAudio: true,
   // Audio transcoding mode
   audioTranscodeMode: AudioTranscodeMode.Auto,
   // Optional third-party lookups

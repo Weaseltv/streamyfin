@@ -12,7 +12,7 @@ export const OFFLINE_CACHE_LIMITS = {
   ageMs: 24 * 60 * 60 * 1000,
 } as const;
 
-// Download records, files, credentials and music queues have their own stores.
+// Download records, files and credentials have their own stores.
 // Keep useful catalog metadata, rather than live sessions, search results,
 // playback negotiation, service recommendations or whole-series summaries.
 const OFFLINE_ROOTS = new Set([
@@ -41,19 +41,6 @@ const OFFLINE_ROOTS = new Set([
   "authUser",
   "jellyfin",
   "cultures",
-  "music-album",
-  "music-album-tracks",
-  "music-albums",
-  "music-artist",
-  "music-artist-albums",
-  "music-artist-top-tracks",
-  "music-artists",
-  "music-playlist",
-  "music-playlist-tracks",
-  "music-playlists",
-  "music-latest",
-  "music-recently-played",
-  "music-frequently-played",
 ]);
 
 export function isOfflineCatalogKey(key: QueryKey) {

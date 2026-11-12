@@ -47,7 +47,8 @@ export const Libraries: React.FC = () => {
     () =>
       data
         ?.filter((l) => !settings?.hiddenLibraries?.includes(l.Id!))
-        .filter((l) => l.CollectionType !== "books") || [],
+        .filter((l) => l.CollectionType !== "books")
+        .filter((l) => l.CollectionType !== "music") || [],
     [data, settings?.hiddenLibraries],
   );
 

@@ -8,7 +8,7 @@ import { type ConfigPlugin, withDangerousMod } from "expo/config-plugins";
  *
  * This ensures that when building directly from Xcode (without using `bun run ios:tv`),
  * Metro bundler knows it's a TV build and properly excludes unsupported modules
- * like react-native-track-player.
+ * (see `disableForTV` in react-native.config.js).
  *
  * It also sets NODE_BINARY for nvm users since Xcode can't resolve shell functions.
  */

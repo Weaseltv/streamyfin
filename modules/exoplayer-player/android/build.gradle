@@ -39,29 +39,34 @@ android {
 }
 
 dependencies {
-  // Media3 (ExoPlayer). The default tracks react-native-track-player's
-  // pinned version (currently 1.10.1) so we don't end up with two media3
-  // versions on the classpath and duplicate-class errors. The
-  // DASH/SmoothStreaming/RTSP artifacts that RNTP pulls in are excluded
-  // globally via plugins/withExcludeMedia3Dash.js.
+  // Media3 (ExoPlayer), pinned here: this module sets the app's Media3
+  // release. expo-audio asks for an older one (1.9.0) and Gradle resolves
+  // each artifact to the highest version requested, so an artifact that is
+  // not named here at this version falls back to expo-audio's. The
+  // DASH/SmoothStreaming/RTSP artifacts are excluded globally via
+  // plugins/withExcludeMedia3Dash.ts.
   def media3Version = safeExtGet('media3Version', '1.10.1')
   implementation "androidx.media3:media3-exoplayer:${media3Version}"
   implementation "androidx.media3:media3-exoplayer-hls:${media3Version}"
   implementation "androidx.media3:media3-ui:${media3Version}"
   implementation "androidx.media3:media3-common:${media3Version}"
+  constraints {
+    // Not used by this module. expo-audio brings media3-session in at 1.9.0;
+    // hold it at the player's release, where it has resolved until now.
+    implementation("androidx.media3:media3-session:${media3Version}") {
+      because "expo-audio asks for 1.9.0; keep media3-session on the player's Media3 release"
+    }
+  }
 
   // FFmpeg software decoders — DTS / TrueHD / AC-4 / WMA / older video
   // codecs that MediaCodec doesn't ship with on most Android TVs.
   //
   // This is the Jellyfin-published distribution of media3-decoder-ffmpeg
   // with prebuilt native libraries (the upstream androidx artifact is a
-  // stub that requires building FFmpeg yourself). RNTP already pulls
-  // 1.9.0+1 in transitively, so declaring it here is mostly defensive —
-  // it guarantees we still get it if RNTP ever drops the dep.
+  // stub that requires building FFmpeg yourself).
   //
-  // Version skew: this is built against media3 1.9.0 but RNTP (and we)
-  // resolve media3 core to 1.10.1. RNTP ships the same combination in
-  // production, and Media3 maintains binary compat for Renderer /
+  // Version skew: this is built against media3 1.9.0 but media3 core
+  // resolves to 1.10.1. Media3 maintains binary compat for Renderer /
   // RenderersFactory APIs across minor versions, so this works in
   // practice. Re-evaluate when Jellyfin publishes a 1.10.x build.
   implementation "org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1"

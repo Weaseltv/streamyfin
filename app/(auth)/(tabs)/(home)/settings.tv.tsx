@@ -27,7 +27,6 @@ import { useMediaPreferences } from "@/hooks/useMediaPreferences";
 import { useTVOptionModal } from "@/hooks/useTVOptionModal";
 import { useTVUserSwitchModal } from "@/hooks/useTVUserSwitchModal";
 import { APP_LANGUAGES } from "@/i18n";
-import { clearCache as clearAudioCache } from "@/providers/AudioStorage";
 import {
   apiAtom,
   cacheVersionAtom,
@@ -232,13 +231,10 @@ export default function SettingsTV() {
               await Image.clearDiskCache();
               Image.clearMemoryCache();
 
-              // 3. Clear AudioStorage (music) cache
-              await clearAudioCache();
-
-              // 4. Clear TopShelf cache
+              // 3. Clear TopShelf cache
               clearTopShelfCacheSafely();
 
-              // 5. Clear Subtitle Cache
+              // 4. Clear Subtitle Cache
               storage.remove("downloadedSubtitles.json");
               const subtitlesDir = new Directory(
                 Paths.cache,
@@ -248,7 +244,7 @@ export default function SettingsTV() {
                 await subtitlesDir.delete();
               }
 
-              // 6. Clear MMKV caches like extracted image colors and other non-essential storage keys
+              // 5. Clear MMKV caches like extracted image colors and other non-essential storage keys
               const keysToKeep = [
                 "settings",
                 "serverUrl",

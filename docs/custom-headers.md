@@ -62,7 +62,6 @@ them.
 | Now Playing artwork (iOS) | `nowPlayingMetadata.artworkHeaders` |
 | Video downloads | `BackgroundDownloader.enqueueDownload(..., headers)` |
 | Trickplay, subtitles, posters | `File.downloadFileAsync(..., optionsWithOptionalHeaders(...))` |
-| Music streams and artwork | `itemToTrack` (TrackPlayer) |
 | Jellyseerr / Streamystats / Marlin | `getIntegrationHeaders(key)` |
 
 ## Rules worth knowing

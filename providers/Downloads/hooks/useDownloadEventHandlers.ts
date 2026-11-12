@@ -46,10 +46,9 @@ interface UseDownloadEventHandlersProps {
  * Hook to set up download event listeners (progress, complete, error, started).
  *
  * Events are correlated by the `itemId` native echoes back from the metadata passed at enqueue
- * time — no taskId bookkeeping in JS. Events without an `itemId` are not ours (e.g. AudioStorage
- * downloads, which keep their own taskId map) and are ignored. Completion is finalized from the
- * persisted pending record rather than in-memory state, so it also works when the download was
- * enqueued by a previous app session.
+ * time — no taskId bookkeeping in JS. Events without an `itemId` are not ours and are ignored.
+ * Completion is finalized from the persisted pending record rather than in-memory state, so it
+ * also works when the download was enqueued by a previous app session.
  */
 export function useDownloadEventHandlers({
   processes,

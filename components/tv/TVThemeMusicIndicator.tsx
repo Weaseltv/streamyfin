@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import { Animated, Easing, Pressable, View } from "react-native";
-import { AnimatedEqualizer } from "@/components/music/AnimatedEqualizer";
+import { AnimatedEqualizer } from "@/components/tv/AnimatedEqualizer";
 import { scaleSize } from "@/utils/scaleSize";
 
 interface TVThemeMusicIndicatorProps {

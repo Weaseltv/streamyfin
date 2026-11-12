@@ -23,10 +23,6 @@ export const itemRouter = (item: BaseItemDto, from: string) => {
     return `/(auth)/(tabs)/${from}/livetv`;
   }
 
-  if ("CollectionType" in item && item.CollectionType === "music") {
-    return `/(auth)/(tabs)/(libraries)/music/${item.Id}`;
-  }
-
   if (item.Type === "Series") {
     return `/(auth)/(tabs)/${from}/series/${item.Id}`;
   }
@@ -63,13 +59,6 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
   if ("CollectionType" in item && item.CollectionType === "livetv") {
     return {
       pathname: "/livetv" as const,
-    };
-  }
-
-  if ("CollectionType" in item && item.CollectionType === "music") {
-    return {
-      pathname: "/music/[libraryId]" as const,
-      params: { libraryId: item.Id! },
     };
   }
 
@@ -112,45 +101,11 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
     };
   }
 
-  // Music types - use shared routes for proper back navigation
-  if (item.Type === "MusicArtist") {
-    return {
-      pathname: "/music/artist/[artistId]" as const,
-      params: { artistId: item.Id! },
-    };
-  }
-
-  if (item.Type === "MusicAlbum") {
-    return {
-      pathname: "/music/album/[albumId]" as const,
-      params: { albumId: item.Id! },
-    };
-  }
-
-  if (item.Type === "Audio") {
-    // Navigate to the album if available, otherwise to the item page
-    if (item.AlbumId) {
-      return {
-        pathname: "/music/album/[albumId]" as const,
-        params: { albumId: item.AlbumId },
-      };
-    }
-    return {
-      pathname: "/items/page" as const,
-      params: { id: item.Id! },
-    };
-  }
-
+  // A playlist opens as a grid of what it holds, like a library
   if (item.Type === "Playlist") {
-    if (Platform.isTV) {
-      return {
-        pathname: "/[libraryId]" as const,
-        params: { libraryId: item.Id! },
-      };
-    }
     return {
-      pathname: "/music/playlist/[playlistId]" as const,
-      params: { playlistId: item.Id! },
+      pathname: "/[libraryId]" as const,
+      params: { libraryId: item.Id! },
     };
   }
 
@@ -174,13 +129,6 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const store = useStore();
 
   const handlePress = useCallback(() => {
-    // Force music libraries to navigate via the explicit string route.
-    // This avoids losing the dynamic [libraryId] param when going through a nested navigator.
-    if ("CollectionType" in item && item.CollectionType === "music") {
-      router.push(itemRouter(item, from) as any);
-      return;
-    }
-
     const navigation = getItemNavigation(item, from);
     router.push(navigation as any);
 
