@@ -67,24 +67,56 @@ function eligible(query: Query, now: number) {
     now - query.state.dataUpdatedAt <= OFFLINE_CACHE_LIMITS.ageMs
   );
 }
-function priority(query: Query) {
+/**
+ * Which queries are saved first when there are more than the limits allow.
+ *
+ * Both start with what Home opens on: the Continue Watching and Next Up lists
+ * and the list of libraries.
+ *
+ * - `homeFirst` (phones): then the rest of Home (Recently Added, the
+ *   server-made rows, Streaming Services), then visited titles, newest first.
+ *   Home's rows are on screen at every launch, a visited title only if it is
+ *   opened again. They used to rank below visited titles, so after a few
+ *   dozen title pages a launch could find some of Home's rows missing. The
+ *   price is the oldest visited titles: as many as Home has other rows.
+ * - `visitedFirst`: visited titles before the rest of Home, the order before
+ *   that change. The TV build keeps it.
+ *
+ * Downloaded titles are not part of this: their pages read the downloads
+ * store, never this cache.
+ */
+export type OfflineCacheOrder = "homeFirst" | "visitedFirst";
+
+function priority(query: Query, order: OfflineCacheOrder) {
+  const home = query.queryKey[0] === "home";
   if (
-    query.queryKey[0] === "home" &&
+    home &&
     ["continueAndNextUp", "resumeItems", "nextUp-all", "userViews"].includes(
       String(query.queryKey[1]),
     )
   )
     return 0;
-  if (query.queryKey[0] === "item" || query.queryKey[0] === "series") return 1;
-  if (query.queryKey[0] === "home") return 2;
+  const visited =
+    query.queryKey[0] === "item" || query.queryKey[0] === "series";
+  if (order === "homeFirst") {
+    if (home) return 1;
+    if (visited) return 2;
+  } else {
+    if (visited) return 1;
+    if (home) return 2;
+  }
   return 3;
 }
-function candidates(client: PersistedClient, now: number) {
+function candidates(
+  client: PersistedClient,
+  now: number,
+  order: OfflineCacheOrder,
+) {
   return client.clientState.queries
     .filter((query) => eligible(query, now))
     .sort(
       (a, b) =>
-        priority(a) - priority(b) ||
+        priority(a, order) - priority(b, order) ||
         b.state.dataUpdatedAt - a.state.dataUpdatedAt,
     );
 }
@@ -118,13 +150,14 @@ function boundedQuery(query: Query): Query {
 export function serializeOfflineCache(
   client: PersistedClient,
   now = Date.now(),
+  order: OfflineCacheOrder = "homeFirst",
 ) {
   const prefix = `{"timestamp":${JSON.stringify(client.timestamp)},"buster":${JSON.stringify(client.buster)},"clientState":{"mutations":${JSON.stringify(client.clientState.mutations)},"queries":[`;
   const suffix = "]}}";
   let length = prefix.length + suffix.length;
   if (length > OFFLINE_CACHE_LIMITS.characters) return undefined;
   const chunks: string[] = [];
-  for (const query of candidates(client, now)) {
+  for (const query of candidates(client, now, order)) {
     if (chunks.length >= OFFLINE_CACHE_LIMITS.queries) break;
     const chunk = JSON.stringify(boundedQuery(query));
     const cost = chunk.length + (chunks.length ? 1 : 0);
@@ -146,6 +179,8 @@ interface PauseGate {
 }
 interface Options {
   gate?: PauseGate;
+  /** What is saved first over the limits; phones' order unless told otherwise. */
+  order?: OfflineCacheOrder;
   quietMs?: number;
   maxWaitMs?: number;
   scheduleIdle?: (callback: () => void) => () => void;
@@ -158,6 +193,7 @@ export function createOfflinePersister(
   flush: () => void;
   dispose: () => void;
 } {
+  const order = options.order ?? "homeFirst";
   let pending: PersistedClient | undefined;
   let pendingFingerprint: string | undefined;
   let writtenFingerprint: string | undefined;
@@ -167,7 +203,7 @@ export function createOfflinePersister(
   const identities = new WeakMap<object, number>();
   let nextIdentity = 0;
   const fingerprint = (client: PersistedClient) => {
-    const queries = candidates(client, Date.now()).map((query) => {
+    const queries = candidates(client, Date.now(), order).map((query) => {
       const data = query.state.data;
       let identity: string | number;
       if (data !== null && typeof data === "object") {
@@ -192,7 +228,7 @@ export function createOfflinePersister(
     cancel();
     if (!pending) return;
     const client = pending;
-    const value = serializeOfflineCache(client);
+    const value = serializeOfflineCache(client, Date.now(), order);
     if (value === undefined) return;
     try {
       storage.setItem(OFFLINE_CACHE_KEY, value);
@@ -275,14 +311,14 @@ export function createOfflinePersister(
         )
           throw new Error("Invalid catalog snapshot");
         if (value.length > OFFLINE_CACHE_LIMITS.characters) {
-          const bounded = serializeOfflineCache(client);
+          const bounded = serializeOfflineCache(client, Date.now(), order);
           return bounded ? (JSON.parse(bounded) as PersistedClient) : undefined;
         }
         return {
           ...client,
           clientState: {
             ...client.clientState,
-            queries: candidates(client, Date.now())
+            queries: candidates(client, Date.now(), order)
               .slice(0, OFFLINE_CACHE_LIMITS.queries)
               .map(boundedQuery),
           },

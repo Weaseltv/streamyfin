@@ -210,6 +210,162 @@ describe("bounded offline snapshot", () => {
   });
 });
 
+describe("what is saved first when the cache is over a limit", () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  // What Home opens on. Unchanged: always first.
+  const top = [
+    ["home", "continueAndNextUp"],
+    ["home", "resumeItems"],
+    ["home", "nextUp-all"],
+    ["home", "userViews", "user"],
+  ];
+  // The rest of the phone's Home.
+  const rows = [
+    ["home", "recentlyAdded", "movies", "server", "user", "library-1"],
+    ["home", "recentlyAdded", "tvshows", "server", "user", "library-2"],
+    ["home", "justwatch", "trending_movies", "server", "user"],
+    ["home", "justwatch", "trending_shows", "server", "user"],
+    ["home", "justwatch", "recently_released", "server", "user"],
+    ["home", "justwatch", "movie_roulette", "server", "user"],
+    ["home", "streaming", "server", "user"],
+    ["home", "nextUpDismissals", "server", "user"],
+  ];
+  /** Home was loaded two hours ago; every title below was visited since. */
+  const home = (keys: string[][], characters = 10) =>
+    keys.map((key) => ({
+      key,
+      data: { padding: "x".repeat(characters) },
+      updatedAt: now - 2 * HOUR,
+    }));
+  /** Title pages and series pages, number 0 the most recent visit. */
+  const visited = (count: number, characters = 10) =>
+    Array.from({ length: count }, (_, i) => ({
+      key: i % 2 ? ["series", `visit-${i}`] : ["item", `visit-${i}`],
+      data: { Id: `visit-${i}`, padding: "x".repeat(characters) },
+      updatedAt: now - i * 1000,
+    }));
+  const savedKeys = (value: string | undefined): string[][] =>
+    JSON.parse(value!).clientState.queries.map(
+      (query: { queryKey: string[] }) => query.queryKey,
+    );
+  const visits = (keys: string[][]) =>
+    keys
+      .filter((key) => key[0] === "item" || key[0] === "series")
+      .map((key) => Number(key[1].replace("visit-", "")));
+  const homeRows = (keys: string[][]) =>
+    keys.filter(
+      (key) => key[0] === "home" && rows.some((row) => row[1] === key[1]),
+    );
+  const upTo = (count: number) => Array.from({ length: count }, (_, i) => i);
+
+  test("query limit: all of Home, then the most recent visited titles", () => {
+    const client = snapshot([
+      ...visited(45),
+      { key: ["library-items", "movies"], data: [], updatedAt: now },
+      ...home(rows),
+      ...home(top),
+    ]);
+    const keys = savedKeys(serializeOfflineCache(client, now));
+    expect(keys).toHaveLength(OFFLINE_CACHE_LIMITS.queries);
+    // The top rank is where it was: first, whatever its age
+    expect(keys.slice(0, top.length).map((key) => key[1])).toEqual(
+      expect.arrayContaining(top.map((key) => key[1])),
+    );
+    // Every other Home row is saved, although each is older than any visit
+    expect(homeRows(keys)).toHaveLength(rows.length);
+    // The rest are the most recent visits, with no gap
+    const room = OFFLINE_CACHE_LIMITS.queries - top.length - rows.length;
+    expect(visits(keys)).toEqual(upTo(room));
+    expect(keys.some((key) => key[0] === "library-items")).toBe(false);
+  });
+  test("query limit: the cost is one of the oldest visited titles for each Home row", () => {
+    const client = snapshot([...visited(45), ...home(rows), ...home(top)]);
+    const before = savedKeys(
+      serializeOfflineCache(client, now, "visitedFirst"),
+    );
+    const after = savedKeys(serializeOfflineCache(client, now, "homeFirst"));
+    // Before: the top rank, then visited titles, and none of Home's other rows
+    expect(before.slice(0, top.length).map((key) => key[1])).toEqual(
+      expect.arrayContaining(top.map((key) => key[1])),
+    );
+    expect(homeRows(before)).toHaveLength(0);
+    expect(visits(before)).toEqual(
+      upTo(OFFLINE_CACHE_LIMITS.queries - top.length),
+    );
+    // After: the same visits less the oldest, one for each row
+    expect(visits(before).length - visits(after).length).toBe(rows.length);
+    expect(visits(after)).toEqual(visits(before).slice(0, -rows.length));
+  });
+  test("query limit: nothing is given up while there is room for everything", () => {
+    const client = snapshot([...visited(20), ...home(rows), ...home(top)]);
+    const keys = savedKeys(serializeOfflineCache(client, now));
+    expect(keys).toHaveLength(20 + rows.length + top.length);
+    expect(visits(keys)).toEqual(upTo(20));
+  });
+  test("character limit: all of Home, then the most recent visited titles that fit", () => {
+    // 30 visits of 40,000 characters do not fit in 1,000,000 by themselves
+    const client = snapshot([
+      ...visited(30, 40_000),
+      ...home(rows, 20_000),
+      ...home(top, 1_000),
+    ]);
+    const value = serializeOfflineCache(client, now)!;
+    expect(value.length).toBeLessThanOrEqual(OFFLINE_CACHE_LIMITS.characters);
+    const keys = savedKeys(value);
+    // This is the character limit at work, not the query limit
+    expect(keys.length).toBeLessThan(OFFLINE_CACHE_LIMITS.queries);
+    expect(keys.slice(0, top.length).map((key) => key[1])).toEqual(
+      expect.arrayContaining(top.map((key) => key[1])),
+    );
+    expect(homeRows(keys)).toHaveLength(rows.length);
+    const kept = visits(keys);
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.length).toBeLessThan(30);
+    expect(kept).toEqual(upTo(kept.length));
+  });
+  test("character limit: before, visited titles took the room and Home's rows lost it", () => {
+    const client = snapshot([
+      ...visited(30, 40_000),
+      ...home(rows, 20_000),
+      ...home(top, 1_000),
+    ]);
+    const before = serializeOfflineCache(client, now, "visitedFirst")!;
+    expect(before.length).toBeLessThanOrEqual(OFFLINE_CACHE_LIMITS.characters);
+    expect(homeRows(savedKeys(before)).length).toBeLessThan(rows.length);
+    const after = savedKeys(serializeOfflineCache(client, now, "homeFirst"));
+    expect(visits(after).length).toBeLessThan(visits(savedKeys(before)).length);
+  });
+  test("a persister saves and restores in its own order, and leaves downloads alone", () => {
+    const client = snapshot([...visited(45), ...home(rows), ...home(top)]);
+    for (const [order, expected] of [
+      [undefined, rows.length],
+      ["homeFirst", rows.length],
+      ["visitedFirst", 0],
+    ] as const) {
+      const storage = fakeStorage();
+      const persister = makePersister(storage, order ? { order } : {});
+      persister.persistClient(client);
+      persister.flush();
+      expect(
+        homeRows(savedKeys(storage.values.get(OFFLINE_CACHE_KEY))),
+      ).toHaveLength(expected);
+      const restored = persister.restoreClient() as PersistedClient;
+      expect(restored.clientState.queries).toHaveLength(
+        OFFLINE_CACHE_LIMITS.queries,
+      );
+      expect(
+        homeRows(
+          restored.clientState.queries.map(
+            (query) => query.queryKey as string[],
+          ),
+        ),
+      ).toHaveLength(expected);
+      expect(storage.values.get("download-records")).toBe("authoritative");
+    }
+  });
+});
+
 describe("persistence pacing and cancellation", () => {
   test("coalesces changed responses and ignores fetch-state-only events", async () => {
     const storage = fakeStorage();
