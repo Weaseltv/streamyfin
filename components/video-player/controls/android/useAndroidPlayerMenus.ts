@@ -13,13 +13,21 @@ import {
   multiplierLabel,
   SLEEP_TIMER_PRESET_MINUTES,
   SUBTITLE_SCALE_PRESETS,
+  SYNC_OFFSET_PRESETS,
   sleepTimerLabel,
+  syncOffsetLabel,
+  VOLUME_BOOST_PRESETS,
+  volumeBoostLabel,
 } from "@/utils/androidPlayerChrome";
 import { useSettings } from "@/utils/atoms/settings";
 import { ticksToMs } from "@/utils/time";
 import { usePlayerContext } from "../contexts/PlayerContext";
 import { useVideoContext } from "../contexts/VideoContext";
 import { PlaybackSpeedScope } from "../utils/playback-speed-settings";
+import {
+  keepAudioAdjustmentsForReload,
+  usePlayerAudioAdjustments,
+} from "./usePlayerAudioAdjustments";
 
 /**
  * The Android menu card (parity round 2, Q2) draws a Material icon on an
@@ -91,6 +99,14 @@ export const useAndroidPlayerMenus = ({
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
   const isOffline = useOfflineMode();
+  const {
+    values: adjustmentValues,
+    setAudioDelay,
+    setSubtitleDelay,
+    setVolumeBoost,
+    toggleDialogueBoost,
+    toggleMonoAudio,
+  } = usePlayerAudioAdjustments();
 
   const { subtitleIndex, audioIndex, bitrateValue, playbackPosition } =
     useLocalSearchParams<{
@@ -126,6 +142,7 @@ export const useAndroidPlayerMenus = ({
           getPositionTicksRef.current?.().toString() ??
           playbackPositionRef.current,
       }).toString();
+      keepAudioAdjustmentsForReload();
       router.replace(`player/direct-player?${queryParams}` as any);
     },
     [audioIndex, subtitleIndex, router],
@@ -136,8 +153,36 @@ export const useAndroidPlayerMenus = ({
   const audioTracksKey =
     audioTracks?.map((a) => `${a.index}-${a.name}`).join(",") ?? "";
 
-  const audio = useMemo<OptionGroup[]>(() => {
+  // iOS syncOffsetEntries: one checkmarked row per preset.
+  const syncOffsetOptions = useCallback(
+    (current: number, onSelect: (seconds: number) => void) =>
+      SYNC_OFFSET_PRESETS.map((offset) => ({
+        type: "radio" as const,
+        label: syncOffsetLabel(offset),
+        value: offset.toString(),
+        selected: Math.abs(current - offset) < 0.001,
+        onPress: () => onSelect(offset),
+      })),
+    [],
+  );
+
+  // iOS audioTracksMenu: the tracks, then Audio sync ›, Volume boost ›,
+  // Dialogue boost and Mono audio (whose icons turn into a checkmark while
+  // on, like the iPhone's).
+  const audio = useMemo<IconGroup[]>(() => {
     if (!audioTracks || audioTracks.length === 0) return [];
+    const dialogueBoost: IconAction = {
+      type: "action",
+      label: t("player.dialogue_boost"),
+      icon: adjustmentValues.dialogueBoost ? "check" : "volume-down",
+      onPress: toggleDialogueBoost,
+    };
+    const monoAudio: IconAction = {
+      type: "action",
+      label: t("player.mono_audio"),
+      icon: adjustmentValues.monoAudio ? "check" : "volume-mute",
+      onPress: toggleMonoAudio,
+    };
     return [
       {
         options: audioTracks.map((track) => ({
@@ -148,8 +193,38 @@ export const useAndroidPlayerMenus = ({
           onPress: () => track.setTrack(),
         })),
       },
+      {
+        title: t("player.audio_sync"),
+        icon: "update",
+        showSelection: false,
+        options: syncOffsetOptions(adjustmentValues.audioDelay, setAudioDelay),
+      },
+      {
+        title: t("player.volume_boost"),
+        icon: "volume-up",
+        showSelection: false,
+        options: VOLUME_BOOST_PRESETS.map((percent) => ({
+          type: "radio" as const,
+          // The iPhone's "off" string is common.none (buildNativePlayerConfig).
+          label: volumeBoostLabel(percent, t("common.none")),
+          value: percent.toString(),
+          selected: adjustmentValues.volumeBoost === percent,
+          onPress: () => setVolumeBoost(percent),
+        })),
+      },
+      { options: [dialogueBoost, monoAudio] },
     ];
-  }, [audioTracksKey, audioIndex]);
+  }, [
+    t,
+    audioTracksKey,
+    audioIndex,
+    adjustmentValues,
+    syncOffsetOptions,
+    setAudioDelay,
+    setVolumeBoost,
+    toggleDialogueBoost,
+    toggleMonoAudio,
+  ]);
 
   const subtitles = useMemo<IconGroup[]>(() => {
     if (!subtitleTracks || subtitleTracks.length === 0) return [];
@@ -177,6 +252,15 @@ export const useAndroidPlayerMenus = ({
           onPress: () => updateSettings({ mpvSubtitleScale: preset }),
         })),
       },
+      {
+        title: t("player.subtitle_sync"),
+        icon: "update",
+        showSelection: false,
+        options: syncOffsetOptions(
+          adjustmentValues.subtitleDelay,
+          setSubtitleDelay,
+        ),
+      },
     ];
   }, [
     t,
@@ -184,6 +268,9 @@ export const useAndroidPlayerMenus = ({
     subtitleIndex,
     settings.mpvSubtitleScale,
     updateSettings,
+    adjustmentValues.subtitleDelay,
+    syncOffsetOptions,
+    setSubtitleDelay,
   ]);
 
   const speedOptions = useMemo(

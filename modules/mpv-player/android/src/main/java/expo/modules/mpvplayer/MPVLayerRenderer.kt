@@ -3,6 +3,7 @@ package expo.modules.mpvplayer
 import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -439,6 +440,16 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
     private var voDriver: String = "gpu-next"
 
     /**
+     * The audio session mpv's AudioTrack opens on (`audiotrack-session-id`),
+     * generated per player so Android audio effects can attach to it; see
+     * [DialogueBoost]. 0 when the system could not generate one.
+     */
+    private var audioSessionId: Int = 0
+
+    /** Created on first use; released with the player in [stop]. */
+    private var dialogueBoost: DialogueBoost? = null
+
+    /**
      * True on Android TV form-factor devices. Drives both the hwdec selection
      * in [start] and the TV-only resume-recovery gating in [MpvPlayerView].
      * Computed once from the system UI mode.
@@ -566,6 +577,19 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             mpv?.setOptionString("force-window", "no")
             mpv?.setOptionString("keep-open", "always")
 
+            // Own audio session, so the dialogue boost effect can attach to
+            // mpv's output (see DialogueBoost).
+            audioSessionId = try {
+                (context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
+                    .generateAudioSessionId().coerceAtLeast(0)
+            } catch (e: Exception) {
+                0
+            }
+            if (audioSessionId > 0) {
+                val result = mpv.setOptionString("audiotrack-session-id", audioSessionId.toString())
+                Log.i(TAG, "audio session $audioSessionId (audiotrack-session-id result=$result)")
+            }
+
             mpv.initialize()
 
             // Observe properties
@@ -599,6 +623,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
                 // handle after main requested close. FIFO cleanup still owns it.
                 val handle = mpv
                 val observer = currentObserver
+                dialogueBoost?.release()
+                dialogueBoost = null
+                audioSessionId = 0
                 mpv = null
                 currentObserver = null
                 currentUrl = null
@@ -999,6 +1026,57 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
 
     fun setSubtitleAssOverride(mode: String) {
         mpv?.setPropertyString("sub-ass-override", if (mode == "no") "scale" else mode)
+    }
+
+    // MARK: - Sync offsets, volume boost, dialogue boost, mono (iOS player menus)
+    //
+    // Same mpv properties and values as iOS MPVLayerRenderer.swift. Each
+    // setter logs mpv's value read back, so a change can be checked in logcat.
+
+    fun setSubtitleDelay(seconds: Double) {
+        mpv?.setPropertyDouble("sub-delay", seconds)
+        logPlayerMenuProperty("sub-delay")
+    }
+
+    fun setAudioDelay(seconds: Double) {
+        mpv?.setPropertyDouble("audio-delay", seconds)
+        logPlayerMenuProperty("audio-delay")
+    }
+
+    fun setVolumeBoost(percent: Int) {
+        // Softvol gain: 100 = neutral, above amplifies. volume-max defaults
+        // to 130, so lift the ceiling first or 150/200% writes get clamped.
+        mpv?.setPropertyString("volume-max", "200")
+        mpv?.setPropertyDouble("volume", percent.toDouble())
+        logPlayerMenuProperty("volume-max", "volume")
+    }
+
+    /**
+     * Speech-clarity EQ. iOS sets mpv's `af` to an FFmpeg equalizer chain;
+     * this libmpv has no equalizer filter, so the same curve runs as an
+     * Android effect on mpv's audio session (see [DialogueBoost]).
+     */
+    fun setDialogueBoost(enabled: Boolean) {
+        if (audioSessionId <= 0) {
+            Log.w(TAG, "[PlayerMenu] dialogue boost unavailable: no audio session")
+            return
+        }
+        val boost = dialogueBoost ?: DialogueBoost(audioSessionId).also { dialogueBoost = it }
+        Log.i(TAG, "[PlayerMenu] dialogue boost ${boost.setEnabled(enabled)}")
+    }
+
+    /**
+     * Accessibility mono downmix: all channels into one, so both ears hear
+     * the full mix. "auto-safe" is mpv's default layout pick.
+     */
+    fun setMonoDownmix(enabled: Boolean) {
+        mpv?.setPropertyString("audio-channels", if (enabled) "mono" else "auto-safe")
+        logPlayerMenuProperty("audio-channels")
+    }
+
+    private fun logPlayerMenuProperty(vararg names: String) {
+        val values = names.joinToString(" ") { "$it=${mpv?.getPropertyString(it)}" }
+        Log.i(TAG, "[PlayerMenu] $values current-ao=${mpv?.getPropertyString("current-ao")}")
     }
 
     // MARK: - Audio Track Controls
