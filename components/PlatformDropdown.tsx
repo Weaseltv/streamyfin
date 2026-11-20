@@ -11,7 +11,7 @@ import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   type MenuAnchor,
   type MenuIconName,
-  MenuPopover,
+  useMenuPopover,
 } from "@/components/common/MenuPopover";
 import { NeonSheet, NeonSheetRow } from "@/components/common/NeonSheet";
 import { SectionHeader } from "@/components/common/SectionHeader";
@@ -301,15 +301,14 @@ const AndroidMenuDropdown = ({
     () => buildMenuRows(groups, onOptionSelect),
     [groups, onOptionSelect],
   );
+  // Drawn by MenuPopoverHost at the app root, above sheets and the player.
+  useMenuPopover(visible, anchor, rows, close);
 
   return (
     <View ref={triggerRef} collapsable={false}>
       <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.7}>
         {trigger || <DropdownTrigger value={t("common.open_menu")} />}
       </TouchableOpacity>
-      {visible && anchor ? (
-        <MenuPopover anchor={anchor} rows={rows} onClose={close} />
-      ) : null}
     </View>
   );
 };

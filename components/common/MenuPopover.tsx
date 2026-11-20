@@ -1,21 +1,30 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Animated,
-  Easing,
+  BackHandler,
+  FlatList,
   type LayoutChangeEvent,
-  Modal,
   Pressable,
   Text as RNText,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MAX_FONT_SCALE } from "@/constants/neon";
-import { type MenuPlacement, placeMenu } from "@/utils/menuLayout";
+import {
+  estimateMenuHeight,
+  type MenuPlacement,
+  placeMenu,
+} from "@/utils/menuLayout";
 
 /**
  * The iPhone's menu look, drawn in React Native for Android phones.
@@ -28,8 +37,12 @@ import { type MenuPlacement, placeMenu } from "@/utils/menuLayout";
  * iOS pt, so they are used 1:1.
  */
 export const MenuGlass = {
-  /** Card fill: (20,21,23) on a near-black page, as measured. */
-  card: "rgba(20,21,23,0.96)",
+  /**
+   * Card fill: (20,21,23) on a near-black page, as measured. Opaque: iOS
+   * blurs what is behind its glass, and a translucent fill without the blur
+   * lets the page's text show through sharply.
+   */
+  card: "rgb(20,21,23)",
   /** The 1pt light rim round the card. */
   rim: "rgba(255,255,255,0.14)",
   text: "#FFFFFF",
@@ -96,39 +109,102 @@ type Props = {
   onClose: () => void;
 };
 
+type MenuRequest = Props & { id: number };
+
+/** The open menu, drawn by MenuPopoverHost at the app root. One at a time. */
+const menuRequestAtom = atom<MenuRequest | null>(null);
+let nextMenuId = 1;
+
 /**
- * The menu card itself, in a transparent Modal so it sits above everything:
- * bottom sheets, the tab bar and the full-screen video player (RN's Modal
- * copies the player's hidden system bars). Tap outside or Android Back closes
- * it. UIMenu doesn't dim the page, so neither does this.
+ * Shows the menu card for a trigger while `visible` and its `anchor` are set.
+ * Row changes while it is open update it in place.
  */
-export function MenuPopover({ anchor, rows, onClose }: Props) {
+export function useMenuPopover(
+  visible: boolean,
+  anchor: MenuAnchor | null,
+  rows: MenuRow[],
+  onClose: () => void,
+) {
+  const setRequest = useSetAtom(menuRequestAtom);
+  const id = useRef(0);
+  const latest = useRef({ rows, onClose });
+  latest.current = { rows, onClose };
+
+  useEffect(() => {
+    if (!visible || !anchor) return;
+    const menuId = nextMenuId++;
+    id.current = menuId;
+    setRequest({ id: menuId, anchor, ...latest.current });
+    return () =>
+      setRequest((current) => (current?.id === menuId ? null : current));
+  }, [visible, anchor, setRequest]);
+
+  useEffect(() => {
+    setRequest((current) =>
+      current && current.id === id.current
+        ? { ...current, rows, onClose }
+        : current,
+    );
+  }, [rows, onClose, setRequest]);
+}
+
+/**
+ * Draws the open menu. Mounted once at the app root, after the bottom-sheet
+ * provider, so the card sits above pages, sheets and the full-screen player.
+ * It works like the old bottom sheet, which also lives in this tree. (An RN
+ * Modal was tried first: over the MPV player its dialog window opened, but
+ * the card in it did not show.)
+ */
+export function MenuPopoverHost() {
+  const request = useAtomValue(menuRequestAtom);
+  return request ? (
+    <MenuPopover
+      key={request.id}
+      anchor={request.anchor}
+      rows={request.rows}
+      onClose={request.onClose}
+    />
+  ) : null;
+}
+
+/**
+ * The menu card over a full-screen catcher: a tap outside or Android Back
+ * closes it. UIMenu doesn't dim the page, so neither does this.
+ */
+function MenuPopover({ anchor, rows, onClose }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
-  const rootRef = useRef<View>(null);
-  const [root, setRoot] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(
     null,
   );
-  const [placement, setPlacement] = useState<MenuPlacement | null>(null);
+  const previousPlacement = useRef<MenuPlacement | null>(null);
   const [submenu, setSubmenu] = useState<MenuRow | null>(null);
-  const progress = useRef(new Animated.Value(0)).current;
+  // A submenu opens in the same card, so it keeps the card's width.
+  const [lockedWidth, setLockedWidth] = useState<number | undefined>();
+  // Reanimated rather than Animated's native driver: over the player, an
+  // Animated fade started here never ran and the card stayed invisible.
+  const progress = useSharedValue(0);
 
-  // A menu never survives a rotation on iOS; its anchor would be stale.
-  const openedAt = useRef({ width: window.width, height: window.height });
+  // A menu never survives a rotation on iOS; its anchor would be stale. Only
+  // an orientation change counts: the window's height also moves when the
+  // player hides or shows the system bars.
+  const landscape = window.width > window.height;
+  const openedLandscape = useRef(landscape).current;
   useEffect(() => {
-    if (
-      window.width !== openedAt.current.width ||
-      window.height !== openedAt.current.height
-    )
-      onClose();
-  }, [window.width, window.height, onClose]);
+    if (landscape !== openedLandscape) onClose();
+  }, [landscape, openedLandscape, onClose]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        onClose();
+        return true;
+      },
+    );
+    return () => subscription.remove();
+  }, [onClose]);
 
   const visibleRows = submenu?.children ?? rows;
   const hasIcons = useMemo(
@@ -138,12 +214,6 @@ export function MenuPopover({ anchor, rows, onClose }: Props) {
       ),
     [visibleRows],
   );
-
-  const onRootLayout = () => {
-    rootRef.current?.measureInWindow((x, y, width, height) =>
-      setRoot({ x, y, width, height }),
-    );
-  };
 
   const onCardLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -156,35 +226,50 @@ export function MenuPopover({ anchor, rows, onClose }: Props) {
     );
   };
 
-  // Place the card once its natural size is known (see placeMenu).
-  useEffect(() => {
-    if (!root || !size) return;
-    setPlacement((previous) =>
+  // Placed on the first frame from the window size and an estimate of the
+  // card's height, then refined once its real size is laid out. Waiting for
+  // layout first cost two more JS round trips, seconds over a busy player.
+  // The side chosen first is kept, so a submenu doesn't flip it.
+  const placement = useMemo(
+    () =>
       placeMenu({
-        root,
+        root: { x: 0, y: 0, width: window.width, height: window.height },
         anchor,
         size,
+        estimatedHeight: estimateMenuHeight(visibleRows.length, !!submenu),
         insets,
         margin: MENU.screenMargin,
         maxHeightRatio: MENU.maxHeightRatio,
-        previous,
+        previous: previousPlacement.current,
       }),
-    );
-  }, [root, size, anchor, insets]);
-
-  const shown = placement !== null;
+    [
+      window.width,
+      window.height,
+      anchor,
+      size,
+      visibleRows.length,
+      submenu,
+      insets,
+    ],
+  );
   useEffect(() => {
-    if (!shown) return;
-    Animated.timing(progress, {
-      toValue: 1,
+    if (!previousPlacement.current) previousPlacement.current = placement;
+  }, [placement]);
+
+  useEffect(() => {
+    progress.value = withTiming(1, {
       duration: 180,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [shown, progress]);
+    });
+  }, [progress]);
+  const fadeIn = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: 0.85 + 0.15 * progress.value }],
+  }));
 
   const pressRow = (row: MenuRow) => {
     if (row.children) {
+      setLockedWidth(size?.width);
       setSubmenu(row);
       return;
     }
@@ -192,72 +277,49 @@ export function MenuPopover({ anchor, rows, onClose }: Props) {
     row.onPress?.();
   };
 
-  const cardPosition = placement
-    ? {
-        left: placement.left,
-        ...(placement.top !== undefined
-          ? { top: placement.top }
-          : { bottom: placement.bottom }),
-      }
-    : // First pass: measure off to the side, invisible.
-      { left: 0, top: 0 };
-
-  const transformOrigin = placement
-    ? `${placement.alignRight ? "right" : "left"} ${placement.origin}`
-    : undefined;
+  const cardPosition = {
+    ...(placement.left !== undefined
+      ? { left: placement.left }
+      : { right: placement.right }),
+    ...(placement.top !== undefined
+      ? { top: placement.top }
+      : { bottom: placement.bottom }),
+  };
+  const transformOrigin = `${placement.alignRight ? "right" : "left"} ${placement.origin}`;
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType='none'
-      statusBarTranslucent
-      navigationBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View
-        ref={rootRef}
-        collapsable={false}
+    <View style={styles.overlay}>
+      <Pressable
         style={StyleSheet.absoluteFill}
-        onLayout={onRootLayout}
+        onPress={onClose}
+        accessibilityRole='button'
+        accessibilityLabel={t("common.close")}
+      />
+      <Animated.View
+        accessibilityRole='menu'
+        onLayout={onCardLayout}
+        style={[
+          styles.card,
+          cardPosition,
+          submenu && lockedWidth ? { minWidth: lockedWidth } : null,
+          { transformOrigin },
+          fadeIn,
+        ]}
       >
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityRole='button'
-          accessibilityLabel={t("common.close")}
-        />
-        <Animated.View
-          accessibilityRole='menu'
-          onLayout={onCardLayout}
-          style={[
-            styles.card,
-            cardPosition,
-            {
-              opacity: placement ? progress : 0,
-              transformOrigin,
-              transform: [
-                {
-                  scale: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.85, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <ScrollView
-            style={{
-              maxHeight:
-                placement?.maxHeight ??
-                Math.round(window.height * MENU.maxHeightRatio),
-            }}
-            contentContainerStyle={{ paddingVertical: MENU.padV }}
-            bounces={false}
-            overScrollMode='never'
-          >
-            {submenu ? (
+        {/* Virtualised: the language lists hold ~480 rows, and drawing
+              them all at once held the menu back for two seconds. */}
+        <FlatList
+          data={visibleRows}
+          keyExtractor={(row) => row.key}
+          renderItem={({ item }) => (
+            <MenuRowView
+              row={item}
+              hasIcons={hasIcons}
+              onPress={() => pressRow(item)}
+            />
+          )}
+          ListHeaderComponent={
+            submenu ? (
               <>
                 <MenuRowView
                   row={{
@@ -270,19 +332,20 @@ export function MenuPopover({ anchor, rows, onClose }: Props) {
                 />
                 <View style={styles.separator} />
               </>
-            ) : null}
-            {visibleRows.map((row) => (
-              <MenuRowView
-                key={row.key}
-                row={row}
-                hasIcons={hasIcons}
-                onPress={() => pressRow(row)}
-              />
-            ))}
-          </ScrollView>
-        </Animated.View>
-      </View>
-    </Modal>
+            ) : null
+          }
+          initialNumToRender={16}
+          maxToRenderPerBatch={32}
+          windowSize={9}
+          style={{
+            maxHeight: placement.maxHeight,
+          }}
+          contentContainerStyle={{ paddingVertical: MENU.padV }}
+          bounces={false}
+          overScrollMode='never'
+        />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -357,6 +420,16 @@ function MenuRowView({
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    // Above sibling views that carry elevation (sheets, the tab bar).
+    zIndex: 1000,
+    elevation: 1000,
+  },
   card: {
     position: "absolute",
     minWidth: MENU.minWidth,
@@ -378,14 +451,18 @@ const styles = StyleSheet.create({
   rowPressed: {
     backgroundColor: MenuGlass.pressed,
   },
+  // The Material glyphs draw a 17pt circle in a 20pt box; the box is
+  // centred on the 17pt column so nothing is clipped.
   iconBox: {
-    width: MENU.iconWidth,
-    marginRight: MENU.textLeftWithIcons - MENU.iconLeft - MENU.iconWidth,
+    width: MENU.iconWidth + 3,
+    marginLeft: -1.5,
+    marginRight: MENU.textLeftWithIcons - MENU.iconLeft - MENU.iconWidth - 1.5,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "visible",
   },
   label: {
+    // Fills the row so a submenu's chevron sits at the right edge.
+    flexGrow: 1,
     flexShrink: 1,
     fontSize: MENU.fontSize,
     lineHeight: MENU.lineHeight,
@@ -394,10 +471,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   chevron: {
-    marginLeft: 12,
-    // The glyph is 6pt wide inside a 21pt box; pull the box out so the glyph
-    // sits 26pt from the card's edge as on iOS.
-    marginRight: -7,
+    // The glyph is 6pt wide in the middle of a 21pt box. These margins put
+    // it 12pt after the label and 26pt from the card's edge, as on iOS.
+    marginLeft: 5,
+    marginRight: -8,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

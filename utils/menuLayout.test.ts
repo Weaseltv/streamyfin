@@ -110,7 +110,13 @@ test("choosing a row runs the option and reports its value", () => {
 // The iPhone 17 Pro Max in points: 440 x 956, safe area 62 / 34.
 const root = { x: 0, y: 0, width: 440, height: 956 };
 const insets = { top: 62, bottom: 34, left: 0, right: 0 };
-const base = { root, insets, margin: 8, maxHeightRatio: 0.54 };
+const base = {
+  root,
+  insets,
+  margin: 8,
+  maxHeightRatio: 0.54,
+  estimatedHeight: 200,
+};
 
 test("a long menu under a right-hand trigger opens down over it, right edges aligned (r1 52c)", () => {
   const placement = placeMenu({
@@ -121,7 +127,9 @@ test("a long menu under a right-hand trigger opens down over it, right edges ali
   });
   expect(placement.origin).toBe("top");
   expect(placement.top).toBe(257);
-  expect(placement.left).toBe(158);
+  // Right edge on the trigger's right edge (408pt): 32pt from the screen's.
+  expect(placement.right).toBe(32);
+  expect(placement.left).toBeUndefined();
   // iOS stopped this list at 517pt.
   expect(placement.maxHeight).toBe(516);
 });
@@ -146,6 +154,18 @@ test("a left-hand trigger aligns the card's left edge, kept inside the screen", 
   expect(placement.alignRight).toBe(false);
   expect(placement.left).toBe(8);
   expect(placement.top).toBe(300);
+});
+
+test("before layout it opens from the estimate, anchored by the edge it aligns to", () => {
+  const placement = placeMenu({
+    ...base,
+    anchor: { x: 290, y: 720, width: 118, height: 38 },
+    size: null,
+    estimatedHeight: 18 + 42 * 12,
+  });
+  expect(placement.origin).toBe("bottom");
+  expect(placement.bottom).toBe(956 - 758);
+  expect(placement.right).toBe(32);
 });
 
 test("the side chosen on open is kept when a submenu changes the size", () => {
@@ -175,6 +195,6 @@ test("landscape player: a top-right trigger with no safe-area inset", () => {
   });
   expect(placement.origin).toBe("top");
   expect(placement.top).toBe(10);
-  expect(placement.left).toBe(924 - 250);
+  expect(placement.right).toBe(956 - 924);
   expect(placement.maxHeight).toBe(Math.round(440 * 0.54));
 });

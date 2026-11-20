@@ -91,11 +91,17 @@ export type MenuPlacement = {
   /** Distance from the root's top (opening down) or bottom (opening up). */
   top?: number;
   bottom?: number;
-  left: number;
+  /** Distance from the root's left (left-aligned) or right (right-aligned). */
+  left?: number;
+  right?: number;
   maxHeight: number;
   origin: "top" | "bottom";
   alignRight: boolean;
 };
+
+/** The menu's height before it is laid out: 42pt rows, 9pt top and bottom. */
+export const estimateMenuHeight = (rowCount: number, withHeader: boolean) =>
+  9 * 2 + 42 * rowCount + (withHeader ? 42 + 9 : 0);
 
 /**
  * Where UIMenu puts its card, as measured on the iPhone (r1 20b, 52c, 55c):
@@ -104,15 +110,18 @@ export type MenuPlacement = {
  * below; its right edge on the trigger's right edge when the trigger is in
  * the right half of the screen, its left edge on the trigger's left
  * otherwise. Long menus stop at `maxHeightRatio` of the window and scroll.
- * Always inside the safe area, `margin` clear of the edges.
+ * Always inside the safe area, `margin` clear of the sides and the bottom.
  *
- * `previous` keeps the side and alignment chosen on open, so a submenu that
- * changes the card's size doesn't flip it.
+ * Works before the card is laid out (`size` null): the side comes from
+ * `estimatedHeight`, and anchoring by the right or bottom edge needs no
+ * width or height. `previous` keeps the side and alignment chosen on open,
+ * so a submenu that changes the card's size doesn't flip it.
  */
 export const placeMenu = ({
   root,
   anchor,
   size,
+  estimatedHeight,
   insets,
   margin,
   maxHeightRatio,
@@ -122,14 +131,17 @@ export const placeMenu = ({
   root: Rect;
   /** The trigger's frame in window coordinates. */
   anchor: Rect;
-  /** The card's natural size. */
-  size: { width: number; height: number };
+  /** The card's laid-out size, once known. */
+  size: { width: number; height: number } | null;
+  estimatedHeight: number;
   insets: Insets;
   margin: number;
   maxHeightRatio: number;
   previous?: MenuPlacement | null;
 }): MenuPlacement => {
-  const minTop = insets.top + margin;
+  // UIMenu may sit right under the status bar (20b: 6.7pt below it), so the
+  // margin applies to the sides and the bottom only.
+  const minTop = insets.top;
   const maxBottom = root.height - insets.bottom - margin;
   const minLeft = insets.left + margin;
   const maxRight = root.width - insets.right - margin;
@@ -142,7 +154,7 @@ export const placeMenu = ({
 
   const below = maxBottom - Math.max(aTop, minTop);
   const above = Math.min(aBottom, maxBottom) - minTop;
-  const natural = Math.min(size.height, cap);
+  const natural = Math.min(size?.height ?? estimatedHeight, cap);
   const origin =
     previous?.origin ??
     (natural <= below
@@ -154,15 +166,25 @@ export const placeMenu = ({
           : "bottom");
   const alignRight =
     previous?.alignRight ?? aLeft + anchor.width / 2 > root.width / 2;
-  const left = Math.max(
-    minLeft,
-    Math.min(alignRight ? aRight - size.width : aLeft, maxRight - size.width),
-  );
+
+  const horizontal = alignRight
+    ? {
+        right:
+          root.width -
+          Math.max(Math.min(aRight, maxRight), size ? minLeft + size.width : 0),
+      }
+    : {
+        left: Math.max(
+          minLeft,
+          size ? Math.min(aLeft, maxRight - size.width) : aLeft,
+        ),
+      };
+
   if (origin === "top") {
     const top = Math.max(aTop, minTop);
     return {
       top,
-      left,
+      ...horizontal,
       maxHeight: Math.min(cap, maxBottom - top),
       origin,
       alignRight,
@@ -171,7 +193,7 @@ export const placeMenu = ({
   const bottomEdge = Math.min(aBottom, maxBottom);
   return {
     bottom: root.height - bottomEdge,
-    left,
+    ...horizontal,
     maxHeight: Math.min(cap, bottomEdge - minTop),
     origin,
     alignRight,
