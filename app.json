@@ -187,6 +187,7 @@
       ["./plugins/withChangeNativeAndroidTextToWhite.ts"],
       ["./plugins/withAndroidAlertColors.ts"],
       ["./plugins/withAndroidManifest.ts"],
+      ["./plugins/withAndroidPhoneScale.ts"],
       ["./plugins/withTrustLocalCerts.ts"],
       ["./plugins/withGradleProperties.ts"],
       ["./plugins/withWeaselfinSigning.ts"],
