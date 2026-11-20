@@ -11,6 +11,25 @@ export const SUBTITLE_SCALE_PRESETS = [
   0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0,
 ] as const;
 
+/** iOS PlayerViewModel.syncOffsetPresets: audio and subtitle sync, seconds. */
+export const SYNC_OFFSET_PRESETS = [
+  -5, -2, -1, -0.5, -0.25, 0, 0.25, 0.5, 1, 2, 5,
+] as const;
+
+/** iOS PlayerViewModel.volumeBoostPresets: percent, 100 = off. */
+export const VOLUME_BOOST_PRESETS = [100, 125, 150, 200] as const;
+
+/** iOS offsetLabel: "0 s", "+0.25 s", "-5 s" (`%+g s`). */
+export const syncOffsetLabel = (seconds: number): string => {
+  if (seconds === 0) return "0 s";
+  const value = Number(seconds.toFixed(3));
+  return `${value > 0 ? "+" : ""}${value} s`;
+};
+
+/** iOS boostLabel: the "off" string at 100, else "125%". */
+export const volumeBoostLabel = (percent: number, offLabel: string): string =>
+  percent === 100 ? offLabel : `${percent}%`;
+
 /** "1×", "0.25×": iOS speedLabel / scaleLabel (`%g×`). */
 export const multiplierLabel = (value: number): string =>
   `${Number(value.toFixed(2))}×`;
