@@ -23,11 +23,14 @@ import {
  * 440 dp or wider are unchanged. The same approach as WeaselTV's Android
  * phone app.
  *
- * React Native also keeps "screen" metrics read from the physical display,
- * and converts every layout and text size with their density. Left alone they
- * carry the phone's real density, so layout and text came out at the old size
- * inside a 440 dp window (labels cut off). They are re-synced to the scaled
- * density when the app starts and after every configuration change.
+ * React Native also keeps "screen" metrics, read from the physical display
+ * through the Application's WindowManager, and converts every layout and text
+ * size with their density. They carried the phone's real density, so text
+ * kept its old size inside the 440 dp window (labels cut off), and React
+ * Native re-reads them on every rotation. While the scale is on, the
+ * Application hands React Native's metrics reader no WindowManager, so React
+ * Native takes its own fallback: screen metrics copied from the Application's
+ * (scaled) resources. Every other caller gets the real WindowManager.
  */
 const HELPER = `
 /**
@@ -44,26 +47,17 @@ internal fun android.content.Context.weaselPlexPhoneScaled(): android.content.Co
   val override = android.content.res.Configuration().apply {
     densityDpi = Math.round(config.densityDpi * scale)
   }
+  weaselPlexScaleActive = true
   return createConfigurationContext(override)
 }
 
-/**
- * WeaselPlex: React Native's screen metrics use the scaled density (pixel sizes stay the
- * display's). Call on the Application context after React Native read its metrics.
- */
-internal fun android.content.Context.weaselPlexSyncReactMetrics() {
-  val window = resources.displayMetrics
-  com.facebook.react.uimanager.DisplayMetricsHolder.initDisplayMetrics(this)
-  val screen = com.facebook.react.uimanager.DisplayMetricsHolder.getScreenDisplayMetrics()
-  if (screen.densityDpi == window.densityDpi) return
-  val synced = android.util.DisplayMetrics()
-  synced.setTo(screen)
-  synced.density = window.density
-  synced.densityDpi = window.densityDpi
-  @Suppress("DEPRECATION")
-  synced.scaledDensity = window.scaledDensity
-  com.facebook.react.uimanager.DisplayMetricsHolder.setScreenDisplayMetrics(synced)
-}
+@Volatile internal var weaselPlexScaleActive = false
+
+/** True when React Native's DisplayMetricsHolder is asking (app.json keeps its name in release). */
+internal fun weaselPlexIsReactMetricsRead(): Boolean =
+  Thread.currentThread().stackTrace.any {
+    it.className == "com.facebook.react.uimanager.DisplayMetricsHolder"
+  }
 `;
 
 const MARKER = "weaselPlexPhoneScaled";
@@ -79,30 +73,31 @@ const withAndroidPhoneScale: ConfigPlugin = (config) => {
   if (process.env.EXPO_TV === "1") return config;
 
   config = withMainApplication(config, (mod) => {
-    let src = mod.modResults.contents;
+    const src = mod.modResults.contents;
     if (src.includes(MARKER)) return mod;
     if (mod.modResults.language !== "kt") {
       throw new Error("withAndroidPhoneScale: MainApplication must be Kotlin");
     }
-    const onCreate = "    super.onCreate()\n";
-    if (!src.includes(onCreate)) {
-      throw new Error(
-        "withAndroidPhoneScale: MainApplication.onCreate not found",
-      );
-    }
-    src = src.replace(
-      onCreate,
-      `${onCreate}    weaselPlexSyncReactMetrics()\n`,
-    );
-    src = insertBeforeLastBrace(
+    const withOverrides = insertBeforeLastBrace(
       src,
       `
   override fun attachBaseContext(base: android.content.Context) {
     super.attachBaseContext(base.weaselPlexPhoneScaled())
   }
+
+  override fun getSystemService(name: String): Any? {
+    if (
+      weaselPlexScaleActive &&
+      name == android.content.Context.WINDOW_SERVICE &&
+      weaselPlexIsReactMetricsRead()
+    ) {
+      return null
+    }
+    return super.getSystemService(name)
+  }
 `,
     );
-    mod.modResults.contents = `${src}\n${HELPER}`;
+    mod.modResults.contents = `${withOverrides}\n${HELPER}`;
     return mod;
   });
 
@@ -117,12 +112,6 @@ const withAndroidPhoneScale: ConfigPlugin = (config) => {
       `
   override fun attachBaseContext(newBase: android.content.Context) {
     super.attachBaseContext(newBase.weaselPlexPhoneScaled())
-  }
-
-  override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-    super.onConfigurationChanged(newConfig)
-    // React Native re-reads the display's real density here; scale it again.
-    applicationContext.weaselPlexSyncReactMetrics()
   }
 `,
     );
