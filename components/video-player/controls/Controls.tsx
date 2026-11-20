@@ -40,6 +40,11 @@ import { autoPlayEpisodeCountAtom, useSettings } from "@/utils/atoms/settings";
 import { hasChapterMarkers } from "@/utils/chapters";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { ticksToMs } from "@/utils/time";
+import { AndroidBottomBar } from "./android/AndroidBottomBar";
+import { AndroidPlayerChrome } from "./android/AndroidPlayerChrome";
+import { IOS_PLAYER, isAndroidPhone } from "./android/layout";
+import { useAndroidPlayerMenus } from "./android/useAndroidPlayerMenus";
+import { useRotatePlayer } from "./android/useRotatePlayer";
 import { BottomControls } from "./BottomControls";
 import { CenterControls } from "./CenterControls";
 import { CONTROLS_CONSTANTS } from "./constants";
@@ -170,6 +175,8 @@ export const Controls: FC<Props> = ({
 
   // Animate controls visibility
   useEffect(() => {
+    // The Android phone chrome fades itself (FadeView, the iPhone's 0.2 s).
+    if (isAndroidPhone) return;
     controlsOpacity.value = withTiming(
       showControls ? 1 : 0,
       CONTROLS_ANIMATION_CONFIG,
@@ -186,7 +193,8 @@ export const Controls: FC<Props> = ({
 
   // Dim the controls while a speed boost is held so the video stays readable
   const handleHoldSpeedStart = useCallback(() => {
-    if (showControls) {
+    // The iPhone keeps its chrome as it is during a hold; only the pill shows.
+    if (showControls && !isAndroidPhone) {
       controlsOpacity.value = withTiming(
         CONTROLS_CONSTANTS.HOLD_SPEED_DIM_OPACITY,
         HOLD_SPEED_DIM_CONFIG,
@@ -196,7 +204,7 @@ export const Controls: FC<Props> = ({
   }, [showControls, controlsOpacity, onHoldSpeedStart]);
 
   const handleHoldSpeedEnd = useCallback(() => {
-    if (showControls) {
+    if (showControls && !isAndroidPhone) {
       controlsOpacity.value = withTiming(1, HOLD_SPEED_DIM_CONFIG);
     }
     onHoldSpeedEnd?.();
@@ -298,14 +306,65 @@ export const Controls: FC<Props> = ({
     seek,
   });
 
+  // Android phone lock mode (the iPhone's "Lock controls"): the chrome
+  // stays hidden and taps only toggle a transient Unlock pill.
+  const [controlsLocked, setControlsLocked] = useState(false);
+  const [unlockRevealed, setUnlockRevealed] = useState(false);
+  const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const revealUnlockButton = useCallback(() => {
+    setUnlockRevealed(true);
+    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    unlockTimerRef.current = setTimeout(
+      () => setUnlockRevealed(false),
+      IOS_PLAYER.unlockRevealMs,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    },
+    [],
+  );
+
   const toggleControls = useCallback(() => {
+    if (controlsLocked) {
+      if (unlockRevealed) {
+        if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+        setUnlockRevealed(false);
+      } else {
+        revealUnlockButton();
+      }
+      return;
+    }
     if (showControls) {
       setShowAudioSlider(false);
       setShowControls(false);
     } else {
       setShowControls(true);
     }
-  }, [showControls, setShowControls]);
+  }, [
+    showControls,
+    setShowControls,
+    controlsLocked,
+    unlockRevealed,
+    revealUnlockButton,
+  ]);
+
+  const lockControls = useCallback(() => {
+    lightHapticFeedback();
+    setControlsLocked(true);
+    setShowAudioSlider(false);
+    setShowControls(false);
+    // Brief confirmation so the lock doesn't look like a plain hide.
+    revealUnlockButton();
+  }, [lightHapticFeedback, setShowControls, revealUnlockButton]);
+
+  const unlockControls = useCallback(() => {
+    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    setUnlockRevealed(false);
+    setControlsLocked(false);
+    setShowControls(true);
+  }, [setShowControls]);
 
   // Remote control hook
   const {
@@ -522,6 +581,159 @@ export const Controls: FC<Props> = ({
     disabled: true,
   });
 
+  // Android phone auto-hide, the iPhone's rules: 4 s after the last touch
+  // while playing, 15 s after a menu button, never while paused, scrubbing,
+  // buffering or showing the episode list or technical info. The timer lives
+  // in refs so a touch re-arms it without re-rendering the controls (the
+  // menu taps that re-arm it must stay light on the JS thread).
+  const canAutoHide =
+    isPlaying &&
+    !isSliding &&
+    !isRemoteSliding &&
+    !isBuffering &&
+    !episodeView &&
+    !showTechnicalInfo &&
+    !controlsLocked;
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoHideAllowedRef = useRef(false);
+  autoHideAllowedRef.current = isAndroidPhone && showControls && canAutoHide;
+  const menuTouchRef = useRef(false);
+  const lastTouchResetRef = useRef(0);
+  const scheduleAutoHide = useCallback(
+    (delay: number = IOS_PLAYER.autoHideMs) => {
+      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+      if (!autoHideAllowedRef.current) return;
+      autoHideTimerRef.current = setTimeout(() => {
+        autoHideTimerRef.current = null;
+        if (autoHideAllowedRef.current) hideControls();
+      }, delay);
+    },
+    [hideControls],
+  );
+  useEffect(() => {
+    scheduleAutoHide();
+  }, [showControls, canAutoHide, scheduleAutoHide]);
+  useEffect(
+    () => () => {
+      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+    },
+    [],
+  );
+
+  // Any touch-down on the player re-arms the timer (throttled, like the
+  // iPhone's touchInteractionOccurred). A menu button's own touch handler
+  // runs first and asks for the longer menu delay.
+  const handleAndroidTouchStart = useCallback(() => {
+    if (!isAndroidPhone) return;
+    const menuTouch = menuTouchRef.current;
+    menuTouchRef.current = false;
+    const now = Date.now();
+    if (!menuTouch && now - lastTouchResetRef.current < 500) return;
+    lastTouchResetRef.current = now;
+    scheduleAutoHide(
+      menuTouch ? IOS_PLAYER.menuAutoHideMs : IOS_PLAYER.autoHideMs,
+    );
+  }, [scheduleAutoHide]);
+  const handleMenuTouch = useCallback(() => {
+    menuTouchRef.current = true;
+  }, []);
+
+  // Android phone sleep timer (the iPhone's): survives episode switches and
+  // closes the player when it runs out, so the phone can sleep.
+  const [sleepTimer, setSleepTimerState] = useState<{
+    minutes: number;
+    endsAt: number;
+  } | null>(null);
+  const setSleepTimer = useCallback(
+    (minutes: number) => {
+      lightHapticFeedback();
+      setSleepTimerState({ minutes, endsAt: Date.now() + minutes * 60_000 });
+    },
+    [lightHapticFeedback],
+  );
+  const cancelSleepTimer = useCallback(() => {
+    lightHapticFeedback();
+    setSleepTimerState(null);
+  }, [lightHapticFeedback]);
+  useEffect(() => {
+    if (!sleepTimer) return;
+    const id = setInterval(() => {
+      if (Date.now() >= sleepTimer.endsAt) {
+        clearInterval(id);
+        setSleepTimerState(null);
+        router.back();
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sleepTimer, router]);
+
+  // Edge pills shown on their own: volume on hardware presses or a swipe,
+  // brightness on a swipe (the iPhone's transient reveal, 1 s).
+  const [volumeRevealed, setVolumeRevealed] = useState(false);
+  const [brightnessRevealed, setBrightnessRevealed] = useState(false);
+  const volumeRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const brightnessRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const revealVolume = useCallback(() => {
+    setVolumeRevealed(true);
+    if (volumeRevealTimer.current) clearTimeout(volumeRevealTimer.current);
+    volumeRevealTimer.current = setTimeout(
+      () => setVolumeRevealed(false),
+      1000,
+    );
+  }, []);
+  const revealBrightness = useCallback(() => {
+    setBrightnessRevealed(true);
+    if (brightnessRevealTimer.current)
+      clearTimeout(brightnessRevealTimer.current);
+    brightnessRevealTimer.current = setTimeout(
+      () => setBrightnessRevealed(false),
+      1000,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (volumeRevealTimer.current) clearTimeout(volumeRevealTimer.current);
+      if (brightnessRevealTimer.current)
+        clearTimeout(brightnessRevealTimer.current);
+    },
+    [],
+  );
+  // Dragging a pill counts as a menu interaction on the iPhone.
+  const handleSliderEditing = useCallback(
+    (editing: boolean) => {
+      scheduleAutoHide(
+        editing ? IOS_PLAYER.menuAutoHideMs : IOS_PLAYER.autoHideMs,
+      );
+    },
+    [scheduleAutoHide],
+  );
+
+  const rotatePlayer = useRotatePlayer();
+  const closePlayer = useCallback(() => {
+    lightHapticFeedback();
+    router.back();
+  }, [lightHapticFeedback, router]);
+
+  const androidMenus = useAndroidPlayerMenus({
+    compact: screenWidth < IOS_PLAYER.compactWidth,
+    isZoomedToFill,
+    onZoomToggle,
+    playbackSpeed,
+    setPlaybackSpeed,
+    showTechnicalInfo,
+    onToggleTechnicalInfo,
+    chapters: item.Chapters,
+    seekTo,
+    sleepTimerMinutes: sleepTimer?.minutes ?? null,
+    setSleepTimer,
+    cancelSleepTimer,
+    onRotate: rotatePlayer,
+    onLockControls: lockControls,
+  });
+
   const switchOnEpisodeMode = useCallback(() => {
     setEpisodeView(true);
     if (isPlaying) {
@@ -530,7 +742,11 @@ export const Controls: FC<Props> = ({
   }, [isPlaying, togglePlay]);
 
   return (
-    <View style={styles.controlsContainer} pointerEvents='box-none'>
+    <View
+      style={styles.controlsContainer}
+      pointerEvents='box-none'
+      onTouchStart={isAndroidPhone ? handleAndroidTouchStart : undefined}
+    >
       {episodeView ? (
         <EpisodeList
           item={item}
@@ -550,6 +766,10 @@ export const Controls: FC<Props> = ({
             onHoldSpeedEnd={handleHoldSpeedEnd}
             isPlaying={isPlaying}
             videoTopOffset={videoTopOffset}
+            isZoomedToFill={isZoomedToFill}
+            onZoomToggle={onZoomToggle}
+            locked={controlsLocked}
+            onBrightnessSwipe={revealBrightness}
           />
           {/* Technical Info Overlay - rendered outside animated views to stay visible */}
           {getTechnicalInfo && (
@@ -563,79 +783,153 @@ export const Controls: FC<Props> = ({
               item={item}
             />
           )}
-          <Animated.View
-            style={headerAnimatedStyle}
-            pointerEvents={showControls ? "auto" : "none"}
-          >
-            <HeaderControls
+          {isAndroidPhone ? (
+            <AndroidPlayerChrome
               item={item}
-              showControls={showControls}
-              offline={offline}
-              mediaSource={mediaSource}
+              showControls={showControls && !controlsLocked}
+              menus={androidMenus}
+              showTrackMenus={!offline || !mediaSource?.TranscodingUrl}
+              onClose={closePlayer}
               startPictureInPicture={startPictureInPicture}
-              switchOnEpisodeMode={switchOnEpisodeMode}
-              goToPreviousItem={goToPreviousItem}
-              goToNextItem={goToNextItem}
-              previousItem={previousItem}
-              nextItem={nextItem}
-              aspectRatio={aspectRatio}
               isZoomedToFill={isZoomedToFill}
               onZoomToggle={onZoomToggle}
-              playbackSpeed={playbackSpeed}
-              setPlaybackSpeed={setPlaybackSpeed}
-              showTechnicalInfo={showTechnicalInfo}
-              onToggleTechnicalInfo={onToggleTechnicalInfo}
-            />
-          </Animated.View>
-          <Animated.View
-            style={centerAnimatedStyle}
-            pointerEvents={showControls ? "box-none" : "none"}
-          >
-            <CenterControls
-              showControls={showControls}
-              isPlaying={isPlaying}
+              onShowEpisodes={
+                item.Type === "Episode" ? switchOnEpisodeMode : undefined
+              }
+              onMenuTouch={handleMenuTouch}
+              center={{
+                isPlaying,
+                isBuffering,
+                isEpisode: item.Type === "Episode",
+                rewindSeconds: settings.rewindSkipTime,
+                forwardSeconds: settings.forwardSkipTime,
+                togglePlay,
+                onSeekBackward: handleSkipBackward,
+                onSeekForward: handleSkipForward,
+                hasChapters,
+                hasPreviousChapter,
+                hasNextChapter,
+                goToPreviousChapter,
+                goToNextChapter,
+                hasPreviousEpisode: !!previousItem,
+                hasNextEpisode: !!nextItem,
+                goToPreviousEpisode: goToPreviousItem,
+                goToNextEpisode: handleNextEpisodeManual,
+              }}
+              bottomBar={
+                <TimedAndroidBottomBar
+                  chapters={item.Chapters}
+                  durationMs={maxMs}
+                  showControls={showControls}
+                  playbackSpeed={playbackSpeed}
+                  sleepTimerEndsAt={sleepTimer?.endsAt ?? null}
+                  isSliding={isSliding}
+                  showRemoteBubble={showRemoteBubble}
+                  progress={progress}
+                  isSeeking={isSeeking}
+                  min={min}
+                  max={max}
+                  effectiveProgress={effectiveProgress}
+                  cacheProgress={cacheProgress}
+                  handleSliderStart={handleSliderStart}
+                  handleSliderComplete={handleSliderComplete}
+                  handleSliderChange={handleSliderChange}
+                  handleTouchStart={handleTouchStart}
+                  handleTouchEnd={handleTouchEnd}
+                  trickPlayUrl={trickPlayUrl}
+                  trickplayInfo={trickplayInfo}
+                  time={isSliding || showRemoteBubble ? time : remoteTime}
+                />
+              }
               isBuffering={isBuffering}
-              showAudioSlider={showAudioSlider}
-              setShowAudioSlider={setShowAudioSlider}
-              togglePlay={togglePlay}
-              handleSkipBackward={handleSkipBackward}
-              handleSkipForward={handleSkipForward}
-              hasChapters={hasChapters}
-              hasPreviousChapter={hasPreviousChapter}
-              hasNextChapter={hasNextChapter}
-              goToPreviousChapter={goToPreviousChapter}
-              goToNextChapter={goToNextChapter}
-            />
-          </Animated.View>
-          <Animated.View
-            style={bottomAnimatedStyle}
-            pointerEvents={showControls ? "auto" : "none"}
-          >
-            <TimedBottomControls
-              item={item}
-              chapters={item.Chapters}
-              durationMs={maxMs}
-              showControls={showControls}
               isSliding={isSliding}
-              showRemoteBubble={showRemoteBubble}
-              progress={progress}
-              isSeeking={isSeeking}
-              handleControlsInteraction={handleControlsInteraction}
-              min={min}
-              max={max}
-              effectiveProgress={effectiveProgress}
-              cacheProgress={cacheProgress}
-              handleSliderStart={handleSliderStart}
-              handleSliderComplete={handleSliderComplete}
-              handleSliderChange={handleSliderChange}
-              handleTouchStart={handleTouchStart}
-              handleTouchEnd={handleTouchEnd}
-              seekTo={seekTo}
-              trickPlayUrl={trickPlayUrl}
-              trickplayInfo={trickplayInfo}
-              time={isSliding || showRemoteBubble ? time : remoteTime}
+              showVolumeSlider={!settings.hideVolumeSlider}
+              showBrightnessSlider={!settings.hideBrightnessSlider}
+              volumeRevealed={volumeRevealed}
+              brightnessRevealed={brightnessRevealed}
+              onVolumeExternalChange={revealVolume}
+              onSliderEditing={handleSliderEditing}
+              locked={controlsLocked}
+              unlockRevealed={unlockRevealed}
+              onUnlock={unlockControls}
             />
-          </Animated.View>
+          ) : (
+            <>
+              <Animated.View
+                style={headerAnimatedStyle}
+                pointerEvents={showControls ? "auto" : "none"}
+              >
+                <HeaderControls
+                  item={item}
+                  showControls={showControls}
+                  offline={offline}
+                  mediaSource={mediaSource}
+                  startPictureInPicture={startPictureInPicture}
+                  switchOnEpisodeMode={switchOnEpisodeMode}
+                  goToPreviousItem={goToPreviousItem}
+                  goToNextItem={goToNextItem}
+                  previousItem={previousItem}
+                  nextItem={nextItem}
+                  aspectRatio={aspectRatio}
+                  isZoomedToFill={isZoomedToFill}
+                  onZoomToggle={onZoomToggle}
+                  playbackSpeed={playbackSpeed}
+                  setPlaybackSpeed={setPlaybackSpeed}
+                  showTechnicalInfo={showTechnicalInfo}
+                  onToggleTechnicalInfo={onToggleTechnicalInfo}
+                />
+              </Animated.View>
+              <Animated.View
+                style={centerAnimatedStyle}
+                pointerEvents={showControls ? "box-none" : "none"}
+              >
+                <CenterControls
+                  showControls={showControls}
+                  isPlaying={isPlaying}
+                  isBuffering={isBuffering}
+                  showAudioSlider={showAudioSlider}
+                  setShowAudioSlider={setShowAudioSlider}
+                  togglePlay={togglePlay}
+                  handleSkipBackward={handleSkipBackward}
+                  handleSkipForward={handleSkipForward}
+                  hasChapters={hasChapters}
+                  hasPreviousChapter={hasPreviousChapter}
+                  hasNextChapter={hasNextChapter}
+                  goToPreviousChapter={goToPreviousChapter}
+                  goToNextChapter={goToNextChapter}
+                />
+              </Animated.View>
+              <Animated.View
+                style={bottomAnimatedStyle}
+                pointerEvents={showControls ? "auto" : "none"}
+              >
+                <TimedBottomControls
+                  item={item}
+                  chapters={item.Chapters}
+                  durationMs={maxMs}
+                  showControls={showControls}
+                  isSliding={isSliding}
+                  showRemoteBubble={showRemoteBubble}
+                  progress={progress}
+                  isSeeking={isSeeking}
+                  handleControlsInteraction={handleControlsInteraction}
+                  min={min}
+                  max={max}
+                  effectiveProgress={effectiveProgress}
+                  cacheProgress={cacheProgress}
+                  handleSliderStart={handleSliderStart}
+                  handleSliderComplete={handleSliderComplete}
+                  handleSliderChange={handleSliderChange}
+                  handleTouchStart={handleTouchStart}
+                  handleTouchEnd={handleTouchEnd}
+                  seekTo={seekTo}
+                  trickPlayUrl={trickPlayUrl}
+                  trickplayInfo={trickplayInfo}
+                  time={isSliding || showRemoteBubble ? time : remoteTime}
+                />
+              </Animated.View>
+            </>
+          )}
         </>
       )}
       <PlaybackTimingOverlays
@@ -656,10 +950,34 @@ export const Controls: FC<Props> = ({
         onAutoPlay={handleNextEpisodeAutoPlay}
         onNextPress={handleNextEpisodeManual}
         onContinue={handleContinueWatching}
+        controlsLocked={controlsLocked}
       />
     </View>
   );
 };
+
+type TimedAndroidBottomProps = Omit<
+  ComponentProps<typeof AndroidBottomBar>,
+  "currentTime" | "remainingTime"
+> & {
+  progress: SharedValue<number>;
+  isSeeking: SharedValue<boolean>;
+  showControls: boolean;
+};
+function TimedAndroidBottomBar({
+  progress,
+  isSeeking,
+  showControls,
+  ...props
+}: TimedAndroidBottomProps) {
+  const times = useVideoTime({
+    progress,
+    max: props.max,
+    isSeeking,
+    active: showControls,
+  });
+  return <AndroidBottomBar {...props} {...times} />;
+}
 
 type TimedBottomProps = Omit<
   ComponentProps<typeof BottomControls>,
@@ -699,6 +1017,8 @@ type TimingProps = Pick<
   offline: boolean;
   nextItem?: BaseItemDto | null;
   episodeView: boolean;
+  /** Android phone lock mode hides the skip and countdown buttons. */
+  controlsLocked: boolean;
   onAutoPlay: () => void;
   onNextPress: () => void;
   onContinue: (options: {
@@ -721,6 +1041,7 @@ function PlaybackTimingOverlays({
   nextItem,
   showControls,
   episodeView,
+  controlsLocked,
   onAutoPlay,
   onNextPress,
   onContinue,
@@ -831,19 +1152,26 @@ function PlaybackTimingOverlays({
   return (
     <>
       {!episodeView && (
-        <SkipSegmentOverlay
-          showSkipButton={showSkipButton}
-          showSkipCreditButton={showSkipCreditButton}
-          hasContentAfterCredits={hasContentAfterCredits}
-          willShowNextEpisode={willShowNextEpisode}
-          showNextEpisode={showNextEpisode}
-          skipIntro={skipIntro}
-          skipCredit={skipCredit}
-          onNextEpisodeFinish={onAutoPlay}
-          onNextEpisodePress={onNextPress}
-          controlsVisible={showControls}
-          hasChapters={showsChapterIcon}
-        />
+        // Lock mode hides the buttons but keeps them mounted, so an armed
+        // next-episode countdown still advances (as on the iPhone).
+        <View
+          style={[StyleSheet.absoluteFill, controlsLocked && { opacity: 0 }]}
+          pointerEvents={controlsLocked ? "none" : "box-none"}
+        >
+          <SkipSegmentOverlay
+            showSkipButton={showSkipButton}
+            showSkipCreditButton={showSkipCreditButton}
+            hasContentAfterCredits={hasContentAfterCredits}
+            willShowNextEpisode={willShowNextEpisode}
+            showNextEpisode={showNextEpisode}
+            skipIntro={skipIntro}
+            skipCredit={skipCredit}
+            onNextEpisodeFinish={onAutoPlay}
+            onNextEpisodePress={onNextPress}
+            controlsVisible={showControls}
+            hasChapters={showsChapterIcon}
+          />
+        </View>
       )}
       {stillWatchingVisible && (
         <ContinueWatchingOverlay goToNextItem={onContinue} />
