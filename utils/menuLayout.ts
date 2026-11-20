@@ -45,6 +45,7 @@ export const buildMenuRows = (
           key: `submenu-${groupIndex}`,
           label: selected ? `${group.title}: ${selected.label}` : group.title,
           childrenTitle: group.title,
+          icon: group.icon,
           children: radios.map(radioRow),
         });
       } else {
@@ -68,6 +69,7 @@ export const buildMenuRows = (
         key: `action-${groupIndex}-${index}`,
         label: option.label,
         disabled: option.disabled,
+        icon: option.icon,
         onPress: option.onPress,
       });
     });

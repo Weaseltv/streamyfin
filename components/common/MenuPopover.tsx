@@ -63,6 +63,9 @@ export const MENU = {
   maxHeightRatio: 0.54,
 } as const;
 
+/** A Material icon (`@expo/vector-icons` MaterialIcons) for a menu row. */
+export type MenuIconName = keyof typeof MaterialIcons.glyphMap;
+
 export type MenuAnchor = {
   x: number;
   y: number;
@@ -75,6 +78,8 @@ export type MenuRow = {
   label: string;
   /** `on` draws a filled check-circle, `off` an empty circle. */
   check?: "on" | "off";
+  /** An icon in the same column, for actions and submenu rows. */
+  icon?: MenuIconName;
   disabled?: boolean;
   /** Draws a chevron and opens `children` in place of the list. */
   children?: MenuRow[];
@@ -127,7 +132,10 @@ export function MenuPopover({ anchor, rows, onClose }: Props) {
 
   const visibleRows = submenu?.children ?? rows;
   const hasIcons = useMemo(
-    () => visibleRows.some((row) => row.check !== undefined),
+    () =>
+      visibleRows.some(
+        (row) => row.check !== undefined || row.icon !== undefined,
+      ),
     [visibleRows],
   );
 
@@ -316,6 +324,8 @@ function MenuRowView({
         <View style={styles.iconBox}>
           {header ? (
             <MaterialIcons name='chevron-left' size={22} color={color} />
+          ) : row.icon ? (
+            <MaterialIcons name={row.icon} size={20} color={color} />
           ) : row.check ? (
             <MaterialIcons
               name={

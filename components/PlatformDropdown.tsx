@@ -8,7 +8,11 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
-import { type MenuAnchor, MenuPopover } from "@/components/common/MenuPopover";
+import {
+  type MenuAnchor,
+  type MenuIconName,
+  MenuPopover,
+} from "@/components/common/MenuPopover";
 import { NeonSheet, NeonSheetRow } from "@/components/common/NeonSheet";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
@@ -61,6 +65,8 @@ export type ActionOption = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  /** Android phone menu only: a Material icon left of the label. */
+  icon?: MenuIconName;
 };
 
 export type Option = RadioOption | ToggleOption | ActionOption;
@@ -69,6 +75,8 @@ export type Option = RadioOption | ToggleOption | ActionOption;
 export type OptionGroup = {
   title?: string;
   options: Option[];
+  /** Android phone menu only: a Material icon on a titled group's row. */
+  icon?: MenuIconName;
 };
 
 interface PlatformDropdownProps {
