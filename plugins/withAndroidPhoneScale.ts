@@ -18,9 +18,16 @@ import {
  * is 440 dp wide like the iPhone. Only the density is overridden: orientation
  * and screen size keep following the phone, and the smallest width (not the
  * current width) sets the scale, so portrait and landscape match. React
- * Native reads its metrics from the Application's resources, native dialogs
- * from the Activity's, so both are wrapped. Tablets, TVs and phones 440 dp or
- * wider are unchanged. The same approach as WeaselTV's Android phone app.
+ * Native reads its window metrics from the Application's resources, native
+ * dialogs from the Activity's, so both are wrapped. Tablets, TVs and phones
+ * 440 dp or wider are unchanged. The same approach as WeaselTV's Android
+ * phone app.
+ *
+ * React Native also keeps "screen" metrics read from the physical display,
+ * and converts every layout and text size with their density. Left alone they
+ * carry the phone's real density, so layout and text came out at the old size
+ * inside a 440 dp window (labels cut off). They are re-synced to the scaled
+ * density when the app starts and after every configuration change.
  */
 const HELPER = `
 /**
@@ -38,6 +45,24 @@ internal fun android.content.Context.weaselPlexPhoneScaled(): android.content.Co
     densityDpi = Math.round(config.densityDpi * scale)
   }
   return createConfigurationContext(override)
+}
+
+/**
+ * WeaselPlex: React Native's screen metrics use the scaled density (pixel sizes stay the
+ * display's). Call on the Application context after React Native read its metrics.
+ */
+internal fun android.content.Context.weaselPlexSyncReactMetrics() {
+  val window = resources.displayMetrics
+  com.facebook.react.uimanager.DisplayMetricsHolder.initDisplayMetrics(this)
+  val screen = com.facebook.react.uimanager.DisplayMetricsHolder.getScreenDisplayMetrics()
+  if (screen.densityDpi == window.densityDpi) return
+  val synced = android.util.DisplayMetrics()
+  synced.setTo(screen)
+  synced.density = window.density
+  synced.densityDpi = window.densityDpi
+  @Suppress("DEPRECATION")
+  synced.scaledDensity = window.scaledDensity
+  com.facebook.react.uimanager.DisplayMetricsHolder.setScreenDisplayMetrics(synced)
 }
 `;
 
@@ -59,6 +84,16 @@ const withAndroidPhoneScale: ConfigPlugin = (config) => {
     if (mod.modResults.language !== "kt") {
       throw new Error("withAndroidPhoneScale: MainApplication must be Kotlin");
     }
+    const onCreate = "    super.onCreate()\n";
+    if (!src.includes(onCreate)) {
+      throw new Error(
+        "withAndroidPhoneScale: MainApplication.onCreate not found",
+      );
+    }
+    src = src.replace(
+      onCreate,
+      `${onCreate}    weaselPlexSyncReactMetrics()\n`,
+    );
     src = insertBeforeLastBrace(
       src,
       `
@@ -82,6 +117,12 @@ const withAndroidPhoneScale: ConfigPlugin = (config) => {
       `
   override fun attachBaseContext(newBase: android.content.Context) {
     super.attachBaseContext(newBase.weaselPlexPhoneScaled())
+  }
+
+  override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+    super.onConfigurationChanged(newConfig)
+    // React Native re-reads the display's real density here; scale it again.
+    applicationContext.weaselPlexSyncReactMetrics()
   }
 `,
     );
