@@ -161,7 +161,9 @@ const styles = StyleSheet.create({
     backgroundColor: GLASS_FILL,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: GLASS_EDGE,
-    paddingHorizontal: 11,
+    // iOS 26 glass hugs the actions with about 3 pt each side (cast pill 50.8 wide,
+    // Export logs 130); the group and text buttons carry their own 8 inset.
+    paddingHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
   },
