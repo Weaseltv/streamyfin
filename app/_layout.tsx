@@ -586,8 +586,11 @@ function Layout() {
                                       options={{
                                         headerShown: true,
                                         title: "",
+                                        // Android phones too: the iPhone's sign-in
+                                        // is plain black to the top, with no bar.
                                         headerTransparent:
-                                          Platform.OS === "ios",
+                                          Platform.OS === "ios" ||
+                                          !Platform.isTV,
                                       }}
                                     />
                                     <Stack.Screen name='+not-found' />
