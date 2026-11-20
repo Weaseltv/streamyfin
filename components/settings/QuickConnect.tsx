@@ -306,12 +306,15 @@ export const QuickConnect: React.FC<Props> = ({
               style={{
                 flexDirection: "row",
                 justifyContent: "center",
-                // Wraps instead of running off both edges on a narrow phone (F2).
+                // The two links measure about 412 wide: one line on a 440-wide
+                // screen like the iPhone (centred, so the narrower padding moves
+                // nothing there), and they wrap rather than run off both edges
+                // on a narrower phone (F2).
                 flexWrap: "wrap",
                 columnGap: 24,
                 rowGap: 10,
                 marginTop: 16,
-                paddingHorizontal: Sizes.gutter,
+                paddingHorizontal: 8,
               }}
             >
               <Pressable
