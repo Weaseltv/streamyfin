@@ -43,7 +43,10 @@ export const buildMenuRows = (
         const selected = radios.find((opt) => opt.selected);
         rows.push({
           key: `submenu-${groupIndex}`,
-          label: selected ? `${group.title}: ${selected.label}` : group.title,
+          label:
+            selected && group.showSelection !== false
+              ? `${group.title}: ${selected.label}`
+              : group.title,
           childrenTitle: group.title,
           icon: group.icon,
           children: radios.map(radioRow),

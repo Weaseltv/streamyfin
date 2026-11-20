@@ -64,6 +64,22 @@ test("rows follow the iOS menu: titled radios as one submenu row, then toggles, 
   expect(rows[2].disabled).toBe(true);
 });
 
+test("a titled group with showSelection false shows only its title", () => {
+  const rows = buildMenuRows([
+    {
+      title: "Speed",
+      showSelection: false,
+      icon: "speed",
+      options: [
+        { type: "radio", label: "1x", value: 1, selected: true, onPress: noop },
+      ],
+    },
+  ]);
+  expect(rows[0].label).toBe("Speed");
+  expect(rows[0].icon).toBe("speed");
+  expect(rows[0].children?.[0].check).toBe("on");
+});
+
 test("choosing a row runs the option and reports its value", () => {
   const picked: unknown[] = [];
   let pressed = 0;

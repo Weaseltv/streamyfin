@@ -77,6 +77,11 @@ export type OptionGroup = {
   options: Option[];
   /** Android phone menu only: a Material icon on a titled group's row. */
   icon?: MenuIconName;
+  /**
+   * Android phone menu only: `false` shows a titled radio group's row as just
+   * "Title ›", like the iPhone player's menu, instead of "Title: Selected".
+   */
+  showSelection?: boolean;
 };
 
 interface PlatformDropdownProps {
