@@ -101,13 +101,12 @@ export const PhoneStackHeader = ({
           | undefined
       )?.backgroundColor ?? NeonBoard.stage);
 
+  // A transparent header is laid over the page by the native stack itself,
+  // which also measures this view for useHeaderHeight() (the band
+  // ParallaxPage fades in behind the header on scroll). Positioning it
+  // absolutely here made that height 0.
   return (
-    <View
-      style={[
-        { paddingTop: insets.top, backgroundColor: background },
-        options.headerTransparent && styles.overlay,
-      ]}
-    >
+    <View style={{ paddingTop: insets.top, backgroundColor: background }}>
       <View style={styles.bar}>
         <View style={styles.titleBox} pointerEvents='box-none'>
           {title}
@@ -122,7 +121,6 @@ export const PhoneStackHeader = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: { position: "absolute", top: 0, left: 0, right: 0 },
   bar: {
     height: PHONE_HEADER_BAR_HEIGHT,
     flexDirection: "row",
