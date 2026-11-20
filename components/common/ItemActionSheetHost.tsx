@@ -1,13 +1,10 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
-import { NeonBoard } from "@/constants/Colors";
+import { useMenuActionSheet } from "@/components/common/ActionSheetCard";
 import useRouter from "@/hooks/useAppRouter";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
@@ -16,7 +13,6 @@ import { useShuffleQueue } from "@/hooks/useShuffleQueue";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useDismissedNextUp } from "@/utils/atoms/dismissedNextUp";
-import { usePageAccent } from "@/utils/atoms/pageAccent";
 import {
   admitItemAction,
   canExecuteItemAction,
@@ -76,9 +72,9 @@ function ItemActionSheet({
   const { item, isOffline } = request;
   const atomStore = useStore();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const accent = usePageAccent();
-  const { showActionSheetWithOptions } = useActionSheet();
+  // iOS: the system action sheet. Android phone: the same card drawn in
+  // React Native (no title, Cancel last), replacing the bottom sheet.
+  const { showActionSheetWithOptions, actionSheet } = useMenuActionSheet();
   const markAsPlayedStatus = useMarkAsPlayed([item], true);
   const { isFavorite, favoriteMutation } = useFavorite(item, true);
   const { deleteFile } = useDownload();
@@ -192,23 +188,6 @@ function ItemActionSheet({
         options,
         cancelButtonIndex,
         destructiveButtonIndex,
-        ...(Platform.OS === "android" && !Platform.isTV
-          ? {
-              title: item.Name ?? undefined,
-              tintColor: NeonBoard.text,
-              cancelButtonTintColor: accent,
-              destructiveColor: NeonBoard.red,
-              titleTextStyle: { color: accent, fontWeight: "600" as const },
-              containerStyle: {
-                backgroundColor: NeonBoard.card,
-                paddingBottom: insets.bottom,
-                borderTopWidth: 2,
-                borderTopColor: accent,
-              },
-              showSeparators: true,
-              separatorStyle: { backgroundColor: NeonBoard.line },
-            }
-          : {}),
       },
       async (selectedIndex) => {
         if (
@@ -250,10 +229,7 @@ function ItemActionSheet({
     isFavorite,
     markAsPlayedStatus,
     favoriteMutation,
-    accent,
-    insets.bottom,
     request,
-    item.Name,
     isOffline,
     deleteFile,
     dismissSeriesFromNextUp,
@@ -271,5 +247,5 @@ function ItemActionSheet({
     presented.current = request;
     showActionSheet();
   }, [request, showActionSheet]);
-  return null;
+  return actionSheet;
 }

@@ -1,7 +1,14 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { type MenuAnchor, MenuPopover } from "@/components/common/MenuPopover";
 import { NeonSheet, NeonSheetRow } from "@/components/common/NeonSheet";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { SettingSwitch } from "@/components/common/SettingSwitch";
@@ -10,6 +17,7 @@ import { NeonBoard } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useGlobalModal } from "@/providers/GlobalModalProvider";
 import { useAccent } from "@/utils/atoms/pageAccent";
+import { buildMenuRows } from "@/utils/menuLayout";
 
 // Only iOS phone menus use SwiftUI. Android omits ExpoUI from autolinking,
 // so evaluating its native import while loading routes would crash startup.
@@ -20,6 +28,10 @@ const { Button, Host, Menu } = useSwiftUI
 const { disabled, menuOrder } = useSwiftUI
   ? require("@expo/ui/swift-ui/modifiers")
   : ({} as typeof import("@expo/ui/swift-ui/modifiers"));
+
+// Android phones draw the iPhone's menu instead of a bottom sheet (owner,
+// parity round 2, Q2). Android TV keeps the sheet.
+const useAndroidMenu = Platform.OS === "android" && !Platform.isTV;
 
 // UIMenu reorders items by proximity to the anchor, so a menu that opens
 // upward shows them reversed. Keep the order they were provided in.
@@ -76,14 +88,15 @@ interface PlatformDropdownProps {
     enablePanDownToClose?: boolean;
   };
   /**
-   * How the options are presented on iOS. Android and TV always use the sheet.
+   * How the options are presented on phones. TV always uses the sheet.
    *
    * `native` overlays an @expo/ui SwiftUI Menu on the trigger, which means the
    * trigger itself is a React Native view hosted *inside* SwiftUI. Inside a
    * scrolling page that hosted copy can be left at a stale position after the
    * menu dismisses, drifting with the scroll until the next full layout pass.
-   * `sheet` keeps everything in React Native and opens the same bottom sheet
-   * Android uses.
+   * `sheet` keeps everything in React Native and opens the bottom sheet, on
+   * Android too; `native` on an Android phone draws the iPhone's menu card
+   * (see MenuPopover).
    */
   presentation?: "native" | "sheet";
 }
@@ -230,7 +243,72 @@ const BottomSheetContent: React.FC<{
   );
 };
 
-const PlatformDropdownComponent = ({
+/**
+ * Android phone: the trigger opens the iPhone-style menu card next to it.
+ * `open` / `onOpenChange` work as on iOS; a trigger with its own press
+ * handler (one that sets `open`) keeps working because the innermost
+ * touchable takes the tap.
+ */
+const AndroidMenuDropdown = ({
+  trigger,
+  groups,
+  open: controlledOpen,
+  onOpenChange,
+  onOptionSelect,
+}: PlatformDropdownProps) => {
+  const { t } = useTranslation();
+  const isControlled =
+    controlledOpen !== undefined && onOpenChange !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const visible = isControlled ? !!controlledOpen : internalOpen;
+  const triggerRef = useRef<View>(null);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
+  const close = useCallback(() => setOpen(false), [setOpen]);
+
+  // Measure the trigger each time the menu opens, so it follows scrolling.
+  useEffect(() => {
+    if (!visible) {
+      setAnchor(null);
+      return;
+    }
+    triggerRef.current?.measureInWindow((x, y, width, height) =>
+      setAnchor({ x, y, width, height }),
+    );
+  }, [visible]);
+
+  const rows = useMemo(
+    () => buildMenuRows(groups, onOptionSelect),
+    [groups, onOptionSelect],
+  );
+
+  return (
+    <View ref={triggerRef} collapsable={false}>
+      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.7}>
+        {trigger || <DropdownTrigger value={t("common.open_menu")} />}
+      </TouchableOpacity>
+      {visible && anchor ? (
+        <MenuPopover anchor={anchor} rows={rows} onClose={close} />
+      ) : null}
+    </View>
+  );
+};
+
+const PlatformDropdownComponent = (props: PlatformDropdownProps) =>
+  useAndroidMenu && props.presentation !== "sheet" ? (
+    <AndroidMenuDropdown {...props} />
+  ) : (
+    <SheetOrNativeDropdown {...props} />
+  );
+
+const SheetOrNativeDropdown = ({
   trigger,
   title,
   groups,
@@ -404,7 +482,7 @@ const PlatformDropdownComponent = ({
     );
   }
 
-  // Sheet presentation (Android, TV, or opted in): direct modal trigger
+  // Sheet presentation (TV, or opted in): direct modal trigger
   const handlePress = () => {
     showModal(
       <BottomSheetContent
