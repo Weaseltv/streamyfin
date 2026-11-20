@@ -39,7 +39,7 @@ import { useSetPlayerAccent } from "@/utils/atoms/pageAccent";
 import { autoPlayEpisodeCountAtom, useSettings } from "@/utils/atoms/settings";
 import { hasChapterMarkers } from "@/utils/chapters";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
-import { ticksToMs } from "@/utils/time";
+import { msToTicks, ticksToMs } from "@/utils/time";
 import { AndroidBottomBar } from "./android/AndroidBottomBar";
 import { AndroidPlayerChrome } from "./android/AndroidPlayerChrome";
 import { IOS_PLAYER, isAndroidPhone } from "./android/layout";
@@ -727,6 +727,7 @@ export const Controls: FC<Props> = ({
     onToggleTechnicalInfo,
     chapters: item.Chapters,
     seekTo,
+    getPositionTicks: () => msToTicks(progress.get()),
     sleepTimerMinutes: sleepTimer?.minutes ?? null,
     setSleepTimer,
     cancelSleepTimer,

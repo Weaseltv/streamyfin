@@ -45,6 +45,8 @@ interface Params {
   chapters?: ChapterInfo[] | null;
   /** Seek to a position in milliseconds. */
   seekTo: (ms: number) => void;
+  /** Current position in ticks, so a quality change resumes where you are. */
+  getPositionTicks?: () => number;
   sleepTimerMinutes: number | null;
   setSleepTimer: (minutes: number) => void;
   cancelSleepTimer: () => void;
@@ -76,6 +78,7 @@ export const useAndroidPlayerMenus = ({
   onToggleTechnicalInfo,
   chapters,
   seekTo,
+  getPositionTicks,
   sleepTimerMinutes,
   setSleepTimer,
   cancelSleepTimer,
@@ -105,7 +108,12 @@ export const useAndroidPlayerMenus = ({
   const mediaSourceIdRef = useRef(mediaSource?.Id);
   mediaSourceIdRef.current = mediaSource?.Id;
 
-  // Same reload the old options sheet did (DropdownView.changeBitrate).
+  const getPositionTicksRef = useRef(getPositionTicks);
+  getPositionTicksRef.current = getPositionTicks;
+
+  // Same reload the old options sheet did (DropdownView.changeBitrate), but
+  // from the current position like the iPhone: the old sheet restarted from
+  // wherever the player had been opened.
   const changeBitrate = useCallback(
     (bitrate: string) => {
       const queryParams = new URLSearchParams({
@@ -114,7 +122,9 @@ export const useAndroidPlayerMenus = ({
         subtitleIndex: subtitleIndex?.toString() ?? "",
         mediaSourceId: mediaSourceIdRef.current ?? "",
         bitrateValue: bitrate.toString(),
-        playbackPosition: playbackPositionRef.current,
+        playbackPosition:
+          getPositionTicksRef.current?.().toString() ??
+          playbackPositionRef.current,
       }).toString();
       router.replace(`player/direct-player?${queryParams}` as any);
     },
