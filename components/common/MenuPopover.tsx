@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -168,6 +169,45 @@ export function MenuPopoverHost() {
 }
 
 /**
+ * The full-screen catcher behind the card. A tap on it only closes the menu
+ * (owner, round 2 parity review, F2: "The tap that closes a menu must do
+ * nothing else"). It is a gesture handler, not a Pressable: gesture-handler
+ * looks for handlers through views it treats as see-through, which a plain
+ * Pressable is, so the player's progress bar and double-tap under it still
+ * took the closing tap and moved the film. A view with a handler of its own
+ * ends that search. It takes the whole touch, a drag too, and closes on
+ * release.
+ */
+function Catcher({ onClose, label }: { onClose: () => void; label: string }) {
+  const gesture = useMemo(
+    () =>
+      Gesture.Tap()
+        .maxDuration(60_000)
+        .maxDistance(100_000)
+        .runOnJS(true)
+        .onEnd((_event, success) => {
+          if (success) onClose();
+        }),
+    [onClose],
+  );
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        collapsable={false}
+        style={StyleSheet.absoluteFill}
+        accessible
+        accessibilityRole='button'
+        accessibilityLabel={label}
+        accessibilityActions={[{ name: "activate" }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "activate") onClose();
+        }}
+      />
+    </GestureDetector>
+  );
+}
+
+/**
  * The menu card over a full-screen catcher: a tap outside or Android Back
  * closes it. UIMenu doesn't dim the page, so neither does this.
  */
@@ -289,12 +329,7 @@ function MenuPopover({ anchor, rows, onClose }: Props) {
 
   return (
     <View style={styles.overlay}>
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        onPress={onClose}
-        accessibilityRole='button'
-        accessibilityLabel={t("common.close")}
-      />
+      <Catcher onClose={onClose} label={t("common.close")} />
       <Animated.View
         accessibilityRole='menu'
         onLayout={onCardLayout}
