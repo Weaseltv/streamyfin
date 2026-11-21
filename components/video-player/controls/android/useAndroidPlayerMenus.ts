@@ -62,6 +62,11 @@ export interface AndroidPlayerMenus {
   more: OptionGroup[];
 }
 
+// The iPhone player's Speed menu offers 0.25x to 2x (PlayerTopBar.swift).
+// Android matches it (owner, round 2 parity review, Q1); Settings keeps the
+// longer list for the default speed.
+const PLAYER_MENU_SPEEDS = PLAYBACK_SPEEDS.filter((speed) => speed.value <= 2);
+
 /**
  * The iPhone player's menus (PlayerTopBar.swift) as PlatformDropdown groups:
  * the audio and subtitle buttons get their own menus, and "…" carries the
@@ -189,7 +194,7 @@ export const useAndroidPlayerMenus = ({
   const speedOptions = useMemo(
     () =>
       setPlaybackSpeed
-        ? PLAYBACK_SPEEDS.map((speed) => ({
+        ? PLAYER_MENU_SPEEDS.map((speed) => ({
             type: "radio" as const,
             label: multiplierLabel(speed.value),
             value: speed.value.toString(),
