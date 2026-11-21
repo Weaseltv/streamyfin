@@ -9,24 +9,34 @@ const flatten = (tree: Tree, prefix = ""): string[] =>
     typeof v === "string" ? [`${prefix}${k}`] : flatten(v, `${prefix}${k}.`),
   );
 
-const dir = import.meta.dir;
-const sources = readdirSync(dir)
-  .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
-  .map((f) => readFileSync(join(dir, f), "utf8"))
+const root = join(import.meta.dir, "..", "..");
+const SKIP = new Set(["node_modules", ".git", "ios", "android"]);
+// The request server's own source (a submodule) is not app code.
+const SUBMODULE = join(root, "utils", "jellyseerr");
+const walk = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory())
+      return SKIP.has(e.name) || path === SUBMODULE ? [] : walk(path);
+    return /\.tsx?$/.test(e.name) && !e.name.endsWith(".test.ts") ? [path] : [];
+  });
+const sources = ["app", "components", "hooks", "providers", "utils"]
+  .flatMap((d) => walk(join(root, d)))
+  .map((f) => readFileSync(f, "utf8"))
   .join("\n");
 const used = new Set(
-  [...sources.matchAll(/"(request_status\.[a-z_.]+)"/g)].map((m) => m[1]),
+  [...sources.matchAll(/"(request_status\.[a-z0-9_.]+)"/g)].map((m) => m[1]),
 );
 const defined = new Set(
   flatten((en as unknown as Tree).request_status as Tree, "request_status."),
 );
 
 describe("request status wording", () => {
-  test("every key the logic returns exists in en.json", () => {
+  test("every request_status key the app uses exists in en.json", () => {
     expect([...used].filter((k) => !defined.has(k))).toEqual([]);
   });
 
-  test("every request_status key in en.json is used by the logic", () => {
+  test("every request_status key in en.json is used", () => {
     expect([...defined].filter((k) => !used.has(k))).toEqual([]);
   });
 

@@ -32,6 +32,8 @@ import { FontFace, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { canSubmitRequest } from "@/hooks/useRequestStatus";
+import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
 import { useJellyseerrCanRequest } from "@/utils/_jellyseerr/useJellyseerrCanRequest";
 import { ANIME_KEYWORD_ID } from "@/utils/jellyseerr/server/api/themoviedb/constants";
 import {
@@ -64,6 +66,7 @@ const MobilePage: React.FC = () => {
   const params = useLocalSearchParams();
   const { t } = useTranslation();
   const router = useRouter();
+  const itemOrigin = useItemNavigationOrigin();
 
   const { mediaTitle, releaseYear, posterSrc, mediaType, ...result } =
     params as unknown as {
@@ -189,6 +192,7 @@ const MobilePage: React.FC = () => {
       return;
     }
 
+    if (!canSubmitRequest()) return;
     requestMedia(mediaTitle, body, refetch);
   }, [
     details,
@@ -419,11 +423,18 @@ const MobilePage: React.FC = () => {
                       accent={accent}
                       style={{ flex: 1 }}
                       onPress={() => {
+                        // Opened from the Requests tab, the library title stays
+                        // inside it; from any other tab, Search as before.
+                        const inRequests = itemOrigin === "(requests)";
                         router.push({
                           pathname:
                             mediaType === MediaType.MOVIE
-                              ? "/(auth)/(tabs)/(search)/items/page"
-                              : "/(auth)/(tabs)/(search)/series/[id]",
+                              ? inRequests
+                                ? "/(auth)/(tabs)/(requests)/items/page"
+                                : "/(auth)/(tabs)/(search)/items/page"
+                              : inRequests
+                                ? "/(auth)/(tabs)/(requests)/series/[id]"
+                                : "/(auth)/(tabs)/(search)/series/[id]",
                           params:
                             mediaType === MediaType.MOVIE
                               ? { id: details?.mediaInfo.jellyfinMediaId }

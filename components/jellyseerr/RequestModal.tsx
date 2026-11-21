@@ -10,6 +10,7 @@ import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { canSubmitRequest } from "@/hooks/useRequestStatus";
 import { useAccent } from "@/utils/atoms/pageAccent";
 import type {
   QualityProfile,
@@ -447,6 +448,7 @@ const RequestModal = forwardRef<
 
       writeDebugLog("Sending Jellyseerr advanced request", body);
 
+      if (!canSubmitRequest()) return;
       requestMedia(
         seasonTitle ? `${title}, ${seasonTitle}` : title,
         body,

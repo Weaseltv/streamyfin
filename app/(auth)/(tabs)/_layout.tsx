@@ -1,4 +1,5 @@
 import { Stack, Tabs, useSegments } from "expo-router";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
@@ -14,6 +15,9 @@ import {
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
 import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
+import { RequestPolicyRunner } from "@/providers/RequestPolicyRunner";
+import { RequestStatusCoordinator } from "@/providers/RequestStatusCoordinator";
+import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 
@@ -111,12 +115,17 @@ function TVTabLayout() {
 }
 
 /**
- * Phone tabs: the custom Neon Board bar, always Home · Search · Watchlist ·
- * Library. Streamystats watchlists and custom links are never phone tabs, and
- * Settings opens from the gear in the brand row. TV keeps `TVNavBar`.
+ * Phone tabs: the custom Neon Board bar, Home · Search · Watchlist · Requests ·
+ * Library (Requests only when `requestsTabVisibleAtom` says so: phones, not a
+ * kid profile). Streamystats watchlists and custom links are never phone tabs,
+ * and Settings opens from the gear in the brand row. TV keeps `TVNavBar`.
  */
 export default function TabLayout() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const segments = useSegments();
+  const requestsVisible = useAtomValue(requestsTabVisibleAtom);
+  const onRequestsTab = (segments as string[]).includes("(requests)");
 
   // Must be called before any conditional return (rules of hooks)
   useTVHomeBackHandler();
@@ -125,6 +134,15 @@ export default function TabLayout() {
   // the TV/phone split, so every form factor provisions the same way.
   useWeaselSeerrAutoConnect();
 
+  // The Requests tab stopped being shown while open (sign-out, a kid profile):
+  // leave it, as TVTabLayout does for a hidden tab. Checked on every change,
+  // not only when visibility changes; the stack's own guard covers nested pages.
+  useEffect(() => {
+    if (!IS_ANDROID_TV && onRequestsTab && !requestsVisible) {
+      router.replace("/(auth)/(tabs)/(home)");
+    }
+  }, [onRequestsTab, requestsVisible, router]);
+
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;
   }
@@ -132,6 +150,9 @@ export default function TabLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: NeonBoard.stage }}>
       <SystemBars hidden={false} style='light' />
+      {/* tvOS renders this branch too; request status is phones only. */}
+      {!Platform.isTV && <RequestPolicyRunner />}
+      {!Platform.isTV && <RequestStatusCoordinator />}
       <Tabs
         tabBar={(props) => <NeonTabBar {...props} />}
         screenOptions={{
@@ -163,6 +184,19 @@ export default function TabLayout() {
         <Tabs.Screen
           name='(favorites)'
           options={{ title: t("tabs.favorites") }}
+        />
+        <Tabs.Screen
+          // Pressing Requests while it is open returns to the queue, even from
+          // a title page inside it, and clears the request search (plan 5.6).
+          listeners={({ navigation }) => ({
+            tabPress: () => {
+              if (!navigation.isFocused()) return;
+              navigation.navigate("(requests)", { screen: "index" });
+              eventBus.emit("requestsTabPressed");
+            },
+          })}
+          name='(requests)'
+          options={{ title: t("tabs.requests") }}
         />
         <Tabs.Screen
           name='(libraries)'

@@ -1,6 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
+import { useAtomValue } from "jotai";
 import { type ComponentProps, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AccessibilityInfo,
   Platform,
@@ -19,6 +21,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { glowOf, NeonBoard, sectionAccent } from "@/constants/Colors";
 import { rgba, Sizes, Type } from "@/constants/neon";
+import {
+  requestBadgeCountAtom,
+  requestsTabVisibleAtom,
+} from "@/utils/atoms/requestStatus";
+import { badgeLabel } from "@/utils/requestStatus/journal";
 import { NavIcon, type NavIconName } from "./NavIcon";
 import { Text } from "./Text";
 
@@ -47,14 +54,17 @@ type TabDesign = {
 const LABEL_REST = "#E1E4EC";
 
 /**
- * Preserve the phone's four destinations. Expo Router strips `href` before
- * passing options to a custom bar, so hidden routes need an explicit allowlist.
- * Icons are the TV rail's; the Library hub (phone only) uses its folder.
+ * The phone's destinations. Expo Router strips `href` before passing options to
+ * a custom bar, so hidden routes need an explicit allowlist, and Requests is
+ * shown only when `requestsTabVisibleAtom` says so (never on tvOS, never for a
+ * kid profile). Icons are the TV rail's; the Library hub (phone only) uses its
+ * folder. The bar keeps the navigator's route order.
  */
 const TABS: Record<string, TabDesign> = {
   "(home)": { icon: "home", accent: sectionAccent("home") },
   "(search)": { icon: "search", accent: sectionAccent("search") },
   "(favorites)": { icon: "favorites", accent: sectionAccent("watchlist") },
+  "(requests)": { icon: "requests", accent: sectionAccent("requests") },
   "(libraries)": { icon: "collections", accent: sectionAccent("library") },
 };
 
@@ -65,11 +75,14 @@ function TabArtwork({
   focused,
   reduceMotion,
   label,
+  badge,
 }: {
   tab: TabDesign;
   focused: boolean;
   reduceMotion: boolean;
   label: string;
+  /** "3" or "9+": unread ready requests (Requests tab only). */
+  badge?: string | null;
 }) {
   const selection = useSharedValue(focused ? 1 : 0);
   useEffect(() => {
@@ -129,6 +142,13 @@ function TabArtwork({
           >
             {icon()}
           </Animated.View>
+          {badge ? (
+            <View style={[styles.badge, { backgroundColor: tab.accent }]}>
+              <Text allowFontScaling={false} style={styles.badgeText}>
+                {badge}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <Animated.Text
           allowFontScaling={false}
@@ -152,6 +172,9 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const layout = useNeonTabBarLayout();
+  const { t } = useTranslation();
+  const requestsVisible = useAtomValue(requestsTabVisibleAtom);
+  const requestsBadge = badgeLabel(useAtomValue(requestBadgeCountAtom));
   const [reduceMotion, setReduceMotion] = useState(true);
   const [tooltipKey, setTooltipKey] = useState<string | null>(null);
 
@@ -176,7 +199,10 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
     };
   }, []);
 
-  const routes = state.routes.filter((route) => route.name in TABS);
+  const routes = state.routes.filter(
+    (route) =>
+      route.name in TABS && (route.name !== "(requests)" || requestsVisible),
+  );
   const activeKey = state.routes[state.index]?.key;
   if (!routes.some((route) => route.key === activeKey)) return null;
 
@@ -198,12 +224,21 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
           const focused = route.key === activeKey;
           const label =
             typeof options.title === "string" ? options.title : route.name;
+          const badge = route.name === "(requests)" ? requestsBadge : null;
           return (
             <Pressable
               key={route.key}
               accessibilityRole='tab'
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+              accessibilityLabel={
+                options.tabBarAccessibilityLabel ??
+                (badge
+                  ? t("request_status.a11y.tab_with_unread", {
+                      label,
+                      count: badge,
+                    })
+                  : label)
+              }
               accessibilityShowsLargeContentViewer={IS_IOS}
               accessibilityLargeContentTitle={label}
               testID={options.tabBarButtonTestID}
@@ -240,6 +275,7 @@ export const NeonTabBar: React.FC<BottomTabBarProps> = ({
                 focused={focused}
                 reduceMotion={reduceMotion}
                 label={label}
+                badge={badge}
               />
             </Pressable>
           );
@@ -285,4 +321,22 @@ const styles = StyleSheet.create({
     backgroundColor: NeonBoard.card2,
   },
   label: { textAlign: "center", includeFontPadding: false },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: "700",
+    color: NeonBoard.stage,
+    includeFontPadding: false,
+  },
 });

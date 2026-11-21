@@ -1,14 +1,19 @@
 import { useMutation } from "@tanstack/react-query";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { toast } from "sonner-native";
 import { NeonBoard } from "@/constants/Colors";
 import { useIntegrationHeaders } from "@/hooks/useIntegrationHeaders";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
 import { userAtom } from "@/providers/JellyfinProvider";
+import { requestAccessAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
+import {
+  currentViewer,
+  passwordSignIn,
+} from "@/utils/requestStatus/native/signIn";
 import { jellyseerrProbe } from "@/utils/serverUrl/probes/jellyseerr";
 import { resolveServerUrl } from "@/utils/serverUrl/resolve";
 import { Button } from "../Button";
@@ -28,6 +33,9 @@ export const JellyseerrSettings = () => {
 
   const [user] = useAtom(userAtom);
   const { settings, updateSettings, pluginSettings } = useSettings();
+  // Phones: no request sign-in for a kid profile or before this session's
+  // policy is confirmed (plan 5.3 rule 8). Always true on the TV builds.
+  const requestAccess = useAtomValue(requestAccessAtom);
   // Only the server URL is admin-lockable — the password stays editable so
   // the user can still sign in to the admin-pinned Jellyseerr server.
   const urlLocked = pluginSettings?.jellyseerrServerUrl?.locked === true;
@@ -50,6 +58,7 @@ export const JellyseerrSettings = () => {
     mutationFn: async () => {
       if (!user?.Name)
         throw new Error("Missing required information for login");
+      if (!requestAccess) throw new Error("Requests are not available");
 
       // When the URL is admin-pinned, target that server directly. Otherwise
       // trust resolvedUrl only while it matches the field (the field adopts
@@ -71,6 +80,23 @@ export const JellyseerrSettings = () => {
         finalUrl = resolved.url;
       }
       if (!finalUrl) throw new Error("Missing server url");
+
+      if (!Platform.isTV) {
+        // Phones (plan 5.3 rule 1): through the one sign-in queue; saved only
+        // if still current and the same person is signed in. The server URL
+        // is saved first, so no session pairs the new user with the old URL.
+        const result = await passwordSignIn({
+          url: finalUrl,
+          username: user.Name,
+          password: jellyseerrPassword || "",
+          viewer: currentViewer(),
+          headers: customHeaders,
+          testFirst: true,
+          beforeSave: () => updateSettings({ jellyseerrServerUrl: finalUrl }),
+        });
+        if (result.kind !== "signed_in") throw new Error("Invalid server url");
+        return { user: result.user, url: finalUrl };
+      }
 
       const jellyseerrTempApi = new JellyseerrApi(finalUrl, customHeaders);
       const testResult = await jellyseerrTempApi.test();
