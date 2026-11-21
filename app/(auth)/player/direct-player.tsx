@@ -24,6 +24,7 @@ import { BITRATES } from "@/components/BitrateSelector";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
+import { keepAudioAdjustmentsForReload } from "@/components/video-player/controls/android/usePlayerAudioAdjustments";
 import { Controls } from "@/components/video-player/controls/Controls";
 import { Controls as TVControls } from "@/components/video-player/controls/Controls.tv";
 import { PlayerProvider } from "@/components/video-player/controls/contexts/PlayerContext";
@@ -1262,6 +1263,7 @@ export default function DirectPlayerPage() {
         // during the transition, and two simultaneous decoders OOM-kill low-RAM
         // devices. Resume is preserved via the playbackPosition param.
         videoRef.current?.destroy().catch(() => {});
+        keepAudioAdjustmentsForReload();
         router.replace(`player/direct-player?${queryParams}` as any);
         return;
       }
@@ -1341,6 +1343,7 @@ export default function DirectPlayerPage() {
       // goToNextItem: Expo Router briefly holds two players during the
       // transition and two decoders/surfaces OOM-kill low-RAM devices.
       videoRef.current?.destroy().catch(() => {});
+      keepAudioAdjustmentsForReload();
       router.replace(`player/direct-player?${queryParams}` as any);
     },
     [

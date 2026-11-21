@@ -5,6 +5,8 @@ import {
   multiplierLabel,
   pickCenterRow,
   sleepTimerLabel,
+  syncOffsetLabel,
+  volumeBoostLabel,
 } from "./androidPlayerChrome";
 
 describe("formatPlayerTime (iOS formatTime)", () => {
@@ -88,5 +90,21 @@ describe("pickCenterRow (iOS ViewThatFits tiers)", () => {
     expect(row.density).toBe("regular");
     expect(row.spacing).toBe(24);
     expect(row.showEpisodeButtons).toBe(true);
+  });
+});
+
+describe("sync and volume boost labels (iOS offsetLabel / boostLabel)", () => {
+  test("offsets read like printf %+g with a seconds unit", () => {
+    expect(syncOffsetLabel(0)).toBe("0 s");
+    expect(syncOffsetLabel(0.25)).toBe("+0.25 s");
+    expect(syncOffsetLabel(-0.5)).toBe("-0.5 s");
+    expect(syncOffsetLabel(5)).toBe("+5 s");
+    expect(syncOffsetLabel(-5)).toBe("-5 s");
+  });
+
+  test("100% is the off row, others are percentages", () => {
+    expect(volumeBoostLabel(100, "None")).toBe("None");
+    expect(volumeBoostLabel(125, "None")).toBe("125%");
+    expect(volumeBoostLabel(200, "None")).toBe("200%");
   });
 });
