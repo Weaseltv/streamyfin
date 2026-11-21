@@ -82,3 +82,18 @@ export function readBinding(): SeerrBinding | null {
 export function saveBinding(binding: SeerrBinding): void {
   storage.set(BINDING_KEY, JSON.stringify(binding));
 }
+
+const UPDATES_KEY = "request_updates_enabled|";
+
+/**
+ * The Settings switch "Request notifications" (plan 5.9), per account (media-server user plus
+ * request-server origin), so it can be read before a request session exists. Default on.
+ */
+export function readUpdatesEnabled(account: string | null): boolean {
+  if (!account) return true;
+  return storage.getString(UPDATES_KEY + account) !== "off";
+}
+
+export function writeUpdatesEnabled(account: string, enabled: boolean): void {
+  storage.set(UPDATES_KEY + account, enabled ? "on" : "off");
+}

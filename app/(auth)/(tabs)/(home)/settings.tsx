@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PageHead } from "@/components/common/PageHead";
+import { SettingSwitch } from "@/components/common/SettingSwitch";
 import { ListGroup } from "@/components/list/ListGroup";
 import { ListItem } from "@/components/list/ListItem";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
@@ -12,8 +13,10 @@ import { UserInfo } from "@/components/settings/UserInfo";
 import { sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
+import { useRequestUpdatesSetting } from "@/hooks/useRequestStatus";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
+import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
 import { serverHost } from "@/utils/serverHost";
 
 // TV-specific settings component
@@ -27,6 +30,8 @@ function SettingsMobile() {
   const insets = useSafeAreaInsets();
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
+  const requestsVisible = useAtomValue(requestsTabVisibleAtom);
+  const [updatesEnabled, setUpdatesEnabled] = useRequestUpdatesSetting();
 
   useSetPageAccent(ACCENT);
   const host = serverHost(api?.basePath);
@@ -84,6 +89,22 @@ function SettingsMobile() {
             title={t("home.settings.logs.logs_title")}
           />
         </ListGroup>
+
+        {requestsVisible && (
+          // Phones only (never a kid profile): the request update card and, from pull request 7,
+          // phone notifications (plan 5.9). Stored per account; off acknowledges pending updates.
+          <ListGroup title={t("request_status.settings.group")} accent={ACCENT}>
+            <ListItem
+              title={t("request_status.settings.notifications")}
+              subtitle={t("request_status.settings.notifications_subtitle")}
+            >
+              <SettingSwitch
+                value={updatesEnabled}
+                onValueChange={setUpdatesEnabled}
+              />
+            </ListItem>
+          </ListGroup>
+        )}
 
         <StorageSettings accent={ACCENT} />
       </View>

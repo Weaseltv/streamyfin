@@ -1,16 +1,33 @@
 import { t } from "i18next";
 import { useAtomValue } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { toast } from "sonner-native";
 import useRouter from "@/hooks/useAppRouter";
 import { jellyseerrUserAtom } from "@/hooks/useJellyseerr";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { WAKE_REQUEST_SYNC } from "@/providers/RequestStatusCoordinator";
 import {
   requestOpenIntentAtom,
   requestQueueAtom,
 } from "@/utils/atoms/requestStatus";
+import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
+import { storage } from "@/utils/mmkv";
+import {
+  journalsEqual,
+  markDelivered,
+  markOpened,
+  type RequestEvent,
+  type RequestJournal,
+  setEnabled,
+  writeJournal,
+} from "@/utils/requestStatus/journal";
+import {
+  readUpdatesEnabled,
+  writeUpdatesEnabled,
+} from "@/utils/requestStatus/native/runtime";
+import { accountKey } from "@/utils/requestStatus/session";
 import type { Text } from "@/utils/requestStatus/types";
 import { store } from "@/utils/store";
 
@@ -49,6 +66,55 @@ export function canSubmitRequest(): boolean {
   if (!blocked) return true;
   toast.error(t(blocked.key, blocked.params));
   return false;
+}
+
+/** Change this scope's journal (in state and storage); the coordinator folds it into the next read. */
+function changeJournal(change: (j: RequestJournal) => RequestJournal) {
+  store.set(requestQueueAtom, (q) => {
+    if (!q.verified || !q.scopeKey) return q;
+    const journal = change(q.journal);
+    if (journalsEqual(journal, q.journal)) return q;
+    writeJournal(storage, q.scopeKey, journal);
+    return { ...q, journal };
+  });
+}
+
+/**
+ * The card's updates were seen (plan 5.9). Dismiss and timeout acknowledge without clearing
+ * unread; the primary action also clears unread for that request, or all for "View requests".
+ */
+export function acknowledgeRequestEvents(
+  events: readonly RequestEvent[],
+  unread: "keep" | "all" | number,
+) {
+  changeJournal((j) => {
+    const seen = markDelivered(j, events);
+    if (unread === "keep") return seen;
+    return unread === "all" ? markOpened(seen) : markOpened(seen, unread);
+  });
+}
+
+/** The Settings switch "Request notifications", per account (plan 5.9). */
+export function useRequestUpdatesSetting(): [
+  boolean,
+  (enabled: boolean) => void,
+] {
+  const user = useAtomValue(userAtom);
+  const { settings } = useSettings();
+  const account = accountKey(user?.Id, settings?.jellyseerrServerUrl);
+  const [enabled, setLocal] = useState(() => readUpdatesEnabled(account));
+  useEffect(() => setLocal(readUpdatesEnabled(account)), [account]);
+  const set = useCallback(
+    (next: boolean) => {
+      if (!account) return;
+      writeUpdatesEnabled(account, next);
+      setLocal(next);
+      // Off turns pending updates into acknowledged ones; the badge still counts.
+      changeJournal((j) => setEnabled(j, next));
+    },
+    [account],
+  );
+  return [enabled, set];
 }
 
 /** Read the request list now (queue opened, pull to refresh, after a submit or cancel). */

@@ -37,6 +37,7 @@ import {
   markOpened,
   readJournal,
   seedRequest,
+  setEnabled,
   trackEvents,
   writeJournal,
 } from "@/utils/requestStatus/journal";
@@ -44,6 +45,7 @@ import { liveHint } from "@/utils/requestStatus/liveHints";
 import {
   getRecovery,
   readBinding,
+  readUpdatesEnabled,
   takeExchangeIdentity,
   updateRecovery,
 } from "@/utils/requestStatus/native/runtime";
@@ -592,6 +594,12 @@ export function RequestStatusCoordinator() {
         cancel,
       };
       let journal = readJournal(storage, scopeKey);
+      // The Settings switch is stored per account (plan 5.9); the journal follows it.
+      const updatesEnabled = readUpdatesEnabled(account);
+      if (journal.enabled !== updatesEnabled) {
+        journal = setEnabled(journal, updatesEnabled);
+        writeJournal(storage, scopeKey, journal);
+      }
       let missing = new Map<number, number>();
       let failures = 0;
       setQueue((q) => {
