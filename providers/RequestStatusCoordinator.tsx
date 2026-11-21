@@ -5,11 +5,16 @@ import { AppState } from "react-native";
 import { type JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
 import { requestSilentReconnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import {
+  currentProgressTransport,
+  LIVE_FORGET_EVENT,
+} from "@/providers/RequestLiveController";
 import { requestPolicyRunnerAtom } from "@/utils/atoms/requestPolicy";
 import {
   emptyQueueState,
   type RequestPhase,
   requestAccessAtom,
+  requestProgressAtom,
   requestQueueAtom,
   requestQueueVisibleAtom,
 } from "@/utils/atoms/requestStatus";
@@ -17,8 +22,17 @@ import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import {
+  CANCEL_FAILED,
+  type CancelOutcome,
+  cancelPath,
+  progressCancelOutcome,
+  seerrDeleteOutcome,
+  verifyGoneOutcome,
+} from "@/utils/requestStatus/cancel";
 import { seerrExchanges } from "@/utils/requestStatus/exchangeQueue";
 import {
+  forgetRequest,
   journalsEqual,
   markOpened,
   readJournal,
@@ -61,7 +75,7 @@ import {
   replaceItem,
   syncOwnRequests,
 } from "@/utils/requestStatus/sync";
-import type { OwnRequest } from "@/utils/requestStatus/types";
+import type { OwnRequest, Text } from "@/utils/requestStatus/types";
 import { store } from "@/utils/store";
 
 /** Wake the request sync now (the queue opened, a submit or cancel finished, pull to refresh). */
@@ -84,6 +98,11 @@ export interface ScopeBridge {
    * ready shows, its row added at once, the list read. False when not this scope's own request.
    */
   seed(request: OwnRequest): boolean;
+  /**
+   * Cancel an own request (plan 5.7). Resolves with the line to show above the queue, or null
+   * when the row was forgotten (or the scope changed meanwhile).
+   */
+  cancel(requestId: number): Promise<Text | null>;
 }
 
 export type ProbeOutcome = "passed" | "denied" | "skipped" | "failed";
@@ -497,6 +516,69 @@ export function RequestStatusCoordinator() {
         wake();
         return true;
       };
+      let cancelRefresh: ReturnType<typeof setTimeout> | null = null;
+      const forget = (id: number) => {
+        setQueue((latest) => {
+          if (latest.scopeKey !== scopeKey) return latest;
+          const forgotten = forgetRequest(latest.journal, id);
+          writeJournal(storage, scopeKey, forgotten);
+          journal = forgotten;
+          return {
+            ...latest,
+            journal: forgotten,
+            items: latest.items.filter((i) => i.request.id !== id),
+          };
+        });
+        eventBus.emit(LIVE_FORGET_EVENT, id);
+      };
+      const cancel = async (id: number): Promise<Text | null> => {
+        const row = store
+          .get(requestQueueAtom)
+          .items.find((i) => i.request.id === id);
+        if (!isCurrent() || !row) return null;
+        const live = store.get(requestProgressAtom);
+        const transport = currentProgressTransport();
+        const progressAvailable =
+          decision?.kind === "pinned" &&
+          live.scopeKey === scopeKey &&
+          live.proof === "held" &&
+          !!transport;
+        const path = cancelPath(row, progressAvailable);
+        if (!path) return CANCEL_FAILED;
+        let outcome: CancelOutcome;
+        if (path === "progress" && transport) {
+          const answer = await transport.cancel(id);
+          if (!isCurrent()) return null;
+          outcome = progressCancelOutcome(answer.status, answer.body, id);
+          if (outcome.kind === "verify") {
+            const status = await client.requestReadStatus(id);
+            if (!isCurrent()) return null;
+            outcome = verifyGoneOutcome(status);
+          }
+        } else {
+          // Never after a failed progress cancel: only when that path wasn't available.
+          const status = await client.deleteRequestStatus(id);
+          if (!isCurrent()) return null;
+          outcome = seerrDeleteOutcome(status);
+        }
+        if (store.get(requestQueueAtom).scopeKey !== scopeKey) return null;
+        if (outcome.kind === "forget") {
+          forget(id);
+          wake();
+          return null;
+        }
+        if (outcome.kind !== "keep") return CANCEL_FAILED;
+        if (outcome.log) writeInfoLog(outcome.log);
+        if (outcome.probe) void probe();
+        if (outcome.wake) wake();
+        if (outcome.refreshInMs !== undefined && !cancelRefresh) {
+          cancelRefresh = setTimeout(() => {
+            cancelRefresh = null;
+            if (isCurrent()) wake();
+          }, outcome.refreshInMs);
+        }
+        return outcome.message;
+      };
       bridge = {
         generation: gen,
         scopeKey,
@@ -507,6 +589,7 @@ export function RequestStatusCoordinator() {
         probe,
         hint,
         seed,
+        cancel,
       };
       let journal = readJournal(storage, scopeKey);
       let missing = new Map<number, number>();

@@ -179,6 +179,15 @@ export class ProgressRunner {
     this.wake?.();
   }
 
+  /** A cancelled request: its live record goes at once (the TV's `progress.forget`). */
+  forget(requestId: number): void {
+    if (!this.state.records.has(requestId)) return;
+    const records = new Map(this.state.records);
+    records.delete(requestId);
+    this.state = { ...this.state, records };
+    this.deps.publish(this.state, this.mode);
+  }
+
   /** The scope ended: records are dropped. */
   dispose(): void {
     this.stop();

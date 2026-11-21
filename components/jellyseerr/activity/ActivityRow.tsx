@@ -63,6 +63,11 @@ interface Props {
   highlighted: boolean;
   onOpen: (view: ActivityRowView, metadata: RowMetadata | undefined) => void;
   onLayout?: (requestId: number, event: LayoutChangeEvent) => void;
+  /** Long-press (or the screen-reader action) offers to cancel (plan 5.7). */
+  cancellable?: boolean;
+  onCancel?: (view: ActivityRowView, metadata: RowMetadata | undefined) => void;
+  /** A cancel is in flight for this row. */
+  inert?: boolean;
 }
 
 const sameView = (a: ActivityRowView, b: ActivityRowView) =>
@@ -81,7 +86,10 @@ const sameProps = (a: Props, b: Props) =>
   a.disabled === b.disabled &&
   a.highlighted === b.highlighted &&
   a.onOpen === b.onOpen &&
-  a.onLayout === b.onLayout;
+  a.onLayout === b.onLayout &&
+  a.cancellable === b.cancellable &&
+  a.onCancel === b.onCancel &&
+  a.inert === b.inert;
 
 /** One queue row: poster, title, "2019 · Movie · 4K", status, detail, progress or Watch now. */
 export const ActivityRow = memo(function ActivityRow({
@@ -92,6 +100,9 @@ export const ActivityRow = memo(function ActivityRow({
   highlighted,
   onOpen,
   onLayout,
+  cancellable,
+  onCancel,
+  inert,
 }: Props) {
   const { t } = useTranslation();
   const request = view.item.request;
@@ -143,14 +154,25 @@ export const ActivityRow = memo(function ActivityRow({
     <Pressable
       accessibilityRole='button'
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled: disabled || inert }}
+      accessibilityActions={
+        cancellable
+          ? [{ name: "cancel", label: t("request_status.cancel.confirm") }]
+          : undefined
+      }
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "cancel") onCancel?.(view, metadata);
+      }}
+      disabled={disabled || inert}
       onPress={() => onOpen(view, metadata)}
+      onLongPress={cancellable ? () => onCancel?.(view, metadata) : undefined}
       onLayout={onLayout ? (e) => onLayout(request.id, e) : undefined}
       style={({ pressed }) => [
         styles.row,
         highlighted && { borderColor: sectionColor(view.section) },
-        (pressed || disabled) && { opacity: disabled ? 0.55 : 0.8 },
+        (pressed || disabled || inert) && {
+          opacity: disabled || inert ? 0.55 : 0.8,
+        },
       ]}
     >
       <View style={styles.poster}>
