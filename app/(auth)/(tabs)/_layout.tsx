@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
 import { NeonTabBar } from "@/components/common/NeonTabBar";
+import { RequestUpdateBanner } from "@/components/jellyseerr/RequestUpdateBanner";
 import type { TVNavBarTab } from "@/components/tv/TVNavBar";
 import { TVNavBar } from "@/components/tv/TVNavBar";
 import { NeonBoard } from "@/constants/Colors";
@@ -217,6 +218,8 @@ export default function TabLayout() {
           options={{ title: t("tabs.settings"), href: null }}
         />
       </Tabs>
+      {/* "Request sent" (and, from pull request 6, request updates) above the bar. */}
+      {!Platform.isTV && <RequestUpdateBanner />}
     </View>
   );
 }

@@ -22,6 +22,7 @@ import {
   journalsEqual,
   markOpened,
   readJournal,
+  seedRequest,
   trackEvents,
   writeJournal,
 } from "@/utils/requestStatus/journal";
@@ -52,6 +53,7 @@ import {
   journalKey,
   PINNED_REQUEST_ORIGIN,
 } from "@/utils/requestStatus/session";
+import { deriveRequestStage } from "@/utils/requestStatus/stage";
 import {
   httpStatus,
   type RequestReadApi,
@@ -77,6 +79,11 @@ export interface ScopeBridge {
   probe(): Promise<ProbeOutcome>;
   /** A live record or removal for the canonical layer to verify. */
   hint(effect: ProgressEffect): void;
+  /**
+   * A request the member just made here (the TV's `seed`): exempt from the baseline so its first
+   * ready shows, its row added at once, the list read. False when not this scope's own request.
+   */
+  seed(request: OwnRequest): boolean;
 }
 
 export type ProbeOutcome = "passed" | "denied" | "skipped" | "failed";
@@ -457,6 +464,39 @@ export function RequestStatusCoordinator() {
       }
 
       // Verified: this person's rows from here on.
+      const seed = (request: OwnRequest): boolean => {
+        if (!isCurrent()) return false;
+        const q = store.get(requestQueueAtom);
+        if (
+          q.scopeKey !== scopeKey ||
+          !q.verified ||
+          request.requestedBy?.id !== seerrUserId
+        ) {
+          return false;
+        }
+        const stage = deriveRequestStage(request);
+        const seeded = seedRequest(
+          q.journal,
+          request.id,
+          stage.downloadObserved,
+        );
+        writeJournal(storage, scopeKey, seeded);
+        journal = seeded;
+        setQueue((latest) =>
+          latest.scopeKey === scopeKey
+            ? {
+                ...latest,
+                journal: seeded,
+                items: [
+                  { request, stage, fresh: true },
+                  ...latest.items.filter((i) => i.request.id !== request.id),
+                ],
+              }
+            : latest,
+        );
+        wake();
+        return true;
+      };
       bridge = {
         generation: gen,
         scopeKey,
@@ -466,6 +506,7 @@ export function RequestStatusCoordinator() {
         pinned: decision.kind === "pinned",
         probe,
         hint,
+        seed,
       };
       let journal = readJournal(storage, scopeKey);
       let missing = new Map<number, number>();

@@ -32,7 +32,11 @@ import { FontFace, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useDismissKeyboardOnLeave } from "@/hooks/useDismissKeyboardOnLeave";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
-import { canSubmitRequest } from "@/hooks/useRequestStatus";
+import { useOpenRequestRow, useRequestQueue } from "@/hooks/useRequestStatus";
+import {
+  toastSubmitError,
+  useSubmitOwnRequest,
+} from "@/hooks/useSubmitOwnRequest";
 import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
 import { useJellyseerrCanRequest } from "@/utils/_jellyseerr/useJellyseerrCanRequest";
 import { ANIME_KEYWORD_ID } from "@/utils/jellyseerr/server/api/themoviedb/constants";
@@ -58,6 +62,10 @@ import type {
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
+import {
+  ownRequestForTitle,
+  titleStageAction,
+} from "@/utils/requestStatus/titlePage";
 
 // Mobile page component
 const MobilePage: React.FC = () => {
@@ -67,6 +75,9 @@ const MobilePage: React.FC = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const itemOrigin = useItemNavigationOrigin();
+  const { submit, submitting } = useSubmitOwnRequest();
+  const queue = useRequestQueue();
+  const openRequestRow = useOpenRequestRow();
 
   const { mediaTitle, releaseYear, posterSrc, mediaType, ...result } =
     params as unknown as {
@@ -192,9 +203,13 @@ const MobilePage: React.FC = () => {
       return;
     }
 
-    if (!canSubmitRequest()) return;
-    requestMedia(mediaTitle, body, refetch);
+    submit(body, { title: mediaTitle, posterUrl: posterSrc, year: releaseYear })
+      .then(() => refetch())
+      .catch(toastSubmitError);
   }, [
+    submit,
+    posterSrc,
+    releaseYear,
     details,
     result,
     requestMedia,
@@ -205,6 +220,19 @@ const MobilePage: React.FC = () => {
   ]);
 
   const accent = jellyseerrTypeAccent(mediaType);
+
+  // Only for a verified session: never another member's requests (plan 5.3 rule 3).
+  const ownRequest = useMemo(
+    () =>
+      queue.verified
+        ? ownRequestForTitle(
+            queue.items,
+            mediaType,
+            result.id ? Number(result.id) : null,
+          )
+        : null,
+    [queue.verified, queue.items, mediaType, result.id],
+  );
 
   // Season rows for the request sheet: TMDB seasons with the Seerr status of
   // each (available / requested ones are shown but not selectable).
@@ -384,10 +412,54 @@ const MobilePage: React.FC = () => {
                   accent={sectionAccent("requests")}
                   style={{ marginTop: 16 }}
                 />
+              ) : ownRequest ? (
+                // The member's own request: its stage, opening the library title when ready,
+                // otherwise the queue on that row (plan 5.8). Seasons can still be requested below.
+                <Button
+                  accent={sectionAccent("requests")}
+                  onPress={() => {
+                    const action = titleStageAction(ownRequest);
+                    if (action.kind === "queue") {
+                      openRequestRow(action.requestId);
+                      return;
+                    }
+                    const inRequests = itemOrigin === "(requests)";
+                    router.push(
+                      ownRequest.request.type === "tv"
+                        ? {
+                            pathname: inRequests
+                              ? "/(auth)/(tabs)/(requests)/series/[id]"
+                              : "/(auth)/(tabs)/(search)/series/[id]",
+                            params: { id: action.itemId },
+                          }
+                        : {
+                            pathname: inRequests
+                              ? "/(auth)/(tabs)/(requests)/items/page"
+                              : "/(auth)/(tabs)/(search)/items/page",
+                            params: { id: action.itemId },
+                          },
+                    );
+                  }}
+                  style={{ marginTop: 16 }}
+                  iconLeft={
+                    <Feather
+                      name={
+                        titleStageAction(ownRequest).kind === "library"
+                          ? "play"
+                          : "inbox"
+                      }
+                      size={18}
+                      color={NeonBoard.onAccent}
+                    />
+                  }
+                >
+                  {t(ownRequest.stage.label.key, ownRequest.stage.label.params)}
+                </Button>
               ) : canRequest ? (
                 <Button
                   accent={sectionAccent("requests")}
                   onPress={request}
+                  disabled={submitting}
                   style={{ marginTop: 16 }}
                   iconLeft={
                     <Feather
@@ -397,7 +469,9 @@ const MobilePage: React.FC = () => {
                     />
                   }
                 >
-                  {t("jellyseerr.request_button")}
+                  {submitting
+                    ? t("request_status.submission.submitting")
+                    : t("jellyseerr.request_button")}
                 </Button>
               ) : (
                 details?.mediaInfo?.jellyfinMediaId && (

@@ -1248,7 +1248,8 @@
       "not_accepted": "The request service couldn't accept this request. (Error {{status}})",
       "not_finished": "The request service couldn't finish this request. Check My Requests before trying again. (Error {{status}})",
       "unconfirmed_network": "Couldn't confirm whether your request was sent. Check My Requests before trying again.",
-      "unconfirmed": "Couldn't confirm the request result. Check My Requests before trying again."
+      "unconfirmed": "Couldn't confirm the request result. Check My Requests before trying again.",
+      "submitting": "Submitting…"
     },
     "state": {
       "loading": "Loading your requests…",
@@ -1276,6 +1277,12 @@
     },
     "a11y": {
       "tab_with_unread": "{{label}}, {{count}} unread"
+    },
+    "card": {
+      "request_sent": "Request sent",
+      "confirmation": "We'll let you know when it's ready to watch.",
+      "movie": "Movie",
+      "tv_series": "TV series"
     }
   }
 }
