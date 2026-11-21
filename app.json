@@ -144,7 +144,7 @@
             "enableJetifier": true,
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# RNDeviceInfo calls the install-referrer API through Class.forName/getMethod.\n-keep class com.android.installreferrer.api.** { *; }\n"
+            "extraProguardRules": "# libmpv JNI and callback names are referenced by native code.\n-keep class dev.jdtech.mpv.** { *; }\n# RNDeviceInfo calls the install-referrer API through Class.forName/getMethod.\n-keep class com.android.installreferrer.api.** { *; }\n# plugins/withAndroidPhoneScale.ts recognises React Native's metrics reader by this name.\n-keepnames class com.facebook.react.uimanager.DisplayMetricsHolder\n"
           }
         }
       ],
@@ -187,6 +187,7 @@
       ["./plugins/withChangeNativeAndroidTextToWhite.ts"],
       ["./plugins/withAndroidAlertColors.ts"],
       ["./plugins/withAndroidManifest.ts"],
+      ["./plugins/withAndroidPhoneScale.ts"],
       ["./plugins/withTrustLocalCerts.ts"],
       ["./plugins/withGradleProperties.ts"],
       ["./plugins/withWeaselfinSigning.ts"],
