@@ -6,6 +6,7 @@
  * redirects when asked; this is proven on a device in pull request 3's check.
  */
 import { fetch } from "expo/fetch";
+import { PROGRESS_CLIENT_HEADER } from "../cancel";
 import type { HttpFailure, ProgressTransport } from "../progressRunner";
 
 /** Streaming is used on this platform. Switched off by this constant if the device check fails. */
@@ -42,10 +43,20 @@ export interface ProofAnswer {
   retryAfter?: string | null;
 }
 
+export interface CancelAnswer {
+  /** null when there was no answer (network, timeout). */
+  status: number | null;
+  body: unknown;
+}
+
 export interface NativeProgressTransport extends ProgressTransport {
   /** The transport proof (5.3 rule 5): who the progress transport's session belongs to. */
   authMe(signal: AbortSignal): Promise<ProofAnswer>;
+  /** `POST /progress/v1/requests/{id}/cancel`, empty body, 45 s (plan 5.7). */
+  cancel(requestId: number): Promise<CancelAnswer>;
 }
+
+export const CANCEL_TIMEOUT_MS = 45_000;
 
 export function createProgressTransport(
   origin: string,
@@ -94,6 +105,36 @@ export function createProgressTransport(
       );
       if (!res.ok) return failureOf(res);
       return { kind: "ok", body: await res.text() };
+    },
+    async cancel(requestId) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), CANCEL_TIMEOUT_MS);
+      try {
+        const res = await fetch(
+          `${base}/progress/v1/requests/${requestId}/cancel`,
+          {
+            method: "POST",
+            signal: controller.signal,
+            credentials: "include",
+            redirect: "error",
+            headers: {
+              Accept: "application/json",
+              "X-WeaselPlex-Client": PROGRESS_CLIENT_HEADER,
+            },
+          },
+        );
+        let body: unknown = null;
+        if (
+          (res.headers.get("content-type") ?? "").includes("application/json")
+        ) {
+          body = await res.json().catch(() => null);
+        }
+        return { status: res.status, body };
+      } catch {
+        return { status: null, body: null };
+      } finally {
+        clearTimeout(timer);
+      }
     },
     async authMe(signal) {
       const res = await fetch(

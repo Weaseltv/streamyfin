@@ -42,6 +42,13 @@ import { liveGateOpen } from "@/utils/requestStatus/visibility";
 
 /** Pull to refresh: lift the live layer's 15-minute stop (never the probe or proof throttles). */
 export const LIVE_REFRESH_EVENT = "requestLiveRefresh";
+/** A cancelled request: drop its live record. */
+export const LIVE_FORGET_EVENT = "requestLiveForget";
+
+let liveTransport: NativeProgressTransport | null = null;
+
+/** The current scope's progress transport (for cancel), while live progress can run. */
+export const currentProgressTransport = () => liveTransport;
 
 const PROOF_RETRY_MS = 60_000;
 
@@ -115,6 +122,7 @@ export function RequestLiveController() {
     }
     const transport = createProgressTransport(bridge.origin);
     transportRef.current = transport;
+    liveTransport = transport;
     offByAuth.current = false;
     setProgress({
       ...emptyProgressView(),
@@ -153,6 +161,9 @@ export function RequestLiveController() {
       runner.stop();
       setProof("unknown");
     });
+    const offForget = eventBus.on<number>(LIVE_FORGET_EVENT, (id) => {
+      if (typeof id === "number") runner.forget(id);
+    });
     const offRefresh = eventBus.on(LIVE_REFRESH_EVENT, () => {
       runner.refresh();
       if (offByAuth.current) {
@@ -166,6 +177,8 @@ export function RequestLiveController() {
       runner.dispose();
       offExchange();
       offRefresh();
+      offForget();
+      if (liveTransport === transport) liveTransport = null;
       runnerRef.current = null;
       transportRef.current = null;
       if (proofRetry.current) clearTimeout(proofRetry.current);

@@ -1,3 +1,4 @@
+import { useActionSheet } from "@expo/react-native-action-sheet";
 import { useFocusEffect } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -30,19 +31,25 @@ import { SearchField } from "@/components/search/SearchField";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
-import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { jellyseerrUserAtom, useJellyseerr } from "@/hooks/useJellyseerr";
 import { useRequestQueue, wakeRequestSync } from "@/hooks/useRequestStatus";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
-import { LIVE_REFRESH_EVENT } from "@/providers/RequestLiveController";
+import {
+  currentProgressTransport,
+  LIVE_REFRESH_EVENT,
+} from "@/providers/RequestLiveController";
+import { requestScopeBridge } from "@/providers/RequestStatusCoordinator";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import {
   requestLiveGateAtom,
   requestOpenIntentAtom,
+  requestProgressAtom,
   requestQueueAtom,
   requestQueueVisibleAtom,
 } from "@/utils/atoms/requestStatus";
 import { eventBus } from "@/utils/eventBus";
 import type { ActivityRowView } from "@/utils/requestStatus/activityRow";
+import { canCancel, cancelPath } from "@/utils/requestStatus/cancel";
 import {
   READY_PAGE,
   readyRenderCount,
@@ -95,7 +102,92 @@ export function RequestsTabPage() {
   const rowOffsets = useRef(new Map<number, number>());
   const [layoutTick, setLayoutTick] = useState(0);
   const rows = useActivityRows(queue, client);
+  // Read by callbacks without making them change on every live update (rows stay memoized).
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const intent = useAtomValue(requestOpenIntentAtom);
+  const seerrUser = useAtomValue(jellyseerrUserAtom);
+  const proof = useAtomValue(requestProgressAtom).proof;
+  const { showActionSheetWithOptions } = useActionSheet();
+  const [cancelling, setCancelling] = useState<ReadonlySet<number>>(new Set());
+
+  // Cancel is offered only for a row that may be cancelled and a path that exists (plan 5.7).
+  const isCancellable = useCallback(
+    (view: ActivityRowView) => {
+      const q = store.get(requestQueueAtom);
+      if (q.phase !== "ready" || !q.verified) return false;
+      if (
+        !canCancel(
+          view.item,
+          view.section,
+          q.seerrUserId,
+          seerrUser?.permissions,
+        )
+      )
+        return false;
+      const progressAvailable =
+        q.pinned && proof === "held" && !!currentProgressTransport();
+      return cancelPath(view.item, progressAvailable) !== null;
+    },
+    [seerrUser?.permissions, proof],
+  );
+
+  const onCancel = useCallback(
+    (view: ActivityRowView, metadata: RowMetadata | undefined) => {
+      if (!isCancellable(view)) return;
+      const id = view.item.request.id;
+      // The sheet pauses live updates while it is open, as on the TV.
+      store.set(requestLiveGateAtom, (g) => ({ ...g, sheetOpen: true }));
+      showActionSheetWithOptions(
+        {
+          title:
+            metadata?.title ??
+            t(
+              view.item.request.type === "tv"
+                ? "request_status.row.requested_show"
+                : "request_status.row.requested_movie",
+            ),
+          message: t("request_status.cancel.line"),
+          options: [
+            t("request_status.cancel.confirm"),
+            t("request_status.cancel.keep"),
+          ],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 1,
+        },
+        async (index) => {
+          store.set(requestLiveGateAtom, (g) => ({ ...g, sheetOpen: false }));
+          if (index !== 0) return;
+          // Checked again on confirm: the row may have moved on meanwhile.
+          const latest = rowsRef.current.find((r) => r.item.request.id === id);
+          const current = store
+            .get(requestQueueAtom)
+            .items.find((i) => i.request.id === id);
+          if (
+            !latest ||
+            !current ||
+            !isCancellable({ ...latest, item: current })
+          ) {
+            setMessage(t("request_status.cancel.failed"));
+            return;
+          }
+          setMessage(null);
+          setCancelling((s) => new Set(s).add(id));
+          try {
+            const line = await requestScopeBridge()?.cancel(id);
+            if (line) setMessage(t(line.key, line.params));
+          } finally {
+            setCancelling((s) => {
+              const next = new Set(s);
+              next.delete(id);
+              return next;
+            });
+          }
+        },
+      );
+    },
+    [isCancellable, showActionSheetWithOptions, t],
+  );
 
   // Focus is reported from focus callbacks: the tabs freeze on blur.
   useFocusEffect(
@@ -389,6 +481,9 @@ export function RequestsTabPage() {
               message={message}
               onOpen={onOpen}
               onRowLayout={onRowLayout}
+              isCancellable={isCancellable}
+              onCancel={onCancel}
+              cancelling={cancelling}
             />
           </View>
         )}

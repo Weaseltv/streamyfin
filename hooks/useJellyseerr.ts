@@ -295,6 +295,37 @@ export class JellyseerrApi {
     return user;
   }
 
+  /**
+   * Cancel a request still waiting for approval (`DELETE /api/v1/request/{id}`). Returns the HTTP
+   * status, or null when there was no answer.
+   */
+  async deleteRequestStatus(id: number): Promise<number | null> {
+    try {
+      const res = await this.axios.delete(
+        `${Endpoints.API_V1 + Endpoints.REQUEST}/${id}`,
+      );
+      return res.status;
+    } catch (error) {
+      return axios.isAxiosError(error)
+        ? (error.response?.status ?? null)
+        : null;
+    }
+  }
+
+  /** The status of `GET /api/v1/request/{id}` (after the progress service said "gone"). */
+  async requestReadStatus(id: number): Promise<number | null> {
+    try {
+      const res = await this.axios.get(
+        `${Endpoints.API_V1 + Endpoints.REQUEST}/${id}`,
+      );
+      return res.status;
+    } catch (error) {
+      return axios.isAxiosError(error)
+        ? (error.response?.status ?? null)
+        : null;
+    }
+  }
+
   /** Who this session belongs to (`GET /api/v1/auth/me`). */
   async authMe(): Promise<JellyseerrUser> {
     const { data } = await this.axios.get<JellyseerrUser>(

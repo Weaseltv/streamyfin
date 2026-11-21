@@ -112,6 +112,11 @@ interface Props {
   message: string | null;
   onOpen: (view: ActivityRowView, metadata: RowMetadata | undefined) => void;
   onRowLayout: (requestId: number, event: LayoutChangeEvent) => void;
+  /** Whether a row may be offered "Cancel request" (plan 5.7). */
+  isCancellable?: (view: ActivityRowView) => boolean;
+  onCancel?: (view: ActivityRowView, metadata: RowMetadata | undefined) => void;
+  /** Rows with a cancel in flight. */
+  cancelling?: ReadonlySet<number>;
 }
 
 /** The queue part of the Requests page: its states, then Active, Waiting and Ready. */
@@ -124,6 +129,9 @@ export function ActivityQueue({
   message,
   onOpen,
   onRowLayout,
+  isCancellable,
+  onCancel,
+  cancelling,
 }: Props) {
   const { t } = useTranslation();
   const runner = useAtomValue(requestPolicyRunnerAtom);
@@ -210,6 +218,9 @@ export function ActivityQueue({
               highlighted={highlightedId === view.item.request.id}
               onOpen={onOpen}
               onLayout={onRowLayout}
+              cancellable={!reconnecting && (isCancellable?.(view) ?? false)}
+              onCancel={onCancel}
+              inert={cancelling?.has(view.item.request.id) ?? false}
             />
           ))}
         </Fragment>
