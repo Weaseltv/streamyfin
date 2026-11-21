@@ -1,5 +1,5 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
-import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
+import { getItemsApi, getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,6 +28,13 @@ const ownerKeyFor = (
   user: { Id?: string | null; ServerId?: string | null } | null,
 ) => (user?.Id ? `${user.ServerId ?? ""}:${user.Id}` : null);
 const itemActionAtom = atom<Request | null>(null);
+/** How long the menu waits for the server's Watchlist state before opening. */
+const FRESH_STATE_TIMEOUT_MS = 1200;
+const hasItemActions = (item: BaseItemDto) =>
+  item.Type === "Movie" ||
+  item.Type === "Episode" ||
+  item.Type === "Series" ||
+  item.Type === "Season";
 // Read account identity at the long press without adding a user subscription
 // to every card. Never reopen a previous account's pending sheet after logout.
 const requestItemActionsAtom = atom(
@@ -76,7 +83,12 @@ function ItemActionSheet({
   // React Native (no title, Cancel last), replacing the bottom sheet.
   const { showActionSheetWithOptions, actionSheet } = useMenuActionSheet();
   const markAsPlayedStatus = useMarkAsPlayed([item], true);
-  const { isFavorite, favoriteMutation } = useFavorite(item, true);
+  const { isFavorite, favoriteMutation, syncIsFavorite } = useFavorite(
+    item,
+    true,
+  );
+  // The server's Watchlist state, read when the menu opens (see below).
+  const serverIsFavorite = useRef<boolean | undefined>(undefined);
   const { deleteFile } = useDownload();
   const { dismiss: dismissSeriesFromNextUp } = useDismissedNextUp();
   const router = useRouter();
@@ -85,17 +97,11 @@ function ItemActionSheet({
   const presented = useRef<Request | null>(null);
   const executed = useRef<Request | null>(null);
   const showActionSheet = useCallback(() => {
-    if (
-      !(
-        item.Type === "Movie" ||
-        item.Type === "Episode" ||
-        item.Type === "Series" ||
-        item.Type === "Season"
-      )
-    ) {
+    if (!hasItemActions(item)) {
       close();
       return;
     }
+    const favorite = serverIsFavorite.current ?? isFavorite;
 
     const actions: { label: string; onPress: () => void | Promise<void> }[] = [
       {
@@ -107,11 +113,11 @@ function ItemActionSheet({
         onPress: () => markAsPlayedStatus(false),
       },
       {
-        label: isFavorite
+        label: favorite
           ? t("common.remove_from_favorites")
           : t("common.add_to_favorites"),
         onPress: async () => {
-          await favoriteMutation.mutateAsync(!isFavorite);
+          await favoriteMutation.mutateAsync(!favorite);
         },
       },
     ];
@@ -233,19 +239,51 @@ function ItemActionSheet({
     isOffline,
     deleteFile,
     dismissSeriesFromNextUp,
-    item.Id,
-    item.Type,
-    item.SeriesId,
+    item,
     playMedia,
     startShuffle,
     router,
     t,
   ]);
 
+  // The Watchlist entry reads the server when the menu opens (owner, round 2
+  // parity review, F4: "Read the current Watchlist state when the menu
+  // opens"). The card's copy, or a stale copy on another card, could be older
+  // than a change made since, so the menu offered "Add to watchlist" for a
+  // film already on it. Offline, or when the server is slow, it opens with
+  // what the app knows.
+  const readIsFavorite = useCallback(async () => {
+    const api = atomStore.get(apiAtom);
+    const user = atomStore.get(userAtom);
+    if (isOffline || !item.Id || !api || !user?.Id || !hasItemActions(item))
+      return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FRESH_STATE_TIMEOUT_MS);
+    try {
+      const response = await getItemsApi(api).getItems(
+        { ids: [item.Id], userId: user.Id, enableImages: false },
+        { signal: controller.signal },
+      );
+      return response.data.Items?.[0]?.UserData?.IsFavorite ?? undefined;
+    } catch {
+      return undefined;
+    } finally {
+      clearTimeout(timer);
+    }
+  }, [atomStore, isOffline, item]);
+
+  const showLatest = useRef(showActionSheet);
+  showLatest.current = showActionSheet;
   useEffect(() => {
     if (presented.current === request) return;
     presented.current = request;
-    showActionSheet();
-  }, [request, showActionSheet]);
+    void readIsFavorite().then((current) => {
+      // Closed, or replaced by another long press, while the server answered.
+      if (atomStore.get(itemActionAtom) !== request) return;
+      serverIsFavorite.current = current;
+      if (current !== undefined) syncIsFavorite(current);
+      showLatest.current();
+    });
+  }, [request, atomStore, readIsFavorite, syncIsFavorite]);
   return actionSheet;
 }
