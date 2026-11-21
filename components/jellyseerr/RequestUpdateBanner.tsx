@@ -1,5 +1,5 @@
-import { useIsFocused } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
+import { useIsFocused } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
