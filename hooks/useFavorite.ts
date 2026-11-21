@@ -179,6 +179,8 @@ export const useFavorite = (item: BaseItemDto, forceNetwork = false) => {
   return {
     isFavorite,
     toggleFavorite,
+    /** Record a state just read from the server, for every view of the item. */
+    syncIsFavorite: setIsFavorite,
     favoriteMutation: {
       ...favoriteMutation,
       mutate: (nextIsFavorite: boolean) =>
