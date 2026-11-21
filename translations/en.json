@@ -1167,5 +1167,86 @@
     "failed": "The update couldn't be installed. Try again from Settings.",
     "unverified": "The update couldn't be verified, so it wasn't installed.",
     "allow_installs": "To update, allow WeaselPlex to install unknown apps in your phone's Settings."
+  },
+  "request_status": {
+    "section": {
+      "active": "Active",
+      "waiting": "Waiting",
+      "ready": "Ready to watch"
+    },
+    "status": {
+      "ready_to_watch": "Ready to watch",
+      "some_episodes_ready": "Some episodes ready",
+      "season_airing": "Season {{season}} airing",
+      "season_coming": "Season {{season}} coming",
+      "request_declined": "Request declined",
+      "not_available": "Not available",
+      "couldnt_be_added": "Couldn't be added",
+      "waiting_for_approval": "Waiting for approval",
+      "request_accepted": "Request accepted",
+      "waiting_for_release": "Waiting for release",
+      "waiting_for_download": "Waiting for a download",
+      "searching": "Searching for a release",
+      "queued": "Queued for download",
+      "downloading": "Downloading",
+      "downloading_percent": "Downloading {{percent}}%",
+      "checking": "Checking",
+      "checking_download": "Checking download",
+      "checking_library": "Checking your library",
+      "checking_request_status": "Checking request status",
+      "unpacking": "Unpacking",
+      "importing": "Importing",
+      "adding_to_library": "Adding to your library",
+      "finishing_up": "Finishing up",
+      "paused": "Download paused",
+      "not_out_yet": "Not out yet · Coming {{date}}"
+    },
+    "detail": {
+      "last_known_status": "Last known status",
+      "with_last_known": "{{detail}} · Last known status",
+      "next_episode": "Next episode {{date}}",
+      "first_episode": "First episode {{date}}",
+      "rest_not_out_yet": "The rest is not out yet. Added automatically.",
+      "rest_not_available": "The rest isn't available yet. Added automatically.",
+      "rest_downloading": "The rest is downloading.",
+      "rest_added_automatically": "The rest will be added automatically.",
+      "declined_why": "This request wasn't approved.",
+      "unavailable_why": "This title can't be added right now.",
+      "failed_why": "Something went wrong adding it.",
+      "not_released_yet": "Not released yet. Starts when it is.",
+      "no_release_found_yet": "No release found yet. Starts when one appears.",
+      "no_download_active": "No download is active yet. Updates appear automatically.",
+      "coming_on": "Coming {{date}}. Starts when it's released.",
+      "episodes_imported": "{{imported}} of {{total}} episodes imported",
+      "eta_under_minute": "Under a minute remaining",
+      "eta_minutes": "{{minutes}} min remaining",
+      "confirming_ready": "Confirming it's ready to watch.",
+      "replacement_download": "The previous download had a problem. Waiting for its replacement.",
+      "no_progress_yet": "No download progress is available yet. We'll let you know when it's ready to watch.",
+      "progress_no_longer_reported": "Download progress is no longer reported. Waiting for the library to confirm it's ready to watch.",
+      "season_status_not_refreshed": "Season status couldn't be refreshed"
+    },
+    "progress": {
+      "requested_on": "Requested {{date}}",
+      "requested_recently": "Requested recently",
+      "episodes_out": "{{aired}} of {{total}} episodes out",
+      "imported_count": "{{imported}} / {{total}} imported"
+    },
+    "error": {
+      "limited_history": "Showing a limited request history. Refresh to try again.",
+      "season_statuses": "Some season statuses couldn't be refreshed."
+    },
+    "submission": {
+      "reconnecting": "Requests are reconnecting. Please try again shortly.",
+      "listing_not_matched": "This title can't be requested right now because its listing couldn't be matched.",
+      "not_authorized": "The request service didn't authorize this request. Reopen Requests before trying again. (Error {{status}})",
+      "not_found": "The request service couldn't find this title. Please try again later. (Error 404)",
+      "conflict": "The request service reported a conflict. Check My Requests before trying again. (Error 409)",
+      "rate_limited": "The request service is limiting requests right now. Please wait before trying again. (Error 429)",
+      "not_accepted": "The request service couldn't accept this request. (Error {{status}})",
+      "not_finished": "The request service couldn't finish this request. Check My Requests before trying again. (Error {{status}})",
+      "unconfirmed_network": "Couldn't confirm whether your request was sent. Check My Requests before trying again.",
+      "unconfirmed": "Couldn't confirm the request result. Check My Requests before trying again."
+    }
   }
 }
