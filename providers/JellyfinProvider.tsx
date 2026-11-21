@@ -39,6 +39,10 @@ import { subtitleModeFromProfile } from "@/utils/jellyfin/userConfiguration";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
 import { seerrExchanges } from "@/utils/requestStatus/exchangeQueue";
+import {
+  resetPushState,
+  unregisterBeforeSignOut,
+} from "@/utils/requestStatus/native/push";
 import { passwordSignIn } from "@/utils/requestStatus/native/signIn";
 import { policySessionKey } from "@/utils/requestStatus/policy";
 import { isConfirmedAdult } from "@/utils/requestStatus/visibility";
@@ -238,6 +242,8 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
     // abandoned so its answer is never saved for the next person.
     store.set(requestPolicyAtom, null);
     seerrExchanges.cancel();
+    // A forced expiry sends no DELETE (the website couldn't verify the token).
+    resetPushState();
     setPluginSettings(undefined);
     queryClient.clear();
 
@@ -604,6 +610,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       // WeaselPlex: a refused Seerr connect is forgotten on sign-out, so the
       // next sign-in tries straight away.
       if (user?.Id) clearWeaselSeerrRefusal(user.Id);
+      // Request notifications (plan 5.10 step 2): removed with the outgoing
+      // media token before it is discarded; bounded, so sign-out never hangs.
+      await unregisterBeforeSignOut(api?.accessToken);
       await clearSessionState();
     },
     onError: (error) => {

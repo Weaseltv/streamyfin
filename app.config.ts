@@ -59,9 +59,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ]);
   }
 
-  // Only override googleServicesFile if env var is set
+  // Only override googleServicesFile if env var is set, and only for phone builds: the
+  // WeaselPlex Firebase project is for tv.theweasel.weaselplex.phone (request notifications,
+  // plan 5.10). Android TV and tvOS builds (EXPO_TV=1) never get it; phone prebuilds run with
+  // EXPO_TV=0 or unset.
   const androidConfig: { googleServicesFile?: string } = {};
-  if (process.env.GOOGLE_SERVICES_JSON) {
+  if (process.env.GOOGLE_SERVICES_JSON && process.env.EXPO_TV !== "1") {
     androidConfig.googleServicesFile = process.env.GOOGLE_SERVICES_JSON;
   }
 
