@@ -42,12 +42,50 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
  * function — so the app cannot be induced to approve an attacker's Quick
  * Connect request.
  */
-export const provisionPinnedSeerr = async (api: Api): Promise<JellyseerrUser> =>
+export interface ProvisionOptions {
+  /** Aborts every call of the exchange (phones: the exchange queue's signal). */
+  signal?: AbortSignal;
+  /** While false, the exchange stores nothing (phones, plan 5.3 rule 1). */
+  isCurrent?: () => boolean;
+}
+
+/**
+ * With `options` (phones), the timeout also aborts the calls still running instead of only giving
+ * up on them, and the signed-in user is returned without being stored: the caller saves it once
+ * the exchange is still current. Without options (TV builds) it behaves as before.
+ */
+export const provisionPinnedSeerr = async (
+  api: Api,
+  options?: ProvisionOptions,
+): Promise<JellyseerrUser> => {
+  if (!options) return provision(api);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) abort();
+  options.signal?.addEventListener("abort", abort);
+  const timer = setTimeout(abort, QUICK_CONNECT_TIMEOUT_MS);
+  try {
+    return await provision(api, {
+      signal: controller.signal,
+      isCurrent: () =>
+        !controller.signal.aborted && (options.isCurrent?.() ?? true),
+    });
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", abort);
+  }
+};
+
+const provision = async (
+  api: Api,
+  options?: ProvisionOptions,
+): Promise<JellyseerrUser> =>
   withTimeout(
     (async () => {
       const seerr = new JellyseerrApi(
         WEASEL_SEERR_URL,
         getIntegrationHeaders("jellyseerr"),
+        options,
       );
 
       // Captures the cookies the XSRF interceptor and the configured-gate
@@ -63,13 +101,16 @@ export const provisionPinnedSeerr = async (api: Api): Promise<JellyseerrUser> =>
           headers: {
             Authorization: `MediaBrowser DeviceId="${api.deviceInfo.id}", Token="${api.accessToken}"`,
           },
+          ...(options?.signal ? { signal: options.signal } : {}),
         },
       );
       if (authorize.status !== 200 || authorize.data !== true) {
         throw new Error("Could not approve the request service automatically.");
       }
 
-      return await seerr.quickConnectAuthenticate(secret);
+      return await seerr.quickConnectAuthenticate(secret, {
+        store: !options,
+      });
     })(),
     QUICK_CONNECT_TIMEOUT_MS,
   );

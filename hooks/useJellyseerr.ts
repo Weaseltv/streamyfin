@@ -15,6 +15,7 @@ import { t } from "i18next";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner-native";
 import { useNetworkAwareQueryClient } from "@/hooks/useNetworkAwareQueryClient";
+import { requestAccessAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
 import {
   customHeadersVersionAtom,
@@ -114,19 +115,36 @@ export type TestResult =
       isValid: false;
     };
 
+/**
+ * Options for a client used by one request-server sign-in or one request scope (phones, plan 5.3
+ * rule 1): `signal` aborts every call it makes; while `isCurrent()` is false it writes and clears
+ * no stored session data, so a late answer from an older exchange can't overwrite a newer one.
+ */
+export interface JellyseerrApiOptions {
+  signal?: AbortSignal;
+  isCurrent?: () => boolean;
+}
+
 export class JellyseerrApi {
   axios: AxiosInstance;
   /** Proxy auth headers for a Jellyseerr behind an access gateway. */
   private customHeaders: Record<string, string>;
+  private isCurrent: () => boolean;
 
-  constructor(baseUrl: string, customHeaders?: Record<string, string>) {
+  constructor(
+    baseUrl: string,
+    customHeaders?: Record<string, string>,
+    options?: JellyseerrApiOptions,
+  ) {
     this.axios = axios.create({
       baseURL: baseUrl,
       withCredentials: true,
       withXSRFToken: true,
       xsrfHeaderName: "XSRF-TOKEN",
+      ...(options?.signal ? { signal: options.signal } : {}),
     });
     this.customHeaders = customHeaders ?? {};
+    this.isCurrent = options?.isCurrent ?? (() => true);
 
     this.setInterceptors();
   }
@@ -158,10 +176,12 @@ export class JellyseerrApi {
             throw Error(error);
           }
 
-          storage.setAny(
-            JELLYSEERR_COOKIES,
-            headers["set-cookie"]?.flatMap((c) => c.split("; ")) ?? [],
-          );
+          if (this.isCurrent()) {
+            storage.setAny(
+              JELLYSEERR_COOKIES,
+              headers["set-cookie"]?.flatMap((c) => c.split("; ")) ?? [],
+            );
+          }
           return {
             isValid: true,
             requiresPass: true,
@@ -188,7 +208,15 @@ export class JellyseerrApi {
       });
   }
 
-  async login(username: string, password: string): Promise<JellyseerrUser> {
+  /**
+   * Password sign-in. Phones pass `store: false` and save the user themselves once the exchange
+   * is still current (plan 5.3 rule 1); the TV builds keep storing here.
+   */
+  async login(
+    username: string,
+    password: string,
+    { store = true }: { store?: boolean } = {},
+  ): Promise<JellyseerrUser> {
     return this.axios
       ?.post<JellyseerrUser>(Endpoints.API_V1 + Endpoints.AUTH_JELLYFIN, {
         username,
@@ -198,7 +226,7 @@ export class JellyseerrApi {
       .then((response) => {
         const user = response?.data;
         if (!user) throw Error("Login failed");
-        storage.setAny(JELLYSEERR_USER, user);
+        if (store && this.isCurrent()) storage.setAny(JELLYSEERR_USER, user);
         return user;
       });
   }
@@ -217,6 +245,7 @@ export class JellyseerrApi {
     if (!inRange(status, 200, 299)) {
       throw new Error(`Request server returned ${status}`);
     }
+    if (!this.isCurrent()) return;
     storage.setAny(
       JELLYSEERR_COOKIES,
       headers["set-cookie"]?.flatMap((c) => c.split("; ")) ?? [],
@@ -250,7 +279,10 @@ export class JellyseerrApi {
    * stores the signed-in user the same way login() does. Request history and
    * quotas behave exactly as with a password login.
    */
-  async quickConnectAuthenticate(secret: string): Promise<JellyseerrUser> {
+  async quickConnectAuthenticate(
+    secret: string,
+    { store = true }: { store?: boolean } = {},
+  ): Promise<JellyseerrUser> {
     await this.axios.post(
       `${Endpoints.API_V1 + Endpoints.AUTH_JELLYFIN}/quickconnect/authenticate`,
       { secret },
@@ -259,8 +291,29 @@ export class JellyseerrApi {
       `${Endpoints.API_V1}/auth/me`,
     );
     if (!user?.id) throw new Error("Quick Connect sign-in was rejected.");
-    storage.setAny(JELLYSEERR_USER, user);
+    if (store && this.isCurrent()) storage.setAny(JELLYSEERR_USER, user);
     return user;
+  }
+
+  /** Who this session belongs to (`GET /api/v1/auth/me`). */
+  async authMe(): Promise<JellyseerrUser> {
+    const { data } = await this.axios.get<JellyseerrUser>(
+      `${Endpoints.API_V1}/auth/me`,
+    );
+    return data;
+  }
+
+  /** One page of a member's own requests, newest first (the TV's request list read). */
+  async ownRequests(params: {
+    take: number;
+    skip: number;
+    requestedBy: number;
+  }): Promise<RequestResultsResponse> {
+    return this.axios
+      .get<RequestResultsResponse>(Endpoints.API_V1 + Endpoints.REQUEST, {
+        params: { ...params, filter: "all", sort: "added" },
+      })
+      .then(({ data }) => data);
   }
 
   async discoverSettings(): Promise<DiscoverSlider[]> {
@@ -469,7 +522,7 @@ export class JellyseerrApi {
     this.axios.interceptors.response.use(
       async (response) => {
         const cookies = response.headers["set-cookie"];
-        if (cookies) {
+        if (cookies && this.isCurrent()) {
           storage.setAny(
             JELLYSEERR_COOKIES,
             response.headers["set-cookie"]?.flatMap((c) => c.split("; ")),
@@ -490,7 +543,8 @@ export class JellyseerrApi {
         // tab after a single forbidden call. See utils/jellyseerrSession.
         if (
           error.response?.status === 403 &&
-          seerr403ClearsSession(error?.config?.url)
+          seerr403ClearsSession(error?.config?.url) &&
+          this.isCurrent()
         ) {
           clearJellyseerrStorageData();
         }
@@ -531,13 +585,28 @@ export const jellyseerrUserAtom = atom(
   storage.get<JellyseerrUser>(JELLYSEERR_USER),
 );
 
+/**
+ * Save a signed-in request-server user and publish it. Phones call this only once their sign-in
+ * exchange is still the current one (plan 5.3 rule 1).
+ */
+export const storeJellyseerrUser = (user: JellyseerrUser) => {
+  storage.setAny(JELLYSEERR_USER, user);
+  store.set(jellyseerrUserAtom, user);
+};
+
 export const useJellyseerr = () => {
   const { settings, updateSettings } = useSettings();
   const [jellyseerrUser, setJellyseerrUser] = useAtom(jellyseerrUserAtom);
   const customHeadersVersion = useAtomValue(customHeadersVersionAtom);
   const queryClient = useNetworkAwareQueryClient();
 
+  // Phones: no request client until this session's policy is confirmed as an
+  // adult's (plan 5.3 rule 8). Without a client, request title pages, ratings
+  // and request buttons are not offered. The TV builds are unchanged.
+  const requestAccess = useAtomValue(requestAccessAtom);
+
   const jellyseerrApi = useMemo(() => {
+    if (!requestAccess) return undefined;
     const cookies = storage.get<string[]>(JELLYSEERR_COOKIES);
     if (settings?.jellyseerrServerUrl && cookies && jellyseerrUser) {
       return new JellyseerrApi(
@@ -547,7 +616,12 @@ export const useJellyseerr = () => {
     }
     return undefined;
     // customHeadersVersion: rebuild the client when the headers change.
-  }, [settings?.jellyseerrServerUrl, jellyseerrUser, customHeadersVersion]);
+  }, [
+    settings?.jellyseerrServerUrl,
+    jellyseerrUser,
+    customHeadersVersion,
+    requestAccess,
+  ]);
 
   const clearAllJellyseerData = useCallback(async () => {
     clearJellyseerrStorageData();

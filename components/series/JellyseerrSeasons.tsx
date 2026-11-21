@@ -22,6 +22,7 @@ import { SeasonRow } from "@/components/jellyseerr/RequestModal";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
+import { canSubmitRequest } from "@/hooks/useRequestStatus";
 import {
   MediaStatus,
   MediaType,
@@ -209,6 +210,7 @@ const JellyseerrSeasons: React.FC<{
       if (hasAdvancedRequest) {
         return onAdvancedRequest?.(body);
       }
+      if (!canSubmitRequest()) return;
       requestMedia(details.name, body, refetch);
     }
   }, [
@@ -252,6 +254,7 @@ const JellyseerrSeasons: React.FC<{
         if (hasAdvancedRequest) {
           return onAdvancedRequest?.(body);
         }
+        if (!canSubmitRequest()) return;
         requestMedia(`${details.name}, Season ${seasonNumber}`, body, refetch);
       }
     },

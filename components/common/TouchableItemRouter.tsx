@@ -165,7 +165,8 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     from === "(search)" ||
     from === "(libraries)" ||
     from === "(favorites)" ||
-    from === "(watchlists)"
+    from === "(watchlists)" ||
+    from === "(requests)"
   )
     return (
       <TouchableOpacity

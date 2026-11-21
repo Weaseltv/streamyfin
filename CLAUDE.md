@@ -110,7 +110,7 @@ bun run ios:install-metal-toolchain  # Fix "missing Metal Toolchain" build error
 **Navigation**:
 - File-based routing in `app/` directory
 - Tab navigation: `(home)`, `(search)`, `(favorites)`, `(libraries)`, `(watchlists)`
-- Shared routes use parenthesized groups like `(home,libraries,search,favorites,watchlists)`
+- Shared routes use parenthesized groups like `(home,libraries,search,favorites,watchlists,requests)`
 - **IMPORTANT**: Always use `useAppRouter` from `@/hooks/useAppRouter` instead of `useRouter` from `expo-router`. This custom hook automatically handles offline mode state preservation across navigation:
   ```typescript
   // ✅ Correct

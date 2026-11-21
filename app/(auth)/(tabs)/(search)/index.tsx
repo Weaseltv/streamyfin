@@ -25,20 +25,11 @@ import {
   TouchableItemRouter,
 } from "@/components/common/TouchableItemRouter";
 import { ItemCardText } from "@/components/ItemCardText";
-import {
-  JellyseerrSearchSort,
-  JellyserrIndexPage,
-} from "@/components/jellyseerr/JellyseerrIndexPage";
 import MoviePoster from "@/components/posters/MoviePoster";
 import SeriesPoster from "@/components/posters/SeriesPoster";
-import {
-  DiscoverFilters,
-  type DiscoverMediaFilter,
-} from "@/components/search/DiscoverFilters";
 import { LoadingSkeleton } from "@/components/search/LoadingSkeleton";
 import { SearchField } from "@/components/search/SearchField";
 import { SearchItemWrapper } from "@/components/search/SearchItemWrapper";
-import { SearchTabButtons } from "@/components/search/SearchTabButtons";
 import { TVSearchPage } from "@/components/search/TVSearchPage";
 import { PersonAvatar } from "@/components/series/CastAndCrew";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
@@ -113,17 +104,6 @@ export default function SearchPage() {
 
   const { settings } = useSettings();
   const { jellyseerrApi } = useJellyseerr();
-  const [jellyseerrOrderBy, setJellyseerrOrderBy] =
-    useState<JellyseerrSearchSort>(
-      JellyseerrSearchSort[
-        JellyseerrSearchSort.DEFAULT
-      ] as unknown as JellyseerrSearchSort,
-    );
-  const [jellyseerrSortOrder, setJellyseerrSortOrder] = useState<
-    "asc" | "desc"
-  >("desc");
-  const [jellyseerrMediaFilter, setJellyseerrMediaFilter] =
-    useState<DiscoverMediaFilter>(undefined);
 
   const searchEngine = useMemo(() => {
     return settings?.searchEngine || "Jellyfin";
@@ -258,16 +238,6 @@ export default function SearchPage() {
   // The phone search strip (`SearchField`) under the page head. TV renders
   // its own input inside `TVSearchPage`.
   const searchFieldRef = useRef<TextInput>(null);
-
-  // WeaselPlex: the Requests tab is where a customer goes when the library
-  // search found nothing, so switching to it opens the keyboard straight away
-  // and keeps whatever they already typed. Library keeps stock behaviour.
-  const selectSearchType = useCallback((type: SearchType) => {
-    setSearchType(type);
-    if (type === "Discover") {
-      searchFieldRef.current?.focus();
-    }
-  }, []);
 
   const onChangeSearch = useCallback(
     (text: string) => {
@@ -750,45 +720,13 @@ export default function SearchPage() {
           accent={accent}
         />
 
-        {jellyseerrApi && (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-              paddingHorizontal: Sizes.gutter,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: NeonBoard.line,
-            }}
-          >
-            <SearchTabButtons
-              searchType={searchType}
-              setSearchType={selectSearchType}
-              t={t}
-            />
-            {searchType === "Discover" && (
-              <DiscoverFilters
-                mediaFilter={jellyseerrMediaFilter}
-                setMediaFilter={setJellyseerrMediaFilter}
-                showSort={debouncedSearch.length > 0}
-                jellyseerrOrderBy={jellyseerrOrderBy}
-                setJellyseerrOrderBy={setJellyseerrOrderBy}
-                jellyseerrSortOrder={jellyseerrSortOrder}
-                setJellyseerrSortOrder={setJellyseerrSortOrder}
-                t={t}
-              />
-            )}
-          </View>
-        )}
-
         {searchType === "Library" && (
           <View style={{ marginTop: 4 }}>
             <LoadingSkeleton isLoading={showInitialSkeleton} />
           </View>
         )}
 
-        {searchType === "Library" ? (
+        {searchType === "Library" && (
           <View>
             <SearchItemWrapper
               header={t("search.movies")}
@@ -821,14 +759,6 @@ export default function SearchPage() {
               renderItem={renderActorResult}
             />
           </View>
-        ) : (
-          <JellyserrIndexPage
-            searchQuery={debouncedSearch}
-            sortType={jellyseerrOrderBy}
-            order={jellyseerrSortOrder}
-            mediaTypeFilter={jellyseerrMediaFilter}
-            showDiscover={false}
-          />
         )}
 
         {searchType === "Library" &&
