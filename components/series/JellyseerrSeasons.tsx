@@ -9,7 +9,7 @@ import { t } from "i18next";
 import orderBy from "lodash/orderBy";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { Badge } from "@/components/Badge";
 import { HorizontalScroll } from "@/components/common/HorizontalScroll";
 import { LoadingLine } from "@/components/common/LoadingLine";
@@ -22,7 +22,10 @@ import { SeasonRow } from "@/components/jellyseerr/RequestModal";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
-import { canSubmitRequest } from "@/hooks/useRequestStatus";
+import {
+  toastSubmitError,
+  useSubmitOwnRequest,
+} from "@/hooks/useSubmitOwnRequest";
 import {
   MediaStatus,
   MediaType,
@@ -164,6 +167,11 @@ const JellyseerrSeasons: React.FC<{
   onAdvancedRequest,
 }) => {
   const { jellyseerrApi, requestMedia } = useJellyseerr();
+  const { submit } = useSubmitOwnRequest();
+  const posterOf = (d: TvDetails) =>
+    d.posterPath
+      ? (jellyseerrApi?.imageProxy(d.posterPath, "w300_and_h450_face") ?? null)
+      : null;
   const [seasonStates, setSeasonStates] = useState<{ [key: number]: boolean }>(
     {},
   );
@@ -210,8 +218,13 @@ const JellyseerrSeasons: React.FC<{
       if (hasAdvancedRequest) {
         return onAdvancedRequest?.(body);
       }
-      if (!canSubmitRequest()) return;
-      requestMedia(details.name, body, refetch);
+      if (Platform.isTV) {
+        requestMedia(details.name, body, refetch);
+        return;
+      }
+      submit(body, { title: details.name, posterUrl: posterOf(details) })
+        .then(() => refetch())
+        .catch(toastSubmitError);
     }
   }, [
     jellyseerrApi,
@@ -221,6 +234,7 @@ const JellyseerrSeasons: React.FC<{
     onAdvancedRequest,
     requestMedia,
     refetch,
+    submit,
   ]);
 
   const promptRequestAll = useCallback(
@@ -254,11 +268,27 @@ const JellyseerrSeasons: React.FC<{
         if (hasAdvancedRequest) {
           return onAdvancedRequest?.(body);
         }
-        if (!canSubmitRequest()) return;
-        requestMedia(`${details.name}, Season ${seasonNumber}`, body, refetch);
+        if (Platform.isTV) {
+          requestMedia(
+            `${details.name}, Season ${seasonNumber}`,
+            body,
+            refetch,
+          );
+          return;
+        }
+        submit(body, { title: details.name, posterUrl: posterOf(details) })
+          .then(() => refetch())
+          .catch(toastSubmitError);
       }
     },
-    [requestMedia, hasAdvancedRequest, onAdvancedRequest, refetch, details],
+    [
+      requestMedia,
+      hasAdvancedRequest,
+      onAdvancedRequest,
+      refetch,
+      details,
+      submit,
+    ],
   );
 
   if (!details) return null;

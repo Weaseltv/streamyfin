@@ -165,6 +165,20 @@ export const requestProgressAtom = atom<RequestProgressView>(
   emptyProgressView(),
 );
 
+/** "Request sent": shown for 6 s after an own request, then the queue opens on its row. */
+export interface RequestSubmissionCard {
+  scopeKey: string;
+  requestId: number;
+  title: string;
+  posterUrl: string | null;
+  year: string | null;
+  mediaType: string;
+  is4k: boolean;
+  createdAt: number;
+}
+
+export const requestSubmissionAtom = atom<RequestSubmissionCard | null>(null);
+
 /** Unread ready or partly ready requests, for the tab badge. */
 export const requestBadgeCountAtom = atom((get) => {
   const q = get(requestQueueAtom);
