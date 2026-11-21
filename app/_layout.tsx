@@ -20,6 +20,7 @@ import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import { ConfirmDeleteHost } from "@/components/common/ConfirmDeleteHost";
 import { GlobalModal } from "@/components/GlobalModal";
 import { PendingAccountSaveModal } from "@/components/PendingAccountSaveModal";
+import { useOpenRequestRow } from "@/hooks/useRequestStatus";
 import { enableTVMenuKeyInterception } from "@/hooks/useTVBackHandler";
 import i18n from "@/i18n";
 import { DownloadProvider } from "@/providers/DownloadProvider";
@@ -33,6 +34,10 @@ import { PlaySettingsProvider } from "@/providers/PlaySettingsProvider";
 import { ServerUrlProvider } from "@/providers/ServerUrlProvider";
 import { WebSocketProvider } from "@/providers/WebSocketProvider";
 import { WifiSsidProvider } from "@/providers/WifiSsidProvider";
+import {
+  expoPushTokenAtom,
+  notificationPermissionAtom,
+} from "@/utils/atoms/requestPush";
 import { useSetting } from "@/utils/atoms/settings";
 import {
   BACKGROUND_FETCH_TASK,
@@ -52,6 +57,11 @@ import {
   isOfflineCatalogKey,
 } from "@/utils/query/offlinePersistence";
 import { playbackRefreshQueue } from "@/utils/query/playbackRefresh";
+import {
+  handleRequestNotificationTap,
+  onRequestNotificationReceived,
+} from "@/utils/requestStatus/native/pushHandling";
+import { isRequestKind } from "@/utils/requestStatus/pushPayload";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
 
@@ -96,12 +106,22 @@ configureReanimatedLogger({
 
 if (!Platform.isTV) {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    // A request notification never shows while the app is open (plan 5.10 step 3): the in-app
+    // card announces it at a safe moment instead. Everything else behaves as before.
+    handleNotification: async (notification: Notification) =>
+      isRequestKind(notification.request.content.data)
+        ? {
+            shouldShowBanner: false,
+            shouldShowList: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          }
+        : {
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          },
   });
 }
 
@@ -132,6 +152,7 @@ try {
 
 function useNotificationObserver() {
   const router = useRouter();
+  const openRequestRow = useOpenRequestRow();
 
   useEffect(() => {
     if (Platform.isTV) return;
@@ -143,7 +164,17 @@ function useNotificationObserver() {
         if (!isMounted || !response?.notification) {
           return;
         }
-        const url = response?.notification.request.content.data?.url;
+        const data = response.notification.request.content.data;
+        // Request notifications never take the generic route (plan 5.10 step 4).
+        if (isRequestKind(data)) {
+          void handleRequestNotificationTap(
+            response.notification.request.identifier,
+            data,
+            openRequestRow,
+          );
+          return;
+        }
+        const url = data?.url;
         if (url) {
           router.push(url);
         }
@@ -153,7 +184,7 @@ function useNotificationObserver() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [router, openRequestRow]);
 }
 
 if (!Platform.isTV) {
@@ -327,6 +358,9 @@ function Layout() {
     token: ExpoPushToken;
     sessionKey: string;
   }>();
+  const openRequestRow = useOpenRequestRow();
+  const openRequestRowRef = useRef(openRequestRow);
+  openRequestRowRef.current = openRequestRow;
   const notificationListener = useRef<EventSubscription>(null);
   const responseListener = useRef<EventSubscription>(null);
 
@@ -362,6 +396,13 @@ function Layout() {
           name: "default",
         });
 
+        // Request updates (ready, couldn't be added): high importance so they show a banner; the
+        // website sends this channel id (plan 5.10 step 7).
+        await Notifications?.setNotificationChannelAsync("request-updates", {
+          name: "Request updates",
+          importance: Notifications.AndroidImportance.HIGH,
+        });
+
         // Create dedicated channel for download notifications
         await Notifications?.setNotificationChannelAsync("downloads", {
           name: "Downloads",
@@ -382,6 +423,7 @@ function Layout() {
     async (owner: string, isActive: () => boolean) => {
       const isCurrent = () => isActive() && sessionRef.current === owner;
       const granted = await checkAndRequestPermissions();
+      store.set(notificationPermissionAtom, granted);
       if (!isCurrent()) return;
       if (!granted) {
         console.log(
@@ -407,6 +449,8 @@ function Layout() {
         });
         if (token && isCurrent()) {
           setExpoPushToken({ token, sessionKey: owner });
+          // Request notifications register this token with the website (plan 5.10).
+          store.set(expoPushTokenAtom, token.data);
         }
       }
     },
@@ -453,6 +497,12 @@ function Layout() {
       notificationListener.current =
         Notifications?.addNotificationReceivedListener(
           (notification: Notification) => {
+            const data = notification.request.content.data;
+            if (isRequestKind(data)) {
+              // Never logged; wakes one request sync when it is this person's (plan 5.10 step 3).
+              onRequestNotificationReceived(data);
+              return;
+            }
             // Log only the title — serializing the whole notification touches
             // the deprecated dataString getter (deprecation warning) and dumps
             // noisy payloads into the console.
@@ -468,6 +518,14 @@ function Layout() {
           (response: NotificationResponse) => {
             // Currently the notifications supported by the plugin will send data for deep links.
             const { title, data } = response.notification.request.content;
+            if (isRequestKind(data)) {
+              void handleRequestNotificationTap(
+                response.notification.request.identifier,
+                data,
+                openRequestRowRef.current,
+              );
+              return;
+            }
             writeInfoLog(`Notification ${title} opened`, data);
 
             let url: any;

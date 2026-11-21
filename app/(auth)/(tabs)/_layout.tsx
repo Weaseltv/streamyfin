@@ -18,6 +18,7 @@ import {
 import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
 import { RequestLiveController } from "@/providers/RequestLiveController";
 import { RequestPolicyRunner } from "@/providers/RequestPolicyRunner";
+import { RequestPushController } from "@/providers/RequestPushController";
 import { RequestStatusCoordinator } from "@/providers/RequestStatusCoordinator";
 import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
@@ -156,6 +157,7 @@ export default function TabLayout() {
       {!Platform.isTV && <RequestPolicyRunner />}
       {!Platform.isTV && <RequestStatusCoordinator />}
       {!Platform.isTV && <RequestLiveController />}
+      {!Platform.isTV && <RequestPushController />}
       <Tabs
         tabBar={(props) => <NeonTabBar {...props} />}
         screenOptions={{
