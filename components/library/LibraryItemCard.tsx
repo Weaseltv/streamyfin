@@ -98,10 +98,14 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
   const { data: itemsCount } = useQuery({
     queryKey: ["library-count", library.Id],
     queryFn: async () => {
+      // Box sets sit directly in the Collections folder, so counting its
+      // children is enough. The recursive count took about 10 s on the
+      // server, and the row showed no count until then (parity F4).
+      const isBoxSets = library.CollectionType === "boxsets";
       const response = await getItemsApi(api!).getItems({
         userId: user?.Id,
         parentId: library.Id,
-        recursive: true,
+        recursive: !isBoxSets,
         limit: 0,
         includeItemTypes: itemType ? [itemType] : undefined,
       });
