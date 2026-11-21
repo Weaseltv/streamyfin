@@ -5,6 +5,7 @@ import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
+  ReduceMotion,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -37,6 +38,10 @@ const NextEpisodeCountDownButton: React.FC<NextEpisodeCountDownButtonProps> = ({
         {
           duration: 10000, // 10 seconds
           easing: Easing.linear,
+          // This is the autoplay timer, not decoration: with the system's
+          // reduce-motion setting on, Reanimated would finish it at once and
+          // skip to the next episode the moment the countdown appeared.
+          reduceMotion: ReduceMotion.Never,
         },
         (finished) => {
           if (finished && onFinish) {

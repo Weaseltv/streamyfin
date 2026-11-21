@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
+import { IOS_PLAYER, isAndroidPhone } from "./android/layout";
 import NextEpisodeCountDownButton from "./NextEpisodeCountDownButton";
 import SkipButton from "./SkipButton";
 
@@ -105,14 +106,20 @@ export const SkipSegmentOverlay: FC<Props> = ({
   }));
 
   // Position is recomputed on render (no slide animation) so the button never
-  // sweeps through an overlap zone while the controls toggle.
-  const bottom =
-    insets.bottom + (controlsVisible ? VISIBLE_BOTTOM : HIDDEN_BOTTOM);
-  const right =
-    insets.right +
-    (controlsVisible
-      ? VISIBLE_RIGHT + (hasChapters ? CHAPTERS_CLEARANCE : 0)
-      : HIDDEN_RIGHT);
+  // sweeps through an overlap zone while the controls toggle. Android phones
+  // use the iPhone player's spot: trailing 24, clear of the bottom bar.
+  const bottom = isAndroidPhone
+    ? insets.bottom +
+      (controlsVisible
+        ? IOS_PLAYER.skipBottomVisible
+        : IOS_PLAYER.skipBottomHidden)
+    : insets.bottom + (controlsVisible ? VISIBLE_BOTTOM : HIDDEN_BOTTOM);
+  const right = isAndroidPhone
+    ? insets.right + IOS_PLAYER.skipTrailing
+    : insets.right +
+      (controlsVisible
+        ? VISIBLE_RIGHT + (hasChapters ? CHAPTERS_CLEARANCE : 0)
+        : HIDDEN_RIGHT);
 
   return (
     <Animated.View

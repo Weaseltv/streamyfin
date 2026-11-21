@@ -48,6 +48,9 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             Thread(r, "mpv-command").apply { isDaemon = true }
         }
         
+        /** A rotation reports more than one surface size; redraw once it settles. */
+        private const val PAUSED_REDRAW_DELAY_MS = 150L
+
         // Property observation format types
         const val MPV_FORMAT_NONE = 0
         const val MPV_FORMAT_STRING = 1
@@ -587,6 +590,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
         isRunning = false
         surface = null
         disarmStartWatchdog()
+        mainHandler.removeCallbacks(redrawPausedFrame)
         subtitleLoader?.cancel()
         resetPendingSeek()
         cachedPosition = 0.0
@@ -640,6 +644,7 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             mpv?.attachSurface(surface)
             mpv?.setOptionString("force-window", "yes")
             lastSurfaceSize = null
+            scheduleRedrawIfPaused()
         }
     }
 
@@ -661,7 +666,32 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver {
             if (size == lastSurfaceSize) return@runCommand
             mpv?.setPropertyString("android-surface-size", "${size.first}x${size.second}")
             lastSurfaceSize = size
+            scheduleRedrawIfPaused()
         }
+    }
+
+    /**
+     * mpv draws a paused picture once and keeps it. A new surface size (a
+     * rotation, PiP) only applies from the next frame, so a phone rotated
+     * while paused showed the old frame stretched to the new shape, or a
+     * blank surface, until play (owner, round 2 parity review, F3: "Redraw
+     * the paused picture after a rotation"). An exact seek to where playback
+     * stands decodes that frame again and draws it at the new size.
+     */
+    private val redrawPausedFrame = Runnable {
+        runCommand("redrawPaused") {
+            if (!_isPaused || _isLoading || !isReadyToSeek) return@runCommand
+            val position = mpv?.getPropertyDouble("time-pos") ?: return@runCommand
+            mpv?.command(arrayOf("seek", position.toString(), "absolute+exact"))
+        }
+    }
+
+    // Phones only: a TV never rotates, and its surface loss is handled by
+    // recoverVideoOutput's reload.
+    private fun scheduleRedrawIfPaused() {
+        if (isTv || !_isPaused) return
+        mainHandler.removeCallbacks(redrawPausedFrame)
+        mainHandler.postDelayed(redrawPausedFrame, PAUSED_REDRAW_DELAY_MS)
     }
 
     /**
