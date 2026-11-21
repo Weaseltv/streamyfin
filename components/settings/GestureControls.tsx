@@ -15,8 +15,6 @@ import { ListItem } from "../list/ListItem";
 
 interface Props extends ViewProps {}
 
-const isIOSMobile = Platform.OS === "ios" && !Platform.isTV;
-
 export const GestureControls: React.FC<Props> = ({ ...props }) => {
   const { t } = useTranslation();
 
@@ -159,9 +157,9 @@ export const GestureControls: React.FC<Props> = ({ ...props }) => {
           </DisabledSetting>
         )}
 
-        {/* Pinch-to-zoom and double-tap-to-seek only exist in the iOS
-            native player. */}
-        {isIOSMobile && (
+        {/* Pinch-to-zoom and double-tap-to-seek: the iOS native player and
+            the Android phone player. */}
+        {!Platform.isTV && (
           <ListItem
             title={t("home.settings.gesture_controls.pinch_to_zoom")}
             subtitle={t(
@@ -179,7 +177,7 @@ export const GestureControls: React.FC<Props> = ({ ...props }) => {
           </ListItem>
         )}
 
-        {isIOSMobile && (
+        {!Platform.isTV && (
           <ListItem
             title={t("home.settings.gesture_controls.double_tap_to_seek")}
             subtitle={t(
