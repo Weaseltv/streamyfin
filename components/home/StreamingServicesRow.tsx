@@ -1,4 +1,3 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Feather } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +6,6 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   TouchableOpacity,
@@ -15,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import { useMenuActionSheet } from "@/components/common/ActionSheetCard";
 import { ItemImage } from "@/components/common/ItemImage";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Text } from "@/components/common/Text";
@@ -48,7 +47,8 @@ export const StreamingServicesRow: React.FC<Props> = ({ queryKey }) => {
   const user = useAtomValue(userAtom);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
-  const { showActionSheetWithOptions } = useActionSheet();
+  // The iPhone's action-sheet card on Android phones too (parity Q2).
+  const { showActionSheetWithOptions, actionSheet } = useMenuActionSheet();
   const [reordering, setReordering] = useState<BaseItemDto[] | null>(null);
 
   const { data } = useQuery({
@@ -78,45 +78,23 @@ export const StreamingServicesRow: React.FC<Props> = ({ queryKey }) => {
     [queryClient, queryKey, user?.Id],
   );
 
-  const showMenu = useCallback(
-    (item: BaseItemDto) => {
-      const options = [
-        t("home.streaming_reorder"),
-        t("home.streaming_reset_order"),
-        t("common.cancel"),
-      ];
-      showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: 2,
-          ...(Platform.OS === "android"
-            ? {
-                title: item.Name ?? undefined,
-                tintColor: NeonBoard.text,
-                cancelButtonTintColor: NeonBoard.collections,
-                titleTextStyle: {
-                  color: NeonBoard.collections,
-                  fontWeight: "600" as const,
-                },
-                containerStyle: {
-                  backgroundColor: NeonBoard.card,
-                  paddingBottom: insets.bottom,
-                  borderTopWidth: 2,
-                  borderTopColor: NeonBoard.collections,
-                },
-                showSeparators: true,
-                separatorStyle: { backgroundColor: NeonBoard.line },
-              }
-            : {}),
-        },
-        (index) => {
-          if (index === 0) setReordering(data ?? []);
-          if (index === 1) saveOrder([]);
-        },
-      );
-    },
-    [data, insets.bottom, saveOrder, showActionSheetWithOptions, t],
-  );
+  const showMenu = useCallback(() => {
+    const options = [
+      t("home.streaming_reorder"),
+      t("home.streaming_reset_order"),
+      t("common.cancel"),
+    ];
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 2,
+      },
+      (index) => {
+        if (index === 0) setReordering(data ?? []);
+        if (index === 1) saveOrder([]);
+      },
+    );
+  }, [data, saveOrder, showActionSheetWithOptions, t]);
 
   if (!data || data.length === 0) return null;
 
@@ -147,7 +125,7 @@ export const StreamingServicesRow: React.FC<Props> = ({ queryKey }) => {
             <TouchableItemRouter
               key={item.Id}
               item={item}
-              onLongPress={() => showMenu(item)}
+              onLongPress={showMenu}
               accessible
               accessibilityRole='button'
               accessibilityLabel={item.Name ?? undefined}
@@ -175,6 +153,7 @@ export const StreamingServicesRow: React.FC<Props> = ({ queryKey }) => {
           ))}
         </View>
       </HomeRowScrollView>
+      {actionSheet}
       <Modal
         visible={reordering !== null}
         transparent
