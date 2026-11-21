@@ -33,8 +33,10 @@ import useRouter from "@/hooks/useAppRouter";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import { useRequestQueue, wakeRequestSync } from "@/hooks/useRequestStatus";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
+import { LIVE_REFRESH_EVENT } from "@/providers/RequestLiveController";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
 import {
+  requestLiveGateAtom,
   requestOpenIntentAtom,
   requestQueueAtom,
   requestQueueVisibleAtom,
@@ -110,6 +112,24 @@ export function RequestsTabPage() {
     store.set(requestQueueVisibleAtom, queueVisible);
   }, [queueVisible]);
   useEffect(() => () => store.set(requestQueueVisibleAtom, false), []);
+
+  // The page's part of the live gate (plan 5.5): focused on the index, search box as typed.
+  useEffect(() => {
+    store.set(requestLiveGateAtom, (g) => ({
+      ...g,
+      indexFocused: focused,
+      searchText: search,
+    }));
+  }, [focused, search]);
+  useEffect(
+    () => () =>
+      store.set(requestLiveGateAtom, (g) => ({
+        ...g,
+        indexFocused: false,
+        searchText: "",
+      })),
+    [],
+  );
 
   // A different person or server: their search, results and highlights go at once.
   useEffect(() => {
@@ -301,6 +321,7 @@ export function RequestsTabPage() {
               colors={[ACCENT]}
               onRefresh={() => {
                 setRefreshing(true);
+                eventBus.emit(LIVE_REFRESH_EVENT);
                 wakeRequestSync();
               }}
             />

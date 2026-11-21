@@ -15,6 +15,7 @@ import {
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
 import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
+import { RequestLiveController } from "@/providers/RequestLiveController";
 import { RequestPolicyRunner } from "@/providers/RequestPolicyRunner";
 import { RequestStatusCoordinator } from "@/providers/RequestStatusCoordinator";
 import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
@@ -153,6 +154,7 @@ export default function TabLayout() {
       {/* tvOS renders this branch too; request status is phones only. */}
       {!Platform.isTV && <RequestPolicyRunner />}
       {!Platform.isTV && <RequestStatusCoordinator />}
+      {!Platform.isTV && <RequestLiveController />}
       <Tabs
         tabBar={(props) => <NeonTabBar {...props} />}
         screenOptions={{

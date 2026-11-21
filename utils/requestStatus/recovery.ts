@@ -26,6 +26,8 @@ export interface AccountRecovery {
   exchangeAt?: number;
   /** Automatic auth calls paused until then (429). */
   pausedUntil?: number;
+  /** Last 401/403 from the transport proof (5.3 rule 5). */
+  proofDeniedAt?: number;
 }
 
 export interface RecoveryState {
@@ -115,6 +117,24 @@ export function markRateLimited(
     ...account(s, key),
     pausedUntil: Math.max(prior, now + pause),
   });
+}
+
+/**
+ * The transport proof (5.3 rule 5) may run: not paused, and no proof was denied in the last 15
+ * minutes for this account, across scope changes, client rebuilds and manual refreshes.
+ */
+export function canProve(s: RecoveryState, key: string, now: number): boolean {
+  if (isPaused(s, key, now)) return false;
+  const denied = account(s, key).proofDeniedAt;
+  return denied === undefined || now - denied >= PROBE_INTERVAL_MS;
+}
+
+export function markProofDenied(
+  s: RecoveryState,
+  key: string,
+  now: number,
+): RecoveryState {
+  return withAccount(s, key, { ...account(s, key), proofDeniedAt: now });
 }
 
 /** The pinned-server mismatch reconnect may run (once per media-server user per app session). */
