@@ -123,6 +123,27 @@ export default React.forwardRef<MpvPlayerViewRef, MpvPlayerViewProps>(
       setSubtitleAssOverride: async (mode: "no" | "force") => {
         await nativeRef.current?.setSubtitleAssOverride(mode);
       },
+      // The iPhone player's audio and subtitle menu extras; the iOS view has
+      // no such functions (the iPhone uses its native player).
+      ...(Platform.OS === "android"
+        ? {
+            setSubtitleDelay: async (seconds: number) => {
+              await nativeRef.current?.setSubtitleDelay(seconds);
+            },
+            setAudioDelay: async (seconds: number) => {
+              await nativeRef.current?.setAudioDelay(seconds);
+            },
+            setVolumeBoost: async (percent: number) => {
+              await nativeRef.current?.setVolumeBoost(Math.round(percent));
+            },
+            setDialogueBoost: async (enabled: boolean) => {
+              await nativeRef.current?.setDialogueBoost(enabled);
+            },
+            setMonoAudio: async (enabled: boolean) => {
+              await nativeRef.current?.setMonoDownmix(enabled);
+            },
+          }
+        : {}),
       // Audio controls
       getAudioTracks: async () => {
         return await nativeRef.current?.getAudioTracks();

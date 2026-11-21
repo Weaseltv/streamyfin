@@ -203,6 +203,29 @@ class MpvPlayerModule : Module() {
                 view.setSubtitleAssOverride(mode)
             }
 
+            // Sync offsets (seconds), volume boost (percent), dialogue boost
+            // and mono downmix: the iPhone player's audio and subtitle menu
+            // extras.
+            AsyncFunction("setSubtitleDelay") { view: MpvPlayerView, seconds: Double ->
+                view.setSubtitleDelay(seconds)
+            }
+
+            AsyncFunction("setAudioDelay") { view: MpvPlayerView, seconds: Double ->
+                view.setAudioDelay(seconds)
+            }
+
+            AsyncFunction("setVolumeBoost") { view: MpvPlayerView, percent: Int ->
+                view.setVolumeBoost(percent)
+            }
+
+            AsyncFunction("setDialogueBoost") { view: MpvPlayerView, enabled: Boolean ->
+                view.setDialogueBoost(enabled)
+            }
+
+            AsyncFunction("setMonoDownmix") { view: MpvPlayerView, enabled: Boolean ->
+                view.setMonoDownmix(enabled)
+            }
+
             // Audio track functions
             AsyncFunction("getAudioTracks") { view: MpvPlayerView, promise: Promise ->
                 view.getAudioTracks { promise.resolve(it) }
