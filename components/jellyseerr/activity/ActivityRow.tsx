@@ -65,6 +65,24 @@ interface Props {
   onLayout?: (requestId: number, event: LayoutChangeEvent) => void;
 }
 
+const sameView = (a: ActivityRowView, b: ActivityRowView) =>
+  a.item.request === b.item.request &&
+  a.section === b.section &&
+  a.stale === b.stale &&
+  a.watchable === b.watchable &&
+  JSON.stringify([a.status, a.detail, a.progress]) ===
+    JSON.stringify([b.status, b.detail, b.progress]);
+
+/** Each row re-renders only when what it shows changed, so a percentage moves one row. */
+const sameProps = (a: Props, b: Props) =>
+  sameView(a.view, b.view) &&
+  a.client === b.client &&
+  a.scopeKey === b.scopeKey &&
+  a.disabled === b.disabled &&
+  a.highlighted === b.highlighted &&
+  a.onOpen === b.onOpen &&
+  a.onLayout === b.onLayout;
+
 /** One queue row: poster, title, "2019 · Movie · 4K", status, detail, progress or Watch now. */
 export const ActivityRow = memo(function ActivityRow({
   view,
@@ -177,7 +195,7 @@ export const ActivityRow = memo(function ActivityRow({
       </View>
     </Pressable>
   );
-});
+}, sameProps);
 
 const styles = StyleSheet.create({
   row: {

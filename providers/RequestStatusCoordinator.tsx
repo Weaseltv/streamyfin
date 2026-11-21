@@ -25,12 +25,14 @@ import {
   trackEvents,
   writeJournal,
 } from "@/utils/requestStatus/journal";
+import { liveHint } from "@/utils/requestStatus/liveHints";
 import {
   getRecovery,
   readBinding,
   takeExchangeIdentity,
   updateRecovery,
 } from "@/utils/requestStatus/native/runtime";
+import type { ProgressEffect } from "@/utils/requestStatus/progressReducer";
 import {
   canProbe,
   canTriggerMismatch,
@@ -48,10 +50,13 @@ import {
   type IdentityDecision,
   isPinnedOrigin,
   journalKey,
+  PINNED_REQUEST_ORIGIN,
 } from "@/utils/requestStatus/session";
 import {
   httpStatus,
   type RequestReadApi,
+  refreshOneRequest,
+  replaceItem,
   syncOwnRequests,
 } from "@/utils/requestStatus/sync";
 import type { OwnRequest } from "@/utils/requestStatus/types";
@@ -59,6 +64,27 @@ import { store } from "@/utils/store";
 
 /** Wake the request sync now (the queue opened, a submit or cancel finished, pull to refresh). */
 export const WAKE_REQUEST_SYNC = "requestStatusWake";
+
+/** What the live layer may ask of the verified scope. */
+export interface ScopeBridge {
+  scopeKey: string;
+  seerrUserId: number;
+  account: string;
+  /** The request server's origin (the pinned one for live progress). */
+  origin: string;
+  pinned: boolean;
+  /** Rule 6: the shared session probe, under its throttle. */
+  probe(): Promise<ProbeOutcome>;
+  /** A live record or removal for the canonical layer to verify. */
+  hint(effect: ProgressEffect): void;
+}
+
+export type ProbeOutcome = "passed" | "denied" | "skipped" | "failed";
+
+let bridge: (ScopeBridge & { generation: number }) | null = null;
+
+/** The verified scope's bridge, or null while no verified scope exists. */
+export const requestScopeBridge = (): ScopeBridge | null => bridge;
 
 const readApi = (client: JellyseerrApi): RequestReadApi => ({
   listOwn: (p) =>
@@ -261,25 +287,25 @@ export function RequestStatusCoordinator() {
     };
 
     /** Rule 6: one probe per 15 minutes per account after a 401/403 on a request read. */
-    const probe = async () => {
+    const probe = async (): Promise<ProbeOutcome> => {
       const now = Date.now();
-      if (!canProbe(getRecovery(), account, now)) return;
+      if (!canProbe(getRecovery(), account, now)) return "skipped";
       updateRecovery((s) => markCheck(s, account, now));
       try {
         const me = await client.authMe();
-        if (!isCurrent()) return;
-        if (me?.id !== seerrUserId) {
-          // Another identity: this scope ends.
-          generation.current++;
-          setQueue((q) => ({
-            ...q,
-            phase: pinned ? "reconnecting" : "sign_in_again",
-            loading: false,
-          }));
-          if (pinned) requestSilentReconnect();
-        }
+        if (!isCurrent()) return "skipped";
+        if (me?.id === seerrUserId) return "passed";
+        // Another identity: this scope ends.
+        generation.current++;
+        setQueue((q) => ({
+          ...q,
+          phase: pinned ? "reconnecting" : "sign_in_again",
+          loading: false,
+        }));
+        if (pinned) requestSilentReconnect();
+        return "denied";
       } catch (error) {
-        if (!isCurrent()) return;
+        if (!isCurrent()) return "skipped";
         const status = httpStatus(error);
         if (status === 401 || status === 403) {
           updateRecovery((s) => markDenied(s, account, Date.now()));
@@ -290,7 +316,9 @@ export function RequestStatusCoordinator() {
             loading: false,
           }));
           if (pinned) requestSilentReconnect();
-        } else if (status === 429) {
+          return "denied";
+        }
+        if (status === 429) {
           updateRecovery((s) =>
             markRateLimited(
               s,
@@ -300,6 +328,76 @@ export function RequestStatusCoordinator() {
             ),
           );
         }
+        return "failed";
+      }
+    };
+
+    // Live hints (the TV's onLiveRecord): coalesce, then re-read only the affected requests.
+    const hinted = new Set<number>();
+    let hintTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastHintRun = 0;
+    const runHints = async () => {
+      hintTimer = null;
+      lastHintRun = Date.now();
+      const ids = [...hinted];
+      hinted.clear();
+      for (const id of ids) {
+        if (!isCurrent()) return;
+        const q = store.get(requestQueueAtom);
+        if (q.scopeKey !== scopeKey || !q.verified) return;
+        const prior = q.items.find((i) => i.request.id === id);
+        const result = await refreshOneRequest(readApi(client), {
+          id,
+          prior,
+          journalInitialized: q.journal.initialized,
+          seerrUserId,
+          downloadObserved: q.journal.downloadObserved.includes(id),
+          isCurrent,
+        });
+        if (!isCurrent()) return;
+        if (result.kind === "full_sync") wake();
+        else if (result.kind === "auth") await probe();
+        else if (result.kind === "refreshed") {
+          setQueue((latest) => {
+            if (!isCurrent() || latest.scopeKey !== scopeKey) return latest;
+            const items = replaceItem(latest.items, result.item);
+            const journal = trackEvents(
+              latest.journal,
+              items,
+              scopeKey,
+              new Set(),
+              store.get(requestQueueVisibleAtom),
+            );
+            if (!journalsEqual(journal, latest.journal))
+              writeJournal(storage, scopeKey, journal);
+            return { ...latest, items, journal, lastUpdated: Date.now() };
+          });
+        }
+      }
+    };
+    const hint = (effect: ProgressEffect) => {
+      if (!isCurrent()) return;
+      if (effect.kind === "deleted") {
+        hinted.add(effect.requestId);
+      } else if (effect.kind === "record") {
+        const row = store
+          .get(requestQueueAtom)
+          .items.find((i) => i.request.id === effect.record.requestId);
+        const h = liveHint(effect.record, row);
+        if (h.kind === "unknown_request") {
+          wake();
+          return;
+        }
+        if (h.kind === "none") return;
+        hinted.add(effect.record.requestId);
+      } else {
+        return;
+      }
+      if (!hintTimer) {
+        hintTimer = setTimeout(
+          () => void runHints().catch(() => undefined),
+          Math.max(100, lastHintRun + 2_000 - Date.now()),
+        );
       }
     };
 
@@ -359,6 +457,16 @@ export function RequestStatusCoordinator() {
       }
 
       // Verified: this person's rows from here on.
+      bridge = {
+        generation: gen,
+        scopeKey,
+        seerrUserId,
+        account,
+        origin: url || PINNED_REQUEST_ORIGIN,
+        pinned: decision.kind === "pinned",
+        probe,
+        hint,
+      };
       let journal = readJournal(storage, scopeKey);
       let missing = new Map<number, number>();
       let failures = 0;
@@ -456,6 +564,8 @@ export function RequestStatusCoordinator() {
     );
     return () => {
       generation.current++;
+      if (bridge?.generation === gen) bridge = null;
+      if (hintTimer) clearTimeout(hintTimer);
       offWake();
       appSub.remove();
       offNet();

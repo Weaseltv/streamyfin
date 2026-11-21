@@ -15,12 +15,16 @@ import {
   RETRY_POLICY_EVENT,
 } from "@/providers/RequestPolicyRunner";
 import { requestPolicyRunnerAtom } from "@/utils/atoms/requestPolicy";
-import type { RequestQueueState } from "@/utils/atoms/requestStatus";
+import {
+  type RequestQueueState,
+  requestProgressAtom,
+} from "@/utils/atoms/requestStatus";
 import { eventBus } from "@/utils/eventBus";
 import {
   ACTIVITY_SECTIONS,
   type ActivityRowView,
   activityRow,
+  liveRecordFor,
   orderRows,
   sectionCounts,
 } from "@/utils/requestStatus/activityRow";
@@ -43,6 +47,7 @@ export function useActivityRows(
     return () => clearInterval(timer);
   }, []);
   const fmt = useMemo(() => createRowFormat(), []);
+  const progress = useAtomValue(requestProgressAtom);
   // Only movies still waiting for the library can turn into "Waiting for release".
   const candidates = useMemo(
     () =>
@@ -66,18 +71,23 @@ export function useActivityRows(
       byId.set(i.request.id, metadata[n]?.data);
     }
     const observed = new Set(queue.journal.downloadObserved);
-    const rows = queue.items.map((item) =>
-      activityRow(
-        withMetadata(item, byId.get(item.request.id), {
-          downloadObserved: observed.has(item.request.id),
-          nowMs: now,
-        }),
-        null,
-        false,
+    // The live overlay belongs to this scope only.
+    const records =
+      progress.scopeKey === queue.scopeKey ? progress.records : null;
+    const rows = queue.items.map((item) => {
+      const withMeta = withMetadata(item, byId.get(item.request.id), {
+        downloadObserved: observed.has(item.request.id),
+        nowMs: now,
+      });
+      const live = liveRecordFor(withMeta, records, progress.seerrUserId);
+      return activityRow(
+        withMeta,
+        live,
+        !!live && (live.stale || progress.transportStale),
         now,
         fmt,
-      ),
-    );
+      );
+    });
     return orderRows(rows);
     // metaKey stands for the metadata results.
   }, [
@@ -87,6 +97,7 @@ export function useActivityRows(
     metaKey,
     now,
     fmt,
+    progress,
   ]);
 }
 
