@@ -86,6 +86,7 @@ import {
   buildSubtitleMenu,
   type TrackMenuRow,
 } from "@/utils/subtitles/trackMenu";
+import { keepAudioAdjustmentsForReload } from "../android/usePlayerAudioAdjustments";
 import type { Track } from "../types";
 import { usePlayerContext, usePlayerControls } from "./PlayerContext";
 
@@ -335,6 +336,7 @@ export const VideoProvider: React.FC<{
       bitrateValue: bitrateValue,
       playbackPosition: playbackPosition,
     }).toString();
+    keepAudioAdjustmentsForReload();
     router.replace(`player/direct-player?${queryParams}` as any);
   };
 

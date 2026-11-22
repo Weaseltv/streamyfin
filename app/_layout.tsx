@@ -1,4 +1,5 @@
 import { ItemActionSheetHost } from "@/components/common/ItemActionSheetHost";
+import { MenuPopoverHost } from "@/components/common/MenuPopover";
 import {
   startupReadySessionAtom,
   startupSessionKey,
@@ -644,8 +645,11 @@ function Layout() {
                                       options={{
                                         headerShown: true,
                                         title: "",
+                                        // Android phones too: the iPhone's sign-in
+                                        // is plain black to the top, with no bar.
                                         headerTransparent:
-                                          Platform.OS === "ios",
+                                          Platform.OS === "ios" ||
+                                          !Platform.isTV,
                                       }}
                                     />
                                     <Stack.Screen name='+not-found' />
@@ -738,6 +742,12 @@ function Layout() {
                                 </ThemeProvider>
                               </IntroSheetProvider>
                             </BottomSheetModalProvider>
+                            {/* The iPhone-style menu card on Android phones,
+                                after the sheet provider so it sits above
+                                bottom sheets and the player. */}
+                            {Platform.OS === "android" && !Platform.isTV && (
+                              <MenuPopoverHost />
+                            )}
                           </GlobalModalProvider>
                         </NativePlayerProvider>
                       </DownloadProvider>
