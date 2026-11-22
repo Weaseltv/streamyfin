@@ -13,8 +13,12 @@ import {
   type RequestJournal,
 } from "@/utils/requestStatus/journal";
 import { policySessionKey } from "@/utils/requestStatus/policy";
+import type { ProgressMode } from "@/utils/requestStatus/progressRunner";
 import type { SyncError } from "@/utils/requestStatus/sync";
-import type { RequestStatusItem } from "@/utils/requestStatus/types";
+import type {
+  RequestProgressRecord,
+  RequestStatusItem,
+} from "@/utils/requestStatus/types";
 import {
   isConfirmedAdult,
   requestsTabVisible,
@@ -118,6 +122,48 @@ export const requestQueueVisibleAtom = atom(false);
 
 /** "Open Requests on this row", held until the Requests index handles it. */
 export const requestOpenIntentAtom = atom<OpenRowIntent | null>(null);
+
+/** What the Requests page reports for the live gate (plan 5.5); the rest comes from the app. */
+export interface LiveGateReport {
+  /** The Requests tab is focused on its index screen (from focus callbacks). */
+  indexFocused: boolean;
+  /** The request search box, as typed. */
+  searchText: string;
+  /** A sheet or dialog is open over the queue (the cancel sheet). */
+  sheetOpen: boolean;
+}
+
+export const requestLiveGateAtom = atom<LiveGateReport>({
+  indexFocused: false,
+  searchText: "",
+  sheetOpen: false,
+});
+
+export type TransportProof = "unknown" | "checking" | "held" | "off";
+
+/** The live overlay for the current scope (records decorate rows; never history or badges). */
+export interface RequestProgressView {
+  scopeKey: string | null;
+  seerrUserId: number | null;
+  records: ReadonlyMap<number, RequestProgressRecord>;
+  /** Rows show "Last known status" (paused, reconnecting, revalidating). */
+  transportStale: boolean;
+  mode: ProgressMode;
+  proof: TransportProof;
+}
+
+export const emptyProgressView = (): RequestProgressView => ({
+  scopeKey: null,
+  seerrUserId: null,
+  records: new Map(),
+  transportStale: true,
+  mode: "off",
+  proof: "unknown",
+});
+
+export const requestProgressAtom = atom<RequestProgressView>(
+  emptyProgressView(),
+);
 
 /** Unread ready or partly ready requests, for the tab badge. */
 export const requestBadgeCountAtom = atom((get) => {

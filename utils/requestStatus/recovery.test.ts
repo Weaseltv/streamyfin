@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   canProbe,
+  canProve,
   canTriggerMismatch,
   canVerify,
   emptyRecovery,
@@ -9,6 +10,7 @@ import {
   markDenied,
   markExchange,
   markMismatchTriggered,
+  markProofDenied,
   markRateLimited,
   PROBE_INTERVAL_MS,
   retryAfterMs,
@@ -79,5 +81,15 @@ describe("rule 6: rationed recovery", () => {
     expect(retryAfterMs(new Date(T0 + 90_000).toUTCString(), T0)).toBe(90_000);
     expect(retryAfterMs("soon", T0)).toBe(0);
     expect(retryAfterMs(undefined, T0)).toBe(0);
+  });
+
+  test("a denied transport proof is not repeated for 15 minutes; a 429 pauses it too", () => {
+    let s = markProofDenied(emptyRecovery(), A, T0);
+    expect(canProve(s, A, T0 + MIN)).toBe(false);
+    expect(canProve(s, A, T0 + PROBE_INTERVAL_MS)).toBe(true);
+    // A denied proof does not by itself stop the axios session check.
+    expect(canVerify(s, A, T0 + MIN)).toBe(true);
+    s = markRateLimited(emptyRecovery(), A, T0, 0);
+    expect(canProve(s, A, T0 + MIN)).toBe(false);
   });
 });
