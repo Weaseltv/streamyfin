@@ -95,7 +95,10 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
   }
 
   return (
-    <View className='flex-1' {...props}>
+    // collapsable={false}: never flattened, so the band's zIndex stays inside
+    // this page. Flattened, the band landed beside the Android phone header
+    // (PhoneStackHeader) and its zIndex 100 drew it over the back button.
+    <View className='flex-1' collapsable={false} {...props}>
       <Animated.ScrollView
         style={{
           position: "relative",

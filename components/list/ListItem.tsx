@@ -205,8 +205,12 @@ const ListItemContent = ({
           // that are only useful in full, so wrap rather than truncate. The row
           // has a min height, not a fixed one, so it grows to fit.
           <View className='flex-1 items-end pl-3'>
+            {/* Not selectable on Android: a selectable TextView lays its text
+                out again when drawn, so a value that just fits the measured
+                width wraps and its second line is clipped ("1.39 · ba302af"
+                showed as "1.39 ·", parity round 2). */}
             <Text
-              selectable
+              selectable={Platform.OS !== "android"}
               variant='meta'
               style={{ fontSize: 13, textAlign: "right" }}
             >
