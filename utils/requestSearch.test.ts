@@ -74,6 +74,27 @@ describe("request search transport and pagination", () => {
     },
   );
 
+  it.each([
+    ["iron giant", "iron%20giant"],
+    ["Ocean's Eleven!", "Ocean%27s%20Eleven%21"],
+    ["Fast & Furious + 100%", "Fast%20%26%20Furious%20%2B%20100%25"],
+    ["(500) Days of Summer*", "%28500%29%20Days%20of%20Summer%2A"],
+  ])(
+    "percent-encodes every reserved character, as the request server requires: %s",
+    async (title, encoded) => {
+      const raw: string[] = [];
+      const client = server((request) => {
+        raw.push(request.url.slice(request.url.indexOf("?")));
+        return Response.json(page());
+      });
+      await fetchRequestSearchPage(client, { query: title, page: 1 });
+      expect(raw).toEqual([`?query=${encoded}&page=1`]);
+      // The server's rule: no reserved character may appear unencoded.
+      const value = raw[0].slice("?query=".length).split("&page=")[0];
+      expect(value).not.toMatch(/[:/?#[\]@!$&'()*+,;=]/);
+    },
+  );
+
   it("shows page one without requesting later pages, and keeps it during Load more", async () => {
     const received: number[] = [];
     const nextPage = Promise.withResolvers<void>();

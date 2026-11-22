@@ -15,7 +15,7 @@ import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
 interface Props extends TouchableOpacityProps {
   result?: MovieResult | TvResult | MovieDetails | TvDetails | PersonCreditCast;
   mediaTitle: string;
-  releaseYear: number;
+  releaseYear?: number;
   canRequest: boolean;
   posterSrc: string;
   mediaType: MediaType;
@@ -48,7 +48,8 @@ export const TouchableJellyseerrRouter: React.FC<PropsWithChildren<Props>> = ({
             params: {
               ...result,
               mediaTitle,
-              releaseYear,
+              // Left out when unknown, so the title page shows no year at all.
+              ...(releaseYear === undefined ? {} : { releaseYear }),
               canRequest: canRequest.toString(),
               posterSrc,
               mediaType,

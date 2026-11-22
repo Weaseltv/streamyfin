@@ -17,15 +17,41 @@ export interface RequestSearchResults {
 
 export const REQUEST_SEARCH_TIMEOUT_MS = 15_000;
 
+/**
+ * Percent-encodes a search value the way the request server requires. It refuses
+ * any reserved character that is not percent-encoded (400 "Parameter 'query' must
+ * be url encoded"): that includes the "+" axios writes for a space and the
+ * `! ' ( ) *` that encodeURIComponent leaves alone. Seerr's own web app encodes
+ * the same way.
+ */
+export function encodeRequestSearchValue(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+function serializeRequestSearchParams(params: Record<string, unknown>) {
+  return Object.entries(params)
+    .filter(([, value]) => value !== undefined)
+    .map(
+      ([key, value]) =>
+        `${encodeRequestSearchValue(key)}=${encodeRequestSearchValue(String(value))}`,
+    )
+    .join("&");
+}
+
 export async function fetchRequestSearchPage(
   client: AxiosInstance,
   params: RequestSearchParams,
   signal?: AbortSignal,
 ): Promise<RequestSearchResults> {
   const { data } = await client.get<RequestSearchResults>("/api/v1/search", {
-    // Axios encodes params. Treating a title as URLSearchParams changes the
-    // actual search text ("dragon" becomes "dragon=", spaces become "+").
+    // Treating a title as URLSearchParams changes the actual search text
+    // ("dragon" becomes "dragon="), and axios's own encoding writes spaces as
+    // "+", which the server refuses; so each value is percent-encoded here.
     params: { ...params, query: params.query.trim() },
+    paramsSerializer: { serialize: serializeRequestSearchParams },
     signal,
     timeout: REQUEST_SEARCH_TIMEOUT_MS,
   });
