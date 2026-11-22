@@ -11,6 +11,7 @@ import {
   requestQueueAtom,
 } from "@/utils/atoms/requestStatus";
 import { eventBus } from "@/utils/eventBus";
+import type { Text } from "@/utils/requestStatus/types";
 import { store } from "@/utils/store";
 
 /** The member's request queue state (written by `RequestStatusCoordinator`). */
@@ -18,11 +19,12 @@ export const useRequestQueue = () => useAtomValue(requestQueueAtom);
 
 /**
  * Phones (plan 5.3 rule 3): a request is sent only through this person's verified request session,
- * checked right before the POST. When blocked, says why ("Requests are reconnecting…" on the
- * pinned server, the sign-in-again line on another server) and returns false. Always true on TV.
+ * checked right before the POST. Returns why it is blocked ("Requests are reconnecting…" on the
+ * pinned server, the sign-in-again line on another server), or null when it may be sent. Always
+ * null on TV.
  */
-export function canSubmitRequest(): boolean {
-  if (Platform.isTV) return true;
+export function requestSubmissionBlock(): Text | null {
+  if (Platform.isTV) return null;
   const q = store.get(requestQueueAtom);
   const stored = store.get(jellyseerrUserAtom);
   if (
@@ -31,15 +33,21 @@ export function canSubmitRequest(): boolean {
     q.seerrUserId !== null &&
     q.seerrUserId === stored?.id
   ) {
-    return true;
+    return null;
   }
-  toast.error(
-    t(
+  return {
+    key:
       q.phase === "sign_in_again"
         ? "request_status.state.sign_in_again"
         : "request_status.submission.reconnecting",
-    ),
-  );
+  };
+}
+
+/** `requestSubmissionBlock` with the reason shown as a toast; false when blocked. */
+export function canSubmitRequest(): boolean {
+  const blocked = requestSubmissionBlock();
+  if (!blocked) return true;
+  toast.error(t(blocked.key, blocked.params));
   return false;
 }
 

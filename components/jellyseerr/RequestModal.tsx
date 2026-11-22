@@ -4,13 +4,16 @@ import type { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescrip
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
 import { Button } from "@/components/Button";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
-import { canSubmitRequest } from "@/hooks/useRequestStatus";
+import {
+  RequestSubmitError,
+  useSubmitOwnRequest,
+} from "@/hooks/useSubmitOwnRequest";
 import { useAccent } from "@/utils/atoms/pageAccent";
 import type {
   QualityProfile,
@@ -208,6 +211,8 @@ const RequestModal = forwardRef<
     ref,
   ) => {
     const { jellyseerrApi, jellyseerrUser, requestMedia } = useJellyseerr();
+    const { submit, submitting } = useSubmitOwnRequest();
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [requestOverrides, setRequestOverrides] = useState<MediaRequestBody>({
       mediaId: Number(id),
       mediaType: type,
@@ -448,12 +453,28 @@ const RequestModal = forwardRef<
 
       writeDebugLog("Sending Jellyseerr advanced request", body);
 
-      if (!canSubmitRequest()) return;
-      requestMedia(
-        seasonTitle ? `${title}, ${seasonTitle}` : title,
-        body,
-        onRequested,
-      );
+      if (Platform.isTV) {
+        requestMedia(
+          seasonTitle ? `${title}, ${seasonTitle}` : title,
+          body,
+          onRequested,
+        );
+        return;
+      }
+      // Phones (plan 5.8): on failure the sheet stays open with the choices kept and the TV's
+      // wording; nothing is resent automatically.
+      setSubmitError(null);
+      submit(body, { title })
+        .then((outcome) => {
+          if (outcome === "sent") onRequested?.();
+        })
+        .catch((e) => {
+          const text =
+            e instanceof RequestSubmitError
+              ? e.text
+              : { key: "request_status.submission.unconfirmed" };
+          setSubmitError(t(text.key, text.params));
+        });
     }, [
       requestBody,
       requestOverrides,
@@ -463,6 +484,11 @@ const RequestModal = forwardRef<
       isTv,
       selectedSeasons,
       seasonTitle,
+      submit,
+      onRequested,
+      title,
+      requestMedia,
+      t,
     ]);
 
     const toggleSeason = useCallback(
@@ -534,15 +560,30 @@ const RequestModal = forwardRef<
             <Button
               accent={sectionAccent("requests")}
               onPress={request}
-              disabled={isTv && selectedSeasons.length === 0}
+              disabled={(isTv && selectedSeasons.length === 0) || submitting}
               iconLeft={
                 <Feather name='inbox' size={18} color={NeonBoard.onAccent} />
               }
             >
-              {requestLabel}
+              {submitting
+                ? t("request_status.submission.submitting")
+                : requestLabel}
             </Button>
           }
         >
+          {submitError ? (
+            <Text
+              variant='caption'
+              accessibilityLiveRegion='polite'
+              style={{
+                color: NeonBoard.red,
+                paddingHorizontal: 16,
+                paddingBottom: 8,
+              }}
+            >
+              {submitError}
+            </Text>
+          ) : null}
           {isTv && seasonRows.length > 0 && (
             <View>
               {seasonRows.map((season) => {
