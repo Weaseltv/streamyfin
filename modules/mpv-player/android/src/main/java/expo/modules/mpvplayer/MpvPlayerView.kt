@@ -536,6 +536,28 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         command("setSubtitleAssOverride") { it.setSubtitleAssOverride(mode) }
     }
 
+    // MARK: - Sync offsets, volume boost, dialogue boost, mono
+
+    fun setSubtitleDelay(seconds: Double) {
+        command("setSubtitleDelay") { it.setSubtitleDelay(seconds) }
+    }
+
+    fun setAudioDelay(seconds: Double) {
+        command("setAudioDelay") { it.setAudioDelay(seconds) }
+    }
+
+    fun setVolumeBoost(percent: Int) {
+        command("setVolumeBoost") { it.setVolumeBoost(percent) }
+    }
+
+    fun setDialogueBoost(enabled: Boolean) {
+        command("setDialogueBoost") { it.setDialogueBoost(enabled) }
+    }
+
+    fun setMonoDownmix(enabled: Boolean) {
+        command("setMonoDownmix") { it.setMonoDownmix(enabled) }
+    }
+
     // MARK: - Audio Track Controls
 
     fun getAudioTracks(deliver: (List<Map<String, Any>>) -> Unit) {
