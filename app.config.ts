@@ -59,13 +59,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ]);
   }
 
-  // Only override googleServicesFile if env var is set, and only for phone builds: the
-  // WeaselPlex Firebase project is for tv.theweasel.weaselplex.phone (request notifications,
-  // plan 5.10). Android TV and tvOS builds (EXPO_TV=1) never get it; phone prebuilds run with
-  // EXPO_TV=0 or unset.
+  // Firebase (request notifications, plan 5.10): the committed google-services.json is the
+  // WeaselPlex project's app for tv.theweasel.weaselplex.phone, so every Android phone build path
+  // (the PR compile check, Build Apps, emulator and release builds) gets it; GOOGLE_SERVICES_JSON
+  // can point elsewhere. Android TV and tvOS builds (EXPO_TV=1) never get it; phone prebuilds run
+  // with EXPO_TV=0 or unset.
   const androidConfig: { googleServicesFile?: string } = {};
-  if (process.env.GOOGLE_SERVICES_JSON && process.env.EXPO_TV !== "1") {
-    androidConfig.googleServicesFile = process.env.GOOGLE_SERVICES_JSON;
+  if (process.env.EXPO_TV !== "1") {
+    androidConfig.googleServicesFile =
+      process.env.GOOGLE_SERVICES_JSON || "./google-services.json";
   }
 
   config.extra = { ...config.extra, build: buildMeta };

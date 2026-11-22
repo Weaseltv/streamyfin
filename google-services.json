@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "1039325086281",
-    "project_id": "streamyfin-4fec1",
-    "storage_bucket": "streamyfin-4fec1.firebasestorage.app"
+    "project_number": "661583830940",
+    "project_id": "weaselplex",
+    "storage_bucket": "weaselplex.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1039325086281:android:b270168004aa30c1e1f598",
+        "mobilesdk_app_id": "1:661583830940:android:f90bb404178f9437fd7259",
         "android_client_info": {
-          "package_name": "com.fredrikburmester.streamyfin"
+          "package_name": "tv.theweasel.weaselplex.phone"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyABKBTRL9dvGuZbx009YFLUAPurFIDovFQ"
+          "current_key": "AIzaSyC_6W5Puq0wQbUVQTCkniTVH6Bp1xfOx3w"
         }
       ],
       "services": {
