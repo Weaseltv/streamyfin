@@ -306,8 +306,9 @@ function ReadyCard({ bottom }: { bottom: number }) {
           ? "request_status.row.requested_show"
           : "request_status.row.requested_movie",
       ));
+  // Only the request server's configured widths are served (see ActivityRow).
   const poster = metadata?.posterPath
-    ? client?.imageProxy(metadata.posterPath, "w300_and_h450_face", 200)
+    ? client?.imageProxy(metadata.posterPath, "w300_and_h450_face", 256)
     : null;
 
   const onPrimary = () => {
