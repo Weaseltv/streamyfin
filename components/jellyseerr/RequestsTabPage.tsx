@@ -294,17 +294,19 @@ export function RequestsTabPage() {
         onScroll={onScroll}
         scrollEventThrottle={200}
         refreshControl={
-          !typing && queue.verified ? (
-            <RefreshControl
-              refreshing={refreshing}
-              tintColor={ACCENT}
-              colors={[ACCENT]}
-              onRefresh={() => {
-                setRefreshing(true);
-                wakeRequestSync();
-              }}
-            />
-          ) : undefined
+          // Always mounted: adding or removing it rebuilds the page around the
+          // search field, which then drops the keyboard. Off while typing.
+          <RefreshControl
+            refreshing={refreshing}
+            enabled={!typing && queue.verified}
+            tintColor={ACCENT}
+            colors={[ACCENT]}
+            onRefresh={() => {
+              if (typing || !queue.verified) return;
+              setRefreshing(true);
+              wakeRequestSync();
+            }}
+          />
         }
         contentContainerStyle={{
           paddingLeft: insets.left,

@@ -117,8 +117,10 @@ export const ActivityRow = memo(function ActivityRow({
   ]
     .filter(Boolean)
     .join(", ");
+  // The request server only resizes to its configured widths (256, 384, ...);
+  // any other width is refused with a 400 and the poster stays empty.
   const poster = metadata?.posterPath
-    ? client?.imageProxy(metadata.posterPath, "w300_and_h450_face", 200)
+    ? client?.imageProxy(metadata.posterPath, "w300_and_h450_face", 256)
     : null;
 
   return (
