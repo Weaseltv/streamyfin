@@ -1,0 +1,477 @@
+import NetInfo from "@react-native-community/netinfo";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
+import { type JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
+import { requestSilentReconnect } from "@/hooks/useWeaselSeerrAutoConnect";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { requestPolicyRunnerAtom } from "@/utils/atoms/requestPolicy";
+import {
+  emptyQueueState,
+  type RequestPhase,
+  requestAccessAtom,
+  requestQueueAtom,
+  requestQueueVisibleAtom,
+} from "@/utils/atoms/requestStatus";
+import { useSettings } from "@/utils/atoms/settings";
+import { eventBus } from "@/utils/eventBus";
+import { writeErrorLog, writeInfoLog } from "@/utils/log";
+import { storage } from "@/utils/mmkv";
+import { seerrExchanges } from "@/utils/requestStatus/exchangeQueue";
+import {
+  journalsEqual,
+  markOpened,
+  readJournal,
+  trackEvents,
+  writeJournal,
+} from "@/utils/requestStatus/journal";
+import {
+  getRecovery,
+  readBinding,
+  takeExchangeIdentity,
+  updateRecovery,
+} from "@/utils/requestStatus/native/runtime";
+import {
+  canProbe,
+  canTriggerMismatch,
+  canVerify,
+  markCheck,
+  markDenied,
+  markMismatchTriggered,
+  markRateLimited,
+  retryAfterMs,
+} from "@/utils/requestStatus/recovery";
+import { nextFailures, syncDelayMs } from "@/utils/requestStatus/scheduler";
+import {
+  accountKey,
+  decideIdentity,
+  type IdentityDecision,
+  isPinnedOrigin,
+  journalKey,
+} from "@/utils/requestStatus/session";
+import {
+  httpStatus,
+  type RequestReadApi,
+  syncOwnRequests,
+} from "@/utils/requestStatus/sync";
+import type { OwnRequest } from "@/utils/requestStatus/types";
+import { store } from "@/utils/store";
+
+/** Wake the request sync now (the queue opened, a submit or cancel finished, pull to refresh). */
+export const WAKE_REQUEST_SYNC = "requestStatusWake";
+
+const readApi = (client: JellyseerrApi): RequestReadApi => ({
+  listOwn: (p) =>
+    client.ownRequests(p) as unknown as ReturnType<RequestReadApi["listOwn"]>,
+  detail: (id) => client.getRequest(id) as unknown as Promise<OwnRequest>,
+});
+
+const headerOf = (error: unknown, name: string): string | undefined => {
+  const h = (error as { response?: { headers?: Record<string, unknown> } })
+    ?.response?.headers?.[name];
+  return typeof h === "string" ? h : undefined;
+};
+
+/**
+ * Phones: owns the member's request queue (plan 5.1, 5.3, 5.5). One scope at a time, built from the
+ * media-server user, the request server, its Seerr user, the request client and a generation.
+ * Before anything personal is read, the scope checks whose session it is (rule 3); then it reads
+ * the member's own requests at launch, on return to the foreground, when the queue opens, after a
+ * submit or cancel, and every minute. Rendered in the phone tabs layout; renders nothing.
+ */
+export function RequestStatusCoordinator() {
+  const api = useAtomValue(apiAtom);
+  const user = useAtomValue(userAtom);
+  const access = useAtomValue(requestAccessAtom);
+  const policyRunner = useAtomValue(requestPolicyRunnerAtom);
+  const { settings } = useSettings();
+  const { jellyseerrApi: client, jellyseerrUser } = useJellyseerr();
+  const queueVisible = useAtomValue(requestQueueVisibleAtom);
+  const setQueue = useSetAtom(requestQueueAtom);
+  const [epoch, setEpoch] = useState(0);
+  const generation = useRef(0);
+
+  const url = settings?.jellyseerrServerUrl ?? "";
+  const pinned = isPinnedOrigin(url);
+  const account = accountKey(user?.Id, url);
+  const seerrUserId =
+    typeof jellyseerrUser?.id === "number" ? jellyseerrUser.id : null;
+
+  // A different person or request server: nothing of the previous one stays on screen.
+  useEffect(() => {
+    setQueue((q) =>
+      q.accountKey === account
+        ? q
+        : { ...emptyQueueState(), accountKey: account },
+    );
+  }, [account, setQueue]);
+
+  // A request sign-in is starting: stop request work first (plan 5.3 rule 1).
+  useEffect(
+    () =>
+      seerrExchanges.onStart(() => {
+        generation.current++;
+        setEpoch((e) => e + 1);
+      }),
+    [],
+  );
+
+  // No scope can be built: say why, keeping the same person's verified rows (rule 7).
+  useEffect(() => {
+    let phase: RequestPhase | null = null;
+    if (!user?.Id || !api?.accessToken) phase = "idle";
+    else if (!access)
+      phase = policyRunner.status === "confirmed" ? "idle" : "policy";
+    else if (!client || seerrUserId === null)
+      phase = pinned ? "connect" : "sign_in_again";
+    if (phase === null) return;
+    generation.current++;
+    const next = phase;
+    setQueue((q) => {
+      if (next === "idle" || next === "policy") {
+        // No access (or no confirmed policy): nothing personal stays visible.
+        return { ...emptyQueueState(), accountKey: q.accountKey, phase: next };
+      }
+      if (q.verified && q.accountKey === account)
+        return { ...q, phase: "reconnecting", loading: false };
+      return { ...q, phase: next, loading: false };
+    });
+  }, [
+    user?.Id,
+    api?.accessToken,
+    access,
+    policyRunner.status,
+    client,
+    seerrUserId,
+    pinned,
+    account,
+    setQueue,
+  ]);
+
+  // The queue on screen: unread is cleared (plan 5.9).
+  useEffect(() => {
+    if (!queueVisible) return;
+    setQueue((q) => {
+      if (!q.verified || !q.scopeKey || q.journal.unread.length === 0) return q;
+      const journal = markOpened(q.journal);
+      writeJournal(storage, q.scopeKey, journal);
+      return { ...q, journal };
+    });
+  }, [queueVisible, setQueue]);
+
+  // The scope: verify, then read the queue on a schedule.
+  useEffect(() => {
+    if (!access || !client || seerrUserId === null || !account || !user?.Id)
+      return;
+    const gen = ++generation.current;
+    const viewerId = user.Id;
+    const scopeKey = journalKey(url, seerrUserId);
+    const isCurrent = () =>
+      generation.current === gen &&
+      store.get(userAtom)?.Id === viewerId &&
+      store.get(requestAccessAtom);
+
+    let wakeResolve: (() => void) | null = null;
+    const wake = () => {
+      wakeResolve?.();
+      wakeResolve = null;
+    };
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, ms);
+        wakeResolve = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+      });
+    let appActive = AppState.currentState === "active";
+    let online = true;
+    const offWake = eventBus.on(WAKE_REQUEST_SYNC, wake);
+    const appSub = AppState.addEventListener("change", (s) => {
+      const active = s === "active";
+      if (active && !appActive) wake();
+      appActive = active;
+    });
+    const offNet = NetInfo.addEventListener((s) => {
+      const now = !!s.isConnected;
+      if (now && !online) wake();
+      online = now;
+    });
+
+    const setPhase = (phase: RequestPhase) =>
+      setQueue((q) => (isCurrent() ? { ...q, phase } : q));
+
+    /**
+     * Rule 3: whose session is this? "retry" when it could not be checked now (throttled, 429,
+     * unreachable); "stop" when the session was refused (a reconnect or a new sign-in starts a
+     * new scope), so nothing re-checks a refused session on its own.
+     */
+    let refused = false;
+    const verify = async (): Promise<IdentityDecision | "retry" | "stop"> => {
+      const now = Date.now();
+      const reused = takeExchangeIdentity(account, seerrUserId);
+      const me = reused
+        ? { id: reused.seerrUserId, jellyfinUserId: reused.jellyfinUserId }
+        : await (async () => {
+            if (!canVerify(getRecovery(), account, now)) {
+              setPhase("reconnecting");
+              return undefined;
+            }
+            updateRecovery((s) => markCheck(s, account, now));
+            try {
+              return await client.authMe();
+            } catch (error) {
+              if (!isCurrent()) return undefined;
+              const status = httpStatus(error);
+              if (status === 401 || status === 403) {
+                // The denied check is the recovery probe: no separate probe follows it.
+                refused = true;
+                updateRecovery((s) => markDenied(s, account, Date.now()));
+                if (pinned) {
+                  setPhase("reconnecting");
+                  requestSilentReconnect();
+                } else {
+                  setPhase("sign_in_again");
+                }
+              } else if (status === 429) {
+                updateRecovery((s) =>
+                  markRateLimited(
+                    s,
+                    account,
+                    Date.now(),
+                    retryAfterMs(headerOf(error, "retry-after"), Date.now()),
+                  ),
+                );
+                setPhase("reconnecting");
+              } else {
+                setPhase("reconnecting");
+              }
+              return undefined;
+            }
+          })();
+      if (!isCurrent()) return "stop";
+      if (!me) return refused ? "stop" : "retry";
+      return decideIdentity({
+        url,
+        jellyfinUserId: viewerId,
+        storedSeerrUserId: seerrUserId,
+        me: { id: me.id, jellyfinUserId: me.jellyfinUserId },
+        binding: readBinding(),
+      });
+    };
+
+    /** Rule 6: one probe per 15 minutes per account after a 401/403 on a request read. */
+    const probe = async () => {
+      const now = Date.now();
+      if (!canProbe(getRecovery(), account, now)) return;
+      updateRecovery((s) => markCheck(s, account, now));
+      try {
+        const me = await client.authMe();
+        if (!isCurrent()) return;
+        if (me?.id !== seerrUserId) {
+          // Another identity: this scope ends.
+          generation.current++;
+          setQueue((q) => ({
+            ...q,
+            phase: pinned ? "reconnecting" : "sign_in_again",
+            loading: false,
+          }));
+          if (pinned) requestSilentReconnect();
+        }
+      } catch (error) {
+        if (!isCurrent()) return;
+        const status = httpStatus(error);
+        if (status === 401 || status === 403) {
+          updateRecovery((s) => markDenied(s, account, Date.now()));
+          generation.current++;
+          setQueue((q) => ({
+            ...q,
+            phase: pinned ? "reconnecting" : "sign_in_again",
+            loading: false,
+          }));
+          if (pinned) requestSilentReconnect();
+        } else if (status === 429) {
+          updateRecovery((s) =>
+            markRateLimited(
+              s,
+              account,
+              Date.now(),
+              retryAfterMs(headerOf(error, "retry-after"), Date.now()),
+            ),
+          );
+        }
+      }
+    };
+
+    const run = async () => {
+      await seerrExchanges.idle();
+      if (!isCurrent()) return;
+      setQueue((q) => ({
+        ...q,
+        accountKey: account,
+        phase:
+          q.verified && q.accountKey === account ? "reconnecting" : "verifying",
+      }));
+
+      let decision: IdentityDecision | null = null;
+      while (isCurrent()) {
+        const answer = await verify();
+        if (answer === "stop") return;
+        if (answer !== "retry") {
+          decision = answer;
+          break;
+        }
+        await sleep(syncDelayMs(1));
+      }
+      if (!decision || !isCurrent()) return;
+      if (decision.kind === "mismatch") {
+        if (pinned) {
+          if (canTriggerMismatch(getRecovery(), viewerId)) {
+            updateRecovery((s) => markMismatchTriggered(s, viewerId));
+            setPhase("reconnecting");
+            requestSilentReconnect();
+          } else {
+            writeInfoLog(
+              "Request session still belongs to another account after reconnecting",
+            );
+            setQueue((q) =>
+              isCurrent()
+                ? {
+                    ...emptyQueueState(),
+                    accountKey: account,
+                    phase: "unavailable",
+                  }
+                : q,
+            );
+          }
+        } else {
+          setQueue((q) =>
+            isCurrent()
+              ? {
+                  ...emptyQueueState(),
+                  accountKey: account,
+                  phase: "sign_in_again",
+                }
+              : q,
+          );
+        }
+        return;
+      }
+
+      // Verified: this person's rows from here on.
+      let journal = readJournal(storage, scopeKey);
+      let missing = new Map<number, number>();
+      let failures = 0;
+      setQueue((q) => {
+        if (!isCurrent()) return q;
+        const sameScope = q.scopeKey === scopeKey && q.verified;
+        return {
+          ...(sameScope ? q : emptyQueueState()),
+          accountKey: account,
+          scopeKey,
+          seerrUserId,
+          verified: true,
+          pinned: decision?.kind === "pinned",
+          journal,
+          phase: "ready",
+        };
+      });
+
+      while (isCurrent()) {
+        if (!appActive || !online) {
+          await sleep(60_000);
+          continue;
+        }
+        setQueue((q) => (isCurrent() ? { ...q, loading: true } : q));
+        const previous = store.get(requestQueueAtom);
+        try {
+          const result = await syncOwnRequests(readApi(client), {
+            seerrUserId,
+            previous: previous.items,
+            trackedIds: [
+              ...journal.baselined,
+              ...journal.pending.map((e) => e.requestId),
+            ],
+            downloadObserved: new Set(journal.downloadObserved),
+            missing,
+            isCurrent,
+          });
+          if (result.kind === "superseded" || !isCurrent()) return;
+          missing = result.missing;
+          // Fold in journal changes made meanwhile (the queue was seen) before folding the read.
+          const latest = store.get(requestQueueAtom);
+          if (latest.scopeKey === scopeKey && latest.verified)
+            journal = latest.journal;
+          const next = trackEvents(
+            journal,
+            result.items,
+            scopeKey,
+            result.confirmedGone,
+            store.get(requestQueueVisibleAtom),
+          );
+          if (!journalsEqual(next, journal))
+            writeJournal(storage, scopeKey, next);
+          journal = next;
+          const now = Date.now();
+          setQueue((q) =>
+            isCurrent()
+              ? {
+                  ...q,
+                  items: result.items,
+                  journal,
+                  loading: false,
+                  lastUpdated: now,
+                  lastSyncSettledAt: now,
+                  syncComplete: result.syncComplete,
+                  error: result.error,
+                  phase: "ready",
+                }
+              : q,
+          );
+          failures = nextFailures(failures, true);
+        } catch (error) {
+          if (!isCurrent()) return;
+          failures = nextFailures(failures, false);
+          const status = httpStatus(error);
+          writeErrorLog("Request status sync paused", `${status ?? "network"}`);
+          setQueue((q) =>
+            isCurrent()
+              ? {
+                  ...q,
+                  loading: false,
+                  error: "unavailable",
+                  syncComplete: false,
+                  lastSyncSettledAt: Date.now(),
+                }
+              : q,
+          );
+          if (status === 401 || status === 403) await probe();
+        }
+        await sleep(syncDelayMs(failures));
+      }
+    };
+
+    run().catch((e) =>
+      writeErrorLog("Request status coordinator stopped", `${e}`),
+    );
+    return () => {
+      generation.current++;
+      offWake();
+      appSub.remove();
+      offNet();
+      wake();
+    };
+  }, [
+    access,
+    client,
+    seerrUserId,
+    account,
+    user?.Id,
+    url,
+    pinned,
+    epoch,
+    setQueue,
+  ]);
+
+  return null;
+}

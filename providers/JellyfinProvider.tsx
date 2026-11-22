@@ -26,6 +26,11 @@ import { JELLYFIN_CLIENT_NAME } from "@/constants/Client";
 import useRouter from "@/hooks/useAppRouter";
 import { useInterval } from "@/hooks/useInterval";
 import { JellyseerrApi, useJellyseerr } from "@/hooks/useJellyseerr";
+import {
+  confirmRequestPolicy,
+  registerPolicyRefresh,
+  requestPolicyAtom,
+} from "@/utils/atoms/requestPolicy";
 import { useSettingsActions } from "@/utils/atoms/settings";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
@@ -33,6 +38,10 @@ import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
 import { subtitleModeFromProfile } from "@/utils/jellyfin/userConfiguration";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import { seerrExchanges } from "@/utils/requestStatus/exchangeQueue";
+import { passwordSignIn } from "@/utils/requestStatus/native/signIn";
+import { policySessionKey } from "@/utils/requestStatus/policy";
+import { isConfirmedAdult } from "@/utils/requestStatus/visibility";
 import {
   type AccountSecurityType,
   addAccountToServer,
@@ -225,6 +234,10 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
     clearTVDiscoverySafely();
     setUser(null);
     setApi(null);
+    // Request access ends with the session; a running request sign-in is
+    // abandoned so its answer is never saved for the next person.
+    store.set(requestPolicyAtom, null);
+    seerrExchanges.cancel();
     setPluginSettings(undefined);
     queryClient.clear();
 
@@ -327,6 +340,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           setApi(
             createApiWithCustomHeaders(jellyfin, api.basePath, AccessToken),
           );
+          confirmRequestPolicy(api.basePath, AccessToken, User);
           storage.set("token", AccessToken);
           storage.set("user", JSON.stringify(User));
           return true;
@@ -470,6 +484,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
               auth.data?.AccessToken,
             ),
           );
+          confirmRequestPolicy(
+            api.basePath,
+            auth.data.AccessToken,
+            auth.data.User,
+          );
           storage.set("token", auth.data?.AccessToken);
 
           // Save credentials to secure storage if requested
@@ -502,9 +521,32 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           }
 
           const recentPluginSettings = await refreshStreamyfinPluginSettings();
-          if (recentPluginSettings?.jellyseerrServerUrl?.value) {
+          const pluginSeerrUrl =
+            recentPluginSettings?.jellyseerrServerUrl?.value;
+          if (pluginSeerrUrl && !Platform.isTV) {
+            // Phones (plan 5.3 rules 1 and 8): never for a kid profile, checked
+            // against this login's user; one sign-in at a time; saved only if
+            // the same person is still signed in when it answers.
+            if (isConfirmedAdult(auth.data.User.Id, auth.data.User)) {
+              passwordSignIn({
+                url: pluginSeerrUrl,
+                username,
+                password,
+                testFirst: true,
+                viewer: {
+                  basePath: api.basePath,
+                  accessToken: auth.data.AccessToken,
+                  jellyfinUserId: auth.data.User.Id ?? null,
+                },
+              }).catch((e) =>
+                writeErrorLog(
+                  `Request server sign-in at login failed: ${e?.message ?? e}`,
+                ),
+              );
+            }
+          } else if (pluginSeerrUrl) {
             const jellyseerrApi = new JellyseerrApi(
-              recentPluginSettings.jellyseerrServerUrl.value,
+              pluginSeerrUrl,
               getIntegrationHeaders("jellyseerr"),
             );
             await jellyseerrApi.test().then((result) => {
@@ -605,6 +647,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
         // Token is valid, update state
         setApi(apiInstance);
         setUser(response.data);
+        confirmRequestPolicy(
+          apiInstance.basePath,
+          credential.token,
+          response.data,
+        );
         storage.set("serverUrl", serverUrl);
         storage.set("token", credential.token);
         storage.set("user", JSON.stringify(response.data));
@@ -688,12 +735,16 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
 
         setUser(auth.data.User);
         storage.set("user", JSON.stringify(auth.data.User));
-        setApi(
-          createApiWithCustomHeaders(
-            jellyfin,
-            serverUrl,
-            auth.data.AccessToken,
-          ),
+        const signedInApi = createApiWithCustomHeaders(
+          jellyfin,
+          serverUrl,
+          auth.data.AccessToken,
+        );
+        setApi(signedInApi);
+        confirmRequestPolicy(
+          signedInApi?.basePath ?? serverUrl,
+          auth.data.AccessToken,
+          auth.data.User,
         );
         storage.set("serverUrl", serverUrl);
         storage.set("token", auth.data.AccessToken);
@@ -794,8 +845,14 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           // offline this call hangs for the full OS TCP timeout (75-120s) and
           // blocks splash dismissal. The cached storedUser (set above) is enough
           // to render; on success we just refresh it.
-          getUserApi(apiInstance)
-            .getCurrentUser()
+          const userRefresh = getUserApi(apiInstance).getCurrentUser();
+          // The request access check (plan 5.3 rule 8) waits for this same
+          // answer instead of asking again.
+          registerPolicyRefresh(
+            policySessionKey(apiInstance.basePath, token, storedUser?.Id),
+            userRefresh.then((r) => r.data),
+          );
+          userRefresh
             .then(async (response) => {
               // The response can resolve long after startup (no axios timeout).
               // If the session changed meanwhile (logout, account switch), drop
@@ -806,6 +863,10 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
               )
                 return;
               setUser(response.data);
+              // The confirmed policy decides request access, and is saved as
+              // the next start's hint for the Requests tab (plan 5.3 rule 8).
+              storage.set("user", JSON.stringify(response.data));
+              confirmRequestPolicy(apiInstance.basePath, token, response.data);
 
               // Migrate current session to secure storage if not already saved
               if (storedUser?.Id && storedUser?.Name) {
