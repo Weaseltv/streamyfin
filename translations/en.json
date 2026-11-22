@@ -1283,6 +1283,15 @@
       "confirmation": "We'll let you know when it's ready to watch.",
       "movie": "Movie",
       "tv_series": "TV series"
+    },
+    "cancel": {
+      "confirm": "Cancel request",
+      "keep": "Keep",
+      "line": "Downloads stop and it leaves your requests.",
+      "failed": "Couldn't cancel this request. Please try again.",
+      "already_finished": "This request can no longer be cancelled. Its status will update in a moment.",
+      "in_progress": "This request is already being cancelled.",
+      "not_supported": "4K requests can't be cancelled here."
     }
   }
 }
