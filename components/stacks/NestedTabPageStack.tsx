@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import type { ComponentProps } from "react";
 import { Platform } from "react-native";
 import { NeonHeader } from "@/components/common/NeonHeader";
+import { PhoneStackHeader } from "@/components/stacks/PhoneStackHeader";
 import { NeonBoard } from "@/constants/Colors";
 import { FontFace } from "@/constants/neon";
 
@@ -22,8 +23,15 @@ export const stackScreenOptions: ICommonScreenOptions = {
   // drifting sideways for another 0.45 s, which reads as a slow page. iPhone
   // keeps its native slide. Screens that set their own animation, the player
   // and the modals are unaffected.
+  //
+  // Android phones also draw the iPhone's header (centred title, round back
+  // button, actions in a pill) instead of the native toolbar; see
+  // PhoneStackHeader. Screens with their own `header` keep it.
   ...(Platform.OS === "android" && !Platform.isTV
-    ? { animation: "fade" as const }
+    ? {
+        animation: "fade" as const,
+        header: (props) => <PhoneStackHeader {...props} />,
+      }
     : {}),
   headerTintColor: NeonBoard.text,
   headerBackButtonDisplayMode: "minimal",
