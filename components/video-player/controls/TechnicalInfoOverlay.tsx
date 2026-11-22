@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useScaledTVTypography } from "@/constants/TVTypography";
 import { useControlsSafeAreaInsets } from "@/hooks/useControlsSafeAreaInsets";
 import type { TechnicalInfo } from "@/modules/mpv-player";
+import { isAndroidPhone } from "./android/layout";
 import { HEADER_LAYOUT } from "./constants";
 
 type PlayMethod = "DirectPlay" | "DirectStream" | "Transcode";
@@ -301,10 +302,13 @@ export const TechnicalInfoOverlay: FC<TechnicalInfoOverlayProps> = memo(
           top: Math.max(insets.top, 48) + 20,
           left: Math.max(insets.left, 48) + 20,
         }
-      : {
-          top: safeInsets.top + HEADER_LAYOUT.CONTAINER_PADDING + 4,
-          left: safeInsets.left + HEADER_LAYOUT.CONTAINER_PADDING + 20,
-        };
+      : isAndroidPhone
+        ? // The iPhone player's spot, clear of its top bar.
+          { top: safeInsets.top + 56, left: safeInsets.left + 24 }
+        : {
+            top: safeInsets.top + HEADER_LAYOUT.CONTAINER_PADDING + 4,
+            left: safeInsets.left + HEADER_LAYOUT.CONTAINER_PADDING + 20,
+          };
 
     const textStyle = Platform.isTV
       ? [
