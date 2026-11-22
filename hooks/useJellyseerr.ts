@@ -715,8 +715,8 @@ export const useJellyseerr = () => {
 
   const getYear = (
     item?: TvResult | TvDetails | MovieResult | MovieDetails | PersonCreditCast,
-  ) => {
-    return new Date(
+  ): number | undefined => {
+    const year = new Date(
       (isJellyseerrMovieOrTvResult(item)
         ? item.mediaType === MediaType.MOVIE
           ? item?.releaseDate
@@ -724,7 +724,10 @@ export const useJellyseerr = () => {
         : item?.mediaInfo?.mediaType === MediaType.MOVIE
           ? (item as MovieDetails)?.releaseDate
           : (item as TvDetails)?.firstAirDate) || "",
-    )?.getFullYear?.();
+    ).getFullYear();
+    // No release date yet (or an unreadable one): no year, rather than NaN,
+    // which the title page used to show as "NaN".
+    return Number.isNaN(year) ? undefined : year;
   };
 
   const getMediaType = (
