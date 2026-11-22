@@ -1282,7 +1282,17 @@
       "request_sent": "Request sent",
       "confirmation": "We'll let you know when it's ready to watch.",
       "movie": "Movie",
-      "tv_series": "TV series"
+      "tv_series": "TV series",
+      "request_updates": "Request updates",
+      "n_ready": "{{count}} requests ready",
+      "n_updates": "{{count}} request updates",
+      "updates_instruction": "Your requests have updates.",
+      "ready_instruction": "Your request is ready.",
+      "partial_instruction": "Some episodes are ready.",
+      "update_instruction": "Your request has an update.",
+      "view_requests": "View requests",
+      "details": "Details",
+      "dismiss": "DISMISS"
     },
     "cancel": {
       "confirm": "Cancel request",
@@ -1292,6 +1302,11 @@
       "already_finished": "This request can no longer be cancelled. Its status will update in a moment.",
       "in_progress": "This request is already being cancelled.",
       "not_supported": "4K requests can't be cancelled here."
+    },
+    "settings": {
+      "group": "Requests",
+      "notifications": "Request notifications",
+      "notifications_subtitle": "Show request updates while browsing and as phone notifications."
     }
   }
 }
