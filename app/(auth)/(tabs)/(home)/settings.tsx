@@ -16,6 +16,7 @@ import useRouter from "@/hooks/useAppRouter";
 import { useRequestUpdatesSetting } from "@/hooks/useRequestStatus";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSetPageAccent } from "@/utils/atoms/pageAccent";
+import { notificationPermissionAtom } from "@/utils/atoms/requestPush";
 import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
 import { serverHost } from "@/utils/serverHost";
 
@@ -31,6 +32,7 @@ function SettingsMobile() {
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
   const requestsVisible = useAtomValue(requestsTabVisibleAtom);
+  const permission = useAtomValue(notificationPermissionAtom);
   const [updatesEnabled, setUpdatesEnabled] = useRequestUpdatesSetting();
 
   useSetPageAccent(ACCENT);
@@ -103,6 +105,12 @@ function SettingsMobile() {
                 onValueChange={setUpdatesEnabled}
               />
             </ListItem>
+            {updatesEnabled && permission === false ? (
+              <ListItem
+                title={t("request_status.settings.permission_off")}
+                subtitleColor='red'
+              />
+            ) : null}
           </ListGroup>
         )}
 

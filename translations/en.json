@@ -1306,7 +1306,8 @@
     "settings": {
       "group": "Requests",
       "notifications": "Request notifications",
-      "notifications_subtitle": "Show request updates while browsing and as phone notifications."
+      "notifications_subtitle": "Show request updates while browsing and as phone notifications.",
+      "permission_off": "Notifications are off for WeaselPlex in your phone's settings."
     }
   }
 }
