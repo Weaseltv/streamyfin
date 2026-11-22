@@ -17,9 +17,36 @@ export interface SwipeGestureOptions {
   onTap?: () => void;
   onLongPressStart?: () => void;
   onLongPressEnd?: () => void;
+  /**
+   * Double tap on the left / right half. When set, a single tap waits out
+   * the double-tap window before it fires `onTap` (the iPhone composes the
+   * double tap exclusively before the single tap the same way).
+   */
+  onDoubleTap?: (side: "left" | "right") => void;
+  /** Two-finger pinch: `scale` is the finger spread relative to its start. */
+  onPinchStart?: () => void;
+  onPinchChange?: (scale: number) => void;
+  onPinchEnd?: () => void;
+  /**
+   * Taps in the top and bottom 15 % are ignored by default, like swipes.
+   * Pass false to let them through (drags and swipes stay blocked there).
+   */
+  edgeZonesBlockTaps?: boolean;
   screenWidth?: number;
   screenHeight?: number;
 }
+
+/** UIKit's double-tap interval is about 0.3 s. */
+const DOUBLE_TAP_WINDOW_MS = 300;
+
+type TouchPoint = { pageX: number; pageY: number };
+
+const spread = (touches: ArrayLike<TouchPoint> | undefined): number => {
+  if (!touches || touches.length < 2) return 0;
+  const a = touches[0];
+  const b = touches[1];
+  return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY);
+};
 
 export const useGestureDetection = ({
   minDistance = 50,
@@ -33,6 +60,11 @@ export const useGestureDetection = ({
   onTap,
   onLongPressStart,
   onLongPressEnd,
+  onDoubleTap,
+  onPinchStart,
+  onPinchChange,
+  onPinchEnd,
+  edgeZonesBlockTaps = true,
   screenWidth = 400,
   screenHeight = 800,
 }: SwipeGestureOptions = {}) => {
@@ -46,6 +78,14 @@ export const useGestureDetection = ({
   const shouldIgnoreTouch = useRef(false);
   const longPressTimeout = useRef<number | null>(null);
   const isLongPressing = useRef(false);
+  // Touch began in a top/bottom edge zone: only a tap may come of it.
+  const tapOnly = useRef(false);
+  // Pinch: active from the second finger until every finger has lifted.
+  const isPinching = useRef(false);
+  const pinchStartSpread = useRef(0);
+  // Deferred single tap while the double-tap window is open.
+  const pendingTapTimeout = useRef<number | null>(null);
+  const lastTapTime = useRef(0);
 
   const cancelLongPressTimer = useCallback(() => {
     if (longPressTimeout.current !== null) {
@@ -54,11 +94,86 @@ export const useGestureDetection = ({
     }
   }, []);
 
+  const cancelPendingTap = useCallback(() => {
+    if (pendingTapTimeout.current !== null) {
+      clearTimeout(pendingTapTimeout.current);
+      pendingTapTimeout.current = null;
+    }
+  }, []);
+
   // Clear any pending timer on unmount
   useEffect(() => cancelLongPressTimer, [cancelLongPressTimer]);
+  useEffect(() => cancelPendingTap, [cancelPendingTap]);
+
+  // A tap: immediate without double tap, otherwise the second tap inside
+  // the window seeks and a lone tap fires once the window closes.
+  const registerTap = useCallback(
+    (pageX: number) => {
+      if (!onDoubleTap) {
+        onTap?.();
+        return;
+      }
+      const now = Date.now();
+      if (
+        pendingTapTimeout.current !== null &&
+        now - lastTapTime.current <= DOUBLE_TAP_WINDOW_MS
+      ) {
+        cancelPendingTap();
+        lastTapTime.current = 0;
+        onDoubleTap(pageX < screenWidth / 2 ? "left" : "right");
+        return;
+      }
+      lastTapTime.current = now;
+      cancelPendingTap();
+      pendingTapTimeout.current = setTimeout(() => {
+        pendingTapTimeout.current = null;
+        onTap?.();
+      }, DOUBLE_TAP_WINDOW_MS) as unknown as number;
+    },
+    [onDoubleTap, onTap, cancelPendingTap, screenWidth],
+  );
+
+  const beginPinch = useCallback(
+    (touches: ArrayLike<TouchPoint>) => {
+      isPinching.current = true;
+      pinchStartSpread.current = spread(touches);
+      cancelLongPressTimer();
+      cancelPendingTap();
+      // The second finger usually lands after the first already moved:
+      // abandon whatever that movement started.
+      if (isDragging.current && dragSide.current) {
+        onVerticalDragEnd?.(dragSide.current);
+      }
+      if (isLongPressing.current) {
+        isLongPressing.current = false;
+        onLongPressEnd?.();
+      }
+      isDragging.current = false;
+      dragSide.current = null;
+      hasMovedEnough.current = true;
+      gestureType.current = "none";
+      onPinchStart?.();
+    },
+    [
+      cancelLongPressTimer,
+      cancelPendingTap,
+      onVerticalDragEnd,
+      onLongPressEnd,
+      onPinchStart,
+    ],
+  );
 
   const handleTouchStart = useCallback(
     (event: GestureResponderEvent) => {
+      const touches = event.nativeEvent.touches as
+        | ArrayLike<TouchPoint>
+        | undefined;
+      if (onPinchChange && touches && touches.length >= 2) {
+        if (!isPinching.current) beginPinch(touches);
+        return;
+      }
+      if (isPinching.current) return;
+
       // A held long press owns the gesture, so ignore extra touches
       if (isLongPressing.current) {
         return;
@@ -71,12 +186,15 @@ export const useGestureDetection = ({
       const bottomExclusionZone = screenHeight * 0.85;
 
       // Check if touch started in exclusion zones
-      if (startY < topExclusionZone || startY > bottomExclusionZone) {
+      const inEdgeZone =
+        startY < topExclusionZone || startY > bottomExclusionZone;
+      if (inEdgeZone && edgeZonesBlockTaps) {
         shouldIgnoreTouch.current = true;
         return;
       }
 
       shouldIgnoreTouch.current = false;
+      tapOnly.current = inEdgeZone;
       touchStartTime.current = Date.now();
       touchStartPosition.current = {
         x: event.nativeEvent.pageX,
@@ -93,7 +211,7 @@ export const useGestureDetection = ({
 
       cancelLongPressTimer();
       isLongPressing.current = false;
-      if (onLongPressStart) {
+      if (onLongPressStart && !inEdgeZone) {
         longPressTimeout.current = setTimeout(() => {
           longPressTimeout.current = null;
           isLongPressing.current = true;
@@ -101,11 +219,34 @@ export const useGestureDetection = ({
         }, longPressDuration) as unknown as number;
       }
     },
-    [screenHeight, cancelLongPressTimer, longPressDuration, onLongPressStart],
+    [
+      screenHeight,
+      cancelLongPressTimer,
+      longPressDuration,
+      onLongPressStart,
+      onPinchChange,
+      beginPinch,
+      edgeZonesBlockTaps,
+    ],
   );
 
   const handleTouchMove = useCallback(
     (event: GestureResponderEvent) => {
+      const touches = event.nativeEvent.touches as
+        | ArrayLike<TouchPoint>
+        | undefined;
+      if (onPinchChange && touches && touches.length >= 2) {
+        if (!isPinching.current) {
+          beginPinch(touches);
+          return;
+        }
+        if (pinchStartSpread.current > 0) {
+          onPinchChange(spread(touches) / pinchStartSpread.current);
+        }
+        return;
+      }
+      if (isPinching.current) return;
+
       // Ignore touch if it started in exclusion zone
       if (shouldIgnoreTouch.current) {
         return;
@@ -132,6 +273,11 @@ export const useGestureDetection = ({
         hasMovedEnough.current = true;
         // Movement means this is a swipe or drag, not a long press
         cancelLongPressTimer();
+        // Edge zones never start drags or swipes.
+        if (tapOnly.current) {
+          lastTouchPosition.current = currentPosition;
+          return;
+        }
 
         // Determine gesture type based on initial movement direction
         if (absY > absX && absY > 5) {
@@ -169,11 +315,24 @@ export const useGestureDetection = ({
       onVerticalDragMove,
       screenWidth,
       cancelLongPressTimer,
+      onPinchChange,
+      beginPinch,
     ],
   );
 
   const handleTouchEnd = useCallback(
     (event: GestureResponderEvent) => {
+      if (isPinching.current) {
+        const remaining = event.nativeEvent.touches?.length ?? 0;
+        if (remaining === 0) {
+          isPinching.current = false;
+          hasMovedEnough.current = false;
+          gestureType.current = "none";
+          onPinchEnd?.();
+        }
+        return;
+      }
+
       // Ignore touch if it started in exclusion zone
       if (shouldIgnoreTouch.current) {
         shouldIgnoreTouch.current = false;
@@ -243,7 +402,7 @@ export const useGestureDetection = ({
         totalDistance < 10
       ) {
         // It's a tap - short duration and small movement
-        onTap?.();
+        registerTap(touchEndPosition.x);
       }
 
       hasMovedEnough.current = false;
@@ -255,9 +414,10 @@ export const useGestureDetection = ({
       onSwipeLeft,
       onSwipeRight,
       onVerticalDragEnd,
-      onTap,
       onLongPressEnd,
       cancelLongPressTimer,
+      onPinchEnd,
+      registerTap,
     ],
   );
 
@@ -265,6 +425,10 @@ export const useGestureDetection = ({
   // engaged without treating it as a tap or swipe
   const handleTouchCancel = useCallback(() => {
     cancelLongPressTimer();
+    if (isPinching.current) {
+      isPinching.current = false;
+      onPinchEnd?.();
+    }
     if (isLongPressing.current) {
       isLongPressing.current = false;
       onLongPressEnd?.();
@@ -277,7 +441,8 @@ export const useGestureDetection = ({
     hasMovedEnough.current = false;
     gestureType.current = "none";
     shouldIgnoreTouch.current = false;
-  }, [cancelLongPressTimer, onLongPressEnd, onVerticalDragEnd]);
+    tapOnly.current = false;
+  }, [cancelLongPressTimer, onLongPressEnd, onVerticalDragEnd, onPinchEnd]);
 
   return {
     handleTouchStart,

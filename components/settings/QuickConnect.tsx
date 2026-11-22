@@ -7,12 +7,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
+  Keyboard,
   Platform,
   Pressable,
   type TextInput,
   View,
   type ViewProps,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeonBoard } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
@@ -136,6 +138,13 @@ export const QuickConnect: React.FC<Props> = ({
     [],
   );
   const isAndroid = Platform.OS === "android";
+  const insets = useSafeAreaInsets();
+  // The sheet closes with its keyboard, like the iPhone's (F3: Android left
+  // the keyboard over Settings until Back).
+  const closeSheet = useCallback(() => {
+    Keyboard.dismiss();
+    bottomSheetModalRef.current?.close();
+  }, []);
 
   const { t } = useTranslation();
 
@@ -214,7 +223,10 @@ export const QuickConnect: React.FC<Props> = ({
         keyboardBehavior={isAndroid ? "fillParent" : "interactive"}
         keyboardBlurBehavior='restore'
         android_keyboardInputMode='adjustResize'
-        topInset={isAndroid ? 0 : undefined}
+        // Android fills the space above the keyboard; stop under the brand
+        // row like the iPhone instead of running up under the status bar (F2).
+        topInset={isAndroid ? insets.top + Sizes.brandRow : undefined}
+        onDismiss={Keyboard.dismiss}
       >
         {mode === "scan" ? (
           <NeonSheet
@@ -222,7 +234,7 @@ export const QuickConnect: React.FC<Props> = ({
             eyebrow={eyebrow}
             title={t("home.settings.quick_connect.scan_the_qr_code")}
             accent={accent}
-            onClose={() => bottomSheetModalRef.current?.close()}
+            onClose={closeSheet}
             primary={
               <Button
                 onPress={openScanner}
@@ -260,7 +272,7 @@ export const QuickConnect: React.FC<Props> = ({
             title={t("home.settings.quick_connect.enter_the_code")}
             accent={accent}
             onBack={() => setMode("scan")}
-            onClose={() => bottomSheetModalRef.current?.close()}
+            onClose={closeSheet}
             primary={
               <Button
                 onPress={authorizeQuickConnect}
@@ -294,9 +306,15 @@ export const QuickConnect: React.FC<Props> = ({
               style={{
                 flexDirection: "row",
                 justifyContent: "center",
-                gap: 24,
+                // The two links measure about 412 wide: one line on a 440-wide
+                // screen like the iPhone (centred, so the narrower padding moves
+                // nothing there), and they wrap rather than run off both edges
+                // on a narrower phone (F2).
+                flexWrap: "wrap",
+                columnGap: 24,
+                rowGap: 10,
                 marginTop: 16,
-                paddingHorizontal: Sizes.gutter,
+                paddingHorizontal: 8,
               }}
             >
               <Pressable

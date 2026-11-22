@@ -150,6 +150,17 @@ export interface MpvPlayerViewRef {
     style: "outline-and-shadow" | "background-box",
   ) => Promise<void>;
   setSubtitleAssOverride: (mode: "no" | "force") => Promise<void>;
+  /**
+   * Android only (the iPhone player's audio and subtitle menu extras, same
+   * mpv properties as iOS): sync offsets in seconds (`sub-delay`,
+   * `audio-delay`), softvol gain in percent (`volume`, 100 = off), the
+   * speech-clarity EQ and the mono downmix (`audio-channels`).
+   */
+  setSubtitleDelay?: (seconds: number) => Promise<void>;
+  setAudioDelay?: (seconds: number) => Promise<void>;
+  setVolumeBoost?: (percent: number) => Promise<void>;
+  setDialogueBoost?: (enabled: boolean) => Promise<void>;
+  setMonoAudio?: (enabled: boolean) => Promise<void>;
   // Audio controls
   getAudioTracks: () => Promise<AudioTrack[]>;
   setAudioTrack: (trackId: number) => Promise<void>;
