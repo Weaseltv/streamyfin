@@ -1357,5 +1357,63 @@
       "notifications_subtitle": "Show request updates while browsing and as phone notifications.",
       "permission_off": "Notifications are off for WeaselPlex in your phone's settings."
     }
+  },
+  "profiles": {
+    "picture": {
+      "change_picture": "Change picture",
+      "pick_a_picture": "Choose a picture",
+      "pick_a_picture_for": "Choose a picture for {{name}}",
+      "current_picture": "Current picture",
+      "remove_picture": "Remove picture",
+      "saved": "Picture saved",
+      "save_failed": "The picture couldn't be saved. Try again.",
+      "first_avatar_title": "Welcome, {{name}}",
+      "first_avatar_subtitle": "Choose a picture for your profile. It follows you to every device.",
+      "first_avatar_failed": "Your picture couldn't be saved.",
+      "try_again": "Try again",
+      "continue_without_picture": "Continue without a picture"
+    },
+    "add_kid": {
+      "title": "Add kid profile",
+      "how_subtitle": "How do you want to add a kid?",
+      "create_new_kid_profile": "Create a new kid profile",
+      "add_existing_kid_profile": "Add an existing kid profile",
+      "pair_code_instructions": "On a phone or computer, go to {{site}}, choose Kids profiles, pick the kid, then Pair to a TV and enter this code.",
+      "pair_trouble": "Can't reach the server right now. Still trying…",
+      "pair_your_kids": "Or add one of your kids",
+      "pair_refused": "That code was approved for a grown-up profile. Ask them to approve it from the kid's page on theweasel.tv.",
+      "pair_new_code": "Get a new code",
+      "sign_in_kid": "Sign in {{name}} on this phone",
+      "kid_name": "Name",
+      "kid_name_placeholder": "Kid's name",
+      "kid_name_invalid": "Use 1 to 20 letters, numbers or spaces.",
+      "kid_name_taken": "Another kid on your account already has that name.",
+      "kid_level": "What can they watch?",
+      "kid_pick_level": "Pick what they can watch.",
+      "levels": {
+        "kids": "Kids",
+        "kids_description": "Up to PG and TV-PG",
+        "older_kids": "Older kids",
+        "older_kids_description": "Up to PG-13 and TV-14",
+        "teens": "Teens",
+        "teens_description": "Up to R and TV-MA"
+      },
+      "skip_for_now": "Skip for now",
+      "creating_kid": "Creating {{name}}…",
+      "adding_kid": "Adding {{name}} to this phone…",
+      "takes_a_moment": "This only takes a moment.",
+      "retry": "Retry",
+      "errors": {
+        "unavailable": "Kid profiles aren't available yet.",
+        "limit": "You already have 5 kid profiles.",
+        "access": "Your WeaselPlex access isn't active.",
+        "sign_in_again": "Sign this profile in again, then try again.",
+        "kid_not_active": "This profile isn't available right now.",
+        "rate_limited": "Too many tries. Try again in {{minutes}} minutes.",
+        "rate_limited_unknown": "Too many tries. Try again in a few minutes.",
+        "network": "Couldn't reach WeaselPlex. Check the connection and try again.",
+        "generic": "Something went wrong. Try again."
+      }
+    }
   }
 }
