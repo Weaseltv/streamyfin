@@ -51,6 +51,7 @@ import type {
   PersonResult,
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
+import { isPhoneKid } from "@/utils/profiles/phoneProfiles";
 import { createStreamystatsApi } from "@/utils/streamystats";
 import { matchTitles, mergeSearchResults } from "@/utils/titleSearch";
 
@@ -74,6 +75,7 @@ export default function SearchPage() {
   const from = (segments as string[])[2] || "(search)";
 
   const [user] = useAtom(userAtom);
+  const kid = isPhoneKid(user);
 
   const { t } = useTranslation();
 
@@ -105,9 +107,7 @@ export default function SearchPage() {
   const { settings } = useSettings();
   const { jellyseerrApi } = useJellyseerr();
 
-  const searchEngine = useMemo(() => {
-    return settings?.searchEngine || "Jellyfin";
-  }, [settings]);
+  const searchEngine = kid ? "Jellyfin" : settings?.searchEngine || "Jellyfin";
 
   useEffect(() => {
     if (q && q.length > 0) {
@@ -396,7 +396,7 @@ export default function SearchPage() {
         types: ["Person"],
         signal,
       }),
-    enabled: secondaryEnabled,
+    enabled: secondaryEnabled && !kid,
   });
 
   const noResults = useMemo(() => {
@@ -791,7 +791,7 @@ export default function SearchPage() {
           failedRetries.length === 0 &&
           debouncedSearch.length > 0 ? (
             <SearchEmpty query={debouncedSearch} />
-          ) : debouncedSearch.length === 0 ? (
+          ) : debouncedSearch.length === 0 && !kid ? (
             <View
               style={{
                 flexDirection: "row",

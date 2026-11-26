@@ -2,7 +2,7 @@ import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import {
   TitleDetailsFailed,
 } from "@/components/item/TitleDetailsPending";
 import { SimilarItems } from "@/components/SimilarItems";
+import { KidSeriesPage } from "@/components/series/KidSeriesPage";
 import { NextUp } from "@/components/series/NextUp";
 import { SeasonPicker } from "@/components/series/SeasonPicker";
 import { SeriesButtons } from "@/components/series/SeriesButtons";
@@ -47,7 +48,26 @@ const sortEpisodeSummary = (data: BaseItemDto[] | undefined) =>
       (a.IndexNumber ?? 0) - (b.IndexNumber ?? 0),
   );
 
-const page: React.FC = () => {
+const Page: React.FC = () => {
+  const { id, seasonId, seasonIndex } = useLocalSearchParams<{
+    id: string;
+    seasonId?: string;
+    seasonIndex?: string;
+  }>();
+  const isKid = useAtomValue(userAtom)?.Policy?.MaxParentalRating != null;
+  if (isKid && !Platform.isTV) {
+    return (
+      <KidSeriesPage
+        seriesId={id}
+        seasonId={seasonId}
+        seasonIndex={seasonIndex}
+      />
+    );
+  }
+  return <SeriesPage />;
+};
+
+const SeriesPage: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const params = useLocalSearchParams();
@@ -344,4 +364,4 @@ const page: React.FC = () => {
   );
 };
 
-export default page;
+export default Page;

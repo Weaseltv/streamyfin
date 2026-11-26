@@ -15,7 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { File } from "expo-file-system";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, useWindowDimensions, View } from "react-native";
@@ -60,6 +60,10 @@ import { getActivePlayerType, useSettings } from "@/utils/atoms/settings";
 import { getJellyfinHeadersForUrl } from "@/utils/customHeaders";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
+import {
+  checkKidPlayback,
+  isKidContentFiltered,
+} from "@/utils/jellyfin/kidContentGuard";
 import { getStreamUrl } from "@/utils/jellyfin/media/getStreamUrl";
 import {
   getPlayMethod,
@@ -91,6 +95,7 @@ export default function DirectPlayerPage() {
   const videoRef = useRef<MpvPlayerViewRef>(null);
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
+  const atomStore = useStore();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const navigation = useNavigation();
@@ -443,6 +448,7 @@ export default function DirectPlayerPage() {
     sessionId: string;
     url: string;
     requiredHttpHeaders?: Record<string, string>;
+    checkedForKidApi?: typeof api;
   }
 
   const [stream, setStream] = useState<Stream | null>(null);
@@ -508,7 +514,9 @@ export default function DirectPlayerPage() {
       // refetchStreamRef is itself a new generation instead of inheriting a
       // stale one and bailing immediately.
       const generation = ++streamGenerationRef.current;
-      const isCurrent = () => streamGenerationRef.current === generation;
+      const isCurrent = () =>
+        streamGenerationRef.current === generation &&
+        atomStore.get(apiAtom) === api;
 
       setStreamStatus({ isLoading: true, isError: false });
       try {
@@ -522,6 +530,11 @@ export default function DirectPlayerPage() {
         // Ensure item matches the current itemId to avoid race conditions
         if (item.Id !== itemId) {
           setStreamStatus({ isLoading: false, isError: false });
+          return null;
+        }
+        const kidSession = isKidContentFiltered(api);
+        if (kidSession && offline) {
+          setStreamStatus({ isLoading: false, isError: true });
           return null;
         }
 
@@ -583,6 +596,16 @@ export default function DirectPlayerPage() {
           }
           result = { mediaSource, sessionId, url, requiredHttpHeaders };
         }
+        if (kidSession && result) {
+          const allowed = await checkKidPlayback(api, item.Id, offline);
+          if (!allowed || !isCurrent()) {
+            releaseLiveStream(result.mediaSource.LiveStreamId ?? null);
+            if (isCurrent())
+              setStreamStatus({ isLoading: false, isError: true });
+            return null;
+          }
+          result.checkedForKidApi = api;
+        }
         if (!isCurrent()) return null;
         setStreamStartTicks(requestStartTicks);
         initialPlaybackTicksRef.current = requestStartTicks;
@@ -609,6 +632,8 @@ export default function DirectPlayerPage() {
     user?.Id,
     downloadedItem,
     offline,
+    atomStore,
+    releaseLiveStream,
   ]);
 
   useEffect(() => {
@@ -1707,7 +1732,14 @@ export default function DirectPlayerPage() {
   }
 
   // Then show loader while either side is still fetching or data isn't present
-  if (itemStatus.isLoading || streamStatus.isLoading || !item || !stream) {
+  if (
+    itemStatus.isLoading ||
+    streamStatus.isLoading ||
+    !item ||
+    !stream ||
+    ((stream.checkedForKidApi || isKidContentFiltered(api)) &&
+      stream.checkedForKidApi !== api)
+  ) {
     // …loader UI…
     return (
       <View className='w-screen h-screen flex flex-col items-center justify-center bg-black'>

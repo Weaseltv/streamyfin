@@ -30,6 +30,8 @@ export interface ServerCredential {
   securityType: AccountSecurityType;
   pinHash?: string;
   primaryImageTag?: string;
+  ceiling?: number | null;
+  hasAccountPin?: boolean;
 }
 
 /**
@@ -41,6 +43,8 @@ export interface SavedServerAccount {
   securityType: AccountSecurityType;
   savedAt: number;
   primaryImageTag?: string;
+  ceiling?: number | null;
+  hasAccountPin?: boolean;
 }
 
 /**
@@ -143,6 +147,8 @@ export async function saveAccountCredential(
     securityType: credential.securityType,
     savedAt: credential.savedAt,
     primaryImageTag: credential.primaryImageTag,
+    ceiling: credential.ceiling,
+    hasAccountPin: credential.hasAccountPin,
   });
 }
 

@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
 import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
-import { apiAtom } from "@/providers/JellyfinProvider";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { markNavTap } from "@/utils/navTiming";
+import { isPhoneKid } from "@/utils/profiles/phoneProfiles";
 import { holdTappedCard } from "@/utils/tappedCard";
 import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
 import { useRequestItemActions } from "./ItemActionSheetHost";
@@ -78,6 +79,7 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
       params: {
         id: item.SeriesId,
         seasonIndex: String(item.IndexNumber ?? ""),
+        ...(item.Id && { seasonId: item.Id }),
       },
     };
   }
@@ -176,9 +178,13 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
         // card under the finger. A tap still dims it and opens at once, and
         // the long-press menu still appears after the usual half second.
         delayPressIn={150}
-        onLongPress={showActionSheet}
         onPress={handlePress}
         {...props}
+        onLongPress={(event) => {
+          if (!isPhoneKid(store.get(userAtom))) {
+            (props.onLongPress ?? showActionSheet)(event);
+          }
+        }}
       >
         {children}
       </TouchableOpacity>

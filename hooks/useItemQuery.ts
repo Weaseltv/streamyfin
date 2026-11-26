@@ -17,6 +17,7 @@ export const excludeFields = (fieldsToExclude: ItemFields[]) => {
 type ExtraQueryOptions = {
   gcTime?: number;
   staleTime?: number;
+  accountScope?: string | null;
 };
 
 export const useItemQuery = (
@@ -37,8 +38,11 @@ export const useItemQuery = (
       )
     : fields;
 
+  const { accountScope, ...options } = queryOptions ?? {};
   return useQuery({
-    queryKey: ["item", itemId, finalFields],
+    queryKey: accountScope
+      ? ["item", itemId, finalFields, accountScope]
+      : ["item", itemId, finalFields],
     queryFn: async (context) => {
       if (!itemId) throw new Error("Item ID is required");
 
@@ -67,6 +71,6 @@ export const useItemQuery = (
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     networkMode: "always",
-    ...queryOptions,
+    ...options,
   });
 };

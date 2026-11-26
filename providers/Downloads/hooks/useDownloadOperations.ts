@@ -9,11 +9,17 @@ import DeviceInfo from "react-native-device-info";
 import { toast } from "sonner-native";
 import type { Bitrate } from "@/components/BitrateSelector";
 import { BackgroundDownloader } from "@/modules";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { getJellyfinHeadersForUrl } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { estimateDownloadSize } from "@/utils/download";
 import { writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import {
+  isPhoneKid,
+  phoneProfilesEnabled,
+} from "@/utils/profiles/phoneProfiles";
+import { store } from "@/utils/store";
 import {
   cleanupPreparedFiles,
   downloadAdditionalAssets,
@@ -92,6 +98,11 @@ export function useDownloadOperations({
       initialAudioIndex?: number,
       initialSubtitleIndex?: number,
     ) => {
+      if (
+        phoneProfilesEnabled &&
+        (store.get(apiAtom) !== api || isPhoneKid(store.get(userAtom)))
+      )
+        return;
       if (!api || !originalItem.Id || !authHeader)
         throw new Error("download_parameters_missing");
       if (currentOwner.current !== sessionOwner) return;
