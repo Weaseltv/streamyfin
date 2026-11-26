@@ -928,8 +928,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       if (user?.Id) clearWeaselSeerrRefusal(user.Id);
       // Request notifications (plan 5.10 step 2): removed with the outgoing
       // media token before it is discarded; bounded, so sign-out never hangs.
+      const generation = sessionGeneration.current;
       await unregisterBeforeSignOut(api?.accessToken);
-      await clearSessionState();
+      if (generation === sessionGeneration.current) await clearSessionState();
     },
     onError: (error) => {
       console.error("Logout failed:", error);

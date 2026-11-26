@@ -18,10 +18,10 @@ import {
 import { offersForgotPin, PIN_LENGTH } from "@/utils/profiles/pinRules";
 
 const arrows = [
-  { value: "U", icon: "arrow-up", label: "up" },
-  { value: "L", icon: "arrow-left", label: "left" },
-  { value: "D", icon: "arrow-down", label: "down" },
-  { value: "R", icon: "arrow-right", label: "right" },
+  { value: "U", icon: "arrow-up" },
+  { value: "L", icon: "arrow-left" },
+  { value: "D", icon: "arrow-down" },
+  { value: "R", icon: "arrow-right" },
 ] as const;
 
 interface Props {
@@ -38,6 +38,13 @@ export function ProfilePin({
   onBack,
 }: Props) {
   const { t } = useTranslation();
+  const arrowLabels = {
+    U: t("profiles.arrow_up"),
+    D: t("profiles.arrow_down"),
+    L: t("profiles.arrow_left"),
+    R: t("profiles.arrow_right"),
+  };
+
   const [entry, setEntry] = useState("");
   const [firstEntry, setFirstEntry] = useState("");
   const [wrong, setWrong] = useState(0);
@@ -201,11 +208,11 @@ export function ProfilePin({
         ))}
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        {arrows.map(({ value, icon, label }) => (
+        {arrows.map(({ value, icon }) => (
           <Pressable
             key={value}
             accessibilityRole='button'
-            accessibilityLabel={t(`profiles.arrow_${label}`)}
+            accessibilityLabel={arrowLabels[value]}
             disabled={pending || (mode === "verify" && lockSeconds > 0)}
             onPress={() => press(value)}
             style={({ pressed }) => ({

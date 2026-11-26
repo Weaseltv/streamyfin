@@ -249,7 +249,8 @@ export async function writePhonePin(
   if (
     (hadPin || pin === null) &&
     (!grantIsCurrent(profile) ||
-      profileGrants.get(profile)?.revision !== data.CustomPrefs?.pinUpdatedAt)
+      profileGrants.get(profile)?.revision !==
+        (data.CustomPrefs?.pinUpdatedAt ?? undefined))
   ) {
     throw new Error("Enter the current PIN first.");
   }
