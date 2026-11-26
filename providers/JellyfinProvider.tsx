@@ -543,10 +543,17 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     if (!phoneProfilesEnabled) return;
+    let wasBackgrounded = AppState.currentState === "background";
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active" || !store.get(userAtom)?.Id) return;
-      if (profilesFor(getServerUrlFromStorage()).length > 1)
+      if (state === "background") wasBackgrounded = true;
+      if (state !== "active" || !wasBackgrounded) return;
+      wasBackgrounded = false;
+      if (
+        store.get(userAtom)?.Id &&
+        profilesFor(getServerUrlFromStorage()).length > 1
+      ) {
         openProfileChooser();
+      }
     });
     return () => subscription.remove();
   }, [openProfileChooser]);
@@ -1172,17 +1179,27 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
             );
             const ceiling = storedUser.Policy?.MaxParentalRating;
             if (ceiling != null && !isKidProtected()) recordCeiling(ceiling);
-            if (!account) {
+            // Older Quick Connect kept the active token in MMKV even when
+            // the same profile already had a different token in SecureStore.
+            // Preserve the active credential when migrating to the chooser.
+            const previousCredential = account
+              ? await getAccountCredential(serverUrl, account.userId)
+              : null;
+            if (previousCredential?.token !== token) {
               await saveAccountCredential({
+                ...account,
                 serverUrl,
                 serverName: "",
                 userId: storedUser.Id,
-                username: storedUser.Name ?? "Profile",
+                username: account?.username ?? storedUser.Name ?? "Profile",
                 token,
                 securityType: "none",
-                savedAt: Date.now(),
-                ceiling: storedUser.Policy ? (ceiling ?? null) : undefined,
-                primaryImageTag: storedUser.PrimaryImageTag ?? undefined,
+                savedAt: account?.savedAt ?? Date.now(),
+                ceiling: storedUser.Policy
+                  ? (ceiling ?? null)
+                  : account?.ceiling,
+                primaryImageTag:
+                  storedUser.PrimaryImageTag ?? account?.primaryImageTag,
               });
             }
             const saved = profilesFor(serverUrl);
@@ -1210,8 +1227,8 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
                   );
                 }
               } catch (error) {
-                // Preserve offline browsing for a legacy single, unprotected
-                // adult. Protected profiles select their session online.
+                // Preserve an already open, unprotected single-adult
+                // session for offline browsing. Profile selection stays online.
                 if (
                   axios.isAxiosError(error) &&
                   !error.response &&

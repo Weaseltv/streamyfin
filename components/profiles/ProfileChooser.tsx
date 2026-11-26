@@ -17,6 +17,7 @@ import {
   disableKidProtection,
   grantIsCurrent,
   isKidProtected,
+  type KidSignIn,
   lockProfile,
   type PhoneProfile,
   type PreparedProfile,
@@ -275,6 +276,27 @@ export function ProfileChooser() {
       if (isCurrent() && grantIsCurrent(parent)) await proceed(parent);
     });
 
+  const finishKidSignIn = async (
+    owner: PreparedProfile,
+    kid: KidSignIn,
+    isCurrent: () => boolean,
+  ) => {
+    if (!isCurrent()) return;
+    if (grantIsCurrent(owner)) {
+      try {
+        await addPhoneKid(owner, kid, isCurrent);
+        return;
+      } catch (error) {
+        if (grantIsCurrent(owner)) throw error;
+      }
+    }
+    if (!isCurrent()) return;
+    const parent = await prepareSavedProfile(owner.account);
+    if (!isCurrent()) return;
+    if (!parent.pinLength) throw new Error(t("profiles.could_not_unlock"));
+    askPin(parent, () => run((current) => addPhoneKid(parent, kid, current)));
+  };
+
   const manage = (account: PhoneProfile) =>
     void run(async (isCurrent) => {
       const profile = await prepareSavedProfile(account);
@@ -349,11 +371,7 @@ export function ProfileChooser() {
       <AddKidFlow
         api={parent.api}
         onKid={(kid) =>
-          addPhoneKid(
-            parent,
-            kid,
-            () => currentScreen.current === screen && grantIsCurrent(parent),
-          )
+          finishKidSignIn(parent, kid, () => currentScreen.current === screen)
         }
         onClose={() => {
           lockProfile(parent);
