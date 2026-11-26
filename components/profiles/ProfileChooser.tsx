@@ -13,6 +13,7 @@ import {
   pendingPhoneProfileAtom,
   useJellyfin,
 } from "@/providers/JellyfinProvider";
+import { needsFirstAvatar } from "@/utils/avatars/avatarCatalog";
 import {
   disableKidProtection,
   grantIsCurrent,
@@ -143,8 +144,7 @@ export function ProfileChooser() {
     const ceiling = profile.account.ceiling;
     if (
       profile.fresh &&
-      ceiling === null &&
-      !profile.user.PrimaryImageTag &&
+      needsFirstAvatar(profile.user) &&
       !savedPictures.current.has(profile)
     ) {
       renewScreen({ kind: "picture", profile, required: true });
@@ -375,7 +375,7 @@ export function ProfileChooser() {
   );
 
   useEffect(() => {
-    if (screen.kind === "chooser") return;
+    if (screen.kind === "chooser" || screen.kind === "addKid") return;
     const back = BackHandler.addEventListener("hardwareBackPress", () => {
       restart();
       return true;
@@ -395,6 +395,9 @@ export function ProfileChooser() {
     return (
       <AddKidFlow
         api={parent.api}
+        savedUserIds={profilesFor(parent.account.serverUrl).map(
+          (account) => account.userId,
+        )}
         onKid={(kid) =>
           finishKidSignIn(parent, kid, () => currentScreen.current === screen)
         }
@@ -412,6 +415,7 @@ export function ProfileChooser() {
       <ProfilePicturePicker
         api={profile.api}
         user={profile.user}
+        firstSignIn={required}
         onSaved={(user) => {
           if (currentScreen.current !== screen || user.Id !== profile.user.Id)
             return;
@@ -432,7 +436,14 @@ export function ProfileChooser() {
             restart();
           }
         }}
-        onClose={restart}
+        onClose={() => {
+          if (!required) {
+            restart();
+            return;
+          }
+          savedPictures.current.add(profile);
+          void run((isCurrent) => pick(profile, isCurrent));
+        }}
       />
     );
   }
@@ -489,7 +500,7 @@ export function ProfileChooser() {
                   )
                 }
               >
-                {t("profiles.add_kid")}
+                {t("profiles.add_kid.title")}
               </Button>
             ) : null}
             <Button
@@ -625,7 +636,7 @@ export function ProfileChooser() {
                     renewScreen({ kind: "picture", profile: screen.profile })
                   }
                 >
-                  {t("profiles.change_picture")}
+                  {t("profiles.picture.change_picture")}
                 </Button>
                 <Button
                   variant='border'

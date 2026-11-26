@@ -12,6 +12,7 @@ import {
   Pressable,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/common/Input";
 import { Text } from "@/components/common/Text";
@@ -187,6 +188,18 @@ export function AddKidFlow({
                 style={{ height: 52 }}
               />
             )}
+            {step.code ? (
+              <View
+                accessible={false}
+                style={{
+                  padding: 10,
+                  backgroundColor: "white",
+                  borderRadius: 8,
+                }}
+              >
+                <QRCode value={PAIR_KID_URL} size={108} />
+              </View>
+            ) : null}
             <Text>
               {t("profiles.add_kid.pair_code_instructions", {
                 site: PROFILES_SITE,

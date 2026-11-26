@@ -643,13 +643,10 @@ function Layout() {
                                     <Stack.Screen
                                       name='login'
                                       options={{
-                                        headerShown: true,
+                                        headerShown: Platform.isTV,
                                         title: "",
-                                        // Android phones too: the iPhone's sign-in
-                                        // is plain black to the top, with no bar.
                                         headerTransparent:
-                                          Platform.OS === "ios" ||
-                                          !Platform.isTV,
+                                          Platform.OS === "ios",
                                       }}
                                     />
                                     <Stack.Screen name='+not-found' />

@@ -366,7 +366,7 @@ export class AddKidController {
     this.job = job;
     return block(job.signal).catch((error) => {
       if (error instanceof Cancelled || job.signal.aborted) return;
-      console.warn("Add kid flow failed", error);
+      console.warn("Add kid flow failed");
       this.fail({ kind: "generic" }, { kind: "none" });
     });
   }
@@ -529,9 +529,9 @@ export class AddKidController {
         user: auth.user,
         displayName: name,
       });
-    } catch (error) {
+    } catch {
       // Possibly kept before it failed, so it is never signed out; a retry hands it over again.
-      console.warn("Paired kid sign-in failed", error);
+      console.warn("Paired kid sign-in failed");
       this.pendingPair = auth;
       this.pendingPairOwned = false;
       return this.fail({ kind: "generic" }, { kind: "pair" });
@@ -668,9 +668,9 @@ export class AddKidController {
           user: auth.user,
           displayName,
         });
-      } catch (error) {
+      } catch {
         // Possibly kept before it failed, so it is never signed out; a retry uses a new code.
-        console.warn("Kid sign-in failed", error);
+        console.warn("Kid sign-in failed");
         return this.fail({ kind: "generic" }, retry);
       }
       this.setStep({ kind: "done" });

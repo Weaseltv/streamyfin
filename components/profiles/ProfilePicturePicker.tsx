@@ -81,8 +81,8 @@ export function ProfilePicturePicker({
       setStatus("idle");
       toast.success(t("profiles.picture.saved"));
       onSaved(updated);
-    } catch (error) {
-      console.warn("Profile picture save failed", error);
+    } catch {
+      console.warn("Profile picture save failed");
       if (mounted.current) setStatus("failed");
     }
   };

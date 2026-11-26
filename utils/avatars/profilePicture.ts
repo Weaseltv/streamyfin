@@ -7,7 +7,7 @@ import type { Api } from "@jellyfin/sdk";
 import type { UserDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getImageApi, getUserApi } from "@jellyfin/sdk/lib/utils/api";
 import { Asset } from "expo-asset";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+
 import { storage } from "@/utils/mmkv";
 import type { RememberedAvatar } from "./avatarCatalog";
 import { ADULT_AVATAR_IDS } from "./avatarIds";
@@ -18,6 +18,9 @@ const ASSIGNED_PREFIX = "profilePicture.assigned.";
 
 /** The bundled avatar as base64 PNG: PNG reads everywhere; the bundled WebP keeps the app small. */
 export async function avatarPngBase64(avatarId: string): Promise<string> {
+  const { ImageManipulator, SaveFormat } = await import(
+    "expo-image-manipulator"
+  );
   const source = AVATAR_SOURCES[avatarId];
   if (source == null) throw new Error(`Unknown avatar ${avatarId}`);
   const asset = Asset.fromModule(source as number);
@@ -91,6 +94,7 @@ export async function removeProfilePicture(
 ): Promise<UserDto> {
   await getImageApi(api).deleteUserImage({ userId });
   remember(userId, null);
+  storage.set(`${ASSIGNED_PREFIX}${api.basePath}/${userId}`, true);
   return currentUser(api, userId);
 }
 
@@ -103,12 +107,15 @@ export async function removeProfilePicture(
 export async function assignMissingAvatar(
   api: Api,
   userId: string,
+  knownUser?: UserDto,
 ): Promise<UserDto | null> {
   const key = `${ASSIGNED_PREFIX}${api.basePath}/${userId}`;
   if (storage.getBoolean(key)) return null;
   let user: UserDto;
   try {
-    user = await currentUser(api, userId);
+    user = knownUser?.PrimaryImageTag
+      ? knownUser
+      : await currentUser(api, userId);
   } catch {
     return null;
   }

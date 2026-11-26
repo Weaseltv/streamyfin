@@ -32,6 +32,7 @@ import {
   requestPolicyAtom,
 } from "@/utils/atoms/requestPolicy";
 import { useSettingsActions } from "@/utils/atoms/settings";
+import { needsFirstAvatar } from "@/utils/avatars/avatarCatalog";
 import { getIntegrationHeaders } from "@/utils/customHeaders";
 import { getOrSetDeviceId } from "@/utils/device";
 import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
@@ -347,6 +348,28 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       setUser(nextUser);
       store.set(pendingPhoneProfileAtom, null);
       void refreshStreamyfinPluginSettings();
+      if (!profile.fresh && ceiling === null) {
+        void import("@/utils/avatars/profilePicture")
+          .then(({ assignMissingAvatar }) => {
+            if (store.get(apiAtom) !== nextApi) return null;
+            return assignMissingAvatar(nextApi, profile.user.Id, profile.user);
+          })
+          .then((updated) => {
+            if (!updated || store.get(apiAtom) !== nextApi) return;
+            const next = {
+              ...nextUser,
+              PrimaryImageTag: updated.PrimaryImageTag,
+            };
+            const { serverUrl, ...account } = profile.account;
+            addAccountToServer(serverUrl, "", {
+              ...account,
+              primaryImageTag: updated.PrimaryImageTag ?? undefined,
+            });
+            storage.set("user", JSON.stringify(next));
+            setUser(next);
+          })
+          .catch(() => {});
+      }
     },
     [jellyfin, queryClient, setApi, setUser, refreshStreamyfinPluginSettings],
   );
@@ -471,7 +494,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       if (!isCurrent()) return;
       if (
         profile.pinLength ||
-        (profile.account.ceiling === null && !profile.user.PrimaryImageTag) ||
+        needsFirstAvatar(profile.user) ||
         (profile.account.ceiling === null && isKidProtected()) ||
         (profile.account.ceiling != null &&
           (requiresParent(profile.account.ceiling) ||
