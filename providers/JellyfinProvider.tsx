@@ -40,6 +40,7 @@ import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
 import { isAdultOnlyRoute } from "@/utils/profiles/navigation";
 import {
+  forgetProfileBiometric,
   grantIsCurrent,
   isKidProtected,
   isPhoneKid,
@@ -1117,6 +1118,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       userId: string;
     }) => {
       await deleteAccountCredential(serverUrl, userId);
+      if (phoneProfilesEnabled) await forgetProfileBiometric(serverUrl, userId);
     },
     onError: (error) => {
       console.error("Failed to remove saved credential:", error);

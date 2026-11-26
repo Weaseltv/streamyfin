@@ -132,6 +132,26 @@ function biometricKey(profile: Pick<PreparedProfile, "account">) {
   return `biometric_${credentialKey(profile.account.serverUrl, profile.account.userId)}`;
 }
 
+async function hasBiometricFor(
+  profile: Pick<PreparedProfile, "account">,
+  revision?: string | null,
+): Promise<boolean> {
+  if (!revision) return false;
+  return SecureStore.getItemAsync(biometricKey(profile)).then(
+    (enrolled) => enrolled === revision,
+    () => false,
+  );
+}
+
+export async function forgetProfileBiometric(
+  serverUrl: string,
+  userId: string,
+) {
+  await SecureStore.deleteItemAsync(
+    `biometric_${credentialKey(serverUrl, userId)}`,
+  ).catch(() => {});
+}
+
 export async function preparePhoneProfile(
   api: Api,
   account: PhoneProfile,
@@ -145,16 +165,11 @@ export async function preparePhoneProfile(
   }
   const ceiling = user.Policy.MaxParentalRating ?? null;
   const details = { api, user: { ...user, Id: account.userId } };
-  const pinLength =
-    ceiling === null
-      ? ((await readPreferences(details)).CustomPrefs?.pin?.length ?? 0)
-      : 0;
+  const prefs =
+    ceiling === null ? (await readPreferences(details)).CustomPrefs : null;
+  const pinLength = prefs?.pin?.length ?? 0;
   const biometric =
-    pinLength > 0 &&
-    (await SecureStore.getItemAsync(biometricKey({ account })).then(
-      Boolean,
-      () => false,
-    ));
+    pinLength > 0 && (await hasBiometricFor({ account }, prefs?.pinUpdatedAt));
 
   return {
     ...details,
@@ -209,7 +224,10 @@ export function verifyPhonePin(
     }
     storage.remove(backoffKey);
     if (!isCurrent()) return false;
-    grantProfile(profile, CustomPrefs?.pinUpdatedAt ?? undefined);
+    const revision = CustomPrefs?.pinUpdatedAt ?? undefined;
+    profile.biometric = await hasBiometricFor(profile, revision);
+    if (!isCurrent()) return false;
+    grantProfile(profile, revision);
     return true;
   })().finally(() => {
     pinAttempt = undefined;
@@ -261,7 +279,7 @@ export async function writePhonePin(
   );
   profile.pinLength = pin ? PIN_LENGTH : 0;
   profile.account.hasAccountPin = pin !== null;
-  await SecureStore.deleteItemAsync(biometricKey(profile)).catch(() => {});
+  await forgetProfileBiometric(profile.account.serverUrl, profile.user.Id);
   profile.biometric = false;
   if (!isCurrent()) return;
   if (pin) grantProfile(profile, revision);
