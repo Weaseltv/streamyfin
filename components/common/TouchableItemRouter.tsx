@@ -79,6 +79,7 @@ export const getItemNavigation = (item: BaseItemDto, _from: string) => {
       params: {
         id: item.SeriesId,
         seasonIndex: String(item.IndexNumber ?? ""),
+        ...(item.Id && { seasonId: item.Id }),
       },
     };
   }

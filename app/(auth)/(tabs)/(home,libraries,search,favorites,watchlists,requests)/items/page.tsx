@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
+import { useAtomValue } from "jotai";
 import type React from "react";
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,10 +9,17 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { LoadingLine } from "@/components/common/LoadingLine";
 import { Text } from "@/components/common/Text";
 import { ItemContent } from "@/components/ItemContent";
+import {
+  KidItemContent,
+  useKidTitleQuery,
+} from "@/components/item/KidTitleContent";
+import { TitleDetailsFailed } from "@/components/item/TitleDetailsPending";
 import { useItemQuery } from "@/hooks/useItemQuery";
 import { useTappedCard } from "@/hooks/useTappedCard";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { OfflineModeProvider } from "@/providers/OfflineModeProvider";
 import { useNavTimingStage } from "@/utils/navTiming";
 import {
@@ -25,6 +33,32 @@ const ItemContentSkeletonTV = Platform.isTV
   : null;
 
 const Page: React.FC = () => {
+  const isKid = useAtomValue(userAtom)?.Policy?.MaxParentalRating != null;
+  return isKid && !Platform.isTV ? <KidItemPage /> : <ItemPage />;
+};
+
+const KidItemPage = () => {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const query = useKidTitleQuery(id);
+  useNavTimingStage("item", id, "content", !!query.data);
+  useNavTimingStage("item", id, "full", !!query.data);
+  if (query.data) return <KidItemContent item={query.data} />;
+
+  return (
+    <View className='flex-1 justify-center bg-stage'>
+      {query.isError ? (
+        <TitleDetailsFailed
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
+        />
+      ) : (
+        <LoadingLine active />
+      )}
+    </View>
+  );
+};
+
+const ItemPage: React.FC = () => {
   const { id } = useLocalSearchParams() as { id: string };
   const { t } = useTranslation();
 

@@ -25,6 +25,7 @@ import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { HomeRowScrollView } from "@/components/home/HomeRowScrollView";
 import { InfiniteScrollingCollectionList } from "@/components/home/InfiniteScrollingCollectionList";
 import { ItemCard, RAIL_GAP, railCardWidth } from "@/components/home/ItemCard";
+import { KidHome } from "@/components/home/KidHome";
 import { LargeMovieCarousel } from "@/components/home/LargeMovieCarousel";
 import { ScrollingCollectionList } from "@/components/home/ScrollingCollectionList";
 import { StreamingServicesRow } from "@/components/home/StreamingServicesRow";
@@ -1018,12 +1019,13 @@ const SectionGap = () => <View style={{ height: 4 }} />;
 
 // Exported component that renders TV or mobile version based on platform
 export const Home = () => {
+  const isKid = useAtomValue(userAtom)?.Policy?.MaxParentalRating != null;
   if (Platform.isTV && HomeTV) {
     return <HomeTV />;
   }
   return (
     <HomeRowResetProvider>
-      <HomeMobile />
+      {isKid ? <KidHome /> : <HomeMobile />}
     </HomeRowResetProvider>
   );
 };

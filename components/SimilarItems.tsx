@@ -10,6 +10,7 @@ import { useNearScreen } from "@/components/common/NearScreen";
 import { ItemCard, railCardWidth } from "@/components/home/ItemCard";
 import { POSTER_CAROUSEL_HEIGHT } from "@/constants/Values";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
+import { startupSessionKey } from "@/utils/atoms/startupReady";
 import { rowBadges } from "@/utils/streamingCollections";
 import { HorizontalScroll } from "./common/HorizontalScroll";
 import { SectionHeader } from "./common/SectionHeader";
@@ -19,6 +20,7 @@ import { ItemCardText } from "./ItemCardText";
 interface SimilarItemsProps extends ViewProps {
   itemId?: string | null;
   accent?: string;
+  hideIfEmpty?: boolean;
 }
 
 const CARD_WIDTH = railCardWidth("vertical");
@@ -30,11 +32,14 @@ const CARD_WIDTH = railCardWidth("vertical");
 export const SimilarItems: React.FC<SimilarItemsProps> = ({
   itemId,
   accent,
+  hideIfEmpty = false,
   ...props
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const { t } = useTranslation();
+  const isKid = user?.Policy?.MaxParentalRating != null;
+  const scope = isKid ? startupSessionKey(api?.basePath, user?.Id) : null;
 
   // The row sits at the bottom of the page. Its request waits until the
   // viewer has scrolled near it (or the page is short enough that it already
@@ -44,7 +49,10 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
 
   // Pending, not loading: a held request has nothing to show yet either
   const { data: similarItems, isPending } = useQuery<BaseItemDto[]>({
-    queryKey: ["similarItems", itemId, 25],
+    queryKey: isKid
+      ? ["similarItems", itemId, 25, scope]
+      : ["similarItems", itemId, 25],
+    gcTime: isKid ? 0 : undefined,
     queryFn: async ({ signal }) => {
       if (!api || !user?.Id || !itemId) return [];
       const response = await getLibraryApi(api).getSimilarItems(
@@ -70,6 +78,7 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
     [similarItems],
   );
   const badgeFor = useMemo(() => rowBadges(items), [items]);
+  if (hideIfEmpty && !isPending && items.length === 0) return null;
 
   return (
     <Animated.View {...props} ref={ref} onLayout={onLayout} collapsable={false}>

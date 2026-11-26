@@ -7,6 +7,8 @@ import {
 
 export const PROGRESSION_QUERY_KEYS = [
   ["home", "continueAndNextUp"],
+  ["kidHome", "continue"],
+  ["kidHome", "watchAgain"],
   ["home", "resumeItems"],
   ["home", "nextUp-all"],
   ["home", "hero"],
@@ -19,6 +21,7 @@ export const PROGRESSION_QUERY_KEYS = [
 
 const LIBRARY_ROOTS = new Set([
   "home",
+  "kidHome",
   "library-items",
   "nextUp-all",
   "nextUp",

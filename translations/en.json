@@ -159,6 +159,9 @@
     "streaming": "Streaming Services",
     "recently_added_in": "Recently added in {{libraryName}}",
     "kicker_next_up": "Next Up &",
+    "kid_watch_again": "Watch again",
+    "kid_empty": "Nothing to watch here yet",
+    "kid_collection": "Collection",
     "kicker_collections": "Collections",
     "kicker_recently_added": "Recently Added",
     "movies_and_tv_shows": "Movies and TV Shows",
@@ -1181,6 +1184,12 @@
     "header_count_other": "{{count}} headers"
   },
   "item": {
+    "kid_keep_watching": "Keep watching",
+    "kid_start_over": "Start over",
+    "kid_on_watchlist": "On Watchlist",
+    "kid_play_episode": "Play {{episode}}",
+    "kid_next_up": "Next up: {{name}}",
+    "kid_time_left": "{{time}} left",
     "play_runtime": "Play · {{time}}",
     "resume_left": "Resume · {{time}} left",
     "resume": "Resume",
