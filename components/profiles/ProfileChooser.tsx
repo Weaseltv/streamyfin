@@ -628,16 +628,16 @@ export function ProfileChooser() {
         {screen.kind === "actions" ? (
           <>
             <Text variant='display'>{screen.profile.account.username}</Text>
+            <Button
+              variant='border'
+              onPress={() =>
+                renewScreen({ kind: "picture", profile: screen.profile })
+              }
+            >
+              {t("profiles.picture.change_picture")}
+            </Button>
             {screen.profile.account.ceiling === null ? (
               <>
-                <Button
-                  variant='border'
-                  onPress={() =>
-                    renewScreen({ kind: "picture", profile: screen.profile })
-                  }
-                >
-                  {t("profiles.picture.change_picture")}
-                </Button>
                 <Button
                   variant='border'
                   disabled={busy}

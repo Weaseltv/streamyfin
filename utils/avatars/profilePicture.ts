@@ -20,9 +20,20 @@ const ASSIGNED_PREFIX = "profilePicture.assigned.";
 export async function avatarPngBase64(avatarId: string): Promise<string> {
   const source = AVATAR_SOURCES[avatarId];
   if (typeof source !== "number") throw new Error(`Unknown avatar ${avatarId}`);
-  const asset = await Asset.fromModule(source).downloadAsync();
-  if (!asset.localUri) throw new Error(`Could not read avatar ${avatarId}`);
-  return new LocalFile(asset.localUri).base64();
+  const asset = Asset.fromModule(source);
+  // Android release bundles can resolve images to drawable names that Image
+  // can render directly. Materialize the drawable before reading its bytes.
+  const readable = await (asset.localUri && !asset.localUri.includes(":")
+    ? new Asset({
+        name: asset.name,
+        type: asset.type,
+        hash: asset.hash,
+        uri: asset.localUri,
+      })
+    : asset
+  ).downloadAsync();
+  if (!readable.localUri) throw new Error(`Could not read avatar ${avatarId}`);
+  return new LocalFile(readable.localUri).base64();
 }
 
 /** What this phone remembers about `userId`'s last picture saved here (only to mark it current). */
