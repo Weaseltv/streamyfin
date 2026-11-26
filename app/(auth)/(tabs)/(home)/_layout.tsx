@@ -53,7 +53,7 @@ function TabStack() {
           title: t("tabs.home"),
           // Home is the only tab with the Sessions action: the Sessions page
           // lives in this stack, and one header polling is enough.
-          header: () => <NeonHeader sessions />,
+          header: () => <NeonHeader sessions profile />,
         }}
       />
       <Stack.Screen

@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import useRouter from "@/hooks/useAppRouter";
 import { useItemNavigationOrigin } from "@/providers/ItemNavigationProvider";
-import { apiAtom } from "@/providers/JellyfinProvider";
+import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useOfflineMode } from "@/providers/OfflineModeProvider";
 import { markNavTap } from "@/utils/navTiming";
+import { isPhoneKid } from "@/utils/profiles/phoneProfiles";
 import { holdTappedCard } from "@/utils/tappedCard";
 import { titlePageArtworkUris } from "@/utils/titlePageArtwork";
 import { useRequestItemActions } from "./ItemActionSheetHost";
@@ -155,10 +156,11 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   }, [from, item, router, isOffline, store]);
 
   const showActionSheet = useCallback(() => {
+    if (isPhoneKid(store.get(userAtom))) return;
     if (["Movie", "Episode", "Series", "Season"].includes(item.Type ?? "")) {
       requestActions({ item, isOffline });
     }
-  }, [item, isOffline, requestActions]);
+  }, [item, isOffline, requestActions, store]);
 
   if (
     from === "(home)" ||

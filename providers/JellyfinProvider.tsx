@@ -4,7 +4,7 @@ import type { UserDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getUserApi } from "@jellyfin/sdk/lib/utils/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
-import { useSegments } from "expo-router";
+import { router as appRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { atom, useAtom } from "jotai";
 import type React from "react";
@@ -38,6 +38,22 @@ import { createApiWithCustomHeaders } from "@/utils/jellyfin/createApi";
 import { subtitleModeFromProfile } from "@/utils/jellyfin/userConfiguration";
 import { writeErrorLog, writeInfoLog } from "@/utils/log";
 import { storage } from "@/utils/mmkv";
+import { isAdultOnlyRoute } from "@/utils/profiles/navigation";
+import {
+  grantIsCurrent,
+  isKidProtected,
+  isPhoneKid,
+  type KidSignIn,
+  lockProfile,
+  type PhoneProfile,
+  type PreparedProfile,
+  phoneProfilesEnabled,
+  preparePhoneProfile,
+  profilesFor,
+  recordCeiling,
+  requiresParent,
+  savePhoneProfile,
+} from "@/utils/profiles/phoneProfiles";
 import { seerrExchanges } from "@/utils/requestStatus/exchangeQueue";
 import {
   resetPushState,
@@ -71,6 +87,7 @@ const sameServerUrl = (a: string | null | undefined, b: string) =>
   (a ?? "").replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 const initialApi = (() => {
+  if (phoneProfilesEnabled) return null;
   try {
     const token = storage.getString("token") || null;
     const serverUrl = storage.getString("serverUrl") || null;
@@ -93,6 +110,7 @@ const initialApi = (() => {
 })();
 
 const initialUser = (() => {
+  if (phoneProfilesEnabled) return null;
   try {
     // Only return a stored user if we also have a token. Otherwise the
     // user atom would be populated while the api atom is null (e.g. after
@@ -114,6 +132,7 @@ const initialUser = (() => {
 export const apiAtom = atom<Api | null>(initialApi);
 export const userAtom = atom<UserDto | null>(initialUser);
 export const wsAtom = atom<WebSocket | null>(null);
+export const pendingPhoneProfileAtom = atom<PreparedProfile | null>(null);
 export const cacheVersionAtom = atom<number>(0);
 // Set by a login flow that wants the account saved: the protection picker
 // shows AFTER the session is authorized (the login screen unmounts on
@@ -157,6 +176,19 @@ interface JellyfinContextValue {
   ) => Promise<void>;
   removeSavedCredential: (serverUrl: string, userId: string) => Promise<void>;
   switchServerUrl: (newUrl: string) => void;
+  openProfileChooser: () => void;
+  prepareSavedProfile: (profile: PhoneProfile) => Promise<PreparedProfile>;
+  enterPhoneProfile: (
+    profile: PreparedProfile,
+    isCurrent: () => boolean,
+    parent?: PreparedProfile,
+  ) => Promise<void>;
+  addPhoneKid: (
+    parent: PreparedProfile,
+    kid: KidSignIn,
+    isCurrent: () => boolean,
+  ) => Promise<void>;
+  cancelPendingProfile: () => void;
 }
 
 const JellyfinContext = createContext<JellyfinContextValue | undefined>(
@@ -222,6 +254,9 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   // state. A single response interceptor on the authenticated api clears the
   // session on the first 401 so the app drops cleanly to the login screen.
   const sessionExpiredRef = useRef(false);
+  const sessionGeneration = useRef(0);
+  const quickConnectSecret = useRef<string | null>(null);
+  const exchangingSecret = useRef<string | null>(null);
 
   // Shared teardown for manual logout AND forced session expiry — keeping it
   // in one place prevents the two paths from drifting (a 401 expiry must wipe
@@ -232,6 +267,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
     // All synchronous teardown first: if the async Jellyseerr cleanup below
     // fails or resolves late (user may already be re-authenticating), the
     // session/cache state is already gone.
+    sessionGeneration.current++;
     storage.remove("token");
     storage.remove("user");
     storage.remove("REACT_QUERY_OFFLINE_CACHE");
@@ -272,7 +308,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
     const interceptorId = api.axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error?.response?.status === 401) {
+        if (error?.response?.status === 401 && store.get(apiAtom) === api) {
           handleSessionExpired();
         }
         return Promise.reject(error);
@@ -282,6 +318,238 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       api.axiosInstance.interceptors.response.eject(interceptorId);
     };
   }, [api, handleSessionExpired]);
+
+  const publishPhoneProfile = useCallback(
+    (profile: PreparedProfile, keepCache: boolean) => {
+      if (!jellyfin || !profile.api.accessToken)
+        throw new Error("Sign this profile in again.");
+      const { accessToken } = profile.api;
+      const ceiling = profile.account.ceiling ?? null;
+      recordCeiling(ceiling);
+      const nextApi = createApiWithCustomHeaders(
+        jellyfin,
+        profile.account.serverUrl,
+        accessToken,
+        undefined,
+        ceiling ?? undefined,
+      );
+      const nextUser = { ...profile.user, Name: profile.account.username };
+      if (!keepCache) {
+        queryClient.clear();
+        storage.remove("REACT_QUERY_OFFLINE_CACHE");
+      }
+      storage.set("serverUrl", profile.account.serverUrl);
+      storage.set("token", accessToken);
+      storage.set("user", JSON.stringify(nextUser));
+      confirmRequestPolicy(nextApi.basePath, accessToken, nextUser);
+      setApi(nextApi);
+      setUser(nextUser);
+      store.set(pendingPhoneProfileAtom, null);
+      void refreshStreamyfinPluginSettings();
+    },
+    [jellyfin, queryClient, setApi, setUser, refreshStreamyfinPluginSettings],
+  );
+
+  const prepareSavedProfile = useCallback(
+    async (account: PhoneProfile) => {
+      if (!jellyfin) throw new Error("Could not reach WeaselPlex.");
+      const credential = await getAccountCredential(
+        account.serverUrl,
+        account.userId,
+      );
+      if (!credential) throw new Error("Sign this profile in again.");
+      const profileApi = createApiWithCustomHeaders(
+        jellyfin,
+        account.serverUrl,
+        credential.token,
+      );
+      try {
+        return await preparePhoneProfile(profileApi, account);
+      } catch (error) {
+        if (
+          account.ceiling != null &&
+          axios.isAxiosError(error) &&
+          error.response?.status === 401
+        ) {
+          await deleteAccountCredential(account.serverUrl, account.userId);
+        }
+        throw error;
+      }
+    },
+    [jellyfin],
+  );
+
+  const enterPhoneProfile = useCallback(
+    async (
+      profile: PreparedProfile,
+      isCurrent: () => boolean,
+      parent?: PreparedProfile,
+      keepCache = false,
+    ) => {
+      const generation = sessionGeneration.current;
+      const check = () => {
+        if (!isCurrent() || generation !== sessionGeneration.current) {
+          throw new Error("Choose a profile again.");
+        }
+        const ceiling = profile.account.ceiling;
+        if (ceiling === undefined)
+          throw new Error("Sign this profile in again.");
+        if (ceiling === null) {
+          if (
+            (profile.pinLength || isKidProtected()) &&
+            !grantIsCurrent(profile)
+          ) {
+            throw new Error("Enter the grown-up PIN first.");
+          }
+        } else if (requiresParent(ceiling) && !grantIsCurrent(parent)) {
+          throw new Error("A grown-up needs to unlock this profile.");
+        }
+      };
+      check();
+      const initial = profile.account.ceiling;
+      if (initial !== null) {
+        const { data: latest } = await getUserApi(profile.api).getCurrentUser({
+          timeout: 5_000,
+        });
+        const ceiling = latest.Policy?.MaxParentalRating;
+        if (
+          latest.Id !== profile.user.Id ||
+          ceiling == null ||
+          latest.Policy?.IsDisabled
+        ) {
+          throw new Error("Sign this profile in again.");
+        }
+        profile.user = { ...latest, Id: profile.user.Id };
+        profile.account.ceiling = ceiling;
+      }
+      check();
+      await savePhoneProfile(profile);
+      check();
+      lockProfile(profile);
+      if (parent) lockProfile(parent);
+      publishPhoneProfile(profile, keepCache);
+    },
+    [publishPhoneProfile],
+  );
+
+  const openProfileChooser = useCallback(() => {
+    void clearSessionState();
+    if (appRouter.canDismiss()) appRouter.dismissAll();
+    appRouter.replace("/login");
+  }, [clearSessionState]);
+
+  const admitPhoneSignIn = useCallback(
+    async (
+      serverUrl: string,
+      accessToken: string,
+      user: UserDto,
+      isCurrent: () => boolean = () => true,
+    ) => {
+      if (!jellyfin || !user.Id) throw new Error("Sign this profile in again.");
+      const profileApi = createApiWithCustomHeaders(
+        jellyfin,
+        serverUrl,
+        accessToken,
+      );
+      const saved = profilesFor(serverUrl).find(
+        (profile) => profile.userId === user.Id,
+      );
+      const profile = await preparePhoneProfile(
+        profileApi,
+        {
+          ...saved,
+          serverUrl,
+          userId: user.Id,
+          username:
+            saved?.ceiling != null ? saved.username : (user.Name ?? "Profile"),
+          securityType: "none",
+          savedAt: saved?.savedAt ?? Date.now(),
+        },
+        true,
+      );
+      if (!isCurrent()) return;
+      if (
+        profile.pinLength ||
+        (profile.account.ceiling === null && !profile.user.PrimaryImageTag) ||
+        (profile.account.ceiling === null && isKidProtected()) ||
+        (profile.account.ceiling != null &&
+          (requiresParent(profile.account.ceiling) ||
+            profilesFor().some(
+              (account) =>
+                account.userId !== profile.user.Id && account.ceiling == null,
+            )))
+      ) {
+        store.set(pendingPhoneProfileAtom, profile);
+      } else {
+        await enterPhoneProfile(profile, isCurrent);
+      }
+    },
+    [jellyfin, enterPhoneProfile],
+  );
+
+  const addPhoneKid = useCallback(
+    async (
+      parent: PreparedProfile,
+      kid: KidSignIn,
+      isCurrent: () => boolean,
+    ) => {
+      if (
+        !jellyfin ||
+        !kid.user.Id ||
+        !isPhoneKid(kid.user) ||
+        !grantIsCurrent(parent)
+      ) {
+        throw new Error("A grown-up needs to unlock this profile.");
+      }
+      const serverUrl = parent.account.serverUrl;
+      const profile = await preparePhoneProfile(
+        createApiWithCustomHeaders(jellyfin, serverUrl, kid.accessToken),
+        {
+          serverUrl,
+          userId: kid.user.Id,
+          username: kid.displayName ?? kid.user.Name ?? "Kid profile",
+          securityType: "none",
+          savedAt: Date.now(),
+        },
+      );
+      if (profile.account.ceiling == null || !grantIsCurrent(parent)) {
+        throw new Error("A grown-up needs to unlock this profile.");
+      }
+      await enterPhoneProfile(
+        profile,
+        () => isCurrent() && grantIsCurrent(parent),
+        parent,
+      );
+    },
+    [jellyfin, enterPhoneProfile],
+  );
+
+  const cancelPendingProfile = useCallback(() => {
+    const pending = store.get(pendingPhoneProfileAtom);
+    if (pending) {
+      lockProfile(pending);
+      // A new Quick Connect token may replace the already saved session for
+      // the same device. Keep that account available for a later sign-in.
+      store.set(pendingPhoneProfileAtom, null);
+      if (
+        !profilesFor(pending.account.serverUrl).some(
+          (p) => p.userId === pending.user.Id,
+        )
+      ) {
+        void pending.api.post("/Sessions/Logout", null).catch(() => {});
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!phoneProfilesEnabled) return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !store.get(userAtom)?.Id) return;
+      if (profilesFor(getServerUrlFromStorage()).length > 1)
+        openProfileChooser();
+    });
+    return () => subscription.remove();
+  }, [openProfileChooser]);
 
   const headers = useMemo(() => {
     if (!deviceId) return {};
@@ -303,6 +571,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
         },
       );
       if (response?.status === 200) {
+        quickConnectSecret.current = response.data.Secret;
         setSecret(response?.data?.Secret);
         setIsPolling(true);
         return response.data?.Code;
@@ -315,12 +584,14 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
   }, [api, deviceId, headers]);
 
   const stopQuickConnectPolling = useCallback(() => {
+    quickConnectSecret.current = null;
     setIsPolling(false);
     setSecret(null);
   }, []);
 
   const pollQuickConnect = useCallback(async () => {
-    if (!api || !secret || !jellyfin) return;
+    if (!api || !secret || !jellyfin || exchangingSecret.current === secret)
+      return;
 
     try {
       const response = await api.axiosInstance.get(
@@ -328,7 +599,12 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (response.status === 200) {
-        if (response.data.Authenticated) {
+        if (
+          response.data.Authenticated &&
+          quickConnectSecret.current === secret &&
+          exchangingSecret.current !== secret
+        ) {
+          exchangingSecret.current = secret;
           setIsPolling(false);
 
           const authResponse = await api.axiosInstance.post(
@@ -342,6 +618,16 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           );
 
           const { AccessToken, User } = authResponse.data;
+          if (quickConnectSecret.current !== secret) return false;
+          if (phoneProfilesEnabled) {
+            await admitPhoneSignIn(
+              api.basePath,
+              AccessToken,
+              User,
+              () => quickConnectSecret.current === secret,
+            );
+            return true;
+          }
           setUser(User);
           setApi(
             createApiWithCustomHeaders(jellyfin, api.basePath, AccessToken),
@@ -364,10 +650,23 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
           return false;
         }
       }
+      if (phoneProfilesEnabled) {
+        setIsPolling(false);
+        toast.error(
+          error instanceof AxiosError
+            ? "Could not sign in. Try again."
+            : error instanceof Error
+              ? error.message
+              : "Could not sign in. Try again.",
+        );
+        return false;
+      }
       console.error("Error polling Quick Connect:", error);
       throw error;
+    } finally {
+      if (exchangingSecret.current === secret) exchangingSecret.current = null;
     }
-  }, [api, secret, headers, jellyfin]);
+  }, [api, secret, headers, jellyfin, admitPhoneSignIn]);
 
   useEffect(() => {
     (async () => {
@@ -481,6 +780,14 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
         const auth = await api.authenticateUserByName(username, password);
 
         if (auth.data.AccessToken && auth.data.User) {
+          if (phoneProfilesEnabled) {
+            await admitPhoneSignIn(
+              api.basePath,
+              auth.data.AccessToken,
+              auth.data.User,
+            );
+            return;
+          }
           setUser(auth.data.User);
           storage.set("user", JSON.stringify(auth.data.User));
           setApi(
@@ -599,6 +906,7 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      if (isPhoneKid(store.get(userAtom))) return;
       // Fire-and-forget: don't block logout on server cleanup
       api
         ?.delete(`/Streamyfin/device/${deviceId}`)
@@ -629,6 +937,15 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       userId: string;
     }) => {
       if (!jellyfin) throw new Error("Jellyfin not initialized");
+      if (phoneProfilesEnabled) {
+        const account = profilesFor(serverUrl).find(
+          (profile) => profile.userId === userId,
+        );
+        if (!account) throw new Error("Sign this profile in again.");
+        const profile = await prepareSavedProfile(account);
+        store.set(pendingPhoneProfileAtom, profile);
+        return;
+      }
 
       const credential = await getAccountCredential(serverUrl, userId);
       if (!credential) {
@@ -738,6 +1055,14 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
       const auth = await apiInstance.authenticateUserByName(username, password);
 
       if (auth.data.AccessToken && auth.data.User) {
+        if (phoneProfilesEnabled) {
+          await admitPhoneSignIn(
+            serverUrl,
+            auth.data.AccessToken,
+            auth.data.User,
+          );
+          return;
+        }
         // Clear React Query cache to prevent data from previous account lingering
         queryClient.clear();
         storage.remove("REACT_QUERY_OFFLINE_CACHE");
@@ -807,12 +1132,16 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
         jellyfin,
         newUrl,
         api.accessToken,
+        undefined,
+        isPhoneKid(user)
+          ? (user?.Policy?.MaxParentalRating ?? undefined)
+          : undefined,
       );
       setApi(newApi);
       // Note: We don't update storage.set("serverUrl") here
       // because we want to keep the original remote URL as the "primary" URL
     },
-    [jellyfin, api?.accessToken],
+    [jellyfin, api, user],
   );
 
   const [loaded, setLoaded] = useState(false);
@@ -835,6 +1164,74 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
         const token = getTokenFromStorage();
         const serverUrl = getServerUrlFromStorage();
         const storedUser = getUserFromStorage();
+
+        if (phoneProfilesEnabled) {
+          if (serverUrl && token && storedUser?.Id) {
+            const account = profilesFor(serverUrl).find(
+              (profile) => profile.userId === storedUser.Id,
+            );
+            const ceiling = storedUser.Policy?.MaxParentalRating;
+            if (ceiling != null && !isKidProtected()) recordCeiling(ceiling);
+            if (!account) {
+              await saveAccountCredential({
+                serverUrl,
+                serverName: "",
+                userId: storedUser.Id,
+                username: storedUser.Name ?? "Profile",
+                token,
+                securityType: "none",
+                savedAt: Date.now(),
+                ceiling: storedUser.Policy ? (ceiling ?? null) : undefined,
+                primaryImageTag: storedUser.PrimaryImageTag ?? undefined,
+              });
+            }
+            const saved = profilesFor(serverUrl);
+            if (saved.length > 1) {
+              await clearSessionState();
+              return;
+            }
+            if (saved[0]) {
+              try {
+                const profile = await prepareSavedProfile(saved[0]);
+                if (
+                  profile.pinLength ||
+                  (isKidProtected() && profile.account.ceiling === null) ||
+                  (profile.account.ceiling != null &&
+                    requiresParent(profile.account.ceiling))
+                ) {
+                  await clearSessionState();
+                  store.set(pendingPhoneProfileAtom, profile);
+                } else {
+                  await enterPhoneProfile(
+                    profile,
+                    () => true,
+                    undefined,
+                    profile.account.ceiling === (ceiling ?? null),
+                  );
+                }
+              } catch (error) {
+                // Preserve offline browsing for a legacy single, unprotected
+                // adult. Protected profiles select their session online.
+                if (
+                  axios.isAxiosError(error) &&
+                  !error.response &&
+                  storedUser.Policy &&
+                  ceiling == null &&
+                  account?.hasAccountPin === false &&
+                  !isKidProtected()
+                ) {
+                  setApi(
+                    createApiWithCustomHeaders(jellyfin, serverUrl, token),
+                  );
+                  setUser(storedUser);
+                } else {
+                  await clearSessionState();
+                }
+              }
+            }
+          }
+          return;
+        }
 
         if (serverUrl && token) {
           const apiInstance = createApiWithCustomHeaders(
@@ -947,6 +1344,11 @@ export const JellyfinProvider: React.FC<{ children: ReactNode }> = ({
     removeSavedCredential: (serverUrl, userId) =>
       removeSavedCredentialMutation.mutateAsync({ serverUrl, userId }),
     switchServerUrl,
+    openProfileChooser,
+    prepareSavedProfile,
+    enterPhoneProfile,
+    addPhoneKid,
+    cancelPendingProfile,
   };
 
   useEffect(() => {
@@ -983,7 +1385,11 @@ function useProtectedRoute(user: UserDto | null, loaded = false) {
 
     if (!user?.Id && inAuthGroup) {
       router.replace("/login");
-    } else if (user?.Id && !inAuthGroup && !isTopShelfLaunchRoute) {
+    } else if (
+      user?.Id &&
+      ((!inAuthGroup && !isTopShelfLaunchRoute) ||
+        (isPhoneKid(user) && isAdultOnlyRoute(segments)))
+    ) {
       router.replace("/(auth)/(tabs)/(home)/");
     }
   }, [user, segments, loaded]);

@@ -1,13 +1,13 @@
 import { Platform } from "react-native";
-import { Login } from "@/components/login/Login";
 import { TVLogin } from "@/components/login/TVLogin";
+import { ProfileChooser } from "@/components/profiles/ProfileChooser";
 
 const LoginPage: React.FC = () => {
   if (Platform.isTV) {
     return <TVLogin />;
   }
 
-  return <Login />;
+  return <ProfileChooser />;
 };
 
 export default LoginPage;

@@ -49,6 +49,13 @@ const buildMeta = {
 export default ({ config }: ConfigContext): ExpoConfig => {
   if (process.env.EXPO_TV !== "1") {
     config.plugins?.push("expo-background-task");
+    config.plugins?.push([
+      "expo-local-authentication",
+      {
+        faceIDPermission:
+          "Allow WeaselPlex to use Face ID to unlock your profile.",
+      },
+    ]);
 
     config.plugins?.push([
       "expo-camera",

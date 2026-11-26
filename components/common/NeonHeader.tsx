@@ -1,14 +1,26 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useAtomValue } from "jotai";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ProfileAvatar } from "@/components/profiles/ProfileAvatar";
 import { NeonBoard } from "@/constants/Colors";
 import { glowOverline, Sizes } from "@/constants/neon";
 import useRouter from "@/hooks/useAppRouter";
 import { useHaptic } from "@/hooks/useHaptic";
+import {
+  getServerUrlFromStorage,
+  useJellyfin,
+  userAtom,
+} from "@/providers/JellyfinProvider";
 import { usePageAccent } from "@/utils/atoms/pageAccent";
+import {
+  isPhoneKid,
+  phoneProfilesEnabled,
+} from "@/utils/profiles/phoneProfiles";
 import { HeaderIcon, type HeaderIconName } from "./HeaderIcon";
 import { Text } from "./Text";
 
@@ -25,6 +37,7 @@ interface Props {
    * transport controls). Off by default; Home shows it.
    */
   sessions?: boolean;
+  profile?: boolean;
   /** A 2pt accent loading line under the row (never a spinner over content). */
   loading?: boolean;
   /** Muted brand (used behind a sheet). */
@@ -128,12 +141,18 @@ export const NeonHeader: React.FC<Props> = ({
   downloads = true,
   settings = true,
   sessions = false,
+  profile = false,
   loading = false,
   dim = false,
 }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const accent = usePageAccent();
+  const { t } = useTranslation();
+  const user = useAtomValue(userAtom);
+  const { openProfileChooser } = useJellyfin();
+  const kid = isPhoneKid(user);
+  const serverUrl = getServerUrlFromStorage();
 
   return (
     <View
@@ -170,20 +189,43 @@ export const NeonHeader: React.FC<Props> = ({
           style={{ opacity: dim ? 0.4 : 1 }}
         >
           {right}
-          {sessions ? <SessionsHeaderButton /> : null}
-          {downloads ? (
+          {sessions && !kid ? <SessionsHeaderButton /> : null}
+          {downloads && !kid ? (
             <HeaderIconButton
               name='downloads'
               accessibilityLabel='Downloads'
               onPress={() => router.push("/(auth)/(tabs)/(home)/downloads")}
             />
           ) : null}
-          {settings ? (
+          {settings && !kid ? (
             <HeaderIconButton
               name='settings'
               accessibilityLabel='Settings'
               onPress={() => router.push("/(auth)/settings")}
             />
+          ) : null}
+          {profile && phoneProfilesEnabled && user?.Id && serverUrl ? (
+            <Pressable
+              accessibilityRole='button'
+              accessibilityLabel={t("profiles.whos_watching")}
+              onPress={openProfileChooser}
+              style={{
+                width: Sizes.iconButton,
+                height: Sizes.iconButton,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ProfileAvatar
+                size={28}
+                profile={{
+                  serverUrl,
+                  userId: user.Id,
+                  username: user.Name ?? "Profile",
+                  primaryImageTag: user.PrimaryImageTag ?? undefined,
+                }}
+              />
+            </Pressable>
           ) : null}
         </View>
       </View>

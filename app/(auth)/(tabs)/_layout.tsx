@@ -16,6 +16,7 @@ import {
   useTVTabRootBackHandler,
 } from "@/hooks/useTVBackHandler";
 import { useWeaselSeerrAutoConnect } from "@/hooks/useWeaselSeerrAutoConnect";
+import { userAtom } from "@/providers/JellyfinProvider";
 import { RequestLiveController } from "@/providers/RequestLiveController";
 import { RequestPolicyRunner } from "@/providers/RequestPolicyRunner";
 import { RequestPushController } from "@/providers/RequestPushController";
@@ -23,6 +24,11 @@ import { RequestStatusCoordinator } from "@/providers/RequestStatusCoordinator";
 import { requestsTabVisibleAtom } from "@/utils/atoms/requestStatus";
 import { useSettings } from "@/utils/atoms/settings";
 import { eventBus } from "@/utils/eventBus";
+import { isAdultOnlyRoute } from "@/utils/profiles/navigation";
+import {
+  isPhoneKid,
+  phoneProfilesEnabled,
+} from "@/utils/profiles/phoneProfiles";
 
 const IS_ANDROID_TV = Platform.isTV && Platform.OS === "android";
 
@@ -128,6 +134,7 @@ export default function TabLayout() {
   const router = useRouter();
   const segments = useSegments();
   const requestsVisible = useAtomValue(requestsTabVisibleAtom);
+  const user = useAtomValue(userAtom);
   const onRequestsTab = (segments as string[]).includes("(requests)");
 
   // Must be called before any conditional return (rules of hooks)
@@ -145,6 +152,12 @@ export default function TabLayout() {
       router.replace("/(auth)/(tabs)/(home)");
     }
   }, [onRequestsTab, requestsVisible, router]);
+
+  if (
+    phoneProfilesEnabled &&
+    (!user || (isPhoneKid(user) && isAdultOnlyRoute(segments)))
+  )
+    return null;
 
   if (IS_ANDROID_TV) {
     return <TVTabLayout />;

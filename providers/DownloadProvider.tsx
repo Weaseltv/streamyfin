@@ -1,6 +1,6 @@
 import * as Application from "expo-application";
 import { Directory, Paths } from "expo-file-system";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import {
   createContext,
   useCallback,
@@ -13,6 +13,7 @@ import {
 import { Platform } from "react-native";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useSettings } from "@/utils/atoms/settings";
+import { isPhoneKid } from "@/utils/profiles/phoneProfiles";
 import {
   getAllDownloadedItems,
   getDownloadedItemById,
@@ -25,7 +26,7 @@ import { useDownloadOperations } from "./Downloads/hooks/useDownloadOperations";
 import { useDownloadReconciliation } from "./Downloads/hooks/useDownloadReconciliation";
 import { setDownloadLiveActivityEnabled } from "./Downloads/liveActivity";
 import type { JobStatus } from "./Downloads/types";
-import { apiAtom } from "./JellyfinProvider";
+import { apiAtom, userAtom } from "./JellyfinProvider";
 
 export const processesAtom = atom<JobStatus[]>([]);
 export const downloadingAtom = atom((get) =>
@@ -228,8 +229,9 @@ const CompletedDownloadsContext = createContext<ReturnType<
   typeof getAllDownloadedItems
 > | null>(null);
 export function useCompletedDownloads() {
+  const user = useAtomValue(userAtom);
   const items = useContext(CompletedDownloadsContext);
-  if (Platform.isTV) return TV_DOWNLOADS.downloadedItems;
+  if (Platform.isTV || isPhoneKid(user)) return TV_DOWNLOADS.downloadedItems;
   if (!items)
     throw new Error(
       "useCompletedDownloads must be used within a DownloadProvider",

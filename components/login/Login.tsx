@@ -60,7 +60,7 @@ const Wordmark: React.FC = () => (
  * no server address, username or password to type. Deny on the page comes
  * back as the return link marked denied, which stops the wait.
  */
-export const Login: React.FC = () => {
+export const Login: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const api = useAtomValue(apiAtom);
   const user = useAtomValue(userAtom);
   const navigation = useNavigation();
@@ -227,6 +227,11 @@ export const Login: React.FC = () => {
           >
             {t("server.connect_to_your_account")}
           </Button>
+          {onBack ? (
+            <Button variant='border' style={{ marginTop: 12 }} onPress={onBack}>
+              {t("profiles.back")}
+            </Button>
+          ) : null}
           {error ? (
             <Text
               variant='meta'
