@@ -83,6 +83,10 @@ import { formatEpisodeNumber } from "@/utils/episodes";
 import { getDefaultPlaySettings } from "@/utils/jellyfin/getDefaultPlaySettings";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import {
+  checkKidPlayback,
+  isKidContentFiltered,
+} from "@/utils/jellyfin/kidContentGuard";
+import {
   applyMpvSubtitleSelection,
   getExternalSubtitleUrl,
   getMpvAudioId,
@@ -602,11 +606,17 @@ const NativePlayerProviderInner: React.FC<{
     ): Promise<boolean> => {
       const currentSettings = settingsRef.current;
       if (!currentSettings) return false;
+      const requestApi = atomStore.get(apiAtom);
+      const kidSession = isKidContentFiltered(requestApi);
+      if (kidSession && req.offline) return false;
       const token = ++playRequestTokenRef.current;
+      const isCurrent = () =>
+        token === playRequestTokenRef.current &&
+        atomStore.get(apiAtom) === requestApi;
 
       const built = await buildNativePlayerConfig({
-        api: apiRef.current,
-        userId: userRef.current?.Id,
+        api: requestApi,
+        userId: atomStore.get(userAtom)?.Id,
         settings: currentSettings,
         req,
         getDownloadedItemById: downloadUtils.getDownloadedItemById,
@@ -643,10 +653,14 @@ const NativePlayerProviderInner: React.FC<{
         muteSubtitleIndex: null,
       };
 
-      if (token !== playRequestTokenRef.current) {
-        // A newer play request started while this stream was negotiating —
-        // abandon before touching sessionRef or the native player, and close
-        // the live stream this build just opened on the server.
+      if (
+        !isCurrent() ||
+        (kidSession &&
+          !(await checkKidPlayback(requestApi, req.itemId, req.offline))) ||
+        !isCurrent()
+      ) {
+        // Release the negotiated stream before touching sessionRef or the
+        // native player if playback was refused or the request went stale.
         releaseLiveStream(session);
         return false;
       }
@@ -670,6 +684,10 @@ const NativePlayerProviderInner: React.FC<{
           // old session playing and reportable.
           await reportPlaybackStopped(previous);
           releaseLiveStream(previous);
+          if (!isCurrent()) {
+            releaseLiveStream(session);
+            return false;
+          }
           sessionRef.current = session;
           await loadNativePlayerStream(built.config);
         } else {
@@ -711,6 +729,7 @@ const NativePlayerProviderInner: React.FC<{
       return true;
     },
     [
+      atomStore,
       downloadUtils,
       queryClient,
       t,
