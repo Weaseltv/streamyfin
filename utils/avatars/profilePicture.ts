@@ -1,5 +1,5 @@
 /**
- * Saving a profile picture (contract 11.1): the chosen bundled avatar, converted to PNG, becomes the
+ * Saving a profile picture (contract 11.1): the chosen bundled PNG becomes the
  * profile's Jellyfin user image, uploaded with that profile's own token. Port of the TV's
  * `services/ProfilePictureService.kt` and `services/AccountAvatars.kt`.
  */
@@ -7,7 +7,7 @@ import type { Api } from "@jellyfin/sdk";
 import type { UserDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { getImageApi, getUserApi } from "@jellyfin/sdk/lib/utils/api";
 import { Asset } from "expo-asset";
-
+import { File as LocalFile } from "expo-file-system";
 import { storage } from "@/utils/mmkv";
 import type { RememberedAvatar } from "./avatarCatalog";
 import { ADULT_AVATAR_IDS } from "./avatarIds";
@@ -16,23 +16,13 @@ import { AVATAR_SOURCES } from "./avatarSources";
 const REMEMBERED_PREFIX = "profilePicture.avatar.";
 const ASSIGNED_PREFIX = "profilePicture.assigned.";
 
-/** The bundled avatar as base64 PNG: PNG reads everywhere; the bundled WebP keeps the app small. */
+/** Reads the bundled PNG for upload through Jellyfin's base64 image endpoint. */
 export async function avatarPngBase64(avatarId: string): Promise<string> {
-  const { ImageManipulator, SaveFormat } = await import(
-    "expo-image-manipulator"
-  );
   const source = AVATAR_SOURCES[avatarId];
-  if (source == null) throw new Error(`Unknown avatar ${avatarId}`);
-  const asset = Asset.fromModule(source as number);
-  await asset.downloadAsync();
-  const uri = asset.localUri ?? asset.uri;
-  const rendered = await ImageManipulator.manipulate(uri).renderAsync();
-  const result = await rendered.saveAsync({
-    format: SaveFormat.PNG,
-    base64: true,
-  });
-  if (!result.base64) throw new Error(`Could not read avatar ${avatarId}`);
-  return result.base64;
+  if (typeof source !== "number") throw new Error(`Unknown avatar ${avatarId}`);
+  const asset = await Asset.fromModule(source).downloadAsync();
+  if (!asset.localUri) throw new Error(`Could not read avatar ${avatarId}`);
+  return new LocalFile(asset.localUri).base64();
 }
 
 /** What this phone remembers about `userId`'s last picture saved here (only to mark it current). */
