@@ -227,7 +227,7 @@ export function ProfilePin({
       </View>
       {mode === "verify" && lockSeconds > 0 ? (
         <Text accessibilityLiveRegion='polite' accent={NeonBoard.red}>
-          {t("profiles.try_again_seconds", { count: lockSeconds })}
+          {t("profiles.try_again_seconds", { seconds: lockSeconds })}
         </Text>
       ) : error ? (
         <Text accessibilityLiveRegion='polite' accent={NeonBoard.red}>
