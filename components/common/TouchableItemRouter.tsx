@@ -157,11 +157,10 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   }, [from, item, router, isOffline, store]);
 
   const showActionSheet = useCallback(() => {
-    if (isPhoneKid(store.get(userAtom))) return;
     if (["Movie", "Episode", "Series", "Season"].includes(item.Type ?? "")) {
       requestActions({ item, isOffline });
     }
-  }, [item, isOffline, requestActions, store]);
+  }, [item, isOffline, requestActions]);
 
   if (
     from === "(home)" ||
@@ -179,9 +178,13 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
         // card under the finger. A tap still dims it and opens at once, and
         // the long-press menu still appears after the usual half second.
         delayPressIn={150}
-        onLongPress={showActionSheet}
         onPress={handlePress}
         {...props}
+        onLongPress={(event) => {
+          if (!isPhoneKid(store.get(userAtom))) {
+            (props.onLongPress ?? showActionSheet)(event);
+          }
+        }}
       >
         {children}
       </TouchableOpacity>
