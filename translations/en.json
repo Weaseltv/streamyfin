@@ -30,6 +30,8 @@
     "could_not_unlock": "Couldn’t check the PIN. Try again.",
     "could_not_open": "Couldn’t open the profile. Check your connection or sign in again.",
     "remove_phone": "Remove from this phone",
+    "confirm_remove_phone": "Remove {{name}} from this phone?",
+    "cancel": "Cancel",
     "sign_in_again": "Sign in {{name}} again",
     "sign_in": "Sign in",
     "turn_off_protection": "Turn off kid protection",

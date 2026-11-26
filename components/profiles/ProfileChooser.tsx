@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BackHandler, Pressable, ScrollView, View } from "react-native";
+import { Alert, BackHandler, Pressable, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/common/Text";
@@ -78,6 +78,7 @@ export function ProfileChooser() {
   const [error, setError] = useState("");
   const sequence = useRef(0);
   const working = useRef(false);
+  const savedPictures = useRef(new WeakSet<PreparedProfile>());
   const currentScreen = useRef<Screen>(screen);
   currentScreen.current = screen;
 
@@ -140,7 +141,12 @@ export function ProfileChooser() {
   const pick = async (profile: PreparedProfile, isCurrent: () => boolean) => {
     if (!isCurrent()) return;
     const ceiling = profile.account.ceiling;
-    if (profile.fresh && ceiling === null && !profile.user.PrimaryImageTag) {
+    if (
+      profile.fresh &&
+      ceiling === null &&
+      !profile.user.PrimaryImageTag &&
+      !savedPictures.current.has(profile)
+    ) {
       renewScreen({ kind: "picture", profile, required: true });
       return;
     }
@@ -212,14 +218,33 @@ export function ProfileChooser() {
     };
   }, [screen.kind, prepareSavedProfile, profiles.length]);
 
+  const confirmRemove = (account: PhoneProfile, onRemove: () => void) => {
+    Alert.alert(
+      t("profiles.confirm_remove_phone", { name: account.username }),
+      undefined,
+      [
+        { text: t("profiles.cancel"), style: "cancel" },
+        {
+          text: t("profiles.remove_phone"),
+          style: "destructive",
+          onPress: onRemove,
+        },
+      ],
+    );
+  };
+
   const remove = (account: PhoneProfile) =>
-    run(async (isCurrent) => {
-      await removeSavedCredential(account.serverUrl, account.userId);
-      if (isCurrent()) {
-        refreshRows();
-        renewScreen({ kind: "chooser" });
-      }
-    });
+    confirmRemove(
+      account,
+      () =>
+        void run(async (isCurrent) => {
+          await removeSavedCredential(account.serverUrl, account.userId);
+          if (isCurrent()) {
+            refreshRows();
+            renewScreen({ kind: "chooser" });
+          }
+        }),
+    );
 
   const chooseParent = (
     then: (parent: PreparedProfile) => void | Promise<void>,
@@ -391,7 +416,11 @@ export function ProfileChooser() {
           if (currentScreen.current !== screen || user.Id !== profile.user.Id)
             return;
           if (required) {
-            profile.user = { ...user, Id: profile.user.Id };
+            savedPictures.current.add(profile);
+            profile.user = {
+              ...profile.user,
+              PrimaryImageTag: user.PrimaryImageTag,
+            };
             profile.account.primaryImageTag = user.PrimaryImageTag ?? undefined;
             void run((isCurrent) => pick(profile, isCurrent));
           } else {
@@ -546,12 +575,14 @@ export function ProfileChooser() {
               variant='border'
               disabled={busy}
               onPress={() =>
-                void removeSavedCredential(
-                  screen.other.serverUrl,
-                  screen.other.userId,
-                )
-                  .then(() => withAllAdultPins(screen.parent, screen.proceed))
-                  .catch(() => setError(t("profiles.could_not_open")))
+                confirmRemove(screen.other, () => {
+                  void removeSavedCredential(
+                    screen.other.serverUrl,
+                    screen.other.userId,
+                  )
+                    .then(() => withAllAdultPins(screen.parent, screen.proceed))
+                    .catch(() => setError(t("profiles.could_not_open")));
+                })
               }
             >
               {t("profiles.remove_phone")}
