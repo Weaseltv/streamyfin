@@ -477,19 +477,21 @@ export function ProfileChooser() {
             >
               {t("profiles.add_grown_up")}
             </Button>
-            <Button
-              variant='border'
-              disabled={busy}
-              onPress={() =>
-                chooseParent((parent) =>
-                  withAllAdultPins(parent, (proved) =>
-                    renewScreen({ kind: "addKid", parent: proved }),
-                  ),
-                )
-              }
-            >
-              {t("profiles.add_kid")}
-            </Button>
+            {profiles.some((account) => account.ceiling == null) ? (
+              <Button
+                variant='border'
+                disabled={busy}
+                onPress={() =>
+                  chooseParent((parent) =>
+                    withAllAdultPins(parent, (proved) =>
+                      renewScreen({ kind: "addKid", parent: proved }),
+                    ),
+                  )
+                }
+              >
+                {t("profiles.add_kid")}
+              </Button>
+            ) : null}
             <Button
               variant='border'
               disabled={busy}
@@ -551,7 +553,7 @@ export function ProfileChooser() {
         {screen.kind === "setupAdults" ? (
           <>
             <Text variant='display'>{t("profiles.every_adult_needs_pin")}</Text>
-            <Text muted>{screen.other.account.username}</Text>
+            <Text muted>{screen.other.username}</Text>
             {screen.prepared ? (
               <Button
                 disabled={busy}
