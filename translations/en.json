@@ -923,9 +923,7 @@
     "page": "Page {{page}}"
   },
   "jellyseerr": {
-    "confirm": "Confirm",
     "cancel": "Cancel",
-    "yes": "Yes",
     "whats_wrong": "What's wrong?",
     "issue_type": "Issue type",
     "select_an_issue": "Select an issue",
@@ -945,7 +943,6 @@
       "failed": "Failed",
       "blacklisted": "Blacklisted"
     },
-    "are_you_sure_you_want_to_request_all_seasons": "Are you sure you want to request all seasons?",
     "failed_to_login": "Failed to log in",
     "cast": "Cast",
     "details": "Details",
@@ -977,6 +974,7 @@
     "unknown_user": "Unknown user",
     "select": "Select",
     "request_all": "Request all",
+    "select_all": "Select all",
     "request_seasons": "Request seasons",
     "select_seasons": "Select seasons",
     "request_selected": "Request selected",

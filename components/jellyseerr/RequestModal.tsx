@@ -4,11 +4,18 @@ import type { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescrip
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
+import {
+  Platform,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  type ViewProps,
+} from "react-native";
 import { Button } from "@/components/Button";
 import JellyseerrStatusIcon from "@/components/jellyseerr/JellyseerrStatusIcon";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { glowChip, Sizes } from "@/constants/neon";
+import { SHEET_MAX_HEIGHT_RATIO } from "@/constants/Values";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
 import {
   RequestSubmitError,
@@ -20,22 +27,21 @@ import type {
   RootFolder,
   Tag,
 } from "@/utils/jellyseerr/server/api/servarr/base";
-import {
-  MediaStatus,
-  MediaType,
-} from "@/utils/jellyseerr/server/constants/media";
+import { MediaType } from "@/utils/jellyseerr/server/constants/media";
 import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
 import { writeDebugLog } from "@/utils/log";
+import {
+  allSeasonsSelected,
+  isSeasonPickable,
+  type RequestSeason,
+  toggleAllSeasons,
+  toggleSeasonSelection,
+} from "@/utils/requestSeasons";
 import { NeonSheet, neonSheetModalProps } from "../common/NeonSheet";
 import { Text } from "../common/Text";
 import { PlatformDropdown } from "../PlatformDropdown";
 
-/** A season as the request sheet shows it: number, episode count and Seerr status. */
-export interface RequestSeason {
-  seasonNumber: number;
-  episodeCount: number;
-  status: MediaStatus;
-}
+export type { RequestSeason } from "@/utils/requestSeasons";
 
 interface Props {
   id: number;
@@ -51,6 +57,34 @@ interface Props {
 }
 
 const CHECK = 20;
+
+/** The square 20 checkbox: checked = filled accent with a glow, unchecked = 1pt `line2`. */
+const CheckBox: React.FC<{
+  checked: boolean;
+  enabled: boolean;
+  accent: string;
+}> = ({ checked, enabled, accent }) => (
+  <View
+    style={[
+      {
+        width: CHECK,
+        height: CHECK,
+        marginRight: 14,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: checked ? accent : NeonBoard.line2,
+        backgroundColor: checked ? accent : "transparent",
+        opacity: enabled ? 1 : 0.5,
+      },
+      checked ? glowChip(accent) : null,
+    ]}
+  >
+    {checked ? (
+      <Feather name='check' size={14} color={NeonBoard.onAccent} />
+    ) : null}
+  </View>
+);
 
 /**
  * A 52 season row: square 20 checkbox (checked = filled volt with a glow,
@@ -98,26 +132,7 @@ export const SeasonRow: React.FC<{
       {leading !== undefined ? (
         leading
       ) : onToggle || right === undefined ? (
-        <View
-          style={[
-            {
-              width: CHECK,
-              height: CHECK,
-              marginRight: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: checked ? accent : NeonBoard.line2,
-              backgroundColor: checked ? accent : "transparent",
-              opacity: selectable ? 1 : 0.5,
-            },
-            checked ? glowChip(accent) : null,
-          ]}
-        >
-          {checked ? (
-            <Feather name='check' size={14} color={NeonBoard.onAccent} />
-          ) : null}
-        </View>
+        <CheckBox checked={checked} enabled={selectable} accent={accent} />
       ) : null}
       <View style={{ flex: 1, paddingRight: 12 }}>
         <Text variant='rowTitle' numberOfLines={1}>
@@ -133,6 +148,106 @@ export const SeasonRow: React.FC<{
       </View>
       {right}
     </TouchableOpacity>
+  );
+};
+
+/**
+ * The season list of the request sheets, as on the TV: a "Seasons" label, a "Select all" row
+ * that ticks every season that can still be requested (and unticks them all when they are all
+ * ticked), then one row per season. Seasons already in WeaselPlex or already requested show
+ * their status badge and cannot be ticked.
+ */
+export const SeasonPickerList: React.FC<{
+  seasons: RequestSeason[];
+  selected: number[];
+  onChange: (selected: number[]) => void;
+  disabled?: boolean;
+  accent?: string;
+}> = ({
+  seasons,
+  selected,
+  onChange,
+  disabled = false,
+  accent: accentProp,
+}) => {
+  const accent = useAccent(accentProp);
+  const { t } = useTranslation();
+  const allSelected = allSeasonsSelected(seasons, selected);
+  const canSelectAll = !disabled && seasons.some(isSeasonPickable);
+  return (
+    <View>
+      <View
+        style={{
+          paddingLeft: Sizes.rowLead,
+          paddingRight: Sizes.gutter,
+          paddingTop: 16,
+          paddingBottom: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: NeonBoard.line,
+        }}
+      >
+        <Text variant='eyebrow' accent={accent} numberOfLines={1}>
+          {t("item_card.seasons")}
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => onChange(toggleAllSeasons(seasons, selected))}
+        disabled={!canSelectAll}
+        activeOpacity={0.7}
+        accessibilityRole='checkbox'
+        accessibilityState={{ checked: allSelected, disabled: !canSelectAll }}
+        style={{
+          minHeight: 52,
+          paddingLeft: Sizes.rowLead,
+          paddingRight: Sizes.gutter,
+          paddingVertical: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          borderBottomWidth: 1,
+          borderBottomColor: NeonBoard.line,
+        }}
+      >
+        <CheckBox
+          checked={allSelected}
+          enabled={canSelectAll}
+          accent={accent}
+        />
+        <Text
+          variant='rowTitle'
+          numberOfLines={1}
+          style={{ flex: 1, opacity: canSelectAll ? 1 : 0.5 }}
+        >
+          {t("jellyseerr.select_all")}
+        </Text>
+      </TouchableOpacity>
+      {seasons.map((season) => {
+        const pickable = isSeasonPickable(season);
+        return (
+          <SeasonRow
+            key={season.seasonNumber}
+            season={season}
+            accent={accent}
+            checked={selected.includes(season.seasonNumber)}
+            onToggle={
+              pickable && !disabled
+                ? () =>
+                    onChange(
+                      toggleSeasonSelection(selected, season.seasonNumber),
+                    )
+                : undefined
+            }
+            right={
+              pickable ? undefined : (
+                <JellyseerrStatusIcon
+                  mediaStatus={season.status}
+                  showRequestIcon={false}
+                />
+              )
+            }
+          />
+        );
+      })}
+    </View>
   );
 };
 
@@ -183,6 +298,7 @@ const CloseHead: React.FC<{
   const { close } = useBottomSheet();
   return (
     <NeonSheet
+      scroll
       eyebrow={eyebrow}
       title={title}
       onClose={() => close()}
@@ -226,6 +342,8 @@ const RequestModal = forwardRef<
     const [usersOpen, setUsersOpen] = useState(false);
 
     const { t } = useTranslation();
+    // Long season lists scroll inside the sheet instead of pushing Request off screen.
+    const { height: windowHeight } = useWindowDimensions();
 
     const isTv = type === MediaType.TV;
 
@@ -491,16 +609,6 @@ const RequestModal = forwardRef<
       t,
     ]);
 
-    const toggleSeason = useCallback(
-      (seasonNumber: number) =>
-        setSelectedSeasons((prev) =>
-          prev.includes(seasonNumber)
-            ? prev.filter((n) => n !== seasonNumber)
-            : [...prev, seasonNumber].sort((a, b) => a - b),
-        ),
-      [],
-    );
-
     const seasonRows = useMemo(
       () =>
         (seasons ?? [])
@@ -548,6 +656,7 @@ const RequestModal = forwardRef<
       <BottomSheetModal
         ref={ref}
         enableDynamicSizing
+        maxDynamicContentSize={windowHeight * SHEET_MAX_HEIGHT_RATIO}
         enableDismissOnClose
         onDismiss={handleDismiss}
         {...neonSheetModalProps}
@@ -585,31 +694,12 @@ const RequestModal = forwardRef<
             </Text>
           ) : null}
           {isTv && seasonRows.length > 0 && (
-            <View>
-              {seasonRows.map((season) => {
-                const selectable = season.status === MediaStatus.UNKNOWN;
-                return (
-                  <SeasonRow
-                    key={season.seasonNumber}
-                    season={season}
-                    checked={selectedSeasons.includes(season.seasonNumber)}
-                    onToggle={
-                      selectable
-                        ? () => toggleSeason(season.seasonNumber)
-                        : undefined
-                    }
-                    right={
-                      selectable ? undefined : (
-                        <JellyseerrStatusIcon
-                          mediaStatus={season.status}
-                          showRequestIcon={false}
-                        />
-                      )
-                    }
-                  />
-                );
-              })}
-            </View>
+            <SeasonPickerList
+              seasons={seasonRows}
+              selected={selectedSeasons}
+              onChange={setSelectedSeasons}
+              disabled={submitting}
+            />
           )}
           {defaultService && defaultServiceDetails && users && (
             <View>

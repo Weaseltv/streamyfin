@@ -1,15 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
-import {
-  type QueryObserverResult,
-  type RefetchOptions,
-  useQuery,
-} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { t } from "i18next";
 import orderBy from "lodash/orderBy";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
-import { Alert, Platform, View } from "react-native";
+import { useMemo, useState } from "react";
+import { View } from "react-native";
 import { Badge } from "@/components/Badge";
 import { HorizontalScroll } from "@/components/common/HorizontalScroll";
 import { LoadingLine } from "@/components/common/LoadingLine";
@@ -22,19 +18,12 @@ import { SeasonRow } from "@/components/jellyseerr/RequestModal";
 import { NeonBoard, sectionAccent } from "@/constants/Colors";
 import { Sizes } from "@/constants/neon";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
-import {
-  toastSubmitError,
-  useSubmitOwnRequest,
-} from "@/hooks/useSubmitOwnRequest";
-import {
-  MediaStatus,
-  MediaType,
-} from "@/utils/jellyseerr/server/constants/media";
-import type MediaRequest from "@/utils/jellyseerr/server/entity/MediaRequest";
-import type Season from "@/utils/jellyseerr/server/entity/Season";
-import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
-import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
+import {
+  isSeasonPickable,
+  type RequestSeason,
+  type SeasonPickerStart,
+} from "@/utils/requestSeasons";
 
 const ACCENT = sectionAccent("requests");
 
@@ -152,144 +141,15 @@ const RenderItem = ({ item }: any) => {
 const JellyseerrSeasons: React.FC<{
   isLoading: boolean;
   details?: TvDetails;
-  hasAdvancedRequest?: boolean;
-  onAdvancedRequest?: (data: MediaRequestBody) => void;
-  refetch: (
-    options?: RefetchOptions | undefined,
-  ) => Promise<
-    QueryObserverResult<TvDetails | MovieDetails | undefined, Error>
-  >;
-}> = ({
-  isLoading,
-  details,
-  refetch,
-  hasAdvancedRequest,
-  onAdvancedRequest,
-}) => {
-  const { jellyseerrApi, requestMedia } = useJellyseerr();
-  const { submit } = useSubmitOwnRequest();
-  const posterOf = (d: TvDetails) =>
-    d.posterPath
-      ? (jellyseerrApi?.imageProxy(d.posterPath, "w300_and_h450_face") ?? null)
-      : null;
+  /** The show's seasons without specials, with their status (`requestSeasonsFor`). */
+  seasons: RequestSeason[];
+  /** Opens the season picker: everything pickable ticked, or one season. */
+  onRequestSeasons: (start: SeasonPickerStart) => void;
+}> = ({ isLoading, details, seasons, onRequestSeasons }) => {
   const [seasonStates, setSeasonStates] = useState<{ [key: number]: boolean }>(
     {},
   );
-  const seasons = useMemo(() => {
-    if (!details) return [];
-    const mediaInfoSeasons = details.mediaInfo?.seasons?.filter(
-      (s: Season) => s.seasonNumber !== 0,
-    );
-    const requestedSeasons =
-      details.mediaInfo?.requests?.flatMap((r: MediaRequest) => r.seasons) ??
-      [];
-    return (
-      details.seasons?.map((season) => ({
-        ...season,
-        status:
-          mediaInfoSeasons?.find(
-            (mediaSeason: Season) =>
-              mediaSeason.seasonNumber === season.seasonNumber,
-          )?.status ??
-          requestedSeasons?.find(
-            (s: Season) => s.seasonNumber === season.seasonNumber,
-          )?.status ??
-          MediaStatus.UNKNOWN,
-      })) ?? []
-    );
-  }, [details]);
-  const allSeasonsAvailable = useMemo(
-    () => seasons.every((season) => season.status === MediaStatus.AVAILABLE),
-    [seasons],
-  );
-
-  const requestAll = useCallback(() => {
-    if (details && jellyseerrApi) {
-      const body: MediaRequestBody = {
-        mediaId: details.id,
-        mediaType: MediaType.TV,
-        tvdbId: details.externalIds?.tvdbId,
-        seasons: seasons
-          .filter(
-            (s) => s.status === MediaStatus.UNKNOWN && s.seasonNumber !== 0,
-          )
-          .map((s) => s.seasonNumber),
-      };
-      if (hasAdvancedRequest) {
-        return onAdvancedRequest?.(body);
-      }
-      if (Platform.isTV) {
-        requestMedia(details.name, body, refetch);
-        return;
-      }
-      submit(body, { title: details.name, posterUrl: posterOf(details) })
-        .then(() => refetch())
-        .catch(toastSubmitError);
-    }
-  }, [
-    jellyseerrApi,
-    seasons,
-    details,
-    hasAdvancedRequest,
-    onAdvancedRequest,
-    requestMedia,
-    refetch,
-    submit,
-  ]);
-
-  const promptRequestAll = useCallback(
-    () =>
-      Alert.alert(
-        t("jellyseerr.confirm"),
-        t("jellyseerr.are_you_sure_you_want_to_request_all_seasons"),
-        [
-          {
-            text: t("jellyseerr.cancel"),
-            style: "cancel",
-          },
-          {
-            text: t("jellyseerr.yes"),
-            onPress: requestAll,
-          },
-        ],
-      ),
-    [requestAll],
-  );
-
-  const requestSeason = useCallback(
-    async (canRequest: boolean, seasonNumber: number) => {
-      if (canRequest && details) {
-        const body: MediaRequestBody = {
-          mediaId: details.id,
-          mediaType: MediaType.TV,
-          tvdbId: details.externalIds?.tvdbId,
-          seasons: [seasonNumber],
-        };
-        if (hasAdvancedRequest) {
-          return onAdvancedRequest?.(body);
-        }
-        if (Platform.isTV) {
-          requestMedia(
-            `${details.name}, Season ${seasonNumber}`,
-            body,
-            refetch,
-          );
-          return;
-        }
-        submit(body, { title: details.name, posterUrl: posterOf(details) })
-          .then(() => refetch())
-          .catch(toastSubmitError);
-      }
-    },
-    [
-      requestMedia,
-      hasAdvancedRequest,
-      onAdvancedRequest,
-      refetch,
-      details,
-      submit,
-    ],
-  );
+  const anyPickable = useMemo(() => seasons.some(isSeasonPickable), [seasons]);
 
   if (!details) return null;
 
@@ -299,11 +159,9 @@ const JellyseerrSeasons: React.FC<{
       accent={ACCENT}
       count={isLoading ? undefined : seasons.length}
       actionLabel={
-        !isLoading && !allSeasonsAvailable
-          ? t("jellyseerr.request_all")
-          : undefined
+        !isLoading && anyPickable ? t("jellyseerr.request_all") : undefined
       }
-      onPressAction={promptRequestAll}
+      onPressAction={() => onRequestSeasons("all")}
     />
   );
 
@@ -317,14 +175,10 @@ const JellyseerrSeasons: React.FC<{
 
   return (
     <FlashList
-      data={orderBy(
-        seasons.filter((s) => s.seasonNumber !== 0),
-        "seasonNumber",
-        "desc",
-      )}
+      data={orderBy(seasons, "seasonNumber", "desc")}
       ListHeaderComponent={() => header}
       renderItem={({ item: season }) => {
-        const canRequest = season.status === MediaStatus.UNKNOWN;
+        const canRequest = isSeasonPickable(season);
         const expanded = !!seasonStates?.[season.seasonNumber];
         return (
           <>
@@ -352,7 +206,7 @@ const JellyseerrSeasons: React.FC<{
                 <JellyseerrStatusIcon
                   onPress={
                     canRequest
-                      ? () => requestSeason(canRequest, season.seasonNumber)
+                      ? () => onRequestSeasons(season.seasonNumber)
                       : undefined
                   }
                   mediaStatus={season.status}
