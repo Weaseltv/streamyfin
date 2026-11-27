@@ -234,13 +234,6 @@ struct PlayerTopBar: View {
 			} label: {
 				Label(viewModel.str("subtitleSync", "Subtitle sync"), systemImage: "clock.arrow.2.circlepath")
 			}
-			if viewModel.subtitleSearchEnabled {
-				Button {
-					viewModel.openSubtitleSearch()
-				} label: {
-					Label(viewModel.str("searchSubtitles", "Search subtitles"), systemImage: "magnifyingglass")
-				}
-			}
 		} label: {
 			barIcon(systemName: "captions.bubble")
 		}

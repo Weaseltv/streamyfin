@@ -1,8 +1,8 @@
 #if os(tvOS)
 import SwiftUI
 
-/// Full-screen remote subtitle search — the TV counterpart of the iOS
-/// SubtitleSearchView sheet. Opens from the subtitles menu; the chrome hides
+/// Full-screen remote subtitle search (tvOS only; the iPhone player no
+/// longer offers subtitle search). Opens from the subtitles menu; the chrome hides
 /// first so the panel's buttons are the only focusable content while the VC
 /// recognizers stand down (focus mode). Results are display models pushed by
 /// JS (updateSubtitleSearch); selecting one emits onSubtitleDownloadRequested
