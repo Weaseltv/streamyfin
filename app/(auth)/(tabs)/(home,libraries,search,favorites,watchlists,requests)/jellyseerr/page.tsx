@@ -17,9 +17,10 @@ import { GenreTags } from "@/components/GenreTags";
 import Cast from "@/components/jellyseerr/Cast";
 import DetailFacts from "@/components/jellyseerr/DetailFacts";
 import { jellyseerrTypeAccent } from "@/components/jellyseerr/JellyseerrMediaIcon";
-import RequestModal, {
-  type RequestSeason,
-} from "@/components/jellyseerr/RequestModal";
+import RequestModal from "@/components/jellyseerr/RequestModal";
+import RequestSeasonsSheet, {
+  type RequestSeasonsSheetHandle,
+} from "@/components/jellyseerr/RequestSeasonsSheet";
 import { TVJellyseerrPage } from "@/components/jellyseerr/tv";
 import { OverviewText } from "@/components/OverviewText";
 import { ParallaxScrollView } from "@/components/ParallaxPage";
@@ -46,11 +47,9 @@ import {
 } from "@/utils/jellyseerr/server/constants/issue";
 import {
   MediaRequestStatus,
-  MediaStatus,
   MediaType,
 } from "@/utils/jellyseerr/server/constants/media";
 import type MediaRequest from "@/utils/jellyseerr/server/entity/MediaRequest";
-import type Season from "@/utils/jellyseerr/server/entity/Season";
 import type { MediaRequestBody } from "@/utils/jellyseerr/server/interfaces/api/requestInterfaces";
 import {
   hasPermission,
@@ -62,6 +61,12 @@ import type {
   TvResult,
 } from "@/utils/jellyseerr/server/models/Search";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
+import {
+  initialSeasonSelection,
+  type RequestSeason,
+  requestSeasonsFor,
+  type SeasonPickerStart,
+} from "@/utils/requestSeasons";
 import {
   ownRequestForTitle,
   titleStageAction,
@@ -97,6 +102,7 @@ const MobilePage: React.FC = () => {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const advancedReqModalRef = useRef<BottomSheetModalMethods>(null);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const seasonSheetRef = useRef<RequestSeasonsSheetHandle>(null);
 
   const {
     data: details,
@@ -186,16 +192,51 @@ const MobilePage: React.FC = () => {
     [requestBody, _setRequestBody, advancedReqModalRef],
   );
 
+  // Season rows for the request sheets: TMDB seasons without specials, with the Seerr status of
+  // each (available / requested ones are shown but not selectable).
+  const requestSeasons: RequestSeason[] | undefined = useMemo(
+    () =>
+      mediaType === MediaType.TV && (details as TvDetails | undefined)?.seasons
+        ? requestSeasonsFor(details as TvDetails)
+        : undefined,
+    [details, mediaType],
+  );
+
+  // A show's Request button, Request all and a season's Request badge all open the season
+  // picker (the advanced sheet for those who may pick quality and folder); nothing is sent
+  // until Submit.
+  const openSeasonPicker = useCallback(
+    (start: SeasonPickerStart) => {
+      const selected = initialSeasonSelection(requestSeasons ?? [], start);
+      if (hasAdvancedRequestPermission) {
+        setRequestBody({
+          mediaId: Number(result.id!),
+          mediaType: MediaType.TV,
+          tvdbId: details?.externalIds?.tvdbId,
+          seasons: selected,
+        });
+        return;
+      }
+      seasonSheetRef.current?.present(selected);
+    },
+    [
+      requestSeasons,
+      hasAdvancedRequestPermission,
+      setRequestBody,
+      result.id,
+      details,
+    ],
+  );
+
   const request = useCallback(async () => {
+    if (mediaType === MediaType.TV) {
+      openSeasonPicker("none");
+      return;
+    }
     const body: MediaRequestBody = {
       mediaId: Number(result.id!),
       mediaType: mediaType!,
       tvdbId: details?.externalIds?.tvdbId,
-      ...(mediaType === MediaType.TV && {
-        seasons: (details as TvDetails)?.seasons
-          ?.filter?.((s) => s.seasonNumber !== 0)
-          ?.map?.((s) => s.seasonNumber),
-      }),
     };
 
     if (hasAdvancedRequestPermission) {
@@ -217,6 +258,7 @@ const MobilePage: React.FC = () => {
     mediaTitle,
     refetch,
     mediaType,
+    openSeasonPicker,
   ]);
 
   const accent = jellyseerrTypeAccent(mediaType);
@@ -233,30 +275,6 @@ const MobilePage: React.FC = () => {
         : null,
     [queue.verified, queue.items, mediaType, result.id],
   );
-
-  // Season rows for the request sheet: TMDB seasons with the Seerr status of
-  // each (available / requested ones are shown but not selectable).
-  const requestSeasons: RequestSeason[] | undefined = useMemo(() => {
-    if (mediaType !== MediaType.TV) return undefined;
-    const tv = details as TvDetails | undefined;
-    if (!tv?.seasons) return undefined;
-    const mediaInfoSeasons = tv.mediaInfo?.seasons ?? [];
-    const requested =
-      tv.mediaInfo?.requests?.flatMap((r: MediaRequest) => r.seasons) ?? [];
-    return tv.seasons
-      .filter((s) => s.seasonNumber !== 0)
-      .map((s) => ({
-        seasonNumber: s.seasonNumber,
-        episodeCount: s.episodeCount,
-        status:
-          mediaInfoSeasons.find(
-            (m: Season) => m.seasonNumber === s.seasonNumber,
-          )?.status ??
-          requested.find((r: Season) => r.seasonNumber === s.seasonNumber)
-            ?.status ??
-          MediaStatus.UNKNOWN,
-      }));
-  }, [details, mediaType]);
 
   const isAnime = useMemo(
     () =>
@@ -585,9 +603,8 @@ const MobilePage: React.FC = () => {
               <JellyseerrSeasons
                 isLoading={isLoading || isFetching}
                 details={details as TvDetails}
-                refetch={refetch}
-                hasAdvancedRequest={hasAdvancedRequestPermission}
-                onAdvancedRequest={(data) => setRequestBody(data)}
+                seasons={requestSeasons ?? []}
+                onRequestSeasons={openSeasonPicker}
               />
             )}
             <DetailFacts
@@ -618,6 +635,18 @@ const MobilePage: React.FC = () => {
         }}
         onDismiss={() => _setRequestBody(undefined)}
       />
+      {mediaType === MediaType.TV && !!result.id && (
+        <RequestSeasonsSheet
+          ref={seasonSheetRef}
+          mediaId={Number(result.id)}
+          tvdbId={details?.externalIds?.tvdbId}
+          title={mediaTitle}
+          posterUrl={posterSrc}
+          year={releaseYear}
+          seasons={requestSeasons ?? []}
+          onRequested={() => refetch()}
+        />
+      )}
       {!Platform.isTV && (
         // This is till it's fixed because the menu isn't selectable on TV
         <BottomSheetModal
